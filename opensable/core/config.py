@@ -26,6 +26,16 @@ class OpenSableConfig(BaseModel):
     auto_select_model: bool = True
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    deepseek_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    together_api_key: Optional[str] = None
+    xai_api_key: Optional[str] = None
+    mistral_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    cohere_api_key: Optional[str] = None
+    kimi_api_key: Optional[str] = None
+    qwen_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
     # Chat Platforms
     telegram_bot_token: Optional[str] = None
@@ -92,7 +102,13 @@ class OpenSableConfig(BaseModel):
     tts_volume: float = 0.9
     elevenlabs_api_key: Optional[str] = None
     elevenlabs_voice_id: Optional[str] = None
+    elevenlabs_model: str = "eleven_multilingual_v2"
     whisper_model_size: str = "base"
+
+    @property
+    def tts_engine(self) -> str:
+        """Alias so core/voice.py can read config.tts_engine."""
+        return self.tts_provider
 
     # Image
     image_provider: str = "none"
@@ -136,6 +152,16 @@ def load_config() -> OpenSableConfig:
         "auto_select_model": os.getenv("AUTO_SELECT_MODEL", "true").lower() == "true",
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
+        "deepseek_api_key": os.getenv("DEEPSEEK_API_KEY"),
+        "groq_api_key": os.getenv("GROQ_API_KEY"),
+        "together_api_key": os.getenv("TOGETHER_API_KEY"),
+        "xai_api_key": os.getenv("XAI_API_KEY"),
+        "mistral_api_key": os.getenv("MISTRAL_API_KEY"),
+        "gemini_api_key": os.getenv("GEMINI_API_KEY"),
+        "cohere_api_key": os.getenv("COHERE_API_KEY"),
+        "kimi_api_key": os.getenv("KIMI_API_KEY") or os.getenv("MOONSHOT_API_KEY"),
+        "qwen_api_key": os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY"),
+        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
         "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
         "telegram_allowed_users": [
             u.strip() for u in os.getenv("TELEGRAM_ALLOWED_USERS", "").split(",") if u.strip()
@@ -204,6 +230,16 @@ def load_config() -> OpenSableConfig:
         "webchat_port": int(os.getenv("WEBCHAT_PORT", "8789")),
         "webchat_token": os.getenv("WEBCHAT_TOKEN") or None,
         "webchat_tailscale": os.getenv("WEBCHAT_TAILSCALE", "false").lower() == "true",
+        # Voice / TTS / STT
+        "tts_provider": os.getenv("TTS_PROVIDER", "local"),
+        "stt_provider": os.getenv("STT_PROVIDER", "local"),
+        "tts_voice_gender": os.getenv("TTS_VOICE_GENDER", "female"),
+        "tts_rate": int(os.getenv("TTS_RATE", "150")),
+        "tts_volume": float(os.getenv("TTS_VOLUME", "0.9")),
+        "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY"),
+        "elevenlabs_voice_id": os.getenv("ELEVENLABS_VOICE_ID"),
+        "elevenlabs_model": os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
+        "whisper_model_size": os.getenv("WHISPER_MODEL_SIZE", "base"),
     }
 
     return OpenSableConfig(**config_data)

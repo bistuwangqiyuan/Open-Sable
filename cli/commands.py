@@ -219,11 +219,10 @@ def doctor():
 
     # Check dependencies
     deps = [
-        ("langgraph", "LangGraph"),
-        ("langchain", "LangChain"),
+        ("ollama", "Ollama SDK"),
+        ("chromadb", "ChromaDB"),
         ("aiogram", "Telegram"),
         ("discord", "Discord"),
-        ("chromadb", "ChromaDB"),
         ("fastapi", "Gateway"),
     ]
 

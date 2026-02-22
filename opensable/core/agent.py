@@ -13,12 +13,14 @@ from typing import Dict, Any, List, Optional, Callable, Awaitable
 from datetime import datetime, date
 from dataclasses import dataclass, field
 
-from langgraph.graph import StateGraph, END
-
 from .llm import get_llm
 from .memory import MemoryManager
 from .tools import ToolRegistry
 from .config import OpenSableConfig
+from .guardrails import GuardrailsEngine, GuardrailAction, ValidationResult
+from .hitl import ApprovalGate, RiskLevel, ApprovalDecision, HumanApprovalRequired
+from .checkpointing import Checkpoint, CheckpointStore
+from .structured_output import StructuredOutputParser
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +71,9 @@ class Plan:
         return "\n".join(lines)
 
 
-class AgentState(Dict):
-    """State for the agent graph"""
-
-    messages: List[Any]
-    user_id: str
-    task: str
-    plan: List[str]
-    current_step: int
-    results: Dict[str, Any]
-    error: Optional[str]
+class AgentState(dict):
+    """Simple state dict for the agent loop (no external graph dependency)."""
+    pass
 
 
 class SableAgent:
@@ -89,10 +84,15 @@ class SableAgent:
         self.llm = None
         self.memory = None
         self.tools = None
-        self.graph = None
         self.heartbeat_task = None
         self._progress_callback: ProgressCallback = None
         self._telegram_notify = None
+
+        # Production primitives
+        self.guardrails = GuardrailsEngine.default()
+        self.approval_gate = ApprovalGate(auto_approve_below=RiskLevel.HIGH)
+        self.checkpoint_store = CheckpointStore("data/checkpoints")
+        self.handoff_router = None  # lazily initialised in _init_handoffs
 
         # AGI components
         self.advanced_memory = None
@@ -114,7 +114,6 @@ class SableAgent:
         self.tools = ToolRegistry(self.config)
         await self.tools.initialize()
         await self._initialize_agi_systems()
-        self.graph = self._build_graph()
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         logger.info("Agent initialized successfully")
 
@@ -142,6 +141,7 @@ class SableAgent:
             ("Multi-agent", self._init_multi_agent),
             ("Emotional intelligence", self._init_emotional_intelligence),
             ("Distributed tracing", self._init_tracing),
+            ("Handoff router", self._init_handoffs),
         ]:
             try:
                 await init_fn()
@@ -194,6 +194,13 @@ class SableAgent:
 
         self.tracer = DistributedTracer(service_name="opensable-agent")
 
+    async def _init_handoffs(self):
+        from .handoffs import HandoffRouter, default_handoffs
+
+        self.handoff_router = HandoffRouter()
+        for h in default_handoffs():
+            self.handoff_router.register(h)
+
     # ------------------------------------------------------------------
     # Progress
     # ------------------------------------------------------------------
@@ -210,12 +217,13 @@ class SableAgent:
     # Graph
     # ------------------------------------------------------------------
 
-    def _build_graph(self) -> StateGraph:
-        workflow = StateGraph(AgentState)
-        workflow.add_node("run", self._agentic_loop)
-        workflow.set_entry_point("run")
-        workflow.add_edge("run", END)
-        return workflow.compile()
+    # ------------------------------------------------------------------
+    # Graph-free execution
+    # ------------------------------------------------------------------
+
+    async def _run_loop(self, state: AgentState) -> AgentState:
+        """Execute the agentic loop directly (no LangGraph dependency)."""
+        return await self._agentic_loop(state)
 
     # ------------------------------------------------------------------
     # Planning
@@ -416,6 +424,20 @@ class SableAgent:
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:
         emoji = self._TOOL_EMOJIS.get(name, "🔧")
         label = self._TOOL_LABELS.get(name, name.replace("_", " ").title())
+
+        # ── HITL: approval gate ──
+        try:
+            decision = await self.approval_gate.request_approval(
+                action=name,
+                description=f"{label}: {arguments}",
+                user_id=user_id,
+            )
+            if not decision.approved:
+                return f"**{name}:** ⛔ Blocked by approval gate — {decision.reason}"
+        except HumanApprovalRequired:
+            # No handler configured — default to allow (configurable)
+            pass
+
         await self._notify_progress(f"{emoji} {label}...")
         try:
             result = await asyncio.wait_for(
@@ -465,6 +487,28 @@ class SableAgent:
                 trace_id,
                 attributes={"user_id": user_id, "task_length": len(task)},
             )
+
+        # ── Guardrails: validate input ──
+        input_check: ValidationResult = self.guardrails.validate_input(task)
+        if not input_check.passed:
+            blocked = [r for r in input_check.results if r.action == GuardrailAction.BLOCK]
+            if blocked:
+                state["messages"].append({
+                    "role": "final_response",
+                    "content": blocked[0].message,
+                    "timestamp": datetime.now().isoformat(),
+                })
+                return state
+            # Sanitised or warned — use the (possibly modified) text
+            for r in input_check.results:
+                if r.action == GuardrailAction.SANITIZE and r.sanitized:
+                    task = r.sanitized
+
+        # ── Checkpointing: create ──
+        checkpoint = Checkpoint(
+            user_id=user_id,
+            original_message=task,
+        )
 
         # Memory context (advanced)
         await self._notify_progress("🧠 Recalling context...")
@@ -551,6 +595,8 @@ class SableAgent:
             plan = await self._create_plan(task, base_system)
             if plan:
                 await self._notify_progress(f"📋 Plan ({len(plan.steps)} steps):\n{plan.summary()}")
+                checkpoint.record_plan(plan.steps)
+                self.checkpoint_store.save(checkpoint)
 
         # Tool calling loop
         if not tool_results:
@@ -744,6 +790,19 @@ class SableAgent:
             logger.error(f"Synthesis failed: {e}")
             final_text = f"I found results but had trouble formatting them:\n\n{tool_context}"
 
+        # ── Guardrails: validate output ──
+        output_check: ValidationResult = self.guardrails.validate_output(final_text)
+        if not output_check.passed:
+            for r in output_check.results:
+                if r.action == GuardrailAction.SANITIZE and r.sanitized:
+                    final_text = r.sanitized
+                elif r.action == GuardrailAction.BLOCK:
+                    final_text = "I generated a response but it was blocked by safety filters. Please rephrase your request."
+
+        # ── Checkpoint: record synthesis ──
+        checkpoint.record_synthesis(final_text or "")
+        self.checkpoint_store.save(checkpoint)
+
         state["messages"].append(
             {
                 "role": "final_response",
@@ -886,7 +945,7 @@ class SableAgent:
             "last_search_query": self._last_search_query(history or []),
         }
 
-        final_state = await self.graph.ainvoke(initial_state)
+        final_state = await self._run_loop(initial_state)
 
         for msg in reversed(final_state["messages"]):
             if msg["role"] == "final_response":
@@ -968,6 +1027,78 @@ class SableAgent:
 
     async def run(self, message: str, history: Optional[List[dict]] = None) -> str:
         return await self.process_message("default_user", message, history)
+
+    async def run_structured(
+        self,
+        message: str,
+        output_type: type,
+        history: Optional[List[dict]] = None,
+    ):
+        """
+        Run the agent and parse the result into a Pydantic model.
+
+        Usage:
+            from pydantic import BaseModel
+            class Answer(BaseModel):
+                summary: str
+                confidence: float
+
+            result = await agent.run_structured("What is Python?", Answer)
+        """
+        parser = StructuredOutputParser(output_type)
+        addon = parser.get_system_prompt_addon()
+        enriched = f"{message}\n\n{addon}"
+        raw = await self.process_message("default_user", enriched, history)
+        return parser.parse(raw)
+
+    async def stream(
+        self,
+        message: str,
+        user_id: str = "default_user",
+        history: Optional[List[dict]] = None,
+    ):
+        """
+        Async generator that yields progress events, tokens, and the final response.
+
+        Event types:
+          - {"type": "progress", "text": "..."}   — step-level progress
+          - {"type": "token",    "text": "..."}   — individual token
+          - {"type": "response", "text": "..."}   — final complete response
+
+        Usage:
+            async for event in agent.stream("search for Python news"):
+                if event["type"] == "token":
+                    print(event["text"], end="", flush=True)
+                elif event["type"] == "response":
+                    print()  # newline after tokens
+        """
+        events: list[dict] = []
+
+        async def _capture_progress(text: str):
+            events.append({"type": "progress", "text": text})
+
+        old_cb = self._progress_callback
+        self._progress_callback = _capture_progress
+        try:
+            result = await self._process_message_inner(user_id, message, history)
+            # Yield all captured progress events
+            for ev in events:
+                yield ev
+            # Stream the final response token-by-token if the LLM supports it
+            if hasattr(self.llm, "astream"):
+                # Re-stream synthesis for token-level output
+                full_text = ""
+                async for token in self.llm.astream([
+                    {"role": "system", "content": self._get_personality_prompt()},
+                    {"role": "user", "content": f"Repeat this response exactly as-is:\n\n{result}"},
+                ]):
+                    full_text += token
+                    yield {"type": "token", "text": token}
+                yield {"type": "response", "text": result}
+            else:
+                yield {"type": "response", "text": result}
+        finally:
+            self._progress_callback = old_cb
 
     async def _heartbeat_loop(self):
         while True:

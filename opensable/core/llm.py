@@ -1,18 +1,15 @@
 """
 LLM integration for Open-Sable - Ollama with native tool calling
 Dynamic model switching based on task requirements.
-Supports: Ollama (local), OpenAI, Anthropic cloud providers with full tool calling.
+Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
+          xAI (Grok), Mistral, Google Gemini, Cohere, Kimi (Moonshot),
+          Qwen (DashScope), OpenRouter — all with full tool calling.
 """
 
 import logging
 import json
-from typing import Dict, List, Any
+from typing import Dict, List, Any, AsyncIterator
 import ollama
-
-try:
-    from langchain_ollama import ChatOllama
-except ImportError:
-    from langchain_community.chat_models import ChatOllama
 
 logger = logging.getLogger(__name__)
 
@@ -46,17 +43,13 @@ class AdaptiveLLM:
         self.config = config
         self.current_model = initial_model
         self.base_url = config.ollama_base_url
-        self.llm = self._create_llm(initial_model)
         self.available_models = []
         self._update_available_models()
 
     def _create_llm(self, model: str):
-        """Create LangChain LLM instance"""
-        return ChatOllama(
-            base_url=self.base_url,
-            model=model,
-            temperature=0.7,
-        )
+        """Store model name (no external LLM wrapper needed)."""
+        self.current_model = model
+        return model
 
     def _update_available_models(self):
         """Update list of available local models"""
@@ -123,7 +116,6 @@ class AdaptiveLLM:
             # Switch model
             logger.info(f"Switching from {self.current_model} to {best_model} for {task_type} task")
             self.current_model = best_model
-            self.llm = self._create_llm(best_model)
             return True
 
         return False
@@ -141,12 +133,25 @@ class AdaptiveLLM:
             raise
 
     async def ainvoke(self, messages):
-        """Invoke current LLM"""
-        return await self.llm.ainvoke(messages)
+        """Invoke current LLM (pure ollama, no langchain)."""
+        client = ollama.AsyncClient(host=self.base_url)
+        plain_msgs = []
+        for m in messages:
+            role = getattr(m, "type", None) or (m["role"] if isinstance(m, dict) else "user")
+            content = getattr(m, "content", None) or (m["content"] if isinstance(m, dict) else str(m))
+            if role == "human":
+                role = "user"
+            elif role == "ai":
+                role = "assistant"
+            plain_msgs.append({"role": role, "content": content})
+        resp = await client.chat(model=self.current_model, messages=plain_msgs)
+        from types import SimpleNamespace
+        return SimpleNamespace(content=resp.get("message", {}).get("content", ""))
 
     def invoke(self, messages):
         """Sync invoke"""
-        return self.llm.invoke(messages)
+        import asyncio
+        return asyncio.run(self.ainvoke(messages))
 
     async def invoke_with_tools(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
         """
@@ -194,18 +199,42 @@ class AdaptiveLLM:
             return {"tool_call": None, "tool_calls": [], "text": msg.get("content", "")}
 
         except Exception as e:
-            logger.warning(f"Tool calling failed ({e}), falling back to plain ainvoke")
-            # Fallback: use langchain ainvoke without tools
-            from langchain_core.messages import HumanMessage, SystemMessage
+            logger.warning(f"Tool calling failed ({e}), falling back to plain chat")
+            # Fallback: use ollama chat without tools
+            try:
+                client = ollama.AsyncClient(host=self.base_url)
+                plain_msgs = []
+                for m in messages:
+                    role = m.get("role", "user")
+                    plain_msgs.append({"role": role, "content": m.get("content", "")})
+                resp = await client.chat(model=self.current_model, messages=plain_msgs)
+                return {"tool_call": None, "tool_calls": [], "text": resp.get("message", {}).get("content", "")}
+            except Exception as e2:
+                logger.error(f"Fallback also failed: {e2}")
+                return {"tool_call": None, "tool_calls": [], "text": f"Error: {e}"}
 
-            lc_messages = []
-            for m in messages:
-                if m["role"] == "system":
-                    lc_messages.append(SystemMessage(content=m["content"]))
-                else:
-                    lc_messages.append(HumanMessage(content=m["content"]))
-            resp = await self.llm.ainvoke(lc_messages)
-            return {"tool_call": None, "tool_calls": [], "text": resp.content}
+    async def astream(self, messages: List[Dict]) -> AsyncIterator[str]:
+        """
+        Yield text tokens one-by-one from Ollama streaming API.
+
+        Usage:
+            async for token in llm.astream(messages):
+                print(token, end="", flush=True)
+        """
+        try:
+            client = ollama.AsyncClient(host=self.base_url)
+            stream = await client.chat(
+                model=self.current_model,
+                messages=messages,
+                stream=True,
+            )
+            async for chunk in stream:
+                token = chunk.get("message", {}).get("content", "")
+                if token:
+                    yield token
+        except Exception as e:
+            logger.error(f"Streaming failed: {e}")
+            yield f"Error: {e}"
 
 
 def get_llm(config):
@@ -248,52 +277,124 @@ def get_llm(config):
     except Exception as e:
         logger.warning(f"Ollama not available: {e}")
 
-        # Fallback to cloud APIs — wrapped in CloudLLM for tool calling support
-        if config.openai_api_key:
-            logger.info("Falling back to OpenAI with tool calling")
-            return CloudLLM(provider="openai", config=config)
-        elif config.anthropic_api_key:
-            logger.info("Falling back to Anthropic with tool calling")
-            return CloudLLM(provider="anthropic", config=config)
-        else:
-            raise Exception(
-                "No LLM available. Install Ollama or provide OPENAI_API_KEY/ANTHROPIC_API_KEY"
-            )
+        # Fallback to cloud APIs — try each configured provider in priority order
+        _CLOUD_FALLBACK_ORDER = [
+            ("openai", "openai_api_key"),
+            ("anthropic", "anthropic_api_key"),
+            ("gemini", "gemini_api_key"),
+            ("deepseek", "deepseek_api_key"),
+            ("groq", "groq_api_key"),
+            ("mistral", "mistral_api_key"),
+            ("together", "together_api_key"),
+            ("xai", "xai_api_key"),
+            ("cohere", "cohere_api_key"),
+            ("kimi", "kimi_api_key"),
+            ("qwen", "qwen_api_key"),
+            ("openrouter", "openrouter_api_key"),
+        ]
+        for provider, key_attr in _CLOUD_FALLBACK_ORDER:
+            if getattr(config, key_attr, None):
+                logger.info(f"Falling back to {provider} with tool calling")
+                return CloudLLM(provider=provider, config=config)
+
+        raise Exception(
+            "No LLM available. Install Ollama or set an API key env var: "
+            "OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, "
+            "DEEPSEEK_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, "
+            "TOGETHER_API_KEY, XAI_API_KEY, COHERE_API_KEY, "
+            "KIMI_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY"
+        )
 
 
 class CloudLLM:
-    """Cloud LLM provider (OpenAI / Anthropic) with full tool calling parity.
+    """Cloud LLM provider with full tool calling parity.
+
+    Supported providers:
+      OpenAI-compatible : openai, deepseek, groq, together, xai, mistral,
+                          kimi, qwen, openrouter
+      Native SDK        : anthropic, gemini, cohere
 
     Implements the same interface as AdaptiveLLM so the agent loop can use
     it transparently: invoke_with_tools(), ainvoke(), current_model, etc.
     """
 
-    # Default models per provider
-    _DEFAULTS = {
-        "openai": "gpt-4o-mini",
-        "anthropic": "claude-3-5-haiku-20241022",
+    # Provider → (base_url | None, config key name, default model)
+    _PROVIDERS = {
+        # OpenAI-compatible providers (reuse openai SDK)
+        "openai": (None, "openai_api_key", "gpt-4o-mini"),
+        "deepseek": ("https://api.deepseek.com", "deepseek_api_key", "deepseek-chat"),
+        "groq": (
+            "https://api.groq.com/openai/v1",
+            "groq_api_key",
+            "llama-3.3-70b-versatile",
+        ),
+        "together": (
+            "https://api.together.xyz/v1",
+            "together_api_key",
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        ),
+        "xai": ("https://api.x.ai/v1", "xai_api_key", "grok-3-mini-fast"),
+        "mistral": (
+            "https://api.mistral.ai/v1",
+            "mistral_api_key",
+            "mistral-small-latest",
+        ),
+        "kimi": (
+            "https://api.moonshot.cn/v1",
+            "kimi_api_key",
+            "moonshot-v1-8k",
+        ),
+        "qwen": (
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "qwen_api_key",
+            "qwen-plus",
+        ),
+        "openrouter": (
+            "https://openrouter.ai/api/v1",
+            "openrouter_api_key",
+            "openai/gpt-4o-mini",
+        ),
+        # Native SDK providers
+        "anthropic": (None, "anthropic_api_key", "claude-sonnet-4-20250514"),
+        "gemini": (None, "gemini_api_key", "gemini-2.5-flash"),
+        "cohere": (None, "cohere_api_key", "command-a-03-2025"),
     }
 
     def __init__(self, provider: str, config):
+        if provider not in self._PROVIDERS:
+            raise ValueError(
+                f"Unknown provider '{provider}'. " f"Supported: {', '.join(self._PROVIDERS)}"
+            )
         self.provider = provider
         self.config = config
-        self.current_model = self._DEFAULTS.get(provider, "gpt-4o-mini")
+        _, _, default_model = self._PROVIDERS[provider]
+        self.current_model = default_model
         self.available_models = [self.current_model]
         self._client = None
 
-    # ---- OpenAI ----------------------------------------------------------
+    def _get_api_key(self) -> str:
+        """Retrieve the API key for the current provider from config."""
+        _, key_attr, _ = self._PROVIDERS[self.provider]
+        key = getattr(self.config, key_attr, None)
+        if not key:
+            raise ValueError(
+                f"No API key for {self.provider}. " f"Set {key_attr.upper()} environment variable."
+            )
+        return key
+
+    # ── OpenAI-compatible providers ──────────────────────────────────────
 
     async def _openai_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
+        """Works for openai, deepseek, groq, together, xai, mistral."""
         try:
             from openai import AsyncOpenAI
         except ImportError:
-            raise ImportError("pip install openai  — required for OpenAI cloud provider")
+            raise ImportError("pip install openai  — required for OpenAI-compatible providers")
 
-        client = AsyncOpenAI(api_key=self.config.openai_api_key)
-        kwargs: dict = {
-            "model": self.current_model,
-            "messages": messages,
-        }
+        base_url, _, _ = self._PROVIDERS[self.provider]
+        client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
+
+        kwargs: dict = {"model": self.current_model, "messages": messages}
         if tools:
             kwargs["tools"] = tools
 
@@ -311,19 +412,27 @@ class CloudLLM:
                     except Exception:
                         args = {}
                 parsed.append({"name": tc.function.name, "arguments": args})
-            return {"tool_call": parsed[0], "tool_calls": parsed, "text": None}
+            return {
+                "tool_call": parsed[0],
+                "tool_calls": parsed,
+                "text": None,
+            }
 
-        return {"tool_call": None, "tool_calls": [], "text": msg.content or ""}
+        return {
+            "tool_call": None,
+            "tool_calls": [],
+            "text": msg.content or "",
+        }
 
-    # ---- Anthropic -------------------------------------------------------
+    # ── Anthropic ────────────────────────────────────────────────────────
 
     async def _anthropic_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
         try:
             from anthropic import AsyncAnthropic
         except ImportError:
-            raise ImportError("pip install anthropic  — required for Anthropic cloud provider")
+            raise ImportError("pip install anthropic  — required for Anthropic provider")
 
-        client = AsyncAnthropic(api_key=self.config.anthropic_api_key)
+        client = AsyncAnthropic(api_key=self._get_api_key())
 
         # Convert OpenAI-style tool schemas → Anthropic format
         anthropic_tools = []
@@ -337,7 +446,7 @@ class CloudLLM:
                 }
             )
 
-        # Separate system message from conversation messages
+        # Separate system message from conversation
         system_text = ""
         conv_msgs = []
         for m in messages:
@@ -358,7 +467,6 @@ class CloudLLM:
 
         resp = await client.messages.create(**kwargs)
 
-        # Parse response — Anthropic returns content blocks
         text_parts = []
         parsed_calls = []
         for block in resp.content:
@@ -368,19 +476,194 @@ class CloudLLM:
                 parsed_calls.append({"name": block.name, "arguments": block.input or {}})
 
         if parsed_calls:
-            return {"tool_call": parsed_calls[0], "tool_calls": parsed_calls, "text": None}
+            return {
+                "tool_call": parsed_calls[0],
+                "tool_calls": parsed_calls,
+                "text": None,
+            }
+        return {
+            "tool_call": None,
+            "tool_calls": [],
+            "text": "\n".join(text_parts),
+        }
 
-        return {"tool_call": None, "tool_calls": [], "text": "\n".join(text_parts)}
+    # ── Google Gemini ────────────────────────────────────────────────────
 
-    # ---- Public interface (same as AdaptiveLLM) --------------------------
+    async def _gemini_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError:
+            raise ImportError("pip install google-genai  — required for Gemini provider")
+
+        client = genai.Client(api_key=self._get_api_key())
+
+        # Build Gemini function declarations from OpenAI schemas
+        fn_decls = []
+        for t in tools:
+            fn = t.get("function", t)
+            fn_decls.append(
+                {
+                    "name": fn["name"],
+                    "description": fn.get("description", ""),
+                    "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
+                }
+            )
+
+        gemini_tools = [types.Tool(function_declarations=fn_decls)] if fn_decls else []
+        config = types.GenerateContentConfig(tools=gemini_tools or None)
+
+        # Build Gemini contents from messages
+        system_text = ""
+        contents = []
+        for m in messages:
+            if m["role"] == "system":
+                system_text += m["content"] + "\n"
+            elif m["role"] == "assistant":
+                contents.append(
+                    types.Content(
+                        role="model",
+                        parts=[types.Part(text=m["content"])],
+                    )
+                )
+            else:
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=m["content"])],
+                    )
+                )
+
+        if system_text.strip():
+            config.system_instruction = system_text.strip()
+
+        if not contents:
+            contents = [types.Content(role="user", parts=[types.Part(text="Hello")])]
+
+        resp = await client.aio.models.generate_content(
+            model=self.current_model,
+            contents=contents,
+            config=config,
+        )
+
+        # Parse function calls
+        parsed_calls = []
+        text_parts = []
+        if resp.candidates:
+            for part in resp.candidates[0].content.parts:
+                if part.function_call:
+                    parsed_calls.append(
+                        {
+                            "name": part.function_call.name,
+                            "arguments": dict(part.function_call.args or {}),
+                        }
+                    )
+                elif part.text:
+                    text_parts.append(part.text)
+
+        if parsed_calls:
+            return {
+                "tool_call": parsed_calls[0],
+                "tool_calls": parsed_calls,
+                "text": None,
+            }
+        return {
+            "tool_call": None,
+            "tool_calls": [],
+            "text": "\n".join(text_parts),
+        }
+
+    # ── Cohere ───────────────────────────────────────────────────────────
+
+    async def _cohere_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
+        try:
+            import cohere
+        except ImportError:
+            raise ImportError("pip install cohere  — required for Cohere provider")
+
+        co = cohere.AsyncClientV2(self._get_api_key())
+
+        # Build Cohere-format tool list (same as OpenAI schema)
+        cohere_tools = []
+        for t in tools:
+            fn = t.get("function", t)
+            cohere_tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": fn["name"],
+                        "description": fn.get("description", ""),
+                        "parameters": fn.get(
+                            "parameters",
+                            {"type": "object", "properties": {}},
+                        ),
+                    },
+                }
+            )
+
+        # Cohere v2 uses the same message format
+        cohere_msgs = []
+        for m in messages:
+            cohere_msgs.append({"role": m["role"], "content": m["content"]})
+
+        kwargs: dict = {
+            "model": self.current_model,
+            "messages": cohere_msgs,
+        }
+        if cohere_tools:
+            kwargs["tools"] = cohere_tools
+
+        resp = await co.chat(**kwargs)
+
+        parsed_calls = []
+        if resp.message.tool_calls:
+            for tc in resp.message.tool_calls:
+                args = tc.function.arguments
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {}
+                parsed_calls.append({"name": tc.function.name, "arguments": args})
+
+        if parsed_calls:
+            return {
+                "tool_call": parsed_calls[0],
+                "tool_calls": parsed_calls,
+                "text": None,
+            }
+
+        text = ""
+        if resp.message.content:
+            text = resp.message.content[0].text if resp.message.content else ""
+        return {"tool_call": None, "tool_calls": [], "text": text}
+
+    # ── Public interface (same as AdaptiveLLM) ───────────────────────────
+
+    # Map providers to their invoke method
+    _OPENAI_COMPAT = {
+        "openai",
+        "deepseek",
+        "groq",
+        "together",
+        "xai",
+        "mistral",
+        "kimi",
+        "qwen",
+        "openrouter",
+    }
 
     async def invoke_with_tools(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
         """Call cloud LLM with native tool calling."""
         try:
-            if self.provider == "openai":
+            if self.provider in self._OPENAI_COMPAT:
                 return await self._openai_invoke(messages, tools)
             elif self.provider == "anthropic":
                 return await self._anthropic_invoke(messages, tools)
+            elif self.provider == "gemini":
+                return await self._gemini_invoke(messages, tools)
+            elif self.provider == "cohere":
+                return await self._cohere_invoke(messages, tools)
             else:
                 raise ValueError(f"Unknown provider: {self.provider}")
         except ImportError:
@@ -393,12 +676,14 @@ class CloudLLM:
         """Plain text invoke (LangChain compat)."""
         result = await self.invoke_with_tools(
             [
-                {"role": m.type if hasattr(m, "type") else "user", "content": m.content}
+                {
+                    "role": m.type if hasattr(m, "type") else "user",
+                    "content": m.content,
+                }
                 for m in messages
             ],
             [],
         )
-        # Return a simple object with .content for LangChain compat
         from types import SimpleNamespace
 
         return SimpleNamespace(content=result.get("text", ""))
@@ -412,6 +697,54 @@ class CloudLLM:
     async def auto_switch_model(self, task_type: str) -> bool:
         """Cloud models don't auto-switch (always use the configured one)."""
         return False
+
+    async def astream(self, messages: List[Dict]) -> AsyncIterator[str]:
+        """
+        Yield text tokens from cloud LLM streaming.
+
+        Supports OpenAI-compatible providers and Anthropic.
+        """
+        try:
+            if self.provider in self._OPENAI_COMPAT:
+                from openai import AsyncOpenAI
+                base_url, _, _ = self._PROVIDERS[self.provider]
+                client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
+                stream = await client.chat.completions.create(
+                    model=self.current_model,
+                    messages=messages,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta and delta.content:
+                        yield delta.content
+            elif self.provider == "anthropic":
+                from anthropic import AsyncAnthropic
+                client = AsyncAnthropic(api_key=self._get_api_key())
+                system_text = ""
+                conv_msgs = []
+                for m in messages:
+                    if m["role"] == "system":
+                        system_text += m["content"] + "\n"
+                    else:
+                        conv_msgs.append({"role": m["role"], "content": m["content"]})
+                kwargs: dict = {
+                    "model": self.current_model,
+                    "max_tokens": 4096,
+                    "messages": conv_msgs or [{"role": "user", "content": "Hello"}],
+                }
+                if system_text.strip():
+                    kwargs["system"] = system_text.strip()
+                async with client.messages.stream(**kwargs) as stream:
+                    async for text in stream.text_stream:
+                        yield text
+            else:
+                # Fallback: non-streaming invoke
+                result = await self.invoke_with_tools(messages, [])
+                yield result.get("text", "")
+        except Exception as e:
+            logger.error(f"Cloud streaming failed ({self.provider}): {e}")
+            yield f"Error: {e}"
 
 
 async def check_ollama_models(base_url: str = "http://localhost:11434") -> list:

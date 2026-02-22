@@ -62,14 +62,20 @@ class TTSEngine:
             raise
 
     async def _init_elevenlabs(self):
-        """Initialize ElevenLabs TTS"""
+        """Initialize ElevenLabs TTS (SDK v2+)"""
         try:
-            from elevenlabs import set_api_key
+            from elevenlabs.client import ElevenLabs
 
-            set_api_key(self.config.elevenlabs_api_key)
+            api_key = getattr(self.config, "elevenlabs_api_key", None)
+            if not api_key:
+                raise ValueError("ELEVENLABS_API_KEY not set")
+            self.engine = ElevenLabs(api_key=api_key)
             logger.info("ElevenLabs TTS initialized")
         except ImportError:
-            logger.error("elevenlabs not installed. Install with: pip install elevenlabs")
+            logger.error(
+                "elevenlabs not installed. "
+                "Install with: pip install 'opensable[voice]'  or  pip install elevenlabs"
+            )
             raise
 
     async def _init_openai(self):
@@ -119,16 +125,22 @@ class TTSEngine:
         return output_file
 
     async def _synthesize_elevenlabs(self, text: str, output_file: str) -> str:
-        """Synthesize with ElevenLabs"""
-        from elevenlabs import generate, save
+        """Synthesize with ElevenLabs (SDK v2+)"""
+        voice_id = getattr(self.config, "elevenlabs_voice_id", None) or "JBFqnCBsd6RMkjVDRZzb"
+        model_id = getattr(self.config, "elevenlabs_model", "eleven_multilingual_v2")
 
-        audio = generate(
+        audio_iter = self.engine.text_to_speech.convert(
             text=text,
-            voice=self.config.elevenlabs_voice_id or "21m00Tcm4TlvDq8ikWAM",
-            model="eleven_monolingual_v1",
+            voice_id=voice_id,
+            model_id=model_id,
+            output_format="mp3_44100_128",
         )
 
-        save(audio, output_file)
+        with open(output_file, "wb") as f:
+            for chunk in audio_iter:
+                if isinstance(chunk, bytes):
+                    f.write(chunk)
+
         logger.info(f"ElevenLabs TTS saved to {output_file}")
         return output_file
 

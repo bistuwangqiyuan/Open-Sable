@@ -1,5 +1,9 @@
 """
 Voice Support - Text-to-Speech and Speech-to-Text
+
+TTS backends: local (pyttsx3), ElevenLabs (cloud), OpenAI (cloud)
+STT backends: local (Whisper), OpenAI Whisper API (cloud)
+Default is local — set TTS_PROVIDER=elevenlabs + ELEVENLABS_API_KEY for cloud.
 """
 
 import logging
@@ -16,7 +20,7 @@ class TTSEngine:
 
     def __init__(self, config):
         self.config = config
-        self.engine_type = config.tts_engine if hasattr(config, "tts_engine") else "local"
+        self.engine_type = getattr(config, "tts_provider", "local")
         self.engine = None
 
     async def initialize(self):
@@ -51,25 +55,23 @@ class TTSEngine:
             self.engine = None
 
     async def _init_elevenlabs(self):
-        """Initialize ElevenLabs TTS"""
+        """Initialize ElevenLabs TTS (SDK v2+)"""
         try:
-            from elevenlabs import set_api_key, generate, voices
+            from elevenlabs.client import AsyncElevenLabs
 
-            if not hasattr(self.config, "elevenlabs_api_key"):
-                logger.error("ElevenLabs API key not configured")
+            api_key = getattr(self.config, "elevenlabs_api_key", None)
+            if not api_key:
+                logger.error("ElevenLabs API key not configured (set ELEVENLABS_API_KEY)")
                 return
 
-            set_api_key(self.config.elevenlabs_api_key)
-
-            # List available voices
-            available_voices = voices()
-            logger.info(f"ElevenLabs voices: {[v.name for v in available_voices]}")
-
-            self.engine = "elevenlabs"
-            logger.info("Initialized ElevenLabs TTS")
+            self.engine = AsyncElevenLabs(api_key=api_key)
+            logger.info("Initialized ElevenLabs TTS (async client)")
 
         except ImportError:
-            logger.error("elevenlabs library not installed")
+            logger.error(
+                "elevenlabs library not installed. "
+                "Install with: pip install 'opensable[voice]'  or  pip install elevenlabs"
+            )
             self.engine = None
         except Exception as e:
             logger.error(f"Failed to initialize ElevenLabs: {e}")
@@ -132,22 +134,26 @@ class TTSEngine:
         self.engine.runAndWait()
 
     async def _speak_elevenlabs(self, text: str, output_file: Optional[Path]) -> Optional[Path]:
-        """ElevenLabs TTS"""
-        from elevenlabs import generate
-
+        """ElevenLabs TTS (SDK v2+)"""
         if not output_file:
             output_file = Path(tempfile.mktemp(suffix=".mp3"))
 
-        # Generate audio
-        audio = generate(
+        voice_id = getattr(self.config, "elevenlabs_voice_id", None) or "JBFqnCBsd6RMkjVDRZzb"
+        model_id = getattr(self.config, "elevenlabs_model", "eleven_multilingual_v2")
+
+        # AsyncElevenLabs.text_to_speech.convert() returns an async iterator of bytes
+        audio_iter = await self.engine.text_to_speech.convert(
             text=text,
-            voice=getattr(self.config, "elevenlabs_voice", "Bella"),
-            model="eleven_monolingual_v1",
+            voice_id=voice_id,
+            model_id=model_id,
+            output_format="mp3_44100_128",
         )
 
-        # Save to file
+        # Collect bytes and write to file
         with open(output_file, "wb") as f:
-            f.write(audio)
+            async for chunk in audio_iter:
+                if isinstance(chunk, bytes):
+                    f.write(chunk)
 
         logger.info(f"Generated ElevenLabs audio: {output_file}")
         return output_file
@@ -175,7 +181,7 @@ class STTEngine:
 
     def __init__(self, config):
         self.config = config
-        self.engine_type = config.stt_engine if hasattr(config, "stt_engine") else "whisper"
+        self.engine_type = getattr(config, "stt_provider", "whisper_local")
         self.engine = None
 
     async def initialize(self):

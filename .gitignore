@@ -36,6 +36,7 @@ env/
 .opensable/
 data/memory.json
 data/vectordb/
+data/checkpoints/
 
 # Node modules
 node_modules/

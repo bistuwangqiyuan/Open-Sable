@@ -51,6 +51,7 @@ class ToolRegistry:
         self.config = config
         self.tools: Dict[str, Callable] = {}
         self._permission_manager = None
+        self._custom_schemas: List[Dict[str, Any]] = []  # @function_tool schemas
 
         # Initialize permission manager for RBAC
         try:
@@ -623,7 +624,7 @@ class ToolRegistry:
                     },
                 },
             },
-        ]
+        ] + self._custom_schemas  # append @function_tool schemas
 
     # Tool schema → internal tool name mapping
     _SCHEMA_TO_TOOL = {
@@ -660,7 +661,9 @@ class ToolRegistry:
         self, schema_name: str, arguments: Dict[str, Any], user_id: str = "default"
     ) -> str:
         """Execute a tool by its schema name (as returned by Ollama tool calling)"""
-        if schema_name not in self._SCHEMA_TO_TOOL:
+        # Check the static schema mapping first, then fall back to
+        # directly registered tools (e.g. from @function_tool).
+        if schema_name not in self._SCHEMA_TO_TOOL and schema_name not in self.tools:
             return f"⚠️ Unknown tool: {schema_name}"
 
         # RBAC check — if a permission manager is loaded and the tool is mapped
@@ -680,9 +683,13 @@ class ToolRegistry:
                 # Don't block tools if RBAC check itself fails
                 logger.debug(f"RBAC check error (allowing): {e}")
 
-        internal_name, arg_mapper = self._SCHEMA_TO_TOOL[schema_name]
-        mapped_args = arg_mapper(arguments)
-        return await self.execute(internal_name, mapped_args)
+        if schema_name in self._SCHEMA_TO_TOOL:
+            internal_name, arg_mapper = self._SCHEMA_TO_TOOL[schema_name]
+            mapped_args = arg_mapper(arguments)
+            return await self.execute(internal_name, mapped_args)
+
+        # Direct-registered tool (e.g. @function_tool)
+        return await self.execute(schema_name, arguments)
 
     async def execute(self, tool_name: str, tool_input: Dict[str, Any]) -> Any:
         """Execute a tool"""
