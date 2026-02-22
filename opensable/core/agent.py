@@ -464,6 +464,13 @@ class SableAgent:
         "generate_image": "🎨",
         "analyze_image": "👁️",
         "desktop_screenshot": "📷",
+        # Vision / autonomous computer-use
+        "screen_analyze": "🔭",
+        "screen_find": "🎯",
+        "screen_click_on": "🖱️",
+        "open_app": "🚀",
+        "window_list": "🪟",
+        "window_focus": "🪟",
     }
 
     _TOOL_LABELS = {
@@ -484,6 +491,13 @@ class SableAgent:
         "generate_image": "Generating image",
         "analyze_image": "Analyzing image",
         "desktop_screenshot": "Taking screenshot",
+        # Vision / autonomous computer-use
+        "screen_analyze": "Analyzing screen with vision AI",
+        "screen_find": "Finding element on screen",
+        "screen_click_on": "Clicking element on screen",
+        "open_app": "Opening application",
+        "window_list": "Listing windows",
+        "window_focus": "Focusing window",
     }
 
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:

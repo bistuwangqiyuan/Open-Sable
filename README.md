@@ -221,6 +221,18 @@ graph TB
 - 🧪 **Browser automation** (Playwright) — optional
 - 🧪 **Email + Calendar adapters** — optional
 
+### 👁️ Computer Use (Vision AI)
+- ✅ **`screen_analyze`** — screenshot → Qwen2.5-VL → describe what's on screen (buttons, dialogs, text, errors)
+- ✅ **`screen_find`** — "find the Login button" → returns `(x, y)` pixel coords via VLM
+- ✅ **`screen_click_on`** — one-shot: find UI element visually and click it (`screen_find` + `desktop_click`)
+- ✅ **`open_app`** — open Firefox, terminal, VS Code, Spotify, etc. by name
+- ✅ **`window_list`** — list all open windows on the desktop
+- ✅ **`window_focus`** — bring any window to the front by title
+- ✅ **`desktop_screenshot`** — take screenshot + auto-analyze with VLM (agent sees what's on screen)
+- ✅ **`desktop_click`** / **`desktop_type`** / **`desktop_hotkey`** / **`desktop_scroll`** — raw mouse & keyboard control
+- **Vision model:** auto-detects Qwen2.5-VL, LLaVA, MiniCPM-V or any vision model installed in Ollama
+- **Dependencies:** `pyautogui`, `Pillow`, `xdotool`, `wmctrl` (all pre-installed)
+
 ### Skills System (21+ skills)
 - ✅ **16 community skills** (real APIs: DuckDuckGo, Open-Meteo, MyMemory)
 - ✅ **5 built-in SableCore skills** (file-ops, system, code, notes, reminders)

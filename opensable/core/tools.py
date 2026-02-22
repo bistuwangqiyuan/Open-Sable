@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 
 from .computer_tools import ComputerTools
+from .vision_tools import VisionTools
 from .browser import BrowserEngine
 from .skill_creator import SkillCreator
 
@@ -75,6 +76,9 @@ class ToolRegistry:
         # Initialize computer control tools
         self.computer = ComputerTools(config, sandbox_mode=getattr(config, "sandbox_mode", False))
 
+        # Initialize vision tools (screen understanding + computer control via VLM)
+        self.vision = VisionTools(config)
+
         # Initialize skill creator
         self.skill_creator = SkillCreator(config)
 
@@ -130,6 +134,14 @@ class ToolRegistry:
         self.register("desktop_hotkey", self._desktop_hotkey_tool)
         self.register("desktop_scroll", self._desktop_scroll_tool)
         self.register("desktop_mouse_move", self._desktop_mouse_move_tool)
+
+        # Register vision / autonomous computer-use tools
+        self.register("screen_analyze", self._screen_analyze_tool)
+        self.register("screen_find", self._screen_find_tool)
+        self.register("screen_click_on", self._screen_click_on_tool)
+        self.register("open_app", self._open_app_tool)
+        self.register("window_list", self._window_list_tool)
+        self.register("window_focus", self._window_focus_tool)
 
         # Initialize advanced skills
         try:
@@ -624,6 +636,127 @@ class ToolRegistry:
                     },
                 },
             },
+            # ── Vision / autonomous computer-use tools ────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "screen_analyze",
+                    "description": (
+                        "Take a screenshot and use an AI vision model (Qwen2.5-VL) to understand "
+                        "what is on the screen. Returns a detailed description of visible UI elements, "
+                        "windows, buttons, text, errors, etc. Use this before clicking to know "
+                        "what's there. Optionally ask a specific question about the screen."
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "Optional specific question about the screen, e.g. 'Is there an error dialog?' or 'What app is open?'",
+                            },
+                        },
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "screen_find",
+                    "description": (
+                        "Find a specific UI element on the screen by visual description. "
+                        "Uses AI vision to locate buttons, input fields, links, icons, etc. "
+                        "Returns (x, y) pixel coordinates to use with desktop_click. "
+                        "Example: screen_find('Login button') → x:640, y:450"
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "What to find on screen, e.g. 'the Submit button', 'username input field', 'close X button', 'error message'",
+                            },
+                        },
+                        "required": ["description"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "screen_click_on",
+                    "description": (
+                        "ONE SHOT: Find a UI element visually on the screen and click it. "
+                        "Combines screen_find + desktop_click in one action. "
+                        "Use this instead of screen_find + desktop_click when you want to click something. "
+                        "Example: screen_click_on('the Login button')"
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "What to click, e.g. 'OK button', 'username field', 'X close button', 'Accept button'",
+                            },
+                            "double": {
+                                "type": "boolean",
+                                "description": "True for double-click (e.g. to open files), default false",
+                            },
+                        },
+                        "required": ["description"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "open_app",
+                    "description": (
+                        "Open an application on the computer by name. "
+                        "Works with: firefox, chrome, terminal, vscode, spotify, vlc, gimp, "
+                        "libreoffice, calculator, files, discord, slack, and any installed program."
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Application name or command, e.g. 'firefox', 'terminal', 'vscode', 'spotify'",
+                            },
+                        },
+                        "required": ["name"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "window_list",
+                    "description": "List all currently open windows on the desktop. Returns window titles and IDs.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "window_focus",
+                    "description": "Bring a specific window to the front by its title or partial title. E.g. 'Firefox', 'Terminal', 'Visual Studio Code'",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Window title or partial title to focus",
+                            },
+                        },
+                        "required": ["name"],
+                    },
+                },
+            },
         ] + self._custom_schemas  # append @function_tool schemas
 
     # Tool schema → internal tool name mapping
@@ -655,6 +788,13 @@ class ToolRegistry:
         "desktop_hotkey": ("desktop_hotkey", lambda a: a),
         "desktop_scroll": ("desktop_scroll", lambda a: a),
         "desktop_mouse_move": ("desktop_mouse_move", lambda a: a),
+        # Vision / autonomous computer-use
+        "screen_analyze": ("screen_analyze", lambda a: a),
+        "screen_find": ("screen_find", lambda a: a),
+        "screen_click_on": ("screen_click_on", lambda a: a),
+        "open_app": ("open_app", lambda a: a),
+        "window_list": ("window_list", lambda a: a),
+        "window_focus": ("window_focus", lambda a: a),
     }
 
     async def execute_schema_tool(
@@ -1518,14 +1658,23 @@ class ToolRegistry:
     # ========== DESKTOP CONTROL TOOLS ==========
 
     async def _desktop_screenshot_tool(self, params: Dict) -> str:
-        """Take a screenshot of the screen"""
+        """Take a screenshot and optionally auto-analyze with vision AI"""
         save_path = params.get("save_path")
+        analyze = params.get("analyze", True)  # Auto-analyze by default
         result = await self.computer.screenshot(save_path=save_path)
         if result.get("success"):
             w, h = result.get("width"), result.get("height")
             if result.get("path"):
-                return f"📸 Screenshot saved: {result['path']} ({w}x{h})"
-            return f"📸 Screenshot captured ({w}x{h}). Image data returned as base64 PNG."
+                base = f"📸 Screenshot saved: {result['path']} ({w}x{h})"
+            else:
+                base = f"📸 Screenshot captured ({w}x{h})"
+
+            # Auto-analyze with vision AI so the LLM knows what's on screen
+            if analyze and not save_path:
+                vision_result = await self.vision.screen_analyze()
+                if vision_result.get("success"):
+                    return f"{base}\n\n👁️ **What's on screen:**\n{vision_result['description']}"
+            return base
         return f"❌ Screenshot failed: {result.get('error')}"
 
     async def _desktop_click_tool(self, params: Dict) -> str:
@@ -1573,3 +1722,62 @@ class ToolRegistry:
         if result.get("success"):
             return f"🖱️ Mouse moved to ({x}, {y})"
         return f"❌ Move failed: {result.get('error')}"
+
+    # ========== VISION / AUTONOMOUS COMPUTER-USE TOOLS ==========
+
+    async def _screen_analyze_tool(self, params: Dict) -> str:
+        """Screenshot → Ollama VLM → describe what's on screen"""
+        question = params.get("question")
+        result = await self.vision.screen_analyze(question=question)
+        if result.get("success"):
+            model = result.get("model", "VLM")
+            desc = result["description"]
+            return f"👁️ **Screen Analysis** (via {model}):\n{desc}"
+        return f"❌ Screen analysis failed: {result.get('error')}"
+
+    async def _screen_find_tool(self, params: Dict) -> str:
+        """Find a UI element on screen by description, return coordinates"""
+        description = params.get("description", "")
+        result = await self.vision.screen_find(description)
+        if result.get("success"):
+            return (
+                f"👁️ Found '{description}' at coordinates ({result['x']}, {result['y']}). "
+                f"Use desktop_click with x={result['x']}, y={result['y']} to click it."
+            )
+        return f"❌ '{description}' not found on screen: {result.get('error')}"
+
+    async def _screen_click_on_tool(self, params: Dict) -> str:
+        """Find element visually and click it"""
+        description = params.get("description", "")
+        double = params.get("double", False)
+        result = await self.vision.screen_click_on(description, double=double)
+        if result.get("success"):
+            return f"🖱️ {result['message']}"
+        return f"❌ Could not click '{description}': {result.get('error')}"
+
+    async def _open_app_tool(self, params: Dict) -> str:
+        """Open an application by name"""
+        name = params.get("name", "")
+        result = await self.vision.open_app(name)
+        if result.get("success"):
+            return f"🚀 {result['message']}"
+        return f"❌ {result.get('error')}"
+
+    async def _window_list_tool(self, params: Dict) -> str:
+        """List all open windows"""
+        result = await self.vision.window_list()
+        if result.get("success"):
+            windows = result.get("windows", [])
+            if not windows:
+                return "📋 No windows found"
+            lines = [f"  [{w['id']}] {w['title']}" for w in windows]
+            return f"📋 Open windows ({result['count']}):\n" + "\n".join(lines)
+        return f"❌ {result.get('error')}"
+
+    async def _window_focus_tool(self, params: Dict) -> str:
+        """Bring a window to front by title"""
+        name = params.get("name", "")
+        result = await self.vision.window_focus(name)
+        if result.get("success"):
+            return f"🪟 {result['message']}"
+        return f"❌ {result.get('error')}"
