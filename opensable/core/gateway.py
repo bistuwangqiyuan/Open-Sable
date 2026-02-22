@@ -148,7 +148,12 @@ class _WS:
 
         # ── Serve plain HTML (no Upgrade header) ──────────────────────────────
         if "upgrade" not in headers:
-            await cls._serve_html(writer, webchat_path)
+            # Route: /monitor serves the monitor page, / serves the chat
+            if parsed.path.rstrip("/") == "/monitor":
+                monitor_path = webchat_path.parent / "monitor.html" if webchat_path else None
+                await cls._serve_html(writer, monitor_path)
+            else:
+                await cls._serve_html(writer, webchat_path)
             return None
 
         # ── WebSocket upgrade ─────────────────────────────────────────────────
@@ -302,6 +307,10 @@ class Gateway:
         self._rate_window = 60  # seconds
         self._rate_max = 30  # max messages per window
 
+        # Monitor system
+        self._monitor_clients: Set[_Client] = set()
+        self._monitor_agent_wired = False
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def start(self):
@@ -389,6 +398,8 @@ class Gateway:
             "uptime_sec": round(uptime, 1),
             "clients": len(self._clients),
             "nodes": list(self._nodes.keys()),
+            "start_time": self._start_time.isoformat(),
+            "monitor_clients": len(self._monitor_clients),
         }
 
     # ── Connection handler ────────────────────────────────────────────────────
@@ -410,6 +421,7 @@ class Gateway:
             logger.debug(f"[Gateway] {client.cid} error: {e}")
         finally:
             self._clients.discard(client)
+            self._monitor_clients.discard(client)
             if client.node_id and client.node_id in self._nodes:
                 del self._nodes[client.node_id]
                 logger.info(f"[Gateway] Node disconnected: {client.node_id}")
@@ -455,8 +467,16 @@ class Gateway:
             await self._on_node_invoke(client, msg)
         elif t == "node.result":
             await self._on_node_result(client, msg)
+        elif t == "monitor.subscribe":
+            await self._on_monitor_subscribe(client)
+        elif t == "monitor.snapshot":
+            await self._on_monitor_snapshot(client)
         elif t == "status":
-            await client.send({"type": "status", **self.status()})
+            status = self.status()
+            # Add model info from agent
+            if hasattr(self.agent, "llm") and hasattr(self.agent.llm, "current_model"):
+                status["model"] = self.agent.llm.current_model
+            await client.send({"type": "status", **status})
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
@@ -556,6 +576,44 @@ class Gateway:
         s = sm.get_session(sid)
         msgs = [m.to_dict() for m in s.get_messages()] if s else []
         await client.send({"type": "sessions.history.result", "session_id": sid, "messages": msgs})
+
+    # ── Monitor system ─────────────────────────────────────────────────────
+
+    async def _on_monitor_subscribe(self, client: _Client):
+        """Subscribe a WebSocket client to real-time agent monitor events."""
+        self._monitor_clients.add(client)
+
+        # Register as agent monitor subscriber if not already
+        if not self._monitor_agent_wired:
+            self._monitor_agent_wired = True
+
+            async def _forward_event(event: str, data: dict):
+                payload = {
+                    "type": "monitor.event",
+                    "event": event,
+                    "data": data,
+                    "ts": time.time(),
+                }
+                dead = set()
+                for mc in list(self._monitor_clients):
+                    try:
+                        await mc.send(payload)
+                    except Exception:
+                        dead.add(mc)
+                self._monitor_clients -= dead
+
+            self.agent.monitor_subscribe(_forward_event)
+
+        await client.send({"type": "monitor.subscribed"})
+
+        # Send initial snapshot
+        await self._on_monitor_snapshot(client)
+
+    async def _on_monitor_snapshot(self, client: _Client):
+        """Send a full agent state snapshot to the monitor client."""
+        if hasattr(self.agent, "get_monitor_snapshot"):
+            snapshot = self.agent.get_monitor_snapshot()
+            await client.send(snapshot)
 
     # ── Node system ───────────────────────────────────────────────────────────
 

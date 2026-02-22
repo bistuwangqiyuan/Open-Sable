@@ -8,6 +8,7 @@ v2: Multi-step planning, parallel tool calls, streaming progress,
 import asyncio
 import logging
 import re
+import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from datetime import datetime, date
@@ -93,6 +94,10 @@ class SableAgent:
         self.approval_gate = ApprovalGate(auto_approve_below=RiskLevel.HIGH)
         self.checkpoint_store = CheckpointStore("data/checkpoints")
         self.handoff_router = None  # lazily initialised in _init_handoffs
+
+        # Monitor event bus — subscribers receive (event_name, data_dict)
+        self._monitor_subscribers: list = []
+        self._monitor_stats = {"messages": 0, "tool_calls": 0, "errors": 0}
 
         # AGI components
         self.advanced_memory = None
@@ -214,8 +219,68 @@ class SableAgent:
                 logger.debug(f"Progress callback failed: {e}")
 
     # ------------------------------------------------------------------
-    # Graph
+    # Monitor event bus
     # ------------------------------------------------------------------
+
+    def monitor_subscribe(self, callback):
+        """Subscribe to agent monitor events. callback(event: str, data: dict)"""
+        self._monitor_subscribers.append(callback)
+
+    def monitor_unsubscribe(self, callback):
+        """Unsubscribe from monitor events."""
+        self._monitor_subscribers = [c for c in self._monitor_subscribers if c is not callback]
+
+    async def _emit_monitor(self, event: str, data: dict = None):
+        """Emit a monitor event to all subscribers."""
+        data = data or {}
+        for cb in self._monitor_subscribers:
+            try:
+                if asyncio.iscoroutinefunction(cb):
+                    await cb(event, data)
+                else:
+                    cb(event, data)
+            except Exception:
+                pass
+
+    def get_monitor_snapshot(self) -> dict:
+        """Return a full snapshot of agent state for the monitor UI."""
+        tools = []
+        if self.tools:
+            tools = self.tools.list_tools()
+
+        components = []
+        for name, attr in [
+            ("LLM", self.llm), ("Memory", self.memory), ("Tools", self.tools),
+            ("Advanced Memory", self.advanced_memory), ("Goals", self.goals),
+            ("Plugins", self.plugins), ("Multi-Agent", self.multi_agent),
+            ("Metacognition", self.metacognition), ("World Model", self.world_model),
+            ("Tool Synthesis", self.tool_synthesizer),
+            ("Emotional Intel", getattr(self, "emotional_intelligence", None)),
+            ("Tracing", self.tracer), ("Handoffs", self.handoff_router),
+        ]:
+            components.append({"name": name, "status": "ok" if attr else "off"})
+
+        goals = []
+        if self.goals:
+            try:
+                for g in self.goals.get_active_goals():
+                    goals.append({"name": getattr(g, "description", str(g)), "progress": getattr(g, "progress", 0)})
+            except Exception:
+                pass
+
+        model = "unknown"
+        if self.llm and hasattr(self.llm, "current_model"):
+            model = self.llm.current_model
+
+        return {
+            "type": "monitor.snapshot",
+            "tools": tools,
+            "components": components,
+            "goals": goals,
+            "model": model,
+            "stats": self._monitor_stats,
+            "interfaces": [],  # filled by gateway
+        }
 
     # ------------------------------------------------------------------
     # Graph-free execution
@@ -439,16 +504,25 @@ class SableAgent:
             pass
 
         await self._notify_progress(f"{emoji} {label}...")
+        await self._emit_monitor("tool.start", {"name": name, "args": arguments})
+        _t0 = time.time()
         try:
             result = await asyncio.wait_for(
                 self.tools.execute_schema_tool(name, arguments, user_id=user_id),
                 timeout=_LLM_TIMEOUT,
             )
+            _dur = int((time.time() - _t0) * 1000)
+            self._monitor_stats["tool_calls"] += 1
+            await self._emit_monitor("tool.done", {"name": name, "success": True, "result": str(result)[:200], "duration_ms": _dur})
             return f"**{name}:** {result}"
         except asyncio.TimeoutError:
             logger.error(f"Tool {name} timed out")
+            self._monitor_stats["errors"] += 1
+            await self._emit_monitor("tool.done", {"name": name, "success": False, "result": "Timed out", "duration_ms": int((time.time() - _t0) * 1000)})
             return f"**{name}:** ❌ Timed out"
         except Exception as e:
+            self._monitor_stats["errors"] += 1
+            await self._emit_monitor("tool.done", {"name": name, "success": False, "result": str(e)[:200], "duration_ms": int((time.time() - _t0) * 1000)})
             return f"**{name}:** ❌ {e}"
 
     async def _execute_tools_parallel(
@@ -632,9 +706,9 @@ class SableAgent:
                 )
                 _last_tool_was_code_error = False
 
-                await self._notify_progress(
-                    f"💭 Thinking... (round {_round + 1})" if _round > 0 else "💭 Thinking..."
-                )
+                thinking_msg = f"💭 Thinking... (round {_round + 1})" if _round > 0 else "💭 Thinking..."
+                await self._notify_progress(thinking_msg)
+                await self._emit_monitor("thinking", {"message": thinking_msg, "round": _round + 1})
 
                 try:
                     response = await asyncio.wait_for(
@@ -899,6 +973,8 @@ class SableAgent:
     async def _process_message_inner(
         self, user_id: str, message: str, history: Optional[List[dict]] = None
     ) -> str:
+        self._monitor_stats["messages"] += 1
+        await self._emit_monitor("message.received", {"user_id": user_id, "text": message[:100], "channel": "agent"})
         if self.advanced_memory:
             try:
                 from .advanced_memory import MemoryType, MemoryImportance
@@ -949,8 +1025,11 @@ class SableAgent:
 
         for msg in reversed(final_state["messages"]):
             if msg["role"] == "final_response":
+                await self._emit_monitor("response.sent", {"user_id": user_id, "channel": "agent", "length": len(msg["content"])})
+                await self._emit_monitor("thinking.done", {})
                 return msg["content"]
 
+        await self._emit_monitor("thinking.done", {})
         return "I processed your request, but couldn't formulate a response."
 
     # ------------------------------------------------------------------

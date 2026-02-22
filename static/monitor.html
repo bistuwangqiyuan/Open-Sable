@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open-Sable — Agent Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; margin: 0; background: #0a0a0f; color: #e0e0e0; overflow-x: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .glass-bright { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 3px; }
+
+        /* Pulse ring for status */
+        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+        .pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215,0.61,0.355,1) infinite; }
+
+        /* Log entry animation */
+        @keyframes slide-in { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .log-entry { animation: slide-in 0.3s ease-out; }
+
+        /* Tool badge glow */
+        .tool-active { box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+
+        /* Gradient text */
+        .gradient-text { background: linear-gradient(135deg, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Activity sparkline */
+        .spark { stroke: #a78bfa; fill: none; stroke-width: 2; }
+    </style>
+</head>
+<body>
+<div id="app" class="min-h-screen p-4 md:p-6">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-xl">🧠</div>
+                <div id="statusDot" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500">
+                    <div class="pulse-ring absolute inset-0 rounded-full bg-red-500"></div>
+                </div>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold gradient-text">Open-Sable Monitor</h1>
+                <p id="statusText" class="text-xs text-gray-500">Connecting...</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="glass rounded-lg px-3 py-1.5 text-xs mono">
+                <span class="text-gray-500">uptime</span> <span id="uptime" class="text-violet-400">--</span>
+            </div>
+            <div class="glass rounded-lg px-3 py-1.5 text-xs mono">
+                <span class="text-gray-500">model</span> <span id="model" class="text-emerald-400">--</span>
+            </div>
+            <a href="/" class="glass rounded-lg px-3 py-1.5 text-xs text-gray-400 hover:text-white transition">← Chat</a>
+        </div>
+    </header>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Messages</p>
+            <p id="statMessages" class="text-2xl font-bold text-white mono">0</p>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Tool Calls</p>
+            <p id="statTools" class="text-2xl font-bold text-emerald-400 mono">0</p>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Active Tasks</p>
+            <p id="statTasks" class="text-2xl font-bold text-amber-400 mono">0</p>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Errors</p>
+            <p id="statErrors" class="text-2xl font-bold text-red-400 mono">0</p>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Clients</p>
+            <p id="statClients" class="text-2xl font-bold text-blue-400 mono">0</p>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <p class="text-xs text-gray-500 mb-1">Avg Response</p>
+            <p id="statLatency" class="text-2xl font-bold text-violet-400 mono">--</p>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <!-- Live Activity Log (2/3) -->
+        <div class="lg:col-span-2 glass rounded-xl flex flex-col" style="height:520px;">
+            <div class="flex items-center justify-between p-4 border-b border-white/5">
+                <h2 class="font-semibold text-sm flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Live Activity
+                </h2>
+                <div class="flex gap-2">
+                    <button onclick="toggleFilter('all')"   id="fAll"   class="filter-btn active text-xs px-2 py-1 rounded bg-violet-500/20 text-violet-300">All</button>
+                    <button onclick="toggleFilter('tool')"  id="fTool"  class="filter-btn text-xs px-2 py-1 rounded bg-white/5 text-gray-500">Tools</button>
+                    <button onclick="toggleFilter('llm')"   id="fLlm"   class="filter-btn text-xs px-2 py-1 rounded bg-white/5 text-gray-500">LLM</button>
+                    <button onclick="toggleFilter('msg')"   id="fMsg"   class="filter-btn text-xs px-2 py-1 rounded bg-white/5 text-gray-500">Messages</button>
+                    <button onclick="toggleFilter('error')" id="fError" class="filter-btn text-xs px-2 py-1 rounded bg-white/5 text-gray-500">Errors</button>
+                    <button onclick="clearLogs()" class="text-xs px-2 py-1 rounded bg-white/5 text-gray-500 hover:text-white">Clear</button>
+                </div>
+            </div>
+            <div id="logContainer" class="flex-1 overflow-y-auto p-4 space-y-1 mono text-xs">
+                <div class="text-gray-600 text-center py-8">Waiting for agent activity...</div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="flex flex-col gap-4">
+
+            <!-- Active Tools -->
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🔧 Tools</h3>
+                <div id="toolGrid" class="grid grid-cols-3 gap-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- System Components -->
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-semibold mb-3">⚙️ Components</h3>
+                <div id="components" class="space-y-2 text-xs">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Connected Interfaces -->
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-semibold mb-3">📡 Interfaces</h3>
+                <div id="interfaces" class="space-y-2 text-xs">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Memory / Goals -->
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-semibold mb-3">🎯 Goals</h3>
+                <div id="goals" class="space-y-2 text-xs">
+                    <p class="text-gray-600">No active goals</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+const state = {
+    connected: false,
+    logs: [],
+    filter: 'all',
+    stats: { messages: 0, tools: 0, tasks: 0, errors: 0, clients: 0, latencies: [] },
+    toolUsage: {},
+    startTime: null,
+};
+
+const MAX_LOGS = 500;
+let ws = null;
+
+// ── WebSocket ────────────────────────────────────────────────────────────
+function getWSUrl() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    return token
+        ? `${proto}://${location.host}/?token=${encodeURIComponent(token)}`
+        : `${proto}://${location.host}/`;
+}
+
+function connect() {
+    ws = new WebSocket(getWSUrl());
+
+    ws.onopen = () => {
+        state.connected = true;
+        updateStatus(true);
+        // Request full state
+        ws.send(JSON.stringify({ type: 'status' }));
+        ws.send(JSON.stringify({ type: 'monitor.subscribe' }));
+        addLog('system', '🟢 Connected to agent gateway');
+    };
+
+    ws.onclose = () => {
+        state.connected = false;
+        updateStatus(false);
+        addLog('error', '🔴 Disconnected — reconnecting...');
+        setTimeout(connect, 3000);
+    };
+
+    ws.onmessage = (evt) => {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch { return; }
+        handleMessage(msg);
+    };
+}
+
+function handleMessage(msg) {
+    switch (msg.type) {
+        case 'connected':
+            break;
+
+        case 'status':
+            state.stats.clients = msg.clients || 0;
+            state.startTime = msg.start_time || null;
+            el('statClients').textContent = msg.clients || 0;
+            if (msg.model) el('model').textContent = msg.model;
+            if (msg.uptime_sec) updateUptime(msg.uptime_sec);
+            if (msg.nodes) updateInterfaces(msg);
+            break;
+
+        case 'monitor.event':
+            handleMonitorEvent(msg);
+            break;
+
+        case 'monitor.snapshot':
+            handleSnapshot(msg);
+            break;
+
+        case 'heartbeat':
+            break;
+
+        case 'pong':
+            break;
+
+        default:
+            // Also capture regular traffic as logs
+            if (msg.type === 'message.start') {
+                state.stats.messages++;
+                el('statMessages').textContent = state.stats.messages;
+                addLog('msg', `💬 New message from ${msg.session_id || 'unknown'}`);
+            } else if (msg.type === 'message.done') {
+                addLog('llm', `✅ Response delivered (${(msg.text||'').length} chars)`);
+            } else if (msg.type === 'error') {
+                state.stats.errors++;
+                el('statErrors').textContent = state.stats.errors;
+                addLog('error', `❌ ${msg.text}`);
+            }
+            break;
+    }
+}
+
+function handleMonitorEvent(msg) {
+    const evt = msg.event;
+    const data = msg.data || {};
+    const ts = msg.ts;
+
+    switch (evt) {
+        case 'message.received':
+            state.stats.messages++;
+            el('statMessages').textContent = state.stats.messages;
+            addLog('msg', `💬 [${data.channel || '?'}] ${data.user_id || '?'}: "${truncate(data.text, 60)}"`);
+            break;
+
+        case 'thinking':
+            state.stats.tasks++;
+            el('statTasks').textContent = state.stats.tasks;
+            addLog('llm', `💭 ${data.message || 'Thinking...'}`);
+            break;
+
+        case 'thinking.done':
+            state.stats.tasks = Math.max(0, state.stats.tasks - 1);
+            el('statTasks').textContent = state.stats.tasks;
+            break;
+
+        case 'tool.start':
+            addLog('tool', `🔧 Calling <span class="text-emerald-400">${data.name}</span>(${truncate(JSON.stringify(data.args||{}), 50)})`);
+            bumpTool(data.name, true);
+            break;
+
+        case 'tool.done':
+            state.stats.tools++;
+            el('statTools').textContent = state.stats.tools;
+            const dur = data.duration_ms ? `${data.duration_ms}ms` : '';
+            const ok = data.success !== false;
+            addLog('tool', `${ok ? '✅' : '❌'} <span class="text-emerald-400">${data.name}</span> ${dur} → ${truncate(data.result||'', 80)}`);
+            bumpTool(data.name, false);
+            if (!ok) { state.stats.errors++; el('statErrors').textContent = state.stats.errors; }
+            if (data.duration_ms) {
+                state.stats.latencies.push(data.duration_ms);
+                if (state.stats.latencies.length > 100) state.stats.latencies.shift();
+                const avg = Math.round(state.stats.latencies.reduce((a,b)=>a+b,0) / state.stats.latencies.length);
+                el('statLatency').textContent = avg + 'ms';
+            }
+            break;
+
+        case 'plan.created':
+            addLog('llm', `📋 Plan: ${data.summary || data.steps + ' steps'}`);
+            break;
+
+        case 'response.sent':
+            addLog('msg', `📤 Response to ${data.channel || '?'}:${data.user_id || '?'} (${data.length || 0} chars)`);
+            break;
+
+        case 'error':
+            state.stats.errors++;
+            el('statErrors').textContent = state.stats.errors;
+            addLog('error', `❌ ${data.message || 'Unknown error'}`);
+            break;
+
+        case 'autonomous.check':
+            addLog('system', `🤖 Autonomous check: ${data.message || 'running'}`);
+            break;
+
+        case 'heartbeat.ok':
+            addLog('system', `💓 Heartbeat OK`);
+            break;
+
+        case 'goal.update':
+            updateGoals(data.goals || []);
+            break;
+
+        default:
+            addLog('system', `📡 ${evt}: ${truncate(JSON.stringify(data), 80)}`);
+            break;
+    }
+}
+
+function handleSnapshot(msg) {
+    // Full state snapshot from agent
+    if (msg.tools) updateToolGrid(msg.tools);
+    if (msg.components) updateComponents(msg.components);
+    if (msg.interfaces) updateInterfacesFromSnapshot(msg.interfaces);
+    if (msg.goals) updateGoals(msg.goals);
+    if (msg.model) el('model').textContent = msg.model;
+    if (msg.stats) {
+        state.stats.messages = msg.stats.messages || 0;
+        state.stats.tools = msg.stats.tool_calls || 0;
+        el('statMessages').textContent = state.stats.messages;
+        el('statTools').textContent = state.stats.tools;
+    }
+}
+
+// ── UI Updates ───────────────────────────────────────────────────────────
+
+function el(id) { return document.getElementById(id); }
+
+function updateStatus(connected) {
+    const dot = el('statusDot');
+    const txt = el('statusText');
+    if (connected) {
+        dot.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400';
+        dot.innerHTML = '<div class="pulse-ring absolute inset-0 rounded-full bg-emerald-400"></div>';
+        txt.textContent = 'Connected — Monitoring live';
+        txt.className = 'text-xs text-emerald-400';
+    } else {
+        dot.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500';
+        dot.innerHTML = '<div class="pulse-ring absolute inset-0 rounded-full bg-red-500"></div>';
+        txt.textContent = 'Disconnected';
+        txt.className = 'text-xs text-red-400';
+    }
+}
+
+function updateUptime(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    el('uptime').textContent = h > 0 ? `${h}h${m}m` : `${m}m${s}s`;
+}
+
+function addLog(category, html) {
+    const entry = { category, html, time: new Date() };
+    state.logs.push(entry);
+    if (state.logs.length > MAX_LOGS) state.logs.shift();
+    renderLog(entry);
+}
+
+function renderLog(entry) {
+    if (state.filter !== 'all' && entry.category !== state.filter) return;
+
+    const container = el('logContainer');
+    // Remove placeholder
+    if (container.querySelector('.text-center')) container.innerHTML = '';
+
+    const div = document.createElement('div');
+    div.className = `log-entry flex items-start gap-2 py-1 border-b border-white/3 cat-${entry.category}`;
+    const timeStr = entry.time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const colors = { system: 'text-gray-500', msg: 'text-blue-400', tool: 'text-emerald-400', llm: 'text-violet-400', error: 'text-red-400' };
+    const color = colors[entry.category] || 'text-gray-400';
+
+    div.innerHTML = `<span class="text-gray-600 shrink-0">${timeStr}</span><span class="${color}">${entry.html}</span>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function rerenderLogs() {
+    const container = el('logContainer');
+    container.innerHTML = '';
+    const filtered = state.filter === 'all' ? state.logs : state.logs.filter(l => l.category === state.filter);
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-gray-600 text-center py-8">No matching events</div>';
+        return;
+    }
+    filtered.forEach(renderLog);
+}
+
+function toggleFilter(f) {
+    state.filter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = b.id === 'f' + f.charAt(0).toUpperCase() + f.slice(1)
+            ? 'filter-btn active text-xs px-2 py-1 rounded bg-violet-500/20 text-violet-300'
+            : 'filter-btn text-xs px-2 py-1 rounded bg-white/5 text-gray-500';
+    });
+    // fix "all" case
+    if (f === 'all') {
+        el('fAll').className = 'filter-btn active text-xs px-2 py-1 rounded bg-violet-500/20 text-violet-300';
+    }
+    rerenderLogs();
+}
+
+function clearLogs() {
+    state.logs = [];
+    el('logContainer').innerHTML = '<div class="text-gray-600 text-center py-8">Cleared</div>';
+}
+
+function truncate(s, max) {
+    if (!s) return '';
+    s = String(s);
+    return s.length > max ? s.slice(0, max) + '…' : s;
+}
+
+// ── Tool Grid ────────────────────────────────────────────────────────────
+const toolTimers = {};
+
+function updateToolGrid(tools) {
+    const grid = el('toolGrid');
+    grid.innerHTML = tools.map(t => `
+        <div id="tool-${t}" class="glass rounded-lg px-2 py-1.5 text-center text-[10px] truncate" title="${t}">
+            ${t.replace(/_/g, ' ')}
+        </div>
+    `).join('');
+}
+
+function bumpTool(name, active) {
+    let toolEl = document.getElementById('tool-' + name);
+    if (!toolEl) {
+        // Add it dynamically
+        const grid = el('toolGrid');
+        const div = document.createElement('div');
+        div.id = 'tool-' + name;
+        div.className = 'glass rounded-lg px-2 py-1.5 text-center text-[10px] truncate';
+        div.title = name;
+        div.textContent = name.replace(/_/g, ' ');
+        grid.appendChild(div);
+        toolEl = div;
+    }
+
+    if (active) {
+        toolEl.classList.add('tool-active', 'bg-emerald-500/20', 'text-emerald-300');
+        // Count
+        toolEl.dataset.count = (parseInt(toolEl.dataset.count || '0') + 1);
+    } else {
+        clearTimeout(toolTimers[name]);
+        toolTimers[name] = setTimeout(() => {
+            toolEl.classList.remove('tool-active', 'bg-emerald-500/20', 'text-emerald-300');
+        }, 2000);
+    }
+}
+
+// ── Components ───────────────────────────────────────────────────────────
+function updateComponents(comps) {
+    const container = el('components');
+    container.innerHTML = comps.map(c => {
+        const ok = c.status === 'ok';
+        const color = ok ? 'text-emerald-400' : 'text-red-400';
+        const icon = ok ? '✅' : '❌';
+        return `<div class="flex justify-between items-center">
+            <span class="text-gray-400">${c.name}</span>
+            <span class="${color} mono">${icon}</span>
+        </div>`;
+    }).join('');
+}
+
+// ── Interfaces ───────────────────────────────────────────────────────────
+function updateInterfaces(statusMsg) {
+    // From gateway status
+}
+
+function updateInterfacesFromSnapshot(interfaces) {
+    const container = el('interfaces');
+    container.innerHTML = interfaces.map(i => {
+        const active = i.active;
+        const color = active ? 'text-emerald-400' : 'text-gray-600';
+        const dot = active ? '🟢' : '⚫';
+        return `<div class="flex justify-between items-center">
+            <span class="text-gray-400">${dot} ${i.name}</span>
+            <span class="${color} mono text-[10px]">${active ? 'active' : 'off'}</span>
+        </div>`;
+    }).join('');
+}
+
+// ── Goals ────────────────────────────────────────────────────────────────
+function updateGoals(goals) {
+    const container = el('goals');
+    if (!goals || goals.length === 0) {
+        container.innerHTML = '<p class="text-gray-600">No active goals</p>';
+        return;
+    }
+    container.innerHTML = goals.map(g => {
+        const pct = g.progress || 0;
+        return `<div>
+            <div class="flex justify-between mb-1">
+                <span class="text-gray-300">${g.name || g.description || 'Goal'}</span>
+                <span class="text-violet-400 mono">${pct}%</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-1.5">
+                <div class="bg-violet-500 rounded-full h-1.5" style="width:${pct}%"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Periodic status poll ─────────────────────────────────────────────────
+setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'status' }));
+        ws.send(JSON.stringify({ type: 'monitor.snapshot' }));
+    }
+}, 5000);
+
+// ── Init ─────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
