@@ -162,7 +162,7 @@ KNOWN_ERRORS: List[ErrorPattern] = [
     ),
     ErrorPattern(
         name="search_404",
-        pattern=r"SearchTimeline.*404|search.*404.*not found",
+        pattern=r"search.*(?:404|not.?found)|SearchTimeline.*404|status[:\s]*404.*search",
         severity=Severity.MEDIUM,
         remedy="disable_search_temp",
         params={"disable_minutes": 60},
@@ -468,9 +468,81 @@ class RemedyEngine:
         }
 
     async def _grok_custom_fix(self, error_context: str) -> Dict:
-        """For unknown errors — ask Grok what to do."""
+        """For unknown errors — ask Grok, then parse and execute concrete actions."""
         advice = await self._consult_grok_on_error(error_context, "unknown_error")
-        return {"action": "grok_custom_fix", "advice": advice}
+        actions_taken = []
+
+        if not advice or "failed" in advice.lower():
+            return {"action": "grok_custom_fix", "advice": advice, "actions_taken": []}
+
+        advice_lower = advice.lower()
+
+        # Parse Grok's advice and execute matching safe actions
+
+        # 1. Pause/wait recommendation
+        pause_match = re.search(r'(?:pause|wait|stop|back.?off|cool.?down).*?(\d+)\s*(?:min|hour|hr)',
+                                advice_lower)
+        if pause_match:
+            pause_min = int(pause_match.group(1))
+            if 'hour' in pause_match.group(0) or 'hr' in pause_match.group(0):
+                pause_min *= 60
+            pause_min = min(pause_min, 240)  # Cap at 4 hours
+            resume_at = datetime.now() + timedelta(minutes=pause_min)
+            for loop in ["post", "engage", "trend", "mention"]:
+                self._paused_loops[loop] = resume_at
+            actions_taken.append(f"paused_all_loops_{pause_min}min")
+            logger.info(f"🧠 Grok says pause → pausing all loops for {pause_min}min")
+
+        # 2. Reduce activity recommendation
+        if re.search(r'reduce|slow\s*down|less.?frequent|lower.?rate|decrease', advice_lower):
+            agent = self._agent
+            for attr in ('p_post', 'p_engage', 'p_follow'):
+                val = getattr(agent, attr, None)
+                if val is not None:
+                    setattr(agent, attr, val * 0.5)
+            actions_taken.append("reduced_activity_50%")
+            logger.info("🧠 Grok says reduce activity → halved all probabilities")
+
+        # 3. Disable search recommendation
+        if re.search(r'disable.?search|skip.?search|stop.?search|avoid.?search|don.?t.?search',
+                      advice_lower):
+            self._search_disabled_until = datetime.now() + timedelta(minutes=60)
+            actions_taken.append("disabled_search_60min")
+            logger.info("🧠 Grok says disable search → search off for 60min")
+
+        # 4. Rotate UA recommendation
+        if re.search(r'change.*user.?agent|rotate.*ua|switch.*ua|new.*user.?agent', advice_lower):
+            new_ua = pick_user_agent(prefer_mobile=True)
+            self._apply_user_agent(new_ua)
+            actions_taken.append("rotated_ua")
+            logger.info("🧠 Grok says rotate UA → done")
+
+        # 5. Increase delays recommendation
+        if re.search(r'increase.*delay|longer.*delay|more.*time.*between|slow.*request', advice_lower):
+            x_skill = self._agent._x()
+            impl = getattr(x_skill, '_impl', x_skill) if x_skill else None
+            if impl and hasattr(impl, '_action_delay'):
+                old_delay = impl._action_delay
+                impl._action_delay = min(old_delay * 2, 30)
+                actions_taken.append(f"doubled_delay_{old_delay:.1f}s→{impl._action_delay:.1f}s")
+                logger.info(f"🧠 Grok says increase delays → {old_delay:.1f}s→{impl._action_delay:.1f}s")
+
+        # If we couldn't parse any concrete action, apply a safe default
+        if not actions_taken:
+            # Default: short pause + minor rate reduction
+            resume_at = datetime.now() + timedelta(minutes=10)
+            self._paused_loops["post"] = resume_at
+            self._paused_loops["engage"] = resume_at
+            actions_taken.append("default_pause_10min")
+            logger.info("🧠 Grok advice unclear → applying safe default: 10min pause")
+
+        logger.info(f"🛠️ Self-heal actions from Grok advice: {', '.join(actions_taken)}")
+
+        return {
+            "action": "grok_custom_fix",
+            "advice": advice,
+            "actions_taken": actions_taken,
+        }
 
     # ── Helpers ───────────────────────────────────────────────────────
 
