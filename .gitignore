@@ -69,6 +69,7 @@ gateway.lock
 # Logs
 *.log
 logs/
+.sable.pid
 
 # Testing
 .coverage
