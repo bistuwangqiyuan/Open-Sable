@@ -483,8 +483,13 @@ class RemedyEngine:
         client = getattr(x_skill, '_client', None) or getattr(getattr(x_skill, '_impl', None), '_client', None)
         if client:
             client._user_agent = ua
-            if hasattr(client, 'http') and hasattr(client.http, 'headers'):
-                client.http.headers["user-agent"] = ua
+            # Works with both httpx and our TwikitCurlSession wrapper
+            http = getattr(client, 'http', None)
+            if http:
+                if hasattr(http, 'headers') and isinstance(http.headers, dict):
+                    http.headers["user-agent"] = ua
+                elif hasattr(http, '_session') and hasattr(http._session, 'headers'):
+                    http._session.headers["user-agent"] = ua
             logger.info(f"🔧 UA changed to: {ua[:60]}...")
 
     async def _consult_grok_on_error(self, error_context: str, remedy_applied: str) -> str:

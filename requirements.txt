@@ -48,6 +48,7 @@ aiogram>=3.3.0
 # X (Twitter) / Grok
 twikit>=2.3.0
 twikit_grok>=0.0.3
+curl_cffi>=0.7.0  # TLS fingerprint impersonation (Android Chrome)
 
 # Testing
 pytest>=7.4.3

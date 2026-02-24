@@ -70,9 +70,16 @@ class XSkill:
             self._client = TwikitClient(lang, user_agent=ua)
             logger.info(f"X: Using UA: {ua[:60]}...")
 
-            # Also set it on the underlying httpx client
-            if hasattr(self._client, 'http') and hasattr(self._client.http, 'headers'):
-                self._client.http.headers["user-agent"] = ua
+            # Patch TLS fingerprint to match Android Chrome
+            # (without this, X sees Linux TLS fingerprint despite mobile UA)
+            from opensable.core.tls_patch import patch_twikit_client
+            proxy = getattr(self.config, "x_proxy", None) or os.getenv("X_PROXY")
+            tls_ok = patch_twikit_client(self._client, proxy=proxy)
+            if not tls_ok:
+                logger.warning("TLS patch not applied — falling back to httpx (detectable)")
+                # Fallback: at least set UA on httpx headers
+                if hasattr(self._client, 'http') and hasattr(self._client.http, 'headers'):
+                    self._client.http.headers["user-agent"] = ua
 
             # Try loading saved cookies first
             if self._cookies_path.exists():
