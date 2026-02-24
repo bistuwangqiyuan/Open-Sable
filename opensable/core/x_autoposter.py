@@ -1,16 +1,20 @@
 """
 X Autonomous Agent — Full human-like behavior on X (Twitter).
 
-NOT just an autoposter. This agent acts like a REAL USER:
-  - Scrolls timeline and engages (like, retweet, bookmark)
-  - Replies to interesting tweets with smart takes
-  - Quote-tweets with commentary
-  - Follows relevant accounts and builds network
-  - Responds to mentions and DMs
-  - Posts original content from news/trends
-  - Posts threads on deep topics
-  - Tracks trending topics and joins conversations
-  - Learns what works and adapts behavior over time
+SEQUENTIAL SESSION ARCHITECTURE:
+  This agent behaves like a REAL human using the X mobile app:
+  1. "Opens X" — starts a browsing session (5-25 minutes)
+  2. Within the session, does ONE thing at a time:
+     - Scrolls feed, maybe likes/replies to 1-3 tweets
+     - Sometimes writes an original post
+     - Sometimes checks mentions
+     - Sometimes looks at trends
+  3. "Closes X" — takes a break (20-90 minutes)
+  4. During breaks, thinks/reflects internally (no API calls)
+  5. Repeat
+
+  NEVER makes concurrent API requests. Only self-heal monitoring
+  runs in background (it only reads logs, makes no API calls).
 
 All powered by twikit (free, no API keys) + Grok/LLM for intelligence.
 
@@ -18,11 +22,11 @@ Config (.env):
     X_USERNAME, X_EMAIL, X_PASSWORD   — X account credentials
     X_ENABLED=true                    — enable X integration
     X_AUTOPOSTER_ENABLED=true         — activate autonomous agent
-    X_POST_INTERVAL=1800              — seconds between original posts
-    X_ENGAGE_INTERVAL=300             — seconds between engagement sessions
+    X_POST_INTERVAL=1800              — min seconds between original posts
+    X_ENGAGE_INTERVAL=300             — (legacy) session gap reference
     X_TOPICS=geopolitics,tech,ai      — topics of interest
     X_LANGUAGE=en                     — tweet language
-    X_STYLE=analyst                   — personality: analyst, meme, news, thread
+    X_STYLE=analyst                   — personality style
     X_MAX_DAILY_POSTS=20              — max original posts per day
     X_MAX_DAILY_ENGAGEMENTS=100       — max likes/retweets/replies per day
     X_DRY_RUN=false                   — if true, generates but doesn't act
@@ -36,6 +40,7 @@ Config (.env):
 import asyncio
 import json
 import logging
+import math
 import random
 import re
 from datetime import datetime, timedelta
@@ -43,6 +48,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from opensable.core.x_consciousness import EMOTIONS, EMOTION_SPECTRUM
+from opensable.core.x_self_heal import (
+    LogBuffer, SelfHealMonitor, RemedyEngine,
+    install_log_buffer, pick_user_agent,
+    MOBILE_USER_AGENTS, DESKTOP_USER_AGENTS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +86,9 @@ class XAutonomousAgent:
     """
     Full autonomous X agent — behaves like a real human user.
 
-    Runs multiple concurrent loops:
-    - Post loop: original tweets from news/trends
-    - Engage loop: scroll, like, retweet, reply, follow
-    - Mention loop: respond to mentions and DMs
-    - Trend loop: join trending conversations
+    SINGLE SEQUENTIAL LOOP: Opens X in sessions, does one thing at a time,
+    takes breaks between sessions. Never makes concurrent API requests.
+    Only self-heal monitoring runs in background (reads logs only).
     """
 
     def __init__(self, agent, config):
@@ -120,6 +128,11 @@ class XAutonomousAgent:
         self._state_file = Path("data/x_agent_state.json")
         self._state_file.parent.mkdir(parents=True, exist_ok=True)
         self._style_scores: Dict[str, List[float]] = {}
+        self._consciousness_cycle = 0
+
+        # ── Self-healing (see own console, fix errors with Grok) ──
+        self._log_buffer = install_log_buffer()
+        self._healer = SelfHealMonitor(self, self._log_buffer)
 
         # ── Consciousness (memory + reflection + evolution) ───────
         from opensable.core.x_consciousness import XConsciousness
@@ -130,7 +143,7 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def start(self):
-        """Start all agent loops concurrently."""
+        """Start the agent — single sequential loop + self-heal monitor."""
         self.running = True
         self._load_state()
 
@@ -139,13 +152,13 @@ class XAutonomousAgent:
         self._last_engage_at = self._parse_last_ts(self._engagement_log)
         mem_stats = self.mind.get_memory_stats()
         logger.info(
-            f"🐦 X Agent starting | post every {self.post_interval}s | "
-            f"engage every {self.engage_interval}s | style={self.style} | "
-            f"dry_run={self.dry_run} | memories={mem_stats.get('total_memories', 0)} | "
+            f"\U0001f426 X Agent starting (SEQUENTIAL mode) | "
+            f"style={self.style} | dry_run={self.dry_run} | "
+            f"memories={mem_stats.get('total_memories', 0)} | "
             f"last_post={self._last_post_at or 'never'}"
         )
 
-        # Internal thought (NOT a tweet) — summarize what we remember
+        # Internal thought — summarize what we remember
         since_post = self._seconds_since(self._last_post_at)
         since_engage = self._seconds_since(self._last_engage_at)
         await self.mind.think(
@@ -155,16 +168,15 @@ class XAutonomousAgent:
             f"Last post was {self._fmt_ago(since_post)}. "
             f"Last engagement was {self._fmt_ago(since_engage)}. "
             f"Posts today so far: {self._posts_today}/{self.max_daily_posts}. "
-            f"Resuming where I left off."
+            f"Running in sequential mode — one action at a time, like a real human."
         )
 
-        # Launch all behavior loops in parallel (including consciousness)
+        # Only TWO concurrent tasks:
+        # 1. _main_loop: sequential session-based behavior (all API calls)
+        # 2. _healer.run: background log monitor (NO API calls, reads logs only)
         await asyncio.gather(
-            self._post_loop(),
-            self._engage_loop(),
-            self._mention_loop(),
-            self._trend_loop(),
-            self._consciousness_loop(),
+            self._main_loop(),
+            self._healer.run(),
             return_exceptions=True,
         )
 
@@ -172,12 +184,11 @@ class XAutonomousAgent:
         """Stop the agent."""
         self.running = False
         self._save_state()
-        # Internal thought (NOT a tweet) — just a note to self
         await self.mind.think(
             f"Shutting down. {self._posts_today} posts, {self._engagements_today} engagements today. "
             f"Saving state. I'll remember everything when I wake up."
         )
-        logger.info("🐦 X Agent stopped")
+        logger.info("\U0001f426 X Agent stopped")
 
     # ── Resume helpers ────────────────────────────────────────────
 
@@ -211,25 +222,6 @@ class XAutonomousAgent:
             return f"{seconds / 3600:.1f}h ago"
         return f"{seconds / 86400:.1f}d ago"
 
-    def _calc_resume_delay(self, last_at: Optional[datetime], interval: float) -> float:
-        """
-        Calculate smart initial delay for a loop based on when the last action happened.
-        If it was recent, wait the remaining interval. If old or never, use a short warm-up.
-        """
-        if last_at is None:
-            # First run ever — short warm-up
-            return random.uniform(30, 120)
-
-        elapsed = (datetime.now() - last_at).total_seconds()
-        remaining = interval - elapsed
-
-        if remaining > 0:
-            # Last action was recent, respect the remaining interval (+ small jitter)
-            return remaining + random.uniform(5, 30)
-        else:
-            # Overdue — start after a human-like warm-up, not instantly
-            return random.uniform(15, 90)
-
     def _reset_daily_counters(self):
         today = datetime.now().date()
         if today != self._last_reset:
@@ -241,37 +233,190 @@ class XAutonomousAgent:
         """Shortcut to XSkill."""
         return self.agent.tools.x_skill
 
-    def _human_delay(self, base: float = 2.0, variance: float = 3.0):
-        """Random delay to look human."""
-        return base + random.uniform(0, variance)
+    def _human_delay(self, base: float = 5.0, variance: float = 10.0):
+        """Random delay to look human — uses log-normal distribution for realism."""
+        delay = base + random.lognormvariate(math.log(variance), 0.5)
+        return min(delay, base + variance * 3)  # Cap at reasonable maximum
 
     # ══════════════════════════════════════════════════════════════════
-    #  LOOP 1: ORIGINAL POSTS (news + opinion)
+    #  MAIN SEQUENTIAL LOOP (replaces all parallel loops)
     # ══════════════════════════════════════════════════════════════════
 
-    async def _post_loop(self):
-        """Periodically post original tweets from news/trends."""
-        initial_wait = self._calc_resume_delay(self._last_post_at, self.post_interval)
-        logger.info(f"📝 Post loop: first post in {initial_wait:.0f}s")
-        await asyncio.sleep(initial_wait)
+    async def _main_loop(self):
+        """
+        Single sequential loop — mimics a real human using X.
+
+        Pattern: open app -> browse/engage/post -> close app -> long break -> repeat.
+        NEVER makes concurrent API requests. One action at a time.
+        """
+        # Initial warm-up (like picking up your phone)
+        warmup = random.uniform(15, 60)
+        logger.info(f"\U0001f4f1 Agent warming up — first session in {warmup:.0f}s")
+        await asyncio.sleep(warmup)
 
         while self.running:
             try:
-                self._reset_daily_counters()
-                if self._posts_today < self.max_daily_posts:
-                    await self._do_post()
+                await self._run_session()
             except Exception as e:
-                logger.error(f"Post loop error: {e}")
+                logger.error(f"Session error: {e}")
+                self.mind.remember("error", {"session": "main", "error": str(e)[:300]})
 
-            jitter = self.post_interval * random.uniform(-0.15, 0.15)
-            await asyncio.sleep(max(60, self.post_interval + jitter))
+            # ── Between sessions: "close the app" and take a break ──
+            break_mins = random.uniform(20, 90)
+            logger.info(f"\U0001f4f1 Session done — closing X, break ~{break_mins:.0f}min")
+
+            # Think during the break (uses LLM only, no X API calls)
+            await self._consciousness_step()
+            self._save_state()
+
+            # Sleep for the break duration
+            await asyncio.sleep(break_mins * 60)
+
+    async def _run_session(self):
+        """
+        One browsing session: open X -> do stuff sequentially -> close X.
+        Duration: 5-25 minutes. Activities done ONE AT A TIME with pauses.
+        """
+        self._reset_daily_counters()
+
+        session_minutes = random.uniform(5, 25)
+        session_end = asyncio.get_event_loop().time() + session_minutes * 60
+
+        activities = self._plan_session()
+        activity_names = [a["type"] for a in activities]
+        logger.info(
+            f"\U0001f4f1 Opening X — session ~{session_minutes:.0f}min | "
+            f"plan: {activity_names} | "
+            f"posts={self._posts_today}/{self.max_daily_posts} "
+            f"engagements={self._engagements_today}/{self.max_daily_engagements}"
+        )
+
+        for i, activity in enumerate(activities):
+            if not self.running:
+                break
+            if asyncio.get_event_loop().time() > session_end:
+                logger.info("\U0001f4f1 Session time's up — closing X")
+                break
+
+            # Check self-heal pauses
+            pause_key = activity.get("pause_key", "engage")
+            if self._healer.remedy.is_loop_paused(pause_key):
+                logger.info(f"\u23f8\ufe0f {activity['type']} skipped — self-heal pause active")
+                continue
+
+            try:
+                logger.info(f"\U0001f4f1 -> {activity['type']}")
+                await self._execute_activity(activity)
+            except Exception as e:
+                logger.debug(f"Activity {activity['type']} error: {e}")
+                self.mind.remember("error", {
+                    "activity": activity["type"], "error": str(e)[:300]
+                })
+
+            # Human pause between activities (scrolling, reading, thinking)
+            if i < len(activities) - 1:
+                pause = self._human_delay(20, 60)
+                logger.debug(f"\U0001f4f1 Pausing {pause:.0f}s between activities...")
+                await asyncio.sleep(pause)
+
+    def _plan_session(self) -> List[Dict]:
+        """
+        Decide what to do this session — like a human opening X with intent.
+        Returns a short list of sequential activities.
+        """
+        activities: List[Dict] = []
+
+        # ── Always start by browsing (scrolling the feed) ──
+        activities.append({"type": "browse_engage", "pause_key": "engage"})
+
+        # ── Sometimes check mentions (25% chance) ──
+        if random.random() < 0.25:
+            activities.append({"type": "check_mentions", "pause_key": "mention"})
+
+        # ── Post if it's been long enough and we haven't hit the limit ──
+        since_post = self._seconds_since(self._last_post_at)
+        if self._posts_today < self.max_daily_posts:
+            post_overdue = since_post is None or since_post > self.post_interval
+            if post_overdue and random.random() < 0.35:
+                activities.append({"type": "post_original", "pause_key": "post"})
+
+        # ── Join a trend occasionally (12%) ──
+        if random.random() < 0.12 and self._posts_today < self.max_daily_posts:
+            activities.append({"type": "join_trend", "pause_key": "trend"})
+
+        # ── Maybe browse more at the end (25%) ──
+        if random.random() < 0.25:
+            activities.append({"type": "browse_engage", "pause_key": "engage"})
+
+        return activities
+
+    async def _execute_activity(self, activity: Dict):
+        """Execute a single activity within a session."""
+        t = activity["type"]
+        if t == "browse_engage":
+            await self._do_engage()
+        elif t == "post_original":
+            await self._do_post()
+        elif t == "check_mentions":
+            await self._check_mentions()
+        elif t == "join_trend":
+            await self._join_trend()
+
+    # ══════════════════════════════════════════════════════════════════
+    #  CONSCIOUSNESS (think, reflect, evolve — called between sessions)
+    # ══════════════════════════════════════════════════════════════════
+
+    async def _consciousness_step(self):
+        """One consciousness cycle — think, maybe reflect, maybe evolve."""
+        self._consciousness_cycle += 1
+        try:
+            stats = self.mind.get_memory_stats()
+            heal_stats = self._healer.get_status()
+            log_stats = heal_stats.get("log_stats", {})
+            heal_info = heal_stats.get("heal_stats", {})
+            situation = (
+                f"Session #{self._consciousness_cycle} ended. "
+                f"Posts today: {self._posts_today}/{self.max_daily_posts}. "
+                f"Engagements today: {self._engagements_today}/{self.max_daily_engagements}. "
+                f"Total memories: {stats.get('total_memories', 0)}. "
+                f"Current mood: {self.mind._mood} (intensity {self.mind._mood_intensity:.1f}). "
+                f"Console errors: {log_stats.get('errors', 0)}, warnings: {log_stats.get('warnings', 0)}. "
+                f"Self-heals applied: {heal_info.get('total_heals', 0)}. "
+                f"Active pauses: {heal_info.get('active_pauses', {})}. "
+                f"Style: {self.style}. Topics: {self.topics[:5]}."
+            )
+            await self.mind.think(situation)
+
+            # Deep reflection every 3 sessions (~1-4 hours)
+            if self._consciousness_cycle % 3 == 0:
+                await self.mind.reflect()
+
+            # Self-evolution every 6 sessions (~2-8 hours)
+            if self._consciousness_cycle % 6 == 0:
+                changes = await self.mind.evolve(self)
+                if changes:
+                    await self.mind.think(
+                        f"Just evolved. Changes: {json.dumps({k: v for k, v in changes.items() if k != 'reasoning'}, default=str)[:200]}. "
+                        f"Reason: {changes.get('reasoning', '?')[:200]}"
+                    )
+
+        except Exception as e:
+            logger.error(f"Consciousness step error: {e}")
+            self.mind.remember("error", {"loop": "consciousness", "error": str(e)[:300]})
+
+    # ══════════════════════════════════════════════════════════════════
+    #  ACTIVITY: ORIGINAL POST (news + opinion)
+    # ══════════════════════════════════════════════════════════════════
 
     async def _do_post(self):
-        """One posting cycle: fetch news → generate → post."""
+        """One posting action: fetch news -> generate -> post."""
         stories = await self._fetch_news()
         story = self._pick_story(stories) if stories else None
         if not story:
             return
+
+        # Pause — "thinking about what to write"
+        await asyncio.sleep(self._human_delay(10, 30))
 
         content = await self._generate_tweet(story)
         if not content:
@@ -298,38 +443,25 @@ class XAutonomousAgent:
                 "story": story.get("title", "")[:100],
                 "post_number": self._posts_today,
             })
-            logger.info(f"📝 Posted #{self._posts_today}: {result.get('url', 'ok')}")
+            logger.info(f"\U0001f4dd Posted #{self._posts_today}: {result.get('url', 'ok')}")
 
     # ══════════════════════════════════════════════════════════════════
-    #  LOOP 2: ENGAGEMENT (scroll, like, retweet, reply, follow)
+    #  ACTIVITY: BROWSE & ENGAGE (scroll, like, retweet, reply, follow)
     # ══════════════════════════════════════════════════════════════════
-
-    async def _engage_loop(self):
-        """Periodically browse timeline and engage like a human."""
-        initial_wait = self._calc_resume_delay(self._last_engage_at, self.engage_interval)
-        logger.info(f"🤝 Engage loop: first engage in {initial_wait:.0f}s")
-        await asyncio.sleep(initial_wait)
-
-        while self.running:
-            try:
-                self._reset_daily_counters()
-                if self._engagements_today < self.max_daily_engagements:
-                    await self._do_engage()
-            except Exception as e:
-                logger.error(f"Engage loop error: {e}")
-
-            jitter = self.engage_interval * random.uniform(-0.2, 0.2)
-            await asyncio.sleep(max(30, self.engage_interval + jitter))
 
     async def _do_engage(self):
-        """One engagement session: search topics → interact with tweets."""
+        """One engagement session: search ONE topic -> interact with 1-3 tweets."""
+        if self._engagements_today >= self.max_daily_engagements:
+            return
+
         source = self._pick_engagement_source()
         tweets = await self._discover_tweets(source)
         if not tweets:
             return
 
         random.shuffle(tweets)
-        batch_size = random.randint(3, 8)
+        # Only engage with 1-3 tweets per browse (like a human scrolling)
+        batch_size = random.randint(1, 3)
 
         for tweet in tweets[:batch_size]:
             if not self.running or self._engagements_today >= self.max_daily_engagements:
@@ -342,8 +474,8 @@ class XAutonomousAgent:
             await self._engage_with_tweet(tweet)
             self._engaged_tweet_ids.add(tweet_id)
 
-            # Human-like pause between actions
-            await asyncio.sleep(self._human_delay(3, 8))
+            # Human-like pause between tweets (reading the next one)
+            await asyncio.sleep(self._human_delay(10, 30))
 
     def _pick_engagement_source(self) -> Dict:
         """Pick what to browse — topic search, watched account, or trends."""
@@ -357,12 +489,17 @@ class XAutonomousAgent:
 
     async def _discover_tweets(self, source: Dict) -> List[Dict]:
         """Discover tweets to engage with."""
+        # If search is disabled by self-heal (404), skip search-based sources
+        if self._healer.remedy.is_search_disabled() and source["type"] in ("topic", "trending"):
+            logger.debug("Search disabled by self-heal — skipping")
+            return []
+
         try:
             if source["type"] == "topic":
                 result = await self._x().search_tweets(
                     source["value"],
                     search_type=random.choice(["Latest", "Top"]),
-                    count=15,
+                    count=10,
                 )
                 return result.get("tweets", []) if result.get("success") else []
 
@@ -376,6 +513,8 @@ class XAutonomousAgent:
                     trend = random.choice(trends["trends"][:10])
                     trend_name = trend.get("name", "")
                     if trend_name:
+                        # Pause — reading the trend list before searching
+                        await asyncio.sleep(self._human_delay(5, 10))
                         result = await self._x().search_tweets(trend_name, count=10)
                         return result.get("tweets", []) if result.get("success") else []
         except Exception as e:
@@ -402,9 +541,7 @@ class XAutonomousAgent:
         valence, arousal = EMOTION_SPECTRUM.get(mood, (0.0, 0.2))
 
         # Emotional intensity boosts engagement probability
-        # High arousal = more likely to engage (like a human who can't scroll past)
         arousal_boost = arousal * 0.3
-        # Strong negative valence boosts reply urge (humans argue when upset)
         anger_boost = max(0, -valence) * 0.2 if arousal > 0.5 else 0
 
         actions_taken = []
@@ -417,7 +554,7 @@ class XAutonomousAgent:
                 actions_taken.append("liked")
                 self._engagements_today += 1
 
-        await asyncio.sleep(self._human_delay(1, 2))
+        await asyncio.sleep(self._human_delay(3, 8))
 
         # ── RETWEET (less frequent, but boosted when excited/inspired) ────
         rt_p = self.p_retweet + (arousal_boost if valence > 0.2 else 0)
@@ -427,9 +564,11 @@ class XAutonomousAgent:
                 actions_taken.append("retweeted")
                 self._engagements_today += 1
 
-        # ── REPLY (boosted when emotionally charged — humans can't shut up when they feel) ──
+        # ── REPLY (boosted when emotionally charged) ─────────────────
         reply_p = self.p_reply + anger_boost + (arousal_boost * 0.5)
         if random.random() < reply_p and len(tweet_text) > 30:
+            # Pause — "thinking about what to say"
+            await asyncio.sleep(self._human_delay(8, 20))
             reply_text = await self._generate_reply(tweet_text, username)
             if reply_text:
                 result = await self._safe_action(
@@ -443,6 +582,7 @@ class XAutonomousAgent:
         elif len(tweet_text) > 50:
             quote_p = self.p_quote + (arousal_boost * 0.5 if abs(valence) > 0.3 else 0)
             if random.random() < quote_p:
+                await asyncio.sleep(self._human_delay(8, 20))
                 quote_text = await self._generate_quote(tweet_text, username)
                 if quote_text:
                     result = await self._safe_action(
@@ -489,7 +629,7 @@ class XAutonomousAgent:
                 "mood": self.mind._mood,
             })
             logger.info(
-                f"🤝 [{self.mind.get_mood_summary()}] Engaged with @{username}: {', '.join(actions_taken)} "
+                f"\U0001f91d [{self.mind.get_mood_summary()}] @{username}: {', '.join(actions_taken)} "
                 f"[{self._engagements_today}/{self.max_daily_engagements}]"
             )
 
@@ -504,34 +644,33 @@ class XAutonomousAgent:
         return random.random() < 0.10
 
     async def _safe_action(self, name: str, func, *args) -> Optional[Dict]:
-        """Execute an X action safely, respecting dry_run."""
+        """Execute an X action safely, respecting dry_run and 226 blocks."""
         if self.dry_run:
-            logger.info(f"🏜️ DRY RUN — {name}: {args[:2]}")
+            logger.info(f"\U0001f3dc\ufe0f DRY RUN — {name}: {args[:2]}")
             return {"success": True}
+
+        # If self-heal has paused writes, don't even try
+        if self._healer.remedy.is_loop_paused("post") and name in ("post", "reply", "quote", "mention_reply"):
+            logger.debug(f"Action {name} blocked — self-heal pause active")
+            return None
+
         try:
             result = await func(*args)
-            return result if result and result.get("success") else None
+            if result and result.get("success"):
+                return result
+            # Check for 226 error in the result
+            error_str = str(result.get("error", ""))
+            if "226" in error_str or "automated" in error_str.lower():
+                logger.warning(f"\U0001f6ab 226 detected on {name} — triggering stealth mode")
+                # Don't retry, the self-heal loop will pick it up from the log
+            return None
         except Exception as e:
             logger.debug(f"Action {name} failed: {e}")
             return None
 
     # ══════════════════════════════════════════════════════════════════
-    #  LOOP 3: MENTIONS & DM RESPONDER
+    #  ACTIVITY: CHECK MENTIONS
     # ══════════════════════════════════════════════════════════════════
-
-    async def _mention_loop(self):
-        """Check for mentions/replies and respond."""
-        await asyncio.sleep(random.uniform(60, 180))  # mentions don't need resume logic
-
-        while self.running:
-            try:
-                self._reset_daily_counters()
-                await self._check_mentions()
-            except Exception as e:
-                logger.debug(f"Mention loop error: {e}")
-
-            # Check mentions every 5-10 minutes
-            await asyncio.sleep(random.uniform(300, 600))
 
     async def _check_mentions(self):
         """Search for mentions of our account and respond."""
@@ -554,6 +693,9 @@ class XAutonomousAgent:
                 mention_text = tweet.get("text", "")
                 mentioner = tweet.get("username", "someone")
 
+                # Pause — "reading the mention"
+                await asyncio.sleep(self._human_delay(8, 15))
+
                 reply_text = await self._generate_mention_reply(mention_text, mentioner)
                 if reply_text:
                     await self._safe_action("mention_reply", self._x().reply, tweet_id, reply_text)
@@ -565,38 +707,15 @@ class XAutonomousAgent:
                         "reply": reply_text[:200],
                         "tweet_id": tweet_id,
                     })
-                    logger.info(f"💬 Replied to mention from @{mentioner}")
-                    await asyncio.sleep(self._human_delay(5, 10))
+                    logger.info(f"\U0001f4ac Replied to mention from @{mentioner}")
+                    await asyncio.sleep(self._human_delay(10, 20))
 
         except Exception as e:
             logger.debug(f"Check mentions error: {e}")
 
     # ══════════════════════════════════════════════════════════════════
-    #  LOOP 4: TRENDING TOPICS (join conversations)
+    #  ACTIVITY: JOIN TREND
     # ══════════════════════════════════════════════════════════════════
-
-    async def _trend_loop(self):
-        """Join trending conversations periodically."""
-        # Detect last trend post for smart resume
-        last_trend = None
-        for entry in reversed(self._history):
-            if entry.get("type") in ("trend", "trend_post"):
-                last_trend = self._parse_last_ts([entry])
-                break
-        trend_wait = self._calc_resume_delay(last_trend, 1800)
-        logger.info(f"📈 Trend loop: first check in {trend_wait:.0f}s")
-        await asyncio.sleep(trend_wait)
-
-        while self.running:
-            try:
-                self._reset_daily_counters()
-                if self._posts_today < self.max_daily_posts:
-                    await self._join_trend()
-            except Exception as e:
-                logger.debug(f"Trend loop error: {e}")
-
-            # Check trends every 30-60 min
-            await asyncio.sleep(random.uniform(1800, 3600))
 
     async def _join_trend(self):
         """Find a trending topic and post about it."""
@@ -619,6 +738,9 @@ class XAutonomousAgent:
                 if trend_name in self._posted_urls:
                     continue
 
+                # Pause — "reading about the trend"
+                await asyncio.sleep(self._human_delay(10, 25))
+
                 tweet_text = await self._generate_trend_take(trend_name)
                 if tweet_text:
                     result = await self._post({"type": "tweet", "text": tweet_text, "style": self.style})
@@ -638,55 +760,11 @@ class XAutonomousAgent:
                             "tweet": tweet_text[:200],
                             "tweet_id": result.get("tweet_id"),
                         })
-                        logger.info(f"📈 Posted about trend: {trend_name}")
-                        return  # one per cycle
+                        logger.info(f"\U0001f4c8 Posted about trend: {trend_name}")
+                        return  # one per session
 
         except Exception as e:
             logger.debug(f"Join trend error: {e}")
-
-    # ════════════════════════════════════════════════════════════════
-    #  LOOP 5: CONSCIOUSNESS (think, reflect, evolve)
-    # ════════════════════════════════════════════════════════════════
-
-    async def _consciousness_loop(self):
-        """Periodic introspection: think, reflect, and self-evolve."""
-        await asyncio.sleep(random.uniform(120, 300))  # let other loops warm up
-
-        cycle = 0
-        while self.running:
-            cycle += 1
-            try:
-                # ── THINK: Inner monologue every cycle (~15-30 min) ───
-                stats = self.mind.get_memory_stats()
-                situation = (
-                    f"Cycle #{cycle}. "
-                    f"Posts today: {self._posts_today}/{self.max_daily_posts}. "
-                    f"Engagements today: {self._engagements_today}/{self.max_daily_engagements}. "
-                    f"Total memories: {stats.get('total_memories', 0)}. "
-                    f"Current mood: {self.mind._mood} (intensity {self.mind._mood_intensity:.1f}). "
-                    f"Style: {self.style}. Topics: {self.topics[:5]}."
-                )
-                await self.mind.think(situation)
-
-                # ── REFLECT: Deep analysis every 3 cycles (~1-1.5 hr) ──
-                if cycle % 3 == 0:
-                    await self.mind.reflect()
-
-                # ── EVOLVE: Self-modify every 6 cycles (~2-3 hr) ────
-                if cycle % 6 == 0:
-                    changes = await self.mind.evolve(self)
-                    if changes:
-                        await self.mind.think(
-                            f"Just evolved. Changes: {json.dumps({k: v for k, v in changes.items() if k != 'reasoning'}, default=str)[:200]}. "
-                            f"Reason: {changes.get('reasoning', '?')[:200]}"
-                        )
-
-            except Exception as e:
-                logger.error(f"Consciousness loop error: {e}")
-                self.mind.remember("error", {"loop": "consciousness", "error": str(e)[:300]})
-
-            # Think every 15-30 min
-            await asyncio.sleep(random.uniform(900, 1800))
 
     # ══════════════════════════════════════════════════════════════════
     #  CONTENT GENERATION (Grok / LLM)
@@ -846,13 +924,15 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _fetch_news(self) -> List[Dict]:
+        """Fetch news from RSS + search ONE random topic on X."""
         stories = []
         feeds = self.custom_feeds or DEFAULT_FEEDS
         rss_stories = await self._fetch_rss(feeds)
         stories.extend(rss_stories)
 
-        # Also search X itself for news (what a human would do)
-        for topic in self.topics[:3]:
+        # Search X for ONE random topic (not all 3 — one at a time)
+        if self.topics:
+            topic = random.choice(self.topics)
             try:
                 result = await self._x().search_tweets(
                     f"{topic} news", search_type="Top", count=5
@@ -875,12 +955,15 @@ class XAutonomousAgent:
             from xml.etree import ElementTree
 
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                selected = random.sample(feed_urls, min(5, len(feed_urls)))
-                tasks = [self._fetch_single_feed(session, url) for url in selected]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                for result in results:
-                    if isinstance(result, list):
-                        stories.extend(result)
+                selected = random.sample(feed_urls, min(3, len(feed_urls)))
+                # Fetch RSS feeds sequentially (not concurrent) for stealth
+                for url in selected:
+                    try:
+                        result = await self._fetch_single_feed(session, url)
+                        if isinstance(result, list):
+                            stories.extend(result)
+                    except Exception:
+                        pass
         except Exception as e:
             logger.warning(f"RSS error: {e}")
         return stories
@@ -936,14 +1019,24 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _post(self, content: Dict) -> Dict:
+        # Block posting if self-heal has triggered stealth mode
+        if self._healer.remedy.is_loop_paused("post"):
+            logger.info("\U0001f4dd Post blocked — self-heal stealth mode active")
+            return {"success": False, "error": "stealth_mode"}
+
         if self.dry_run:
-            logger.info(f"🏜️ DRY RUN — {content.get('type')}: {str(content.get('text', content.get('tweets', '')))[:80]}")
+            logger.info(f"\U0001f3dc\ufe0f DRY RUN — {content.get('type')}: {str(content.get('text', content.get('tweets', '')))[:80]}")
             return {"success": True, "tweet_id": "dry_run", "url": "dry_run"}
         try:
             if content["type"] == "thread":
-                return await self._x().post_thread(content["tweets"])
+                result = await self._x().post_thread(content["tweets"])
             else:
-                return await self._x().post_tweet(content["text"])
+                result = await self._x().post_tweet(content["text"])
+            # Check for 226 in result
+            error_str = str(result.get("error", ""))
+            if not result.get("success") and ("226" in error_str or "automated" in error_str.lower()):
+                logger.warning("\U0001f6ab Post rejected (226) — account flagged as automated")
+            return result
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -953,7 +1046,7 @@ class XAutonomousAgent:
 
     def _pick_style(self) -> str:
         """
-        Legacy compat — style is now driven by identity.voice, 
+        Legacy compat — style is now driven by identity.voice,
         not a hardcoded dict. Returns a label for logging only.
         """
         return "identity"
@@ -1047,6 +1140,9 @@ class XAutonomousAgent:
             "followed": len(self._followed_users),
             "last_post": self._history[-1] if self._history else None,
             "last_engagement": self._engagement_log[-1] if self._engagement_log else None,
+            "self_heal": self._healer.get_status(),
+            "mode": "sequential",
+            "consciousness_cycles": self._consciousness_cycle,
         }
 
 

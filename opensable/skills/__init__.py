@@ -1,5 +1,6 @@
 """Skills package for Open-Sable - High-level wrappers for all advanced capabilities"""
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -284,68 +285,88 @@ class APIClient:
 
 # X (Twitter) & Grok skills
 class XSkill:
-    """X/Twitter automation wrapper"""
+    """X/Twitter automation wrapper — ALL API calls go through a global FIFO queue.
+    
+    Every call from anywhere (autoposter, Telegram, autonomous mode) is enqueued.
+    The queue processes them ONE AT A TIME with adaptive cooldowns that learn
+    from success/failure. Like a real human: one action, wait, next action.
+    """
+
+    _queue_initialized = False
 
     def __init__(self, config):
         self.config = config
         self._impl = None
 
+    async def _get_queue(self):
+        """Get (or create) the singleton queue and ensure it has our impl."""
+        from opensable.core.x_api_queue import XApiQueue
+        q = XApiQueue.get_instance()
+        if self._impl and q._impl is None:
+            q.set_impl(self._impl)
+        return q
+
     async def initialize(self):
         try:
             from .x_skill import XSkill as XSkillImpl
             self._impl = XSkillImpl(self.config)
-            return await self._impl.initialize()
+            result = await self._impl.initialize()
+            # Register impl with the queue
+            from opensable.core.x_api_queue import XApiQueue
+            XApiQueue.get_instance().set_impl(self._impl)
+            logger.info("📋 X API queue linked to XSkill")
+            return result
         except Exception as e:
             logger.warning(f"X skill init failed: {e}")
             return False
 
     async def post_tweet(self, text, **kwargs):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.post_tweet(text, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("post_tweet", text, **kwargs)
 
     async def post_thread(self, tweets):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.post_thread(tweets)
+        q = await self._get_queue()
+        return await q.enqueue("post_thread", tweets)
 
     async def search_tweets(self, query, **kwargs):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.search_tweets(query, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("search_tweets", query, **kwargs)
 
     async def get_trends(self, category="trending"):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.get_trends(category)
+        q = await self._get_queue()
+        return await q.enqueue("get_trends", category)
 
     async def like_tweet(self, tweet_id):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.like_tweet(tweet_id)
+        q = await self._get_queue()
+        return await q.enqueue("like_tweet", tweet_id)
 
     async def retweet(self, tweet_id):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.retweet(tweet_id)
+        q = await self._get_queue()
+        return await q.enqueue("retweet", tweet_id)
 
     async def reply(self, tweet_id, text):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.reply(tweet_id, text)
+        q = await self._get_queue()
+        return await q.enqueue("reply", tweet_id, text)
 
     async def get_user(self, username):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.get_user(username)
+        q = await self._get_queue()
+        return await q.enqueue("get_user", username)
 
     async def get_user_tweets(self, username, **kwargs):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.get_user_tweets(username, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("get_user_tweets", username, **kwargs)
 
     async def follow_user(self, username):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.follow_user(username)
+        q = await self._get_queue()
+        return await q.enqueue("follow_user", username)
 
     async def send_dm(self, user_id, text):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.send_dm(user_id, text)
+        q = await self._get_queue()
+        return await q.enqueue("send_dm", user_id, text)
 
     async def delete_tweet(self, tweet_id):
-        if not self._impl: raise RuntimeError("X not initialized")
-        return await self._impl.delete_tweet(tweet_id)
+        q = await self._get_queue()
+        return await q.enqueue("delete_tweet", tweet_id)
 
     def is_available(self):
         return self._impl is not None and self._impl.is_available()

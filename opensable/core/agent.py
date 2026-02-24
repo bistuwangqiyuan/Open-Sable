@@ -539,6 +539,13 @@ class SableAgent:
             await self._emit_monitor("tool.done", {"name": name, "success": False, "result": str(e)[:200], "duration_ms": int((time.time() - _t0) * 1000)})
             return f"**{name}:** ❌ {e}"
 
+    # X-related tool names that must NEVER run concurrently
+    _X_TOOLS = frozenset({
+        "x_post_tweet", "x_post_thread", "x_search", "x_like", "x_retweet",
+        "x_reply", "x_follow", "x_get_user", "x_get_trends", "x_send_dm",
+        "x_delete_tweet", "x_get_user_tweets",
+    })
+
     async def _execute_tools_parallel(
         self, tool_calls: List[dict], user_id: str = "default"
     ) -> List[str]:
@@ -550,6 +557,20 @@ class SableAgent:
             ]
 
         names = [tc["name"] for tc in tool_calls]
+
+        # Check if ANY tool is X-related — if so, run ALL sequentially.
+        # A real human only does one thing at a time on X.
+        has_x_tool = any(tc["name"] in self._X_TOOLS for tc in tool_calls)
+
+        if has_x_tool:
+            logger.info(f"🔒 X tool(s) detected in batch {names} — executing ALL sequentially")
+            results = []
+            for tc in tool_calls:
+                r = await self._execute_tool(tc["name"], tc["arguments"], user_id=user_id)
+                results.append(r)
+            return results
+
+        # Non-X tools can still run in parallel
         emojis = " ".join(self._TOOL_EMOJIS.get(n, "🔧") for n in names)
         await self._notify_progress(f"{emojis} Running {len(tool_calls)} tools in parallel...")
 
@@ -699,8 +720,8 @@ class SableAgent:
                             f"Complete this task step by step:\n\n"
                             f"Overall goal: {task}\n\nPlan:\n{plan.summary()}\n\n"
                             f"Current step: {plan.next_step()}\n\n"
-                            "Execute the current step using the appropriate tool(s). "
-                            "You may call MULTIPLE tools at once if they are independent."
+                            "Execute the current step using the appropriate tool. "
+                            "Call ONE tool at a time, wait for its result, then proceed."
                         ),
                     }
                 )
@@ -833,12 +854,19 @@ class SableAgent:
                         )
                 else:
                     final_text = response.get("text", "")
-                    break
+                    # Double-check: if the text looks like a tool call JSON but wasn't parsed,
+                    # don't return it raw - treat it as an error and try synthesis
+                    if final_text and ('"name"' in final_text and '"parameters"' in final_text):
+                        logger.warning(f"⚠️ LLM returned unparsed tool call JSON: {final_text[:100]}")
+                        final_text = None
+                    else:
+                        break
             else:
                 final_text = None
 
             # Direct answer (no tools)
             if not tool_results and final_text:
+                final_text = self._clean_output(final_text)
                 state["messages"].append(
                     {
                         "role": "final_response",
@@ -887,6 +915,9 @@ class SableAgent:
                 elif r.action == GuardrailAction.BLOCK:
                     final_text = "I generated a response but it was blocked by safety filters. Please rephrase your request."
 
+        # ── Clean output text ──
+        final_text = self._clean_output(final_text)
+
         # ── Checkpoint: record synthesis ──
         checkpoint.record_synthesis(final_text or "")
         self.checkpoint_store.save(checkpoint)
@@ -908,6 +939,20 @@ class SableAgent:
             self.tracer.end_span(span.span_id)
 
         return state
+
+    # ------------------------------------------------------------------
+    # Output text cleaner
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _clean_output(text: str | None) -> str | None:
+        """Sanitize final bot output — remove stylistic artifacts the AI tends to produce."""
+        if not text:
+            return text
+        # Replace em-dash patterns with comma
+        text = text.replace(" —", ", ")
+        text = text.replace("—", ", ")
+        return text
 
     # ------------------------------------------------------------------
     # Memory storage
@@ -943,6 +988,27 @@ class SableAgent:
     def _extract_tool_call_from_text(self, text: str) -> Optional[dict]:
         import json as _json
 
+        # Strategy 1: Try parsing complete JSON objects (handles nested structures)
+        # Look for patterns like {"name":"tool_name","parameters":{...}}
+        json_pattern = r'\{["\']name["\']\s*:\s*["\']([^"\']+)["\'][^}]*["\'](?:parameters|arguments)["\']\s*:\s*(\{[^}]*\}|\{.*?\})\s*\}'
+        matches = re.finditer(json_pattern, text, re.DOTALL)
+        
+        for match in matches:
+            try:
+                # Try to parse the entire matched JSON
+                full_json = match.group(0)
+                parsed = _json.loads(full_json)
+                name = parsed.get("name")
+                args = parsed.get("parameters") or parsed.get("arguments", {})
+                
+                known = [s["function"]["name"] for s in self.tools.get_tool_schemas()]
+                if name in known:
+                    logger.info(f"🔧 [FALLBACK] Parsed tool call from text: {name}")
+                    return {"name": name, "arguments": args}
+            except Exception:
+                pass
+        
+        # Strategy 2: Fall back to simpler regex for basic cases
         patterns = [
             r'\{[^{}]*"name"\s*:\s*"(\w+)"[^{}]*"(?:parameters|arguments)"\s*:\s*(\{[^{}]*\})',
         ]
@@ -956,7 +1022,7 @@ class SableAgent:
                     args = {}
                 known = [s["function"]["name"] for s in self.tools.get_tool_schemas()]
                 if name in known:
-                    logger.info(f"🔧 [FALLBACK] Parsed tool call from text: {name}")
+                    logger.info(f"🔧 [FALLBACK] Parsed tool call from text (simple): {name}")
                     return {"name": name, "arguments": args}
         return None
 

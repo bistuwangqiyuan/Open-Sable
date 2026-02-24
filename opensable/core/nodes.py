@@ -81,11 +81,13 @@ class GatewayNodeClient:
         capabilities: List[str],
         handler: Callable[[str, dict], Coroutine[Any, Any, dict]],
         reconnect_delay: float = 5.0,
+        token: Optional[str] = None,
     ):
         self.node_id = node_id
         self.capabilities = capabilities
         self.handler = handler
         self.reconnect_delay = reconnect_delay
+        self.token = token
         self._running = False
 
     async def run(self):
@@ -169,8 +171,9 @@ class GatewayNodeClient:
     ) -> "_WSClient":
         """Minimal HTTP→WebSocket upgrade as a client."""
         key = base64.b64encode(os.urandom(16)).decode()
+        path = f"/?token={self.token}" if self.token else "/"
         request = (
-            f"GET / HTTP/1.1\r\n"
+            f"GET {path} HTTP/1.1\r\n"
             f"Host: localhost\r\n"
             f"Upgrade: websocket\r\n"
             f"Connection: Upgrade\r\n"
@@ -312,10 +315,12 @@ class LocalNode:
 
     def __init__(self, config=None):
         self.config = config
+        token = getattr(config, "webchat_token", None) if config else None
         self._client = GatewayNodeClient(
             node_id="local",
             capabilities=self.CAPABILITIES,
             handler=self._handle,
+            token=token,
         )
 
     async def start(self):

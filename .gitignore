@@ -37,6 +37,14 @@ env/
 data/memory.json
 data/vectordb/
 data/checkpoints/
+data/x_agent_state.json
+data/x_consciousness/
+*.jsonl
+
+# Backup files
+*.bak
+*.bak_*
+*.backup
 
 # Node modules
 node_modules/

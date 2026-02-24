@@ -7,6 +7,7 @@ import aiohttp
 import aiohttp.web
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 import signal
@@ -50,6 +51,13 @@ class WhatsAppBot:
 
         self.callback_port = getattr(config, "whatsapp_callback_port", 3334)
         self._webhook_runner = None
+        
+        # Startup filter: ignore old messages for first 30s
+        self._startup_time = None
+        self._startup_grace_period = 30  # seconds
+        
+        # Bot mention keywords (for group filtering)
+        self.bot_keywords = ["bot", "sable", "opensable", "@"]
 
         # Bridge paths
         self.bridge_dir = Path(__file__).parent.parent.parent / "whatsapp-bridge"
@@ -72,6 +80,7 @@ class WhatsAppBot:
         logger.info("📱 Scan the QR code with your phone to authenticate")
 
         self.running = True
+        self._startup_time = time.time()  # Mark startup to ignore old messages
 
         # Start webhook server FIRST so bridge can POST to us
         await self._start_webhook_server()
@@ -229,8 +238,24 @@ class WhatsAppBot:
             if msg_data.get("fromMe"):
                 logger.debug(f"Skipping own message: {text[:30]}")
                 return
-
-            logger.info(f"📩 WhatsApp from {sender_name} ({sender}): {text[:80]}")
+            
+            # FILTER 1: Ignore old messages during startup grace period
+            if self._startup_time:
+                elapsed = time.time() - self._startup_time
+                if elapsed < self._startup_grace_period:
+                    logger.debug(f"🔇 Ignoring message during startup grace period ({elapsed:.0f}s < {self._startup_grace_period}s)")
+                    return
+            
+            # FILTER 2: In groups, only respond if bot is mentioned
+            if is_group:
+                text_lower = text.lower()
+                mentioned = any(keyword in text_lower for keyword in self.bot_keywords)
+                if not mentioned:
+                    logger.debug(f"🔇 Ignoring group message (no bot mention): {text[:50]}")
+                    return
+                logger.info(f"📩 WhatsApp GROUP (mentioned) from {sender_name}: {text[:80]}")
+            else:
+                logger.info(f"📩 WhatsApp DM from {sender_name}: {text[:80]}")
 
             # Create unified message
             unified_msg = UnifiedMessage(

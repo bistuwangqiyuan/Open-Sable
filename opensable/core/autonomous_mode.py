@@ -200,19 +200,27 @@ class AutonomousMode:
         self.task_queue.sort(key=lambda t: t.get("priority", 0), reverse=True)
 
     async def _execute_tasks(self):
-        """Execute tasks from queue"""
+        """Execute tasks from queue — ONE AT A TIME (sequential).
+        
+        Concurrent task execution causes multiple simultaneous API calls,
+        which gets detected as bot behavior. A real user does one thing at a time.
+        """
         # Get tasks to execute (up to max_concurrent)
         tasks_to_execute = self.task_queue[: self.max_concurrent_tasks]
 
         if not tasks_to_execute:
             return
 
-        logger.info(f"Executing {len(tasks_to_execute)} task(s)...")
+        logger.info(f"Executing {len(tasks_to_execute)} task(s) sequentially...")
 
-        # Execute tasks concurrently
-        results = await asyncio.gather(
-            *[self._execute_single_task(task) for task in tasks_to_execute], return_exceptions=True
-        )
+        # Execute tasks SEQUENTIALLY — never concurrent
+        results = []
+        for task in tasks_to_execute:
+            try:
+                result = await self._execute_single_task(task)
+                results.append(result)
+            except Exception as e:
+                results.append(e)
 
         # Process results
         for task, result in zip(tasks_to_execute, results):

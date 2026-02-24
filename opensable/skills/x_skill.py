@@ -63,7 +63,16 @@ class XSkill:
 
         try:
             lang = getattr(self.config, "x_language", "en-US") or "en-US"
-            self._client = TwikitClient(lang)
+
+            # Use mobile user agent to avoid bot detection
+            from opensable.core.x_self_heal import pick_user_agent
+            ua = pick_user_agent(prefer_mobile=True)
+            self._client = TwikitClient(lang, user_agent=ua)
+            logger.info(f"X: Using UA: {ua[:60]}...")
+
+            # Also set it on the underlying httpx client
+            if hasattr(self._client, 'http') and hasattr(self._client.http, 'headers'):
+                self._client.http.headers["user-agent"] = ua
 
             # Try loading saved cookies first
             if self._cookies_path.exists():
