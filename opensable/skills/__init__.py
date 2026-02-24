@@ -373,7 +373,11 @@ class XSkill:
 
 
 class GrokSkill:
-    """Grok AI via X account wrapper"""
+    """Grok AI via X account wrapper — ALL calls go through the X API queue.
+    
+    Grok uses the same X session/cookies, so concurrent Grok + X API calls
+    look like parallel automation to X's detection systems.
+    """
 
     def __init__(self, config):
         self.config = config
@@ -383,22 +387,34 @@ class GrokSkill:
         try:
             from .grok_skill import GrokSkill as GrokSkillImpl
             self._impl = GrokSkillImpl(self.config)
-            return await self._impl.initialize()
+            result = await self._impl.initialize()
+            # Register impl with the queue
+            from opensable.core.x_api_queue import XApiQueue
+            XApiQueue.get_instance().set_grok_impl(self._impl)
+            logger.info("📋 X API queue linked to Grok")
+            return result
         except Exception as e:
             logger.warning(f"Grok skill init failed: {e}")
             return False
 
+    async def _get_queue(self):
+        from opensable.core.x_api_queue import XApiQueue
+        q = XApiQueue.get_instance()
+        if self._impl and q._grok_impl is None:
+            q.set_grok_impl(self._impl)
+        return q
+
     async def chat(self, message, **kwargs):
-        if not self._impl: raise RuntimeError("Grok not initialized")
-        return await self._impl.chat(message, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("grok_chat", message, **kwargs)
 
     async def analyze_image(self, image_paths, prompt="Describe these images.", **kwargs):
-        if not self._impl: raise RuntimeError("Grok not initialized")
-        return await self._impl.analyze_image(image_paths, prompt, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("grok_analyze", image_paths, prompt, **kwargs)
 
     async def generate_image(self, prompt, **kwargs):
-        if not self._impl: raise RuntimeError("Grok not initialized")
-        return await self._impl.generate_image(prompt, **kwargs)
+        q = await self._get_queue()
+        return await q.enqueue("grok_generate", prompt, **kwargs)
 
 
 __all__ = ["VoiceSkill", "ImageSkill", "DatabaseSkill", "RAGSkill", "CodeExecutor", "APIClient", "XSkill", "GrokSkill"]

@@ -47,6 +47,10 @@ ACTION_RISK = {
     "quote_tweet":      "aggressive",
     "send_dm":          "aggressive",
     "delete_tweet":     "aggressive",
+    # Grok — uses same X session/cookies, must share the queue
+    "grok_chat":        "passive",
+    "grok_analyze":     "passive",
+    "grok_generate":    "passive",
 }
 
 # Base cooldowns per risk category (seconds)
@@ -270,13 +274,26 @@ class XApiQueue:
         self._processing = False
         self._worker_task: Optional[asyncio.Task] = None
         self._cooldown = AdaptiveCooldown()
-        self._impl = None  # Set by XSkill when it initializes
+        self._impl = None       # XSkillImpl (twikit actions)
+        self._grok_impl = None   # GrokSkillImpl (grok AI)
         self._last_call_time: float = 0.0
+        self._notify_fn = None   # async fn to notify user (Telegram)
+        self._error_notify_cooldown: float = 0.0  # Don't spam user
         logger.info("📋 X API Queue initialized (adaptive cooldowns)")
 
     def set_impl(self, impl):
         """Set the XSkillImpl that has the actual twikit methods."""
         self._impl = impl
+
+    def set_grok_impl(self, grok_impl):
+        """Set the GrokSkillImpl for Grok calls."""
+        self._grok_impl = grok_impl
+        logger.info("📋 X API Queue: Grok linked — Grok calls now go through the queue")
+
+    def set_notify(self, notify_fn):
+        """Set the async function to notify the user (e.g. Telegram send_message)."""
+        self._notify_fn = notify_fn
+        logger.info("📋 X API Queue: User notification enabled")
 
     @property
     def cooldown_engine(self) -> AdaptiveCooldown:
@@ -289,10 +306,13 @@ class XApiQueue:
     async def enqueue(self, method_name: str, *args, **kwargs) -> Any:
         """Add a call to the queue and wait for its result.
         
-        This is what XSkill calls instead of executing directly.
+        This is what XSkill/GrokSkill calls instead of executing directly.
         Returns the result of the API call (or raises the exception).
         """
-        if self._impl is None:
+        is_grok = method_name.startswith("grok_")
+        if is_grok and self._grok_impl is None:
+            raise RuntimeError("Grok not initialized — queue has no grok_impl")
+        if not is_grok and self._impl is None:
             raise RuntimeError("X not initialized — queue has no impl")
 
         loop = asyncio.get_event_loop()
@@ -354,7 +374,17 @@ class XApiQueue:
             )
 
             try:
-                method = getattr(self._impl, method_name)
+                # Route to correct impl
+                is_grok = method_name.startswith("grok_")
+                if is_grok:
+                    impl = self._grok_impl
+                    # Map queue method names to real GrokSkillImpl methods
+                    real_name = {"grok_chat": "chat", "grok_analyze": "analyze_image", "grok_generate": "generate_image"}.get(method_name, method_name)
+                else:
+                    impl = self._impl
+                    real_name = method_name
+
+                method = getattr(impl, real_name)
                 result = await method(*item.args, **item.kwargs)
 
                 # ── Success → reward ──
@@ -373,6 +403,9 @@ class XApiQueue:
                 if not item.future.done():
                     item.future.set_exception(e)
 
+                # Notify user on critical errors
+                await self._try_notify_user(method_name, error_str)
+
                 # After a 226 error, add extra breathing room before next call
                 if "226" in error_str:
                     logger.warning(
@@ -382,6 +415,54 @@ class XApiQueue:
                     await asyncio.sleep(30)
 
         logger.debug("📋 X Queue: worker idle (queue empty)")
+
+    async def _try_notify_user(self, method_name: str, error_str: str):
+        """Notify the user about critical errors that the bot can't self-resolve."""
+        if not self._notify_fn:
+            return
+
+        # Don't spam: max 1 notification every 5 minutes
+        now = time.time()
+        if now - self._error_notify_cooldown < 300:
+            return
+
+        error_lower = error_str.lower()
+        is_critical = any(k in error_lower for k in ["226", "429", "403", "suspended", "locked", "automated"])
+        if not is_critical:
+            return
+
+        self._error_notify_cooldown = now
+
+        # Build a concise, useful message
+        if "226" in error_lower:
+            emoji, desc = "🚨", "Deteccion de bot (Error 226)"
+        elif "429" in error_lower:
+            emoji, desc = "⚠️", "Rate limit (Error 429)"
+        elif "suspended" in error_lower:
+            emoji, desc = "🔴", "Cuenta suspendida"
+        elif "locked" in error_lower:
+            emoji, desc = "🔒", "Cuenta bloqueada"
+        else:
+            emoji, desc = "⚠️", "Error critico"
+
+        stats = self._cooldown.get_stats()
+        msg = (
+            f"{emoji} *X Bot — {desc}*\n\n"
+            f"Accion: `{method_name}`\n"
+            f"Error: `{error_str[:200]}`\n\n"
+            f"Cooldowns actuales:\n"
+            f"  passive: {stats['cooldowns']['passive']:.1f}s\n"
+            f"  active: {stats['cooldowns']['active']:.1f}s\n"
+            f"  aggressive: {stats['cooldowns']['aggressive']:.1f}s\n\n"
+            f"Stats: {stats['total_successes']} ok / {stats['total_errors']} errores\n"
+            f"El bot se auto-ajusto. Si el problema persiste, revisa la cuenta."
+        )
+
+        try:
+            await self._notify_fn(msg)
+            logger.info(f"📨 User notified about {desc}")
+        except Exception as e:
+            logger.debug(f"Failed to notify user: {e}")
 
     def get_status(self) -> Dict:
         """Full status for monitoring/logging."""

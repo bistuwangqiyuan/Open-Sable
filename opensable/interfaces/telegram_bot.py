@@ -272,6 +272,13 @@ class TelegramInterface:
 
             self.agent._telegram_notify = _tg_notify
 
+            # Also wire notifications to X API queue for error alerts
+            try:
+                from opensable.core.x_api_queue import XApiQueue
+                XApiQueue.get_instance().set_notify(_tg_notify)
+            except Exception:
+                pass
+
         await self.heartbeat.start()
 
         logger.info("Telegram bot starting (long-polling, no open ports)...")
