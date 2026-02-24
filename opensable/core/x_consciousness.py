@@ -1316,8 +1316,23 @@ REASONING: <explanation>"""
     # ══════════════════════════════════════════════════════════════════
 
     async def _ask_ai(self, system: str, user: str) -> Optional[str]:
-        """Ask Grok (free) or LLM."""
-        # Try Grok first
+        """Ask the configured LLM (primary) or fall back to Grok chat."""
+        # LLM is the primary brain — Ollama, OpenAI, Open WebUI, etc.
+        try:
+            response = await asyncio.wait_for(
+                self.agent.llm.invoke_with_tools(
+                    [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    [],
+                ),
+                timeout=90,
+            )
+            text = response.get("text", "")
+            if text:
+                return text
+        except Exception as e:
+            logger.debug(f"LLM failed: {e}")
+
+        # Grok chat as emergency fallback only
         try:
             grok = getattr(self.agent.tools, "grok_skill", None)
             if grok:
@@ -1328,19 +1343,6 @@ REASONING: <explanation>"""
                         return result.get("response", "")
         except Exception as e:
             logger.debug(f"Grok AI failed: {e}")
-
-        # Fallback to LLM
-        try:
-            response = await asyncio.wait_for(
-                self.agent.llm.invoke_with_tools(
-                    [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                    [],
-                ),
-                timeout=90,
-            )
-            return response.get("text", "")
-        except Exception as e:
-            logger.debug(f"LLM failed: {e}")
         return None
 
     # ══════════════════════════════════════════════════════════════════

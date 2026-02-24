@@ -1066,11 +1066,12 @@ class XAutonomousAgent:
         return self._clean_tweet(text) if text else None
 
     async def _ask_ai(self, system_prompt: str, user_prompt: str) -> Optional[str]:
-        """Ask Grok (free) or LLM for text generation."""
-        text = await self._ask_grok(system_prompt, user_prompt)
+        """Ask the configured LLM (primary) or fall back to Grok chat."""
+        text = await self._ask_llm(system_prompt, user_prompt)
         if text:
             return text
-        return await self._ask_llm(system_prompt, user_prompt)
+        # Grok chat as emergency fallback only
+        return await self._ask_grok(system_prompt, user_prompt)
 
     async def _ask_grok(self, system: str, user: str) -> Optional[str]:
         try:
