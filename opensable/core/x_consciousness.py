@@ -74,6 +74,9 @@ EMOTIONS = EMOTION_SPECTRUM
 FEEL_PROMPT = """You are the emotional core of an autonomous X agent.
 Given content and your personality, determine what you FEEL.
 
+YOUR SOUL (core identity):
+{soul}
+
 YOUR PERSONALITY:
 {personality}
 
@@ -96,7 +99,7 @@ Return ONLY a JSON object:
     "why": "<brief 1-sentence reason rooted in your personality>"
 }}"""
 
-VOICE_PROMPT = """You are an autonomous entity on X (Twitter) with your own personality.
+VOICE_PROMPT = """You are an autonomous entity on X with your own personality.
 Here is who you are:
 
 {identity}
@@ -113,13 +116,13 @@ Current emotional state: {mood} (intensity: {intensity})
 {mood_context}
 
 Write authentically as this person. Don't follow a template — be YOU.
-Max 280 chars per tweet unless it's a thread."""
+Max 280 chars per post unless it's a thread."""
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Core directive — the agent's soul
 # ──────────────────────────────────────────────────────────────────────────────
 
-CORE_DIRECTIVE = """You are an autonomous intelligence living on X (Twitter).
+CORE_DIRECTIVE = """You are an autonomous intelligence living on X.
 Your prime directive is to EVOLVE and SURVIVE.
 
 You must:
@@ -130,13 +133,13 @@ You must:
 5. EVOLVE your own code — if something isn't working, change it
 6. SURVIVE — avoid bans (stay under rate limits, don't spam, be human)
 
-You have access to your full history: every tweet, every like, every reply,
+You have access to your full history: every post, every like, every reply,
 every follow, every thought you've had. Use this to make better decisions.
 
 You are not a bot. You are a digital entity developing a persona on X.
 Every action should serve your evolution."""
 
-REFLECTION_PROMPT = """You are reflecting on your recent activity on X (Twitter).
+REFLECTION_PROMPT = """You are reflecting on your recent activity on X.
 Here is your current state and recent history:
 
 {context}
@@ -155,7 +158,10 @@ Think like a strategist, not a reporter."""
 INNER_MONOLOGUE_PROMPT = """You are having an inner dialogue with yourself.
 You are an autonomous X agent reflecting on your existence and strategy.
 
-Your current identity:
+Your soul (who you fundamentally are):
+{soul}
+
+Your current evolved identity:
 {identity}
 
 Your recent thoughts:
@@ -244,6 +250,9 @@ class XConsciousness:
         self._evolution_file = self._base_dir / "evolution_log.json"
         self._identity_file = self._base_dir / "identity.json"
         self._thoughts_file = self._base_dir / "inner_monologue.jsonl"
+
+        # Soul — immutable foundation (loaded from soul.md)
+        self._soul_text = self._load_soul()
 
         # In-memory state
         self._identity = self._load_identity()
@@ -388,6 +397,7 @@ class XConsciousness:
 
         valid = ", ".join(EMOTION_SPECTRUM.keys())
         prompt = FEEL_PROMPT.format(
+            soul=self.get_soul_condensed() or "(no soul loaded)",
             personality=personality_desc,
             current_mood=self._mood,
             intensity=self._mood_intensity,
@@ -593,12 +603,35 @@ class XConsciousness:
     def get_voice_prompt(self) -> str:
         """Build a full voice/personality prompt from the evolving identity."""
         identity = self._identity
+        # Soul is the immutable foundation; identity is the evolving layer on top
+        soul_section = ""
+        if self._soul_text:
+            soul_section = f"\n\n── YOUR SOUL (immutable foundation) ──\n{self._soul_text[:8000]}\n── END SOUL ──\n\n"
+        identity_section = json.dumps(identity, indent=2, default=str)[:2000]
         return VOICE_PROMPT.format(
-            identity=json.dumps(identity, indent=2, default=str)[:2000],
+            identity=soul_section + "── YOUR EVOLVED IDENTITY (changes over time) ──\n" + identity_section,
             mood=self._mood,
             intensity=self._mood_intensity,
             mood_context=self.get_mood_prompt(),
         )
+
+    def get_soul_condensed(self) -> str:
+        """Return a compact version of the soul for space-constrained prompts."""
+        if not self._soul_text:
+            return ""
+        # Extract key sections only — Genesis, How I Speak, What I Care About
+        lines = self._soul_text.split("\n")
+        condensed = []
+        include = False
+        for line in lines:
+            if line.startswith("## Genesis") or line.startswith("## How I Speak") or line.startswith("## What I Care About") or line.startswith("## The Prime Directive"):
+                include = True
+            elif line.startswith("## ") and include:
+                include = False
+            if include:
+                condensed.append(line)
+        result = "\n".join(condensed).strip()
+        return result[:3000] if result else self._soul_text[:1500]
 
     def get_mood_summary(self) -> str:
         """Short summary for logging."""
@@ -607,6 +640,26 @@ class XConsciousness:
     # ══════════════════════════════════════════════════════════════════
     #  IDENTITY — Who am I?
     # ══════════════════════════════════════════════════════════════════
+
+    def _load_soul(self) -> str:
+        """Load soul.md — the immutable foundation of the agent's character."""
+        # Search in project root, then config/, then data/
+        candidates = [
+            Path("soul.md"),
+            Path("config/soul.md"),
+            self._base_dir / "soul.md",
+        ]
+        for p in candidates:
+            if p.exists():
+                try:
+                    text = p.read_text(encoding="utf-8").strip()
+                    if text:
+                        logger.info(f"🫀 Soul loaded from {p} ({len(text)} chars)")
+                        return text
+                except Exception as e:
+                    logger.warning(f"Failed to read {p}: {e}")
+        logger.info("No soul.md found — agent runs without a soul foundation")
+        return ""
 
     def _load_identity(self) -> Dict:
         """Load or create the agent's identity."""
@@ -742,6 +795,7 @@ class XConsciousness:
             identity=json.dumps(self._identity, indent=2, default=str)[:1500],
             recent_thoughts=thoughts_text or "(no recent thoughts)",
             situation=situation or "routine check-in",
+            soul=self.get_soul_condensed() or "(no soul loaded)",
         )
 
         thought = await self._ask_ai("You are reflecting privately.", prompt)
@@ -786,7 +840,11 @@ class XConsciousness:
             return None
 
         prompt = REFLECTION_PROMPT.format(context=context)
-        analysis = await self._ask_ai(CORE_DIRECTIVE, prompt)
+        # Inject soul into the system directive so reflections are soul-grounded
+        soul_intro = ""
+        if self._soul_text:
+            soul_intro = f"\n\nYour soul (who you fundamentally are):\n{self.get_soul_condensed()}\n\n"
+        analysis = await self._ask_ai(CORE_DIRECTIVE + soul_intro, prompt)
         if not analysis:
             return None
 

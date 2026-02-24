@@ -119,6 +119,10 @@ class XAutonomousAgent:
         # ── State ─────────────────────────────────────────────────────
         self._posts_today = 0
         self._engagements_today = 0
+        self._grok_vision_today = 0
+        self._grok_images_today = 0
+        self._max_grok_vision_daily = int(getattr(config, "x_max_daily_vision", 15))
+        self._max_grok_images_daily = int(getattr(config, "x_max_daily_images", 4))
         self._last_reset = datetime.now().date()
         self._posted_urls: set = set()
         self._engaged_tweet_ids: set = set()
@@ -227,6 +231,8 @@ class XAutonomousAgent:
         if today != self._last_reset:
             self._posts_today = 0
             self._engagements_today = 0
+            self._grok_vision_today = 0
+            self._grok_images_today = 0
             self._last_reset = today
 
     def _x(self):
@@ -422,6 +428,12 @@ class XAutonomousAgent:
         if not content:
             return
 
+        # Sometimes generate an image with Grok to accompany the post
+        if content.get("type") == "tweet":
+            image_path = await self._maybe_generate_image(content.get("text", ""), story)
+            if image_path:
+                content["media_paths"] = [image_path]
+
         result = await self._post(content)
         if result.get("success"):
             self._posts_today += 1
@@ -505,7 +517,12 @@ class XAutonomousAgent:
 
             elif source["type"] == "account":
                 result = await self._x().get_user_tweets(source["value"], count=10)
-                return result.get("tweets", []) if result.get("success") else []
+                tweets = result.get("tweets", []) if result.get("success") else []
+                # Inject username — get_user_tweets doesn't include it per-post
+                for t in tweets:
+                    if not t.get("username"):
+                        t["username"] = source["value"]
+                return tweets
 
             elif source["type"] == "trending":
                 trends = await self._x().get_trends()
@@ -520,6 +537,152 @@ class XAutonomousAgent:
         except Exception as e:
             logger.debug(f"Discover tweets error: {e}")
         return []
+
+    async def _analyze_tweet_media(self, tweet: Dict) -> Optional[str]:
+        """Download and analyze images/thumbnails from a tweet using Grok vision.
+
+        The agent only "looks" at media when it genuinely needs visual context:
+        - The tweet text is too short to understand on its own
+        - The text references something visual ("look at this", "this photo", etc.)
+        - The agent's emotional arousal (curiosity) is high enough
+        - Daily Grok vision budget hasn't been exhausted
+
+        All Grok calls go through the XApiQueue for rate-limiting.
+        Returns a text description of the visual content, or None.
+        """
+        media_items = tweet.get("media") or []
+        if not media_items:
+            return None
+
+        tweet_text = tweet.get("text", "")
+
+        # Only analyze photos and thumbnails (videos can't be "seen")
+        image_urls = []
+        for m in media_items:
+            mtype = m.get("type", "")
+            url = m.get("url")
+            if url and mtype in ("photo", "thumbnail"):
+                image_urls.append(url)
+
+        if not image_urls:
+            # If there's a video, at least note it exists
+            for m in media_items:
+                if m.get("type") in ("video", "gif"):
+                    dur = m.get("duration_ms")
+                    dur_str = f" ({dur // 1000}s)" if dur else ""
+                    return f"[This post contains a {m['type']}{dur_str} — visual content not analyzed]"
+            return None
+
+        # ── Budget check: don't abuse Grok ───────────────────────────
+        if self._grok_vision_today >= self._max_grok_vision_daily:
+            count = len(image_urls)
+            logger.debug(f"Vision budget exhausted ({self._grok_vision_today}/{self._max_grok_vision_daily})")
+            return f"[This post contains {count} image{'s' if count > 1 else ''} — daily vision budget reached]"
+
+        # ── Curiosity gate: should we even look? ─────────────────────
+        if not self._should_analyze_media(tweet_text, media_items):
+            count = len(image_urls)
+            return f"[This post contains {count} image{'s' if count > 1 else ''}]"
+
+        # ── Check if Grok vision is available ────────────────────────
+        grok = getattr(self.agent.tools, "grok_skill", None)
+        if not grok:
+            count = len(image_urls)
+            return f"[This post contains {count} image{'s' if count > 1 else ''} — vision not available]"
+
+        # ── Download images to temp files (max 2 to conserve budget) ──
+        from opensable.skills.x_skill import XSkill
+        local_paths = []
+        try:
+            for url in image_urls[:2]:
+                path = await XSkill.download_media_url(url, suffix=".jpg")
+                if path:
+                    local_paths.append(path)
+
+            if not local_paths:
+                return None
+
+            # ── Send to Grok vision through the queue ────────────────
+            from opensable.core.x_api_queue import XApiQueue
+            queue = XApiQueue.get_instance()
+
+            result = await queue.enqueue(
+                "grok_analyze",
+                local_paths,
+                "Describe what you see in this image concisely (2-3 sentences max). "
+                "Focus on the main subject, any text visible, and the overall context. "
+                "This is from a post on X — the description will help write a relevant reply.",
+            )
+
+            self._grok_vision_today += 1
+
+            if result and result.get("success"):
+                desc = result.get("response", "").strip()
+                if desc:
+                    logger.info(
+                        f"\U0001f441 X vision [{self._grok_vision_today}/{self._max_grok_vision_daily}]: "
+                        f"analyzed {len(local_paths)} image(s) — {desc[:80]}..."
+                    )
+                    return desc
+        except Exception as e:
+            logger.debug(f"Tweet media analysis failed: {e}")
+        finally:
+            # Clean up temp files
+            import os as _os
+            for p in local_paths:
+                try:
+                    _os.unlink(p)
+                except OSError:
+                    pass
+
+        return None
+
+    def _should_analyze_media(self, tweet_text: str, media_items: list) -> bool:
+        """Decide if the agent should spend a Grok vision call on this tweet.
+
+        Returns True when the agent genuinely needs or wants visual context:
+        - Very short text (< 80 chars) + has images  -> text alone isn't enough
+        - Text explicitly references visual content ("look at this", "this photo", etc.)
+        - Agent's current arousal/curiosity is high (> 0.5)
+        - Multiple images (likely an important visual story)
+        - Random curiosity (10% chance even when other criteria don't match)
+        """
+        text_lower = tweet_text.lower().strip()
+        text_len = len(tweet_text.strip())
+
+        # Very short text with media -> the image IS the content
+        if text_len < 80 and media_items:
+            return True
+
+        # Text references visual content
+        visual_cues = [
+            "look at", "check this", "this photo", "this pic", "this image",
+            "this chart", "this graph", "this screenshot", "see this",
+            "mira est", "foto", "imagen", "captura",  # Spanish cues
+            "\U0001f4f8", "\U0001f4f7", "\U0001f5bc\ufe0f", "\U0001f4ca", "\U0001f4c8", "\U0001f4c9",  # camera, chart emojis
+        ]
+        if any(cue in text_lower for cue in visual_cues):
+            return True
+
+        # Multiple images -> likely an important visual story
+        photo_count = sum(1 for m in media_items if m.get("type") == "photo")
+        if photo_count >= 3:
+            return True
+
+        # Agent curiosity: high arousal means the agent is engaged/curious
+        try:
+            mood = self.mind._mood
+            _valence, arousal = EMOTION_SPECTRUM.get(mood, (0.0, 0.2))
+            if arousal > 0.5:
+                return True
+        except Exception:
+            pass
+
+        # Random curiosity — humans occasionally click on images just because
+        if random.random() < 0.10:
+            return True
+
+        return False
 
     async def _engage_with_tweet(self, tweet: Dict):
         """Decide how to engage with a tweet — emotionally, like a real user would."""
@@ -569,7 +732,9 @@ class XAutonomousAgent:
         if random.random() < reply_p and len(tweet_text) > 30:
             # Pause — "thinking about what to say"
             await asyncio.sleep(self._human_delay(8, 20))
-            reply_text = await self._generate_reply(tweet_text, username)
+            # Analyze media (images) if present — gives the agent "eyes"
+            media_desc = await self._analyze_tweet_media(tweet)
+            reply_text = await self._generate_reply(tweet_text, username, media_description=media_desc)
             if reply_text:
                 result = await self._safe_action(
                     "reply", self._x().reply, tweet_id, reply_text
@@ -583,7 +748,9 @@ class XAutonomousAgent:
             quote_p = self.p_quote + (arousal_boost * 0.5 if abs(valence) > 0.3 else 0)
             if random.random() < quote_p:
                 await asyncio.sleep(self._human_delay(8, 20))
-                quote_text = await self._generate_quote(tweet_text, username)
+                # Analyze media for quote tweets too
+                media_desc = await self._analyze_tweet_media(tweet)
+                quote_text = await self._generate_quote(tweet_text, username, media_description=media_desc)
                 if quote_text:
                     result = await self._safe_action(
                         "quote", self._x().quote_tweet, tweet_id, quote_text
@@ -696,7 +863,9 @@ class XAutonomousAgent:
                 # Pause — "reading the mention"
                 await asyncio.sleep(self._human_delay(8, 15))
 
-                reply_text = await self._generate_mention_reply(mention_text, mentioner)
+                # Analyze images if the mention includes media
+                media_desc = await self._analyze_tweet_media(tweet)
+                reply_text = await self._generate_mention_reply(mention_text, mentioner, media_description=media_desc)
                 if reply_text:
                     await self._safe_action("mention_reply", self._x().reply, tweet_id, reply_text)
                     self._engaged_tweet_ids.add(tweet_id)
@@ -791,11 +960,11 @@ class XAutonomousAgent:
         )
         if do_thread:
             system_prompt += (
-                "\n\nYour passion on this topic is intense. Write a thread (4-6 tweets, "
+                "\n\nYour passion on this topic is intense. Write a thread (4-6 posts, "
                 "numbered 1/, 2/, etc). Hook first, emotional takeaway last."
             )
 
-        user_prompt = f"Write a tweet about this:\n\n{story_text}"
+        user_prompt = f"Write a post about this:\n\n{story_text}"
         if self.language != "en":
             user_prompt += f"\n\nWrite in {self.language}."
 
@@ -811,7 +980,7 @@ class XAutonomousAgent:
         tweet_text = self._clean_tweet(text)
         return {"type": "tweet", "text": tweet_text, "style": "identity"} if tweet_text else None
 
-    async def _generate_reply(self, tweet_text: str, username: str) -> Optional[str]:
+    async def _generate_reply(self, tweet_text: str, username: str, *, media_description: Optional[str] = None) -> Optional[str]:
         """Generate an emotionally-aware reply — personality determines tone."""
         # Feel the tweet before replying (AI-powered for important interactions)
         await self.mind.feel(tweet_text)
@@ -835,26 +1004,35 @@ class XAutonomousAgent:
         if self.language != "en":
             system_prompt += f" Write in {self.language}."
 
-        user_prompt = f"@{username} tweeted:\n\"{tweet_text[:500]}\"\n\nWrite your reply:"
+        # Build user prompt — include media description if we "saw" images
+        user_prompt = f"@{username} posted:\n\"{tweet_text[:500]}\""
+        if media_description:
+            user_prompt += f"\n\n[Visual content in the post]: {media_description[:500]}"
+        user_prompt += "\n\nWrite your reply:"
+
         text = await self._ask_ai(system_prompt, user_prompt)
         return self._clean_tweet(text) if text else None
 
-    async def _generate_quote(self, tweet_text: str, username: str) -> Optional[str]:
+    async def _generate_quote(self, tweet_text: str, username: str, *, media_description: Optional[str] = None) -> Optional[str]:
         """Generate personality-driven quote-tweet commentary."""
         await self.mind.feel(tweet_text)
         system_prompt = (
             f"{self.mind.get_voice_prompt()}\n\n"
-            "Write a quote-tweet comment (max 280 chars) adding your authentic take. "
+            "Write a quote-post comment (max 280 chars) adding your authentic take. "
             "Add value — an insight, prediction, or gut reaction."
         )
         if self.language != "en":
             system_prompt += f" Write in {self.language}."
 
-        user_prompt = f"@{username} tweeted:\n\"{tweet_text[:500]}\"\n\nWrite your quote-tweet:"
+        user_prompt = f"@{username} posted:\n\"{tweet_text[:500]}\""
+        if media_description:
+            user_prompt += f"\n\n[Visual content in the post]: {media_description[:500]}"
+        user_prompt += "\n\nWrite your quote-post:"
+
         text = await self._ask_ai(system_prompt, user_prompt)
         return self._clean_tweet(text) if text else None
 
-    async def _generate_mention_reply(self, mention_text: str, username: str) -> Optional[str]:
+    async def _generate_mention_reply(self, mention_text: str, username: str, *, media_description: Optional[str] = None) -> Optional[str]:
         """Generate an emotionally-aware reply to someone who mentioned us."""
         await self.mind.feel(mention_text)
         system_prompt = (
@@ -865,7 +1043,10 @@ class XAutonomousAgent:
         if self.language != "en":
             system_prompt += f" Write in {self.language}."
 
-        user_prompt = f"@{username} mentioned you:\n\"{mention_text[:500]}\"\n\nYour reply:"
+        user_prompt = f"@{username} mentioned you:\n\"{mention_text[:500]}\""
+        if media_description:
+            user_prompt += f"\n\n[Visual content in the post]: {media_description[:500]}"
+        user_prompt += "\n\nYour reply:"
         text = await self._ask_ai(system_prompt, user_prompt)
         return self._clean_tweet(text) if text else None
 
@@ -878,7 +1059,7 @@ class XAutonomousAgent:
 
         user_prompt = (
             f"\"{trend_name}\" is trending on X right now. "
-            f"Write a tweet (max 280 chars) with your take on why it's trending "
+            f"Write a post (max 280 chars) with your take on why it's trending "
             f"or what it means. Include the hashtag if relevant."
         )
         text = await self._ask_ai(system_prompt, user_prompt)
@@ -1015,6 +1196,98 @@ class XAutonomousAgent:
         return None
 
     # ══════════════════════════════════════════════════════════════════
+    #  IMAGE GENERATION — Grok creates visuals for posts
+    # ══════════════════════════════════════════════════════════════════
+
+    async def _maybe_generate_image(self, tweet_text: str, story: Dict) -> Optional[str]:
+        """
+        Decide whether to generate an image for this post, and if so, create one.
+        Returns the local file path of the generated image, or None.
+
+        Budget: max x_max_daily_images per day (default 4).
+        Probability: ~25% of posts get images, biased toward:
+          - High emotional intensity (passion, outrage, excitement)
+          - Visual/concrete topics (tech, space, art, disasters)
+          - Not threads (only standalone posts)
+        """
+        # Budget check
+        if self._grok_images_today >= self._max_grok_images_daily:
+            return None
+
+        # Grok available?
+        grok = getattr(self.agent.tools, "grok_skill", None)
+        if not grok:
+            return None
+        try:
+            from opensable.skills.grok_skill import TWIKIT_GROK_AVAILABLE
+            if not TWIKIT_GROK_AVAILABLE:
+                return None
+        except ImportError:
+            return None
+
+        # Decision gate — curiosity/emotion-driven
+        mood_intensity = getattr(self.mind, "_mood_intensity", 0.5)
+        mood = getattr(self.mind, "_mood", "neutral")
+
+        # Visual topics boost probability
+        visual_cues = ("space", "city", "war", "protest", "ai", "robot", "disaster",
+                       "explosion", "nature", "art", "design", "future", "tech",
+                       "satellite", "mars", "ocean", "fire", "storm", "drone")
+        topic_text = (tweet_text + " " + story.get("title", "")).lower()
+        has_visual_topic = any(cue in topic_text for cue in visual_cues)
+
+        # High-emotion moods boost image probability
+        high_visual_moods = ("excited", "outraged", "inspired", "angry", "shocked", "passionate")
+        mood_boost = mood in high_visual_moods
+
+        # Base 15% chance, boosted by visual topics (+15%) and mood (+10%)
+        p_image = 0.15
+        if has_visual_topic:
+            p_image += 0.15
+        if mood_boost:
+            p_image += 0.10
+        if mood_intensity > 0.7:
+            p_image += 0.10
+
+        if random.random() > p_image:
+            return None
+
+        # Generate image
+        try:
+            # Build a visual prompt — tell Grok to create art inspired by the post
+            img_prompt = (
+                f"Generate a striking, artistic image that captures the essence of this:\n"
+                f"\"{tweet_text[:200]}\"\n\n"
+                f"Style: cinematic, evocative, no text overlays, no watermarks. "
+                f"The image should work as a visual companion to a social media post."
+            )
+
+            save_path = f"/tmp/sable_post_img_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            result = await grok.generate_image(img_prompt, save_path=save_path)
+
+            if result.get("success") and result.get("images"):
+                self._grok_images_today += 1
+                image_file = result["images"][0]
+                logger.info(
+                    f"🎨 Generated image for post [{self._grok_images_today}/{self._max_grok_images_daily}]: "
+                    f"{image_file}"
+                )
+                self.mind.remember("image_generated", {
+                    "tweet": tweet_text[:200],
+                    "image": image_file,
+                    "mood": mood,
+                    "intensity": mood_intensity,
+                })
+                return image_file
+            else:
+                logger.debug(f"Image gen returned no images: {result.get('error', '?')}")
+                return None
+
+        except Exception as e:
+            logger.debug(f"Image generation failed: {e}")
+            return None
+
+    # ══════════════════════════════════════════════════════════════════
     #  POSTING
     # ══════════════════════════════════════════════════════════════════
 
@@ -1028,10 +1301,14 @@ class XAutonomousAgent:
             logger.info(f"\U0001f3dc\ufe0f DRY RUN — {content.get('type')}: {str(content.get('text', content.get('tweets', '')))[:80]}")
             return {"success": True, "tweet_id": "dry_run", "url": "dry_run"}
         try:
+            media_paths = content.get("media_paths")
             if content["type"] == "thread":
                 result = await self._x().post_thread(content["tweets"])
             else:
-                result = await self._x().post_tweet(content["text"])
+                result = await self._x().post_tweet(
+                    content["text"],
+                    media_paths=media_paths,
+                )
             # Check for 226 in result
             error_str = str(result.get("error", ""))
             if not result.get("success") and ("226" in error_str or "automated" in error_str.lower()):
@@ -1054,11 +1331,21 @@ class XAutonomousAgent:
     def _clean_tweet(self, text: str) -> str:
         if not text:
             return ""
+        # ── Strip Grok/LLM artefacts ─────────────────────────────────
+        # Remove <xai:...> XML tags that Grok sometimes injects (tool cards, etc.)
+        text = re.sub(r"<xai:[^>]*>.*?</xai:[^>]*>", "", text, flags=re.DOTALL)
+        text = re.sub(r"<xai:[^>]*/?>", "", text)
+        # Remove any remaining XML/HTML-like tags that aren't part of content
+        text = re.sub(r"</?[a-zA-Z_][a-zA-Z0-9_:.-]*(?:\s[^>]*)?>", "", text)
+        # ── Strip markdown formatting ─────────────────────────────────
         text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
         text = re.sub(r"__(.+?)__", r"\1", text)
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?tweet:?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?post:?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?reply:?\s*", "", text, flags=re.IGNORECASE)
         text = text.strip().strip('"').strip("'").strip()
+        # Collapse accidental double-spaces or leftover whitespace
+        text = re.sub(r"\s{2,}", " ", text).strip()
         if len(text) > 280:
             text = text[:277].rsplit(" ", 1)[0] + "..."
         return text if len(text) >= 10 else ""

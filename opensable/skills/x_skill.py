@@ -25,10 +25,17 @@ Setup:
 import asyncio
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+try:
+    from twikit.media import Photo, Video, AnimatedGif
+    _MEDIA_CLASSES = True
+except ImportError:
+    _MEDIA_CLASSES = False
 
 try:
     from twikit import Client as TwikitClient
@@ -119,6 +126,76 @@ class XSkill:
                 "X not initialized. Check credentials in .env "
                 "(X_USERNAME, X_EMAIL, X_PASSWORD)"
             )
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Media extraction
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _extract_media(tweet_obj) -> List[Dict[str, Any]]:
+        """Extract media info (photos, videos, GIFs) from a twikit Tweet object."""
+        media_list = []
+        if not _MEDIA_CLASSES:
+            return media_list
+
+        try:
+            raw_media = getattr(tweet_obj, "media", None)
+            if not raw_media:
+                # Also check for card thumbnails (link previews)
+                thumb_url = getattr(tweet_obj, "thumbnail_url", None)
+                if thumb_url:
+                    media_list.append({
+                        "type": "thumbnail",
+                        "url": thumb_url,
+                        "title": getattr(tweet_obj, "thumbnail_title", None),
+                    })
+                return media_list
+
+            for m in raw_media:
+                entry: Dict[str, Any] = {
+                    "type": "unknown",
+                    "url": getattr(m, "media_url", None),
+                    "width": getattr(m, "width", None),
+                    "height": getattr(m, "height", None),
+                }
+                if isinstance(m, Photo):
+                    entry["type"] = "photo"
+                elif isinstance(m, Video):
+                    entry["type"] = "video"
+                    entry["duration_ms"] = getattr(m, "duration_millis", None)
+                elif isinstance(m, AnimatedGif):
+                    entry["type"] = "gif"
+                media_list.append(entry)
+
+            # Also grab thumbnail if present (card + embedded media)
+            if not media_list:
+                thumb_url = getattr(tweet_obj, "thumbnail_url", None)
+                if thumb_url:
+                    media_list.append({
+                        "type": "thumbnail",
+                        "url": thumb_url,
+                        "title": getattr(tweet_obj, "thumbnail_title", None),
+                    })
+        except Exception as e:
+            logger.debug(f"Media extraction failed: {e}")
+
+        return media_list
+
+    @staticmethod
+    async def download_media_url(url: str, suffix: str = ".jpg") -> Optional[str]:
+        """Download a media URL to a temp file. Returns the local path or None."""
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=20, follow_redirects=True) as http:
+                resp = await http.get(url)
+                resp.raise_for_status()
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir="/tmp")
+                tmp.write(resp.content)
+                tmp.close()
+                return tmp.name
+        except Exception as e:
+            logger.debug(f"Media download failed ({url[:60]}): {e}")
+            return None
 
     # ──────────────────────────────────────────────────────────────────────
     # Posting
@@ -257,6 +334,7 @@ class XSkill:
             for i, tweet in enumerate(tweets):
                 if i >= count:
                     break
+                media = self._extract_media(tweet)
                 results.append({
                     "id": getattr(tweet, "id", None),
                     "text": getattr(tweet, "text", str(tweet)),
@@ -265,6 +343,8 @@ class XSkill:
                     "created_at": str(getattr(tweet, "created_at", "")),
                     "likes": getattr(tweet, "favorite_count", 0),
                     "retweets": getattr(tweet, "retweet_count", 0),
+                    "media": media,
+                    "has_media": bool(media),
                 })
 
             await asyncio.sleep(self._action_delay)
@@ -399,12 +479,15 @@ class XSkill:
             for i, tweet in enumerate(tweets):
                 if i >= count:
                     break
+                media = self._extract_media(tweet)
                 results.append({
                     "id": getattr(tweet, "id", None),
                     "text": getattr(tweet, "text", str(tweet)),
                     "created_at": str(getattr(tweet, "created_at", "")),
                     "likes": getattr(tweet, "favorite_count", 0),
                     "retweets": getattr(tweet, "retweet_count", 0),
+                    "media": media,
+                    "has_media": bool(media),
                 })
 
             await asyncio.sleep(self._action_delay)
