@@ -95,6 +95,35 @@ OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+### Running with `start.sh`
+
+The recommended way to run Open-Sable in production. Manages the process in the background with logging, PID tracking, and graceful shutdown:
+
+```bash
+# Start the agent (runs in background, logs to logs/sable.log)
+./start.sh
+
+# Stop the agent (graceful shutdown with 10s timeout)
+./start.sh stop
+
+# Restart (stop + start)
+./start.sh restart
+
+# Check if running (shows PID, uptime, memory usage)
+./start.sh status
+
+# Follow live logs
+./start.sh logs
+```
+
+| Command | Description |
+|---------|-------------|
+| `./start.sh` | Start agent in background |
+| `./start.sh stop` | Graceful stop (SIGTERM → 10s wait → SIGKILL) |
+| `./start.sh restart` | Stop + start |
+| `./start.sh status` | Show PID, uptime, memory usage |
+| `./start.sh logs` | Tail live log output |
+
 ---
 
 ## 📊 Architecture Overview
@@ -2187,6 +2216,35 @@ graph LR
 - [x] Emotional intelligence layer (lexicon + pattern + emoji detection, state tracking, response adaptation)
 - [x] Cross-platform tool synthesis (Python, JavaScript, Rust code generation)
 - [x] Web dashboard (production-ready with token auth + rate limiting)
+
+---
+
+## 🔧 Recent Improvements
+
+### Intelligent API Queue System
+All outbound social-media API calls are routed through a centralized **FIFO queue** with adaptive rate limiting. The queue processes one request at a time (strict sequential execution), preventing concurrent API access that could trigger platform abuse detection.
+
+- **Adaptive cooldowns**: Three risk tiers (passive, active, aggressive) that self-tune based on API response patterns — cooldowns shrink on success and increase on rate-limit errors
+- **Persistent timings**: Learned cooldown values are saved to disk and restored on restart
+- **Human-like jitter**: ±20% randomized delay on every call to avoid robotic fixed-interval patterns
+- **Unified pipeline**: All platform interactions (posts, likes, replies, content generation) flow through the same queue — no concurrent requests from the same session
+
+### Browser Session Management (WhatsApp)
+The WhatsApp bridge (wwebjs/Puppeteer) now intelligently manages its browser lifecycle:
+
+- **Automatic stale process cleanup**: On startup, detects and terminates orphaned Chromium instances and Node.js bridge processes left over from previous runs or unclean shutdowns
+- **Lock file recovery**: Removes stale `SingletonLock` files that prevent browser launch
+- **Port conflict resolution**: Frees occupied bridge ports before launching a new instance
+- **Graceful shutdown**: On stop, performs a clean shutdown with a timeout fallback to force-kill, followed by a final cleanup pass
+
+### Enhanced HTTP Client Compatibility
+The HTTP networking layer supports `curl_cffi` as a transport backend, providing broader compatibility with modern web platforms that enforce strict client-validation policies. When available, `curl_cffi` is used automatically; otherwise the system falls back to the default `httpx` backend.
+
+### User Notifications on Critical Errors
+When the agent encounters a critical platform error (rate limiting, access restrictions, account issues), it can notify the operator via Telegram in real time — with deduplication to avoid alert fatigue (max 1 alert per error type every 5 minutes).
+
+### Sequential Execution Architecture
+The agent's tool execution pipeline enforces strict sequential ordering for all platform-facing operations. Even when the LLM requests multiple tools simultaneously, platform-related tools are serialized to ensure only one API call is in-flight at any time. The autonomous task scheduler also runs tasks one at a time rather than in parallel.
 
 ---
 
