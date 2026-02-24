@@ -64,9 +64,9 @@ class XSkill:
         try:
             lang = getattr(self.config, "x_language", "en-US") or "en-US"
 
-            # Use mobile user agent to avoid bot detection
+            # Use Linux desktop UA — must match real platform (TLS fingerprint)
             from opensable.core.x_self_heal import pick_user_agent
-            ua = pick_user_agent(prefer_mobile=True)
+            ua = pick_user_agent()
             self._client = TwikitClient(lang, user_agent=ua)
             logger.info(f"X: Using UA: {ua[:60]}...")
 
