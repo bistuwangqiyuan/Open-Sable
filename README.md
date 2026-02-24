@@ -88,12 +88,23 @@ pip install -e ".[vision]"
 pip install -e ".[core,voice,vision,automation,monitoring]"
 ```
 
-**Skip Ollama?** You can use cloud LLMs instead:
+**Skip Ollama?** You can use any cloud LLM provider instead. Just set **one** API key in your `.env`:
 ```bash
-# In .env file, add one of these:
+# In .env file, add any one of these (the agent auto-detects which key is set):
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIza...
+OPENROUTER_API_KEY=sk-or-...
+DEEPSEEK_API_KEY=sk-...
+GROQ_API_KEY=gsk_...
+TOGETHER_API_KEY=...
+XAI_API_KEY=xai-...
+MISTRAL_API_KEY=...
+COHERE_API_KEY=...
+KIMI_API_KEY=...
+QWEN_API_KEY=...
 ```
+See the **Cloud LLM Providers** section below for the full list of 12 supported providers and their default models.
 
 ### Running with `start.sh`
 
@@ -2220,6 +2231,47 @@ graph LR
 - [x] Emotional intelligence layer (lexicon + pattern + emoji detection, state tracking, response adaptation)
 - [x] Cross-platform tool synthesis (Python, JavaScript, Rust code generation)
 - [x] Web dashboard (production-ready with token auth + rate limiting)
+
+---
+
+## ☁️ Cloud LLM Providers
+
+Open-Sable supports **12 cloud LLM providers** out of the box. If Ollama is not available (or you prefer cloud models), the agent automatically falls back through configured providers until one succeeds.
+
+| Provider | Env Variable | Default Model | Protocol |
+|---|---|---|---|
+| **OpenAI** | `OPENAI_API_KEY` | `gpt-4o-mini` | OpenAI SDK |
+| **Anthropic** | `ANTHROPIC_API_KEY` | `claude-sonnet-4-20250514` | Native SDK |
+| **Gemini (Google)** | `GEMINI_API_KEY` | `gemini-2.5-flash` | Native SDK (`google-genai`) |
+| **OpenRouter** | `OPENROUTER_API_KEY` | `openai/gpt-4o-mini` | OpenAI-compatible |
+| **DeepSeek** | `DEEPSEEK_API_KEY` | `deepseek-chat` | OpenAI-compatible |
+| **Groq** | `GROQ_API_KEY` | `llama-3.3-70b-versatile` | OpenAI-compatible |
+| **Together AI** | `TOGETHER_API_KEY` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | OpenAI-compatible |
+| **xAI (Grok)** | `XAI_API_KEY` | `grok-3-mini` | OpenAI-compatible |
+| **Mistral** | `MISTRAL_API_KEY` | `mistral-small-latest` | OpenAI-compatible |
+| **Cohere** | `COHERE_API_KEY` | `command-r-plus` | Native SDK |
+| **Kimi (Moonshot)** | `KIMI_API_KEY` | `moonshot-v1-8k` | OpenAI-compatible |
+| **Qwen (DashScope)** | `QWEN_API_KEY` | `qwen-turbo` | OpenAI-compatible |
+
+### How it works
+
+1. **Local first**: The agent always tries Ollama at `OLLAMA_BASE_URL` first.
+2. **Cloud fallback**: If Ollama is unavailable, it walks through the list above in order, skipping any provider whose API key is empty.
+3. **One key is enough**: You only need to set a single provider's API key — the agent will find it and use it.
+4. **Tool calling**: All 12 providers support tool/function calling. The agent automatically converts tool schemas into each provider's native format.
+5. **Override the model**: Set `DEFAULT_MODEL` in `.env` to use a specific model name instead of the provider's default.
+
+```bash
+# Example: use Gemini
+GEMINI_API_KEY=AIzaSy...
+
+# Example: use OpenRouter with a custom model
+OPENROUTER_API_KEY=sk-or-v1-...
+DEFAULT_MODEL=anthropic/claude-sonnet-4-20250514
+
+# Example: use Groq for fast inference
+GROQ_API_KEY=gsk_...
+```
 
 ---
 

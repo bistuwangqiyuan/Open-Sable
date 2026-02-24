@@ -12,6 +12,10 @@ rich>=13.7.0
 
 # LLM / AI
 ollama>=0.1.6,<1
+openai>=1.0.0        # OpenAI, OpenRouter, DeepSeek, Groq, Together, xAI, Mistral, Kimi, Qwen
+google-genai>=1.0.0  # Gemini (Google)
+anthropic>=0.40.0    # Anthropic Claude
+cohere>=5.0.0        # Cohere Command
 
 # Memory & Vector DB
 chromadb>=0.4.22,<1
