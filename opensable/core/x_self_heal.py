@@ -202,36 +202,31 @@ KNOWN_ERRORS: List[ErrorPattern] = [
 # ══════════════════════════════════════════════════════════════════════════════
 #  MOBILE USER AGENTS — Rotate through realistic mobile UAs
 # ══════════════════════════════════════════════════════════════════════════════
-
-# ── IMPORTANT ────────────────────────────────────────────────────────────────
-# We run on Linux. X detects the REAL platform via TLS fingerprint (JA3/JA4),
-# TCP stack, etc. Using a mobile UA from a Linux machine is a HUGE red flag
-# (mismatch = instant bot detection). Always use Linux Desktop Chrome UAs
-# that match what X already knows about our connection.
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Primary: Linux desktop Chrome — matches our actual platform
-LINUX_DESKTOP_USER_AGENTS = [
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Safari/537.36",
-    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+MOBILE_USER_AGENTS = [
+    # Android Chrome (most common)
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 13; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.102 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 14; Pixel 7a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36",
+    # iOS Safari
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1",
 ]
 
-# Legacy aliases (kept for backward compat with imports)
-MOBILE_USER_AGENTS = LINUX_DESKTOP_USER_AGENTS  # DO NOT use mobile UAs on Linux!
-DESKTOP_USER_AGENTS = LINUX_DESKTOP_USER_AGENTS
+# Desktop fallbacks (when mobile doesn't work)
+DESKTOP_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+]
 
 
 def pick_user_agent(prefer_mobile: bool = True) -> str:
-    """Pick a realistic user agent matching our actual Linux platform.
-
-    The `prefer_mobile` parameter is IGNORED — we always return a Linux
-    desktop UA because X detects real platform via TLS/TCP fingerprint.
-    A mobile UA from Linux is an instant bot signal.
-    """
-    return random.choice(LINUX_DESKTOP_USER_AGENTS)
+    """Pick a realistic user agent, preferring mobile."""
+    if prefer_mobile:
+        return random.choice(MOBILE_USER_AGENTS)
+    return random.choice(DESKTOP_USER_AGENTS)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -349,8 +344,8 @@ class RemedyEngine:
         self._paused_loops["trend"] = resume_at
         self._paused_loops["mention"] = resume_at
 
-        # 4. Switch UA (always Linux desktop — matches our real platform)
-        new_ua = pick_user_agent()
+        # 4. Switch UA
+        new_ua = pick_user_agent(prefer_mobile=True)
         self._apply_user_agent(new_ua)
 
         # 5. Increase action delays
@@ -419,7 +414,7 @@ class RemedyEngine:
     async def _rotate_identity(self, params: Dict) -> Dict:
         """Change user agent and pause briefly."""
         pause_min = params.get("pause_minutes", 10)
-        new_ua = pick_user_agent()  # always Linux desktop
+        new_ua = pick_user_agent(prefer_mobile=True)
         self._apply_user_agent(new_ua)
 
         resume_at = datetime.now() + timedelta(minutes=pause_min)
