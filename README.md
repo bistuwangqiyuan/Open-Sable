@@ -10,12 +10,12 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests: 9/9](https://img.shields.io/badge/tests-9%2F9-brightgreen.svg)](#-running-tests)
-[![Modules: 56](https://img.shields.io/badge/core%20modules-56-blue.svg)](#-project-statistics)
+[![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with AGI-inspired cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself – all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
@@ -247,8 +247,12 @@ graph TB
 - ✅ **Sandboxed code runner** (resource-limited; network off by default)
 - ✅ **RAG pipeline** (ingest → chunk → embed → retrieve → answer)
 - ✅ **Workflow engine** (multi-step, conditions, retries, templates)
+- ✅ **Document creation** (Word, Excel, PDF, PowerPoint — cross-platform, no LibreOffice needed)
+- ✅ **Real email** (SMTP send + IMAP read with attachments)
+- ✅ **Google Calendar** (list, add, delete events — with local fallback)
+- ✅ **Clipboard** (cross-platform copy/paste between apps)
+- ✅ **OCR** (extract text from images and scanned PDFs)
 - 🧪 **Browser automation** (Playwright) — optional
-- 🧪 **Email + Calendar adapters** — optional
 
 ### 👁️ Computer Use (Vision AI)
 - ✅ **`screen_analyze`** — screenshot → Qwen2.5-VL → describe what's on screen (buttons, dialogs, text, errors)
@@ -2221,30 +2225,80 @@ graph LR
 
 ## 🔧 Recent Improvements
 
-### Intelligent API Queue System
-All outbound social-media API calls are routed through a centralized **FIFO queue** with adaptive rate limiting. The queue processes one request at a time (strict sequential execution), preventing concurrent API access that could trigger platform abuse detection.
+### Document Creation Suite (Cross-Platform)
+Full office document creation using pure Python libraries — no LibreOffice or OpenOffice required. Works identically on **Windows, macOS, and Linux**.
 
-- **Adaptive cooldowns**: Three risk tiers (passive, active, aggressive) that self-tune based on API response patterns — cooldowns shrink on success and increase on rate-limit errors
-- **Persistent timings**: Learned cooldown values are saved to disk and restored on restart
-- **Human-like jitter**: ±20% randomized delay on every call to avoid robotic fixed-interval patterns
-- **Unified pipeline**: All platform interactions (posts, likes, replies, content generation) flow through the same queue — no concurrent requests from the same session
+- **Word (.docx)**: Create documents with titles, paragraphs, and tables (`python-docx`)
+- **Excel (.xlsx)**: Spreadsheets with multiple sheets, headers, auto-width columns, styled headers (`openpyxl`)
+- **PDF**: Professional PDFs with titles, body text, styled tables, page layouts (`reportlab`)
+- **PowerPoint (.pptx)**: Presentations with title slides, bullet points, content slides, embedded images (`python-pptx`)
+- **Document Reader**: Extract text from existing .docx, .xlsx, .pdf, .pptx files
+- **Open Document**: Launch any file with the system's default application (xdg-open / open / start)
+
+### Real Email Integration (SMTP/IMAP)
+Send and receive real emails — fully wired to the LLM via tool schemas.
+
+- **Send emails** with subject, body, CC, and file attachments via SMTP
+- **Read emails** from any IMAP mailbox (inbox, folders, unread filter)
+- **Body preview**: Email reading includes a snippet of the message body
+- Configure via `.env`: `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `IMAP_HOST`
+
+### Google Calendar Integration
+Calendar tools support both local JSON storage and Google Calendar API.
+
+- **List events**: Upcoming events from Google Calendar (falls back to local store)
+- **Add events**: Create events with title, date, duration, location, description
+- **Delete events**: Remove by event ID
+- Auto-detects Google Calendar credentials; uses local calendar if not configured
+
+### Clipboard / Pasteboard (Cross-Platform)
+Read from and write to the system clipboard on any OS.
+
+- **Copy**: Store text in the system clipboard
+- **Paste**: Read current clipboard contents
+- Backends: `pyperclip` (preferred), native commands (`pbcopy`/`pbpaste`, `xclip`/`xsel`, `wl-copy`, `clip.exe`)
+
+### OCR — Scanned Document Recognition
+Extract text from images and scanned PDFs using multiple OCR engines.
+
+- **EasyOCR**: Best accuracy, GPU-accelerated, multi-language
+- **Tesseract**: Lightweight, broadly available
+- **PyMuPDF**: PDF text extraction + fallback OCR for scanned pages
+- Supports `.png`, `.jpg`, `.tiff`, `.bmp`, `.webp`, `.pdf`
+- Confidence scoring and per-page extraction
+
+### Autonomous Self-Healing System
+The agent monitors its own API interactions and takes corrective action automatically — no human intervention required.
+
+- **Pattern detection**: Recognizes rate limits (429), access restrictions (226), search failures (404), auth errors, and general exceptions
+- **Grok-assisted diagnosis**: On unrecognized errors, consults Grok AI for root-cause analysis, then **executes the recommended fix** (not just logs it)
+- **Concrete auto-repair actions**: Pause loops, reduce activity by 50%, disable problematic features, rotate User-Agent, increase cooldowns — chosen based on Grok's analysis
+- **Safe fallback**: If no specific action can be parsed, applies a conservative 10-minute pause
+- **Operator alerts**: Critical errors trigger Telegram notifications with deduplication (max 1 alert per error type every 5 minutes)
+
+### Adaptive Rate-Limiting Queue
+All outbound social-media API calls are routed through a centralized **FIFO queue** with self-tuning rate limits.
+
+- **Three risk tiers** (passive/active/aggressive) that self-tune based on API response patterns — cooldowns shrink 5% on success, increase 60–80% on errors
+- **Configurable defaults**: 3s / 5s / 10s base cooldowns with 1.5s floor and 120s ceiling
+- **Persistent timings**: Learned values are saved to disk and restored on restart
+- **Human-like jitter**: ±20% randomized delay on every call
+- **Single-flight guarantee**: All platform interactions (posts, likes, replies, AI content generation) flow through the same sequential pipeline
 
 ### Browser Session Management (WhatsApp)
-The WhatsApp bridge (wwebjs/Puppeteer) now intelligently manages its browser lifecycle:
+The WhatsApp bridge (wwebjs/Puppeteer) intelligently manages its browser lifecycle:
 
-- **Automatic stale process cleanup**: On startup, detects and terminates orphaned Chromium instances and Node.js bridge processes left over from previous runs or unclean shutdowns
-- **Lock file recovery**: Removes stale `SingletonLock` files that prevent browser launch
-- **Port conflict resolution**: Frees occupied bridge ports before launching a new instance
-- **Graceful shutdown**: On stop, performs a clean shutdown with a timeout fallback to force-kill, followed by a final cleanup pass
+- **Stale process cleanup**: On startup, detects and terminates orphaned Chromium and Node.js processes
+- **Lock file recovery**: Removes stale `SingletonLock` files that block browser launch
+- **Port conflict resolution**: Frees occupied ports before starting
+- **Self-message filtering**: Own messages are dropped at the bridge level — the agent never processes messages it sent itself
+- **Graceful shutdown**: Clean stop with timeout→force-kill→cleanup
 
 ### Enhanced HTTP Client Compatibility
-The HTTP networking layer supports `curl_cffi` as a transport backend, providing broader compatibility with modern web platforms that enforce strict client-validation policies. When available, `curl_cffi` is used automatically; otherwise the system falls back to the default `httpx` backend.
-
-### User Notifications on Critical Errors
-When the agent encounters a critical platform error (rate limiting, access restrictions, account issues), it can notify the operator via Telegram in real time — with deduplication to avoid alert fatigue (max 1 alert per error type every 5 minutes).
+The networking layer supports `curl_cffi` as a transport backend, providing broader compatibility with platforms that enforce strict client-validation policies. When available, it is used automatically; otherwise the system falls back to `httpx`.
 
 ### Sequential Execution Architecture
-The agent's tool execution pipeline enforces strict sequential ordering for all platform-facing operations. Even when the LLM requests multiple tools simultaneously, platform-related tools are serialized to ensure only one API call is in-flight at any time. The autonomous task scheduler also runs tasks one at a time rather than in parallel.
+The tool execution pipeline enforces strict sequential ordering for all platform-facing operations. Even when the LLM requests multiple tools simultaneously, platform-related tools are serialized to ensure only one API call is in-flight at any time.
 
 ---
 

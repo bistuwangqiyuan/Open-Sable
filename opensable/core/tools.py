@@ -48,6 +48,16 @@ class ToolRegistry:
         "desktop_click": "system_command",
         "desktop_type": "system_command",
         "desktop_hotkey": "system_command",
+        # Document & email
+        "email_send": "email_send",
+        "email_read": "email_read",
+        "create_document": "file_write",
+        "create_spreadsheet": "file_write",
+        "create_pdf": "file_write",
+        "create_presentation": "file_write",
+        "open_document": "system_command",
+        "clipboard_copy": "system_command",
+        "clipboard_paste": "system_command",
     }
 
     def __init__(self, config):
@@ -96,6 +106,19 @@ class ToolRegistry:
         self.x_skill = XSkill(config) if XSkill else None
         self.grok_skill = GrokSkill(config) if GrokSkill else None
 
+        # Document, Clipboard, OCR, Calendar (Google) skills
+        from ..skills.document_skill import DocumentSkill
+        from ..skills.clipboard_skill import ClipboardSkill
+        from ..skills.ocr_skill import OCRSkill
+        from ..skills.calendar_skill import CalendarSkill as GoogleCalendarSkill
+        from ..skills.email_skill import EmailSkill
+
+        self.document_skill = DocumentSkill(config)
+        self.clipboard_skill = ClipboardSkill(config)
+        self.ocr_skill = OCRSkill(config)
+        self.google_calendar_skill = GoogleCalendarSkill(config)
+        self.email_skill = EmailSkill(config)
+
     async def initialize(self):
         """Initialize all tools"""
         # Register computer control tools (CRITICAL)
@@ -128,6 +151,30 @@ class ToolRegistry:
         self.register("vector_search", self._vector_search_tool)
         self.register("execute_code", self._execute_code_tool)
         self.register("api_request", self._api_request_tool)
+
+        # Register document tools
+        self.register("create_document", self._create_document_tool)
+        self.register("create_spreadsheet", self._create_spreadsheet_tool)
+        self.register("create_pdf", self._create_pdf_tool)
+        self.register("create_presentation", self._create_presentation_tool)
+        self.register("read_document", self._read_document_tool)
+        self.register("open_document", self._open_document_tool)
+
+        # Register email tools (schema-mapped)
+        self.register("email_send", self._email_send_tool)
+        self.register("email_read", self._email_read_tool)
+
+        # Register Google Calendar tools
+        self.register("calendar_list_events", self._calendar_list_events_tool)
+        self.register("calendar_add_event", self._calendar_add_event_tool)
+        self.register("calendar_delete_event", self._calendar_delete_event_tool)
+
+        # Register clipboard tools
+        self.register("clipboard_copy", self._clipboard_copy_tool)
+        self.register("clipboard_paste", self._clipboard_paste_tool)
+
+        # Register OCR tool (advanced)
+        self.register("ocr_extract", self._ocr_extract_tool)
 
         # Register skill creation
         self.register("create_skill", self._create_skill_tool)
@@ -202,6 +249,19 @@ class ToolRegistry:
                 await self.grok_skill.initialize()
             except Exception as e:
                 logger.warning(f"Grok skill initialization failed: {e}")
+
+        # Initialize new skills (document, clipboard, OCR, Google Calendar, Email)
+        for skill_name, skill_obj in [
+            ("Document", self.document_skill),
+            ("Clipboard", self.clipboard_skill),
+            ("OCR", self.ocr_skill),
+            ("Google Calendar", self.google_calendar_skill),
+            ("Email", self.email_skill),
+        ]:
+            try:
+                await skill_obj.initialize()
+            except Exception as e:
+                logger.warning(f"{skill_name} skill initialization failed: {e}")
 
         logger.info(f"Initialized {len(self.tools)} tools")
 
@@ -1031,6 +1091,249 @@ class ToolRegistry:
                     },
                 },
             },
+            # ── Document creation tools ───────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_document",
+                    "description": "Create a Word (.docx) document with title, paragraphs, and optional table",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string", "description": "Output filename (e.g. report.docx)"},
+                            "title": {"type": "string", "description": "Document title / heading"},
+                            "content": {"type": "string", "description": "Body text (single block). Use 'paragraphs' for multiple sections."},
+                            "paragraphs": {"type": "array", "items": {"type": "string"}, "description": "List of paragraphs"},
+                            "table_data": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}, "description": "2D array for a table (first row = headers)"},
+                            "output_dir": {"type": "string", "description": "Output directory (default: ~/Documents/SableDocs)"},
+                        },
+                        "required": ["filename"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_spreadsheet",
+                    "description": "Create an Excel (.xlsx) spreadsheet with data, headers, and multiple sheets",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string", "description": "Output filename (e.g. data.xlsx)"},
+                            "data": {"type": "array", "items": {"type": "array"}, "description": "2D array of row data"},
+                            "headers": {"type": "array", "items": {"type": "string"}, "description": "Column headers"},
+                            "sheets": {"type": "object", "description": "Dict mapping sheet names to 2D data arrays (for multi-sheet)"},
+                            "output_dir": {"type": "string", "description": "Output directory"},
+                        },
+                        "required": ["filename"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_pdf",
+                    "description": "Create a PDF document with title, text content, and optional table",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string", "description": "Output filename (e.g. report.pdf)"},
+                            "title": {"type": "string", "description": "Document title"},
+                            "content": {"type": "string", "description": "Body text"},
+                            "paragraphs": {"type": "array", "items": {"type": "string"}, "description": "List of paragraphs"},
+                            "table_data": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}, "description": "2D array for a table"},
+                            "output_dir": {"type": "string", "description": "Output directory"},
+                        },
+                        "required": ["filename"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_presentation",
+                    "description": "Create a PowerPoint (.pptx) presentation with title slide and content slides",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string", "description": "Output filename (e.g. deck.pptx)"},
+                            "title": {"type": "string", "description": "Title slide heading"},
+                            "subtitle": {"type": "string", "description": "Title slide subtitle"},
+                            "slides": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {"type": "string"},
+                                        "content": {"type": "string"},
+                                        "bullets": {"type": "array", "items": {"type": "string"}},
+                                        "layout": {"type": "string", "description": "title, content, bullets, or blank"},
+                                    },
+                                },
+                                "description": "List of slide definitions",
+                            },
+                            "output_dir": {"type": "string", "description": "Output directory"},
+                        },
+                        "required": ["filename"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_document",
+                    "description": "Read and extract text from Word, Excel, PDF, or PowerPoint files",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "Path to the document file"},
+                        },
+                        "required": ["file_path"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "open_document",
+                    "description": "Open a document with the system's default application (cross-platform)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "Path to the file to open"},
+                        },
+                        "required": ["file_path"],
+                    },
+                },
+            },
+            # ── Email tools (SMTP/IMAP) ──────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "email_send",
+                    "description": "Send an email via SMTP. Requires SMTP_HOST, SMTP_USER, SMTP_PASSWORD in .env",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "to": {"type": "string", "description": "Recipient email address"},
+                            "subject": {"type": "string", "description": "Email subject line"},
+                            "body": {"type": "string", "description": "Email body text"},
+                            "cc": {"type": "string", "description": "CC recipients (comma-separated, optional)"},
+                            "attachments": {"type": "array", "items": {"type": "string"}, "description": "File paths to attach (optional)"},
+                        },
+                        "required": ["to", "subject", "body"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "email_read",
+                    "description": "Read recent emails via IMAP. Requires IMAP_HOST, IMAP_USER, IMAP_PASSWORD in .env",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "count": {"type": "integer", "description": "Number of recent emails to fetch (default: 5)"},
+                            "folder": {"type": "string", "description": "Mailbox folder (default: INBOX)"},
+                            "unread_only": {"type": "boolean", "description": "Only fetch unread emails (default: false)"},
+                        },
+                        "required": [],
+                    },
+                },
+            },
+            # ── Calendar tools (local + Google Calendar) ──
+            {
+                "type": "function",
+                "function": {
+                    "name": "calendar_list_events",
+                    "description": "List upcoming calendar events (local store or Google Calendar if configured)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "days_ahead": {"type": "integer", "description": "Number of days to look ahead (default: 7)"},
+                            "source": {"type": "string", "description": "'local' or 'google' (default: auto-detect)"},
+                        },
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "calendar_add_event",
+                    "description": "Add a new calendar event (to local store or Google Calendar)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string", "description": "Event title"},
+                            "date": {"type": "string", "description": "Date/time in YYYY-MM-DD HH:MM format"},
+                            "duration_minutes": {"type": "integer", "description": "Duration in minutes (default: 60)"},
+                            "description": {"type": "string", "description": "Event description (optional)"},
+                            "location": {"type": "string", "description": "Event location (optional)"},
+                            "source": {"type": "string", "description": "'local' or 'google'"},
+                        },
+                        "required": ["title", "date"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "calendar_delete_event",
+                    "description": "Delete a calendar event by ID",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "event_id": {"type": "string", "description": "Event ID to delete"},
+                            "source": {"type": "string", "description": "'local' or 'google'"},
+                        },
+                        "required": ["event_id"],
+                    },
+                },
+            },
+            # ── Clipboard tools ───────────────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "clipboard_copy",
+                    "description": "Copy text to the system clipboard",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string", "description": "Text to copy to clipboard"},
+                        },
+                        "required": ["text"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "clipboard_paste",
+                    "description": "Read current text from the system clipboard",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
+            # ── OCR (document scanning) ───────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "ocr_extract",
+                    "description": "Extract text from images or scanned PDFs using OCR (Optical Character Recognition)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "Path to image or PDF file"},
+                            "language": {"type": "string", "description": "Language code: en, es, fr, de, etc. (default: en)"},
+                        },
+                        "required": ["file_path"],
+                    },
+                },
+            },
         ] + self._custom_schemas  # append @function_tool schemas
 
     # Tool schema → internal tool name mapping
@@ -1086,6 +1389,25 @@ class ToolRegistry:
         "grok_chat": ("grok_chat", lambda a: a),
         "grok_analyze_image": ("grok_analyze_image", lambda a: a),
         "grok_generate_image": ("grok_generate_image", lambda a: a),
+        # Document tools
+        "create_document": ("create_document", lambda a: a),
+        "create_spreadsheet": ("create_spreadsheet", lambda a: a),
+        "create_pdf": ("create_pdf", lambda a: a),
+        "create_presentation": ("create_presentation", lambda a: a),
+        "read_document": ("read_document", lambda a: a),
+        "open_document": ("open_document", lambda a: a),
+        # Email tools
+        "email_send": ("email_send", lambda a: a),
+        "email_read": ("email_read", lambda a: a),
+        # Calendar tools
+        "calendar_list_events": ("calendar_list_events", lambda a: a),
+        "calendar_add_event": ("calendar_add_event", lambda a: a),
+        "calendar_delete_event": ("calendar_delete_event", lambda a: a),
+        # Clipboard tools
+        "clipboard_copy": ("clipboard_copy", lambda a: a),
+        "clipboard_paste": ("clipboard_paste", lambda a: a),
+        # OCR
+        "ocr_extract": ("ocr_extract", lambda a: a),
     }
 
     async def execute_schema_tool(
@@ -2242,3 +2564,353 @@ class ToolRegistry:
             images = result.get("images", [])
             return f"🎨 **Grok Image**: Generated {len(images)} image(s)\n" + "\n".join(f"  📁 {p}" for p in images)
         return f"❌ Grok image generation error: {result.get('error')}"
+
+    # ========== DOCUMENT TOOLS ==========
+
+    async def _create_document_tool(self, params: Dict) -> str:
+        """Create a Word document"""
+        result = await self.document_skill.create_word(
+            filename=params.get("filename", "document.docx"),
+            title=params.get("title", ""),
+            content=params.get("content", ""),
+            paragraphs=params.get("paragraphs"),
+            table_data=params.get("table_data"),
+            output_dir=params.get("output_dir"),
+        )
+        if result.get("success"):
+            return f"📄 Word document created: **{result['path']}**"
+        return f"❌ {result.get('error')}"
+
+    async def _create_spreadsheet_tool(self, params: Dict) -> str:
+        """Create an Excel spreadsheet"""
+        result = await self.document_skill.create_spreadsheet(
+            filename=params.get("filename", "spreadsheet.xlsx"),
+            data=params.get("data"),
+            headers=params.get("headers"),
+            sheets=params.get("sheets"),
+            output_dir=params.get("output_dir"),
+        )
+        if result.get("success"):
+            sheets = result.get("sheets", [])
+            return f"📊 Spreadsheet created: **{result['path']}** ({len(sheets)} sheet(s))"
+        return f"❌ {result.get('error')}"
+
+    async def _create_pdf_tool(self, params: Dict) -> str:
+        """Create a PDF document"""
+        result = await self.document_skill.create_pdf(
+            filename=params.get("filename", "document.pdf"),
+            title=params.get("title", ""),
+            content=params.get("content", ""),
+            paragraphs=params.get("paragraphs"),
+            table_data=params.get("table_data"),
+            output_dir=params.get("output_dir"),
+        )
+        if result.get("success"):
+            return f"📕 PDF created: **{result['path']}**"
+        return f"❌ {result.get('error')}"
+
+    async def _create_presentation_tool(self, params: Dict) -> str:
+        """Create a PowerPoint presentation"""
+        result = await self.document_skill.create_presentation(
+            filename=params.get("filename", "presentation.pptx"),
+            title=params.get("title", ""),
+            subtitle=params.get("subtitle", ""),
+            slides=params.get("slides"),
+            output_dir=params.get("output_dir"),
+        )
+        if result.get("success"):
+            count = result.get("slide_count", 0)
+            return f"📽️ Presentation created: **{result['path']}** ({count} slides)"
+        return f"❌ {result.get('error')}"
+
+    async def _read_document_tool(self, params: Dict) -> str:
+        """Read content from a document file"""
+        file_path = params.get("file_path", "")
+        if not file_path:
+            return "⚠️ Please provide a file_path."
+        result = await self.document_skill.read_document(file_path)
+        if result.get("success"):
+            text = result.get("text", "")
+            fmt = result.get("format", "unknown")
+            # Truncate for LLM context if very long
+            if len(text) > 8000:
+                text = text[:8000] + f"\n\n... (truncated, {len(result.get('text', ''))} chars total)"
+            return f"📄 **{fmt.upper()} content** ({file_path}):\n\n{text}"
+        return f"❌ {result.get('error')}"
+
+    async def _open_document_tool(self, params: Dict) -> str:
+        """Open a document with the default application"""
+        file_path = params.get("file_path", "")
+        if not file_path:
+            return "⚠️ Please provide a file_path."
+        result = await self.document_skill.open_document(file_path)
+        if result.get("success"):
+            return f"✅ Opened **{result['opened']}** ({result['system']})"
+        return f"❌ {result.get('error')}"
+
+    # ========== EMAIL TOOLS (SMTP/IMAP) ==========
+
+    async def _email_send_tool(self, params: Dict) -> str:
+        """Send email via SMTP with optional attachments"""
+        host = getattr(self.config, "smtp_host", None)
+        if not host:
+            return (
+                "⚠️ SMTP not configured. Add to .env:\n"
+                "  SMTP_HOST=smtp.gmail.com\n"
+                "  SMTP_USER=you@gmail.com\n"
+                "  SMTP_PASSWORD=your-app-password"
+            )
+
+        to = params.get("to", "")
+        subject = params.get("subject", "(no subject)")
+        body = params.get("body", "")
+        cc = params.get("cc", "")
+        attachments = params.get("attachments", [])
+
+        if not to:
+            return "⚠️ Missing 'to' — who should I send the email to?"
+
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.base import MIMEBase
+            from email import encoders
+
+            msg = MIMEMultipart()
+            msg["From"] = getattr(self.config, "smtp_from", None) or self.config.smtp_user
+            msg["To"] = to
+            msg["Subject"] = subject
+            if cc:
+                msg["Cc"] = cc
+            msg.attach(MIMEText(body, "plain"))
+
+            # Attach files
+            for fpath in attachments:
+                p = Path(fpath)
+                if p.exists():
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(p.read_bytes())
+                    encoders.encode_base64(part)
+                    part.add_header("Content-Disposition", f"attachment; filename={p.name}")
+                    msg.attach(part)
+
+            port = int(getattr(self.config, "smtp_port", 587))
+            recipients = [to] + ([c.strip() for c in cc.split(",") if c.strip()] if cc else [])
+
+            with smtplib.SMTP(host, port) as server:
+                server.starttls()
+                server.login(self.config.smtp_user, self.config.smtp_password)
+                server.send_message(msg, to_addrs=recipients)
+
+            att_note = f" ({len(attachments)} attachment(s))" if attachments else ""
+            logger.info(f"📧 Email sent to {to}: {subject}")
+            return f"✅ Email sent to **{to}**{att_note}\nSubject: {subject}"
+
+        except Exception as e:
+            logger.error(f"Email send failed: {e}")
+            return f"❌ Failed to send email: {e}"
+
+    async def _email_read_tool(self, params: Dict) -> str:
+        """Read emails via IMAP"""
+        host = getattr(self.config, "imap_host", None)
+        if not host:
+            return (
+                "⚠️ IMAP not configured. Add to .env:\n"
+                "  IMAP_HOST=imap.gmail.com\n"
+                "  IMAP_USER=you@gmail.com\n"
+                "  IMAP_PASSWORD=your-app-password"
+            )
+
+        count = int(params.get("count", 5))
+        folder = params.get("folder", "INBOX")
+        unread_only = params.get("unread_only", False)
+
+        try:
+            import imaplib
+            import email as email_lib
+            from email.header import decode_header
+
+            port = int(getattr(self.config, "imap_port", 993))
+            with imaplib.IMAP4_SSL(host, port) as imap:
+                imap.login(
+                    getattr(self.config, "imap_user", None) or self.config.smtp_user,
+                    getattr(self.config, "imap_password", None) or self.config.smtp_password,
+                )
+                imap.select(folder, readonly=True)
+
+                search_criteria = "UNSEEN" if unread_only else "ALL"
+                _, data = imap.search(None, search_criteria)
+                ids = data[0].split()
+                if not ids:
+                    return f"📧 No {'unread ' if unread_only else ''}emails in {folder}."
+
+                latest = ids[-count:]
+                latest.reverse()
+                results = []
+                for mid in latest:
+                    _, msg_data = imap.fetch(mid, "(RFC822)")
+                    raw = msg_data[0][1]
+                    msg = email_lib.message_from_bytes(raw)
+                    subj = ""
+                    for part, enc in decode_header(msg["Subject"] or ""):
+                        subj += (
+                            part.decode(enc or "utf-8")
+                            if isinstance(part, bytes)
+                            else str(part)
+                        )
+                    frm = msg["From"] or ""
+                    date = msg["Date"] or ""
+
+                    # Extract body snippet
+                    snippet = ""
+                    if msg.is_multipart():
+                        for p in msg.walk():
+                            if p.get_content_type() == "text/plain":
+                                snippet = p.get_payload(decode=True).decode(errors="replace")[:200]
+                                break
+                    else:
+                        payload = msg.get_payload(decode=True)
+                        if payload:
+                            snippet = payload.decode(errors="replace")[:200]
+
+                    results.append(
+                        f"• **{subj}**\n  From: {frm}\n  Date: {date}\n  Preview: {snippet.strip()}"
+                    )
+
+            return f"📧 **Latest {len(results)} emails ({folder}):**\n\n" + "\n\n".join(results)
+        except Exception as e:
+            logger.error(f"Email read failed: {e}")
+            return f"❌ Failed to read email: {e}"
+
+    # ========== CALENDAR TOOLS (LOCAL + GOOGLE) ==========
+
+    async def _calendar_list_events_tool(self, params: Dict) -> str:
+        """List calendar events — tries Google Calendar first, falls back to local"""
+        source = params.get("source", "auto")
+        days = int(params.get("days_ahead", 7))
+
+        # Try Google Calendar
+        if source in ("auto", "google") and self.google_calendar_skill.service:
+            try:
+                events = await self.google_calendar_skill.list_events(
+                    days_ahead=days, max_results=15
+                )
+                if events:
+                    result = "📅 **Upcoming Events (Google Calendar):**\n\n"
+                    for ev in events:
+                        result += f"• **{ev['summary']}**\n"
+                        result += f"  📆 {ev['start']}\n"
+                        if ev.get("location"):
+                            result += f"  📍 {ev['location']}\n"
+                        if ev.get("description"):
+                            result += f"  📝 {ev['description']}\n"
+                        result += f"  ID: {ev['id']}\n\n"
+                    return result.strip()
+                return "📅 No upcoming events in Google Calendar."
+            except Exception as e:
+                logger.warning(f"Google Calendar failed, falling back to local: {e}")
+
+        # Fall back to local calendar
+        return await self._calendar_tool({"action": "list"})
+
+    async def _calendar_add_event_tool(self, params: Dict) -> str:
+        """Add a calendar event — tries Google Calendar first, falls back to local"""
+        source = params.get("source", "auto")
+        title = params.get("title", "Untitled Event")
+        date_str = params.get("date", "")
+        duration = int(params.get("duration_minutes", 60))
+        description = params.get("description", "")
+        location = params.get("location", "")
+
+        if not date_str:
+            return "⚠️ Please provide a date/time (e.g., '2026-02-20 15:00')"
+
+        # Try Google Calendar
+        if source in ("auto", "google") and self.google_calendar_skill.service:
+            try:
+                success = await self.google_calendar_skill.add_event(
+                    summary=title,
+                    start_time=date_str,
+                    duration_minutes=duration,
+                    description=description,
+                    location=location,
+                )
+                if success:
+                    return f"✅ Event added to Google Calendar: **{title}** on {date_str}"
+                return "❌ Failed to add event to Google Calendar"
+            except Exception as e:
+                logger.warning(f"Google Calendar add failed, falling back to local: {e}")
+
+        # Fall back to local
+        return await self._calendar_tool({
+            "action": "add", "title": title, "date": date_str, "description": description,
+        })
+
+    async def _calendar_delete_event_tool(self, params: Dict) -> str:
+        """Delete a calendar event"""
+        source = params.get("source", "auto")
+        event_id = params.get("event_id", "")
+
+        if not event_id:
+            return "⚠️ Please provide an event_id to delete."
+
+        # Try Google Calendar
+        if source in ("auto", "google") and self.google_calendar_skill.service:
+            try:
+                success = await self.google_calendar_skill.delete_event(event_id)
+                if success:
+                    return f"✅ Event {event_id} deleted from Google Calendar"
+                return f"❌ Failed to delete event {event_id}"
+            except Exception as e:
+                logger.warning(f"Google Calendar delete failed, falling back to local: {e}")
+
+        # Fall back to local
+        return await self._calendar_tool({"action": "delete", "id": event_id})
+
+    # ========== CLIPBOARD TOOLS ==========
+
+    async def _clipboard_copy_tool(self, params: Dict) -> str:
+        """Copy text to clipboard"""
+        text = params.get("text", "")
+        if not text:
+            return "⚠️ No text provided to copy."
+        result = await self.clipboard_skill.copy(text)
+        if result.get("success"):
+            return f"📋 Copied {result['length']} characters to clipboard"
+        return f"❌ Clipboard error: {result.get('error')}"
+
+    async def _clipboard_paste_tool(self, params: Dict) -> str:
+        """Read from clipboard"""
+        result = await self.clipboard_skill.paste()
+        if result.get("success"):
+            text = result.get("text", "")
+            if not text:
+                return "📋 Clipboard is empty."
+            return f"📋 **Clipboard content** ({result['length']} chars):\n\n{text}"
+        return f"❌ Clipboard error: {result.get('error')}"
+
+    # ========== OCR (DOCUMENT SCANNING) ==========
+
+    async def _ocr_extract_tool(self, params: Dict) -> str:
+        """Extract text from images or scanned PDFs via OCR"""
+        file_path = params.get("file_path", "")
+        language = params.get("language", "en")
+
+        if not file_path:
+            return "⚠️ Please provide a file_path to an image or PDF."
+
+        result = await self.ocr_skill.extract_text(
+            file_path=file_path, language=language
+        )
+        if result.get("success"):
+            text = result.get("text", "")
+            engine = result.get("engine", "unknown")
+            conf = result.get("confidence")
+            conf_str = f" (confidence: {conf:.1%})" if conf else ""
+
+            if len(text) > 8000:
+                text = text[:8000] + f"\n\n... (truncated, {len(result.get('text', ''))} chars total)"
+
+            return f"📄 **OCR Result** [{engine}{conf_str}]:\n\n{text}"
+        return f"❌ OCR failed: {result.get('error')}"

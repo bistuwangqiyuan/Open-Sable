@@ -43,6 +43,13 @@ google-auth-oauthlib>=1.2.0
 # PDF
 PyPDF2>=3.0.0
 pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+
+# OCR
+easyocr>=1.7.0
+pytesseract>=0.3.10
+pdf2image>=1.17.0
+Pillow>=10.1.0
 
 # Security
 cryptography>=41.0.7

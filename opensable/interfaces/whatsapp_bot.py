@@ -52,6 +52,7 @@ class WhatsAppBot:
 
         self.callback_port = getattr(config, "whatsapp_callback_port", 3334)
         self._webhook_runner = None
+        self._own_wid = None  # Our WhatsApp ID — set on 'ready' event
         
         # Startup filter: ignore old messages for first 30s
         self._startup_time = None
@@ -259,7 +260,12 @@ class WhatsAppBot:
             logger.info("✅ WhatsApp authenticated successfully!")
 
         elif event_type == "ready":
-            logger.info("✅ WhatsApp bot ready to receive messages")
+            wid = event.get("data", {}).get("wid", "")
+            if wid:
+                self._own_wid = wid
+                logger.info(f"✅ WhatsApp bot ready (WID: {wid})")
+            else:
+                logger.info("✅ WhatsApp bot ready to receive messages")
 
         elif event_type == "message":
             # New message received
@@ -302,9 +308,15 @@ class WhatsAppBot:
             is_group = msg_data.get("isGroupMsg", False)
             msg_type = msg_data.get("type", "chat")
 
-            # Skip messages from self
-            if msg_data.get("fromMe"):
+            # Skip messages from self (own account / other bots on same number)
+            if msg_data.get("fromMe") or msg_data.get("fromMe") is True:
                 logger.debug(f"Skipping own message: {text[:30]}")
+                return
+
+            # Extra guard: skip if sender matches our own WhatsApp ID
+            our_id = getattr(self, '_own_wid', None)
+            if our_id and sender == our_id:
+                logger.debug(f"Skipping message from own WID: {text[:30]}")
                 return
             
             # FILTER 1: Ignore old messages during startup grace period

@@ -89,8 +89,9 @@ client.on('auth_failure', (msg) => {
 });
 
 client.on('ready', () => {
-    process.stderr.write('[wwebjs] Client is READY\n');
-    sendEvent('ready', { message: 'WhatsApp bot is ready!' });
+    const wid = client.info && client.info.wid ? client.info.wid._serialized : '';
+    process.stderr.write(`[wwebjs] Client is READY (wid=${wid})\n`);
+    sendEvent('ready', { message: 'WhatsApp bot is ready!', wid });
 });
 
 client.on('disconnected', (reason) => {
@@ -101,6 +102,14 @@ client.on('disconnected', (reason) => {
 // ── Message handling ────────────────────────────────────────────────
 client.on('message_create', async (msg) => {
     try {
+        // Skip own messages — never send them to the agent
+        if (msg.fromMe) {
+            process.stderr.write(
+                `[wwebjs] SKIP own msg type=${msg.type} body="${(msg.body || '').substring(0, 40)}"\n`
+            );
+            return;
+        }
+
         const chat = await msg.getChat();
         const contact = await msg.getContact();
 
