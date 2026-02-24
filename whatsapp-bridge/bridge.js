@@ -212,12 +212,53 @@ app.post('/logout', async (req, res) => {
     }
 });
 
+// ── Cleanup stale browser ───────────────────────────────────────────
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+function cleanupStaleBrowser() {
+    const sessionDir = path.join(__dirname, 'tokens', `session-${sessionName}`);
+    
+    // 1. Kill any Chromium processes using our session directory
+    try {
+        // Find chromium/chrome processes whose cmdline references our session dir
+        const pids = execSync(
+            `ps aux | grep -E 'chrom(e|ium)' | grep '${sessionDir}' | grep -v grep | awk '{print $2}'`,
+            { encoding: 'utf-8', timeout: 5000 }
+        ).trim();
+        if (pids) {
+            for (const pid of pids.split('\n').filter(Boolean)) {
+                try {
+                    process.kill(parseInt(pid), 'SIGKILL');
+                    process.stderr.write(`[bridge] Killed stale Chromium PID ${pid}\n`);
+                } catch (_) {}
+            }
+            // Give OS time to release locks
+            execSync('sleep 1');
+        }
+    } catch (_) {}
+    
+    // 2. Remove Chromium singleton lock files
+    const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
+    for (const lock of lockFiles) {
+        const lockPath = path.join(sessionDir, lock);
+        try {
+            if (fs.existsSync(lockPath)) {
+                fs.unlinkSync(lockPath);
+                process.stderr.write(`[bridge] Removed stale lock: ${lock}\n`);
+            }
+        } catch (_) {}
+    }
+}
+
 // ── Start ───────────────────────────────────────────────────────────
 app.listen(port, () => {
     process.stderr.write(`[bridge] API on :${port}, callbacks to :${callbackPort}\n`);
 });
 
 process.stderr.write('[bridge] Initializing whatsapp-web.js client...\n');
+cleanupStaleBrowser();
 client.initialize();
 
 process.on('SIGINT', async () => {

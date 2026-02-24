@@ -7,6 +7,7 @@ import aiohttp
 import aiohttp.web
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -123,9 +124,76 @@ class WhatsAppBot:
             logger.error(f"Webhook handler error: {e}")
         return aiohttp.web.Response(text="ok")
 
-    async def _start_bridge(self):
-        """Start the Node.js wwebjs bridge"""
+    async def _kill_stale_bridge(self):
+        """Kill any stale bridge.js and its Chromium children before starting fresh."""
+        bridge_port = str(getattr(self.config, "whatsapp_bridge_port", 3333))
+        session_dir = str(self.bridge_dir / "tokens" / f"session-{self.session_name}")
+        killed = []
+
+        # 1. Kill old node bridge.js processes
         try:
+            proc = await asyncio.create_subprocess_shell(
+                "pgrep -f 'node.*bridge.js' || true",
+                stdout=asyncio.subprocess.PIPE,
+            )
+            out, _ = await proc.communicate()
+            for pid in out.decode().strip().split('\n'):
+                pid = pid.strip()
+                if pid and pid.isdigit():
+                    try:
+                        os.kill(int(pid), 9)
+                        killed.append(f"node:{pid}")
+                    except (ProcessLookupError, PermissionError):
+                        pass
+        except Exception:
+            pass
+
+        # 2. Kill orphaned Chromium using our session directory
+        try:
+            proc = await asyncio.create_subprocess_shell(
+                f"pgrep -f 'chrom.*{self.session_name}' || true",
+                stdout=asyncio.subprocess.PIPE,
+            )
+            out, _ = await proc.communicate()
+            for pid in out.decode().strip().split('\n'):
+                pid = pid.strip()
+                if pid and pid.isdigit():
+                    try:
+                        os.kill(int(pid), 9)
+                        killed.append(f"chromium:{pid}")
+                    except (ProcessLookupError, PermissionError):
+                        pass
+        except Exception:
+            pass
+
+        # 3. Kill anything holding our bridge port
+        try:
+            proc = await asyncio.create_subprocess_shell(
+                f"fuser {bridge_port}/tcp 2>/dev/null || true",
+                stdout=asyncio.subprocess.PIPE,
+            )
+            out, _ = await proc.communicate()
+            for pid in out.decode().strip().split():
+                pid = pid.strip()
+                if pid and pid.isdigit():
+                    try:
+                        os.kill(int(pid), 9)
+                        killed.append(f"port{bridge_port}:{pid}")
+                    except (ProcessLookupError, PermissionError):
+                        pass
+        except Exception:
+            pass
+
+        if killed:
+            logger.info(f"🧹 Cleaned up stale processes: {', '.join(killed)}")
+            await asyncio.sleep(1)  # Let OS release resources
+
+    async def _start_bridge(self):
+        """Start the Node.js wwebjs bridge (cleans up stale processes first)"""
+        try:
+            # Kill any leftover processes from previous runs
+            await self._kill_stale_bridge()
+
             bridge_port = str(getattr(self.config, "whatsapp_bridge_port", 3333))
             self.bridge_process = await asyncio.create_subprocess_exec(
                 "node",
@@ -365,7 +433,7 @@ class WhatsAppBot:
             logger.error(f"Error sending message: {e}")
 
     async def stop(self):
-        """Stop WhatsApp bot"""
+        """Stop WhatsApp bot and all child processes"""
         logger.info("Stopping WhatsApp bot...")
         self.running = False
 
@@ -373,8 +441,18 @@ class WhatsAppBot:
             await self._webhook_runner.cleanup()
 
         if self.bridge_process:
-            self.bridge_process.terminate()
-            await self.bridge_process.wait()
+            try:
+                self.bridge_process.terminate()
+                try:
+                    await asyncio.wait_for(self.bridge_process.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    self.bridge_process.kill()
+                    await self.bridge_process.wait()
+            except Exception:
+                pass
+
+        # Final cleanup: kill any leftover chromium/node processes
+        await self._kill_stale_bridge()
 
         logger.info("✅ WhatsApp bot stopped")
 
