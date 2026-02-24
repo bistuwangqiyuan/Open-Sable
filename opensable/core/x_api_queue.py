@@ -55,13 +55,13 @@ ACTION_RISK = {
 
 # Base cooldowns per risk category (seconds)
 DEFAULT_COOLDOWNS = {
-    "passive":    2.0,   # Browsing — 2s between reads
-    "active":     4.0,   # Likes/RTs — 4s gap
-    "aggressive": 8.0,   # Posts/replies — 8s gap
+    "passive":    3.0,   # Browsing — 3s between reads
+    "active":     5.0,   # Likes/RTs — 5s gap
+    "aggressive": 10.0,  # Posts/replies — 10s gap
 }
 
 # Absolute limits
-MIN_COOLDOWN = 1.0      # Never go below 1s
+MIN_COOLDOWN = 1.5      # Never go below 1.5s
 MAX_COOLDOWN = 120.0     # Never exceed 2min between calls
 PERSISTENCE_PATH = Path.home() / ".opensable" / "x_queue_timings.json"
 
