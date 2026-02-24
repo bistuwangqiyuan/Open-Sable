@@ -45,6 +45,10 @@ click>=8.1.7
 # Chat Platforms (lightweight — bot libs are optional)
 aiogram>=3.3.0
 
+# X (Twitter) / Grok
+twikit>=2.3.0
+twikit_grok>=0.0.3
+
 # Testing
 pytest>=7.4.3
 pytest-asyncio>=0.23.2

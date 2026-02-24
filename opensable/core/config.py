@@ -53,6 +53,33 @@ class OpenSableConfig(BaseModel):
     discord_guild_id: Optional[str] = None
     whatsapp_enabled: bool = False
 
+    # X (Twitter) / Grok
+    x_username: Optional[str] = None
+    x_email: Optional[str] = None
+    x_password: Optional[str] = None
+    x_enabled: bool = False
+    x_language: str = "en-US"
+    x_action_delay: int = 2  # seconds between actions (rate limit safety)
+    grok_enabled: bool = False
+
+    # X Autoposter
+    x_autoposter_enabled: bool = False
+    x_post_interval: int = 1800  # seconds between posts (default 30 min)
+    x_topics: str = "geopolitics,tech,ai"
+    x_style: str = "analyst"  # analyst, news, meme, thread
+    x_max_daily_posts: int = 20
+    x_max_daily_engagements: int = 100
+    x_dry_run: bool = False
+    x_custom_feeds: str = ""  # comma-separated RSS URLs
+    x_engage_interval: int = 300  # seconds between engagement sessions
+    x_accounts_to_watch: str = ""  # comma-separated usernames
+    x_reply_probability: float = 0.3
+    x_like_probability: float = 0.6
+    x_retweet_probability: float = 0.2
+    x_follow_probability: float = 0.1
+    x_quote_probability: float = 0.1
+    x_bookmark_probability: float = 0.15
+
     slack_bot_token: Optional[str] = None
     slack_app_token: Optional[str] = None
     slack_signing_secret: Optional[str] = None
@@ -178,6 +205,31 @@ def load_config() -> OpenSableConfig:
         "discord_bot_token": os.getenv("DISCORD_BOT_TOKEN"),
         "discord_guild_id": os.getenv("DISCORD_GUILD_ID"),
         "whatsapp_enabled": os.getenv("WHATSAPP_ENABLED", "false").lower() == "true",
+        # X (Twitter) / Grok
+        "x_username": os.getenv("X_USERNAME"),
+        "x_email": os.getenv("X_EMAIL"),
+        "x_password": os.getenv("X_PASSWORD"),
+        "x_enabled": os.getenv("X_ENABLED", "false").lower() == "true",
+        "x_language": os.getenv("X_LANGUAGE", "en-US"),
+        "x_action_delay": int(os.getenv("X_ACTION_DELAY", "2")),
+        "grok_enabled": os.getenv("GROK_ENABLED", "false").lower() == "true",
+        # X Autoposter
+        "x_autoposter_enabled": os.getenv("X_AUTOPOSTER_ENABLED", "false").lower() == "true",
+        "x_post_interval": int(os.getenv("X_POST_INTERVAL", "1800")),
+        "x_topics": os.getenv("X_TOPICS", "geopolitics,tech,ai"),
+        "x_style": os.getenv("X_STYLE", "analyst"),
+        "x_max_daily_posts": int(os.getenv("X_MAX_DAILY_POSTS", "20")),
+        "x_max_daily_engagements": int(os.getenv("X_MAX_DAILY_ENGAGEMENTS", "100")),
+        "x_dry_run": os.getenv("X_DRY_RUN", "false").lower() == "true",
+        "x_custom_feeds": os.getenv("X_CUSTOM_FEEDS", ""),
+        "x_engage_interval": int(os.getenv("X_ENGAGE_INTERVAL", "300")),
+        "x_accounts_to_watch": os.getenv("X_ACCOUNTS_TO_WATCH", ""),
+        "x_reply_probability": float(os.getenv("X_REPLY_PROBABILITY", "0.3")),
+        "x_like_probability": float(os.getenv("X_LIKE_PROBABILITY", "0.6")),
+        "x_retweet_probability": float(os.getenv("X_RETWEET_PROBABILITY", "0.2")),
+        "x_follow_probability": float(os.getenv("X_FOLLOW_PROBABILITY", "0.1")),
+        "x_quote_probability": float(os.getenv("X_QUOTE_PROBABILITY", "0.1")),
+        "x_bookmark_probability": float(os.getenv("X_BOOKMARK_PROBABILITY", "0.15")),
         "slack_bot_token": os.getenv("SLACK_BOT_TOKEN"),
         "slack_app_token": os.getenv("SLACK_APP_TOKEN"),
         "slack_signing_secret": os.getenv("SLACK_SIGNING_SECRET"),

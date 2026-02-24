@@ -29,6 +29,7 @@ class AutonomousMode:
         self.task_queue: List[Dict] = []
         self.completed_tasks: List[Dict] = []
         self.goal_manager: Optional[GoalManager] = None
+        self.x_autoposter = None
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -51,6 +52,19 @@ class AutonomousMode:
         except ImportError:
             logger.warning("AGI not available, using basic autonomous mode")
 
+        # Initialize X Autoposter if enabled
+        if getattr(self.config, "x_autoposter_enabled", False) and getattr(
+            self.config, "x_enabled", False
+        ):
+            try:
+                from .x_autoposter import XAutoposter
+
+                self.x_autoposter = XAutoposter(self.agent, self.config)
+                asyncio.create_task(self.x_autoposter.start())
+                logger.info("🐦 X Autoposter launched as background task")
+            except Exception as e:
+                logger.error(f"Failed to start X Autoposter: {e}")
+
         self.running = True
 
         # Start main loop
@@ -60,6 +74,8 @@ class AutonomousMode:
         """Stop autonomous operation"""
         logger.info("Stopping autonomous mode...")
         self.running = False
+        if self.x_autoposter:
+            await self.x_autoposter.stop()
 
     async def _autonomous_loop(self):
         """Main autonomous operation loop"""

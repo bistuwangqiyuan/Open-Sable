@@ -15,11 +15,13 @@ from .browser import BrowserEngine
 from .skill_creator import SkillCreator
 
 try:
-    from ..skills import VoiceSkill, ImageSkill, DatabaseSkill, RAGSkill, CodeExecutor, APIClient
+    from ..skills import VoiceSkill, ImageSkill, DatabaseSkill, RAGSkill, CodeExecutor, APIClient, XSkill, GrokSkill
 except ImportError:
     # Graceful fallback if a skill is not available
     from ..skills import VoiceSkill, DatabaseSkill, RAGSkill, CodeExecutor, APIClient
     from ..skills.image_skill import ImageAnalyzer as ImageSkill  # type: ignore
+    XSkill = None  # type: ignore
+    GrokSkill = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +92,10 @@ class ToolRegistry:
         self.code_executor = CodeExecutor(config)
         self.api_client = APIClient(config)
 
+        # X (Twitter) and Grok skills
+        self.x_skill = XSkill(config) if XSkill else None
+        self.grok_skill = GrokSkill(config) if GrokSkill else None
+
     async def initialize(self):
         """Initialize all tools"""
         # Register computer control tools (CRITICAL)
@@ -127,6 +133,25 @@ class ToolRegistry:
         self.register("create_skill", self._create_skill_tool)
         self.register("list_skills", self._list_skills_tool)
 
+        # Register X (Twitter) tools
+        self.register("x_post_tweet", self._x_post_tweet_tool)
+        self.register("x_post_thread", self._x_post_thread_tool)
+        self.register("x_search", self._x_search_tool)
+        self.register("x_get_trends", self._x_get_trends_tool)
+        self.register("x_like", self._x_like_tool)
+        self.register("x_retweet", self._x_retweet_tool)
+        self.register("x_reply", self._x_reply_tool)
+        self.register("x_get_user", self._x_get_user_tool)
+        self.register("x_get_user_tweets", self._x_get_user_tweets_tool)
+        self.register("x_follow", self._x_follow_tool)
+        self.register("x_send_dm", self._x_send_dm_tool)
+        self.register("x_delete_tweet", self._x_delete_tweet_tool)
+
+        # Register Grok AI tools
+        self.register("grok_chat", self._grok_chat_tool)
+        self.register("grok_analyze_image", self._grok_analyze_image_tool)
+        self.register("grok_generate_image", self._grok_generate_image_tool)
+
         # Register desktop control tools
         self.register("desktop_screenshot", self._desktop_screenshot_tool)
         self.register("desktop_click", self._desktop_click_tool)
@@ -163,6 +188,20 @@ class ToolRegistry:
             await self.rag.initialize()
         except Exception as e:
             logger.warning(f"RAG skill initialization failed: {e}")
+
+        # Initialize X (Twitter) skill
+        if self.x_skill:
+            try:
+                await self.x_skill.initialize()
+            except Exception as e:
+                logger.warning(f"X skill initialization failed: {e}")
+
+        # Initialize Grok skill
+        if self.grok_skill:
+            try:
+                await self.grok_skill.initialize()
+            except Exception as e:
+                logger.warning(f"Grok skill initialization failed: {e}")
 
         logger.info(f"Initialized {len(self.tools)} tools")
 
@@ -757,6 +796,241 @@ class ToolRegistry:
                     },
                 },
             },
+            # ── X (Twitter) tools ─────────────────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_post_tweet",
+                    "description": "Post a tweet on X (Twitter). Can include text and optional images/video.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string", "description": "Tweet text (max 280 chars)"},
+                            "media_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Optional list of image/video file paths to attach",
+                            },
+                            "reply_to": {"type": "string", "description": "Tweet ID to reply to (optional)"},
+                        },
+                        "required": ["text"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_post_thread",
+                    "description": "Post a thread (multiple connected tweets) on X. Provide a list of tweet texts in order.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tweets": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of tweet texts in thread order",
+                            },
+                        },
+                        "required": ["tweets"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_search",
+                    "description": "Search for tweets on X by keyword or phrase",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search query"},
+                            "search_type": {"type": "string", "description": "'Latest', 'Top', 'People', or 'Media' (default: Latest)"},
+                            "count": {"type": "integer", "description": "Max results (default 10)"},
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_get_trends",
+                    "description": "Get trending topics on X (Twitter)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "'trending', 'news', 'sports', or 'entertainment'"},
+                        },
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_like",
+                    "description": "Like a tweet on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tweet_id": {"type": "string", "description": "Tweet ID to like"},
+                        },
+                        "required": ["tweet_id"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_retweet",
+                    "description": "Retweet a tweet on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tweet_id": {"type": "string", "description": "Tweet ID to retweet"},
+                        },
+                        "required": ["tweet_id"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_reply",
+                    "description": "Reply to a tweet on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tweet_id": {"type": "string", "description": "Tweet ID to reply to"},
+                            "text": {"type": "string", "description": "Reply text"},
+                        },
+                        "required": ["tweet_id", "text"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_get_user",
+                    "description": "Get a user's profile information on X (followers, bio, etc.)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "username": {"type": "string", "description": "X username (without @)"},
+                        },
+                        "required": ["username"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_get_user_tweets",
+                    "description": "Get recent tweets from a specific X user",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "username": {"type": "string", "description": "X username (without @)"},
+                            "tweet_type": {"type": "string", "description": "'Tweets', 'Replies', 'Media', or 'Likes'"},
+                            "count": {"type": "integer", "description": "Max tweets to return (default 10)"},
+                        },
+                        "required": ["username"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_follow",
+                    "description": "Follow a user on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "username": {"type": "string", "description": "X username to follow (without @)"},
+                        },
+                        "required": ["username"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_send_dm",
+                    "description": "Send a direct message to a user on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "user_id": {"type": "string", "description": "User ID (numeric) to DM"},
+                            "text": {"type": "string", "description": "Message text"},
+                        },
+                        "required": ["user_id", "text"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_delete_tweet",
+                    "description": "Delete one of your own tweets on X",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tweet_id": {"type": "string", "description": "Tweet ID to delete"},
+                        },
+                        "required": ["tweet_id"],
+                    },
+                },
+            },
+            # ── Grok AI tools ─────────────────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "grok_chat",
+                    "description": "Chat with Grok AI (free via your X account). Ask questions, get analysis, brainstorm ideas.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string", "description": "Message/prompt to send to Grok"},
+                            "conversation_id": {"type": "string", "description": "Continue existing conversation (optional)"},
+                        },
+                        "required": ["message"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "grok_analyze_image",
+                    "description": "Send images to Grok AI for analysis/description (vision capability)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "image_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of image file paths to analyze",
+                            },
+                            "prompt": {"type": "string", "description": "Question about the images (default: describe them)"},
+                        },
+                        "required": ["image_paths"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "grok_generate_image",
+                    "description": "Generate images using Grok AI",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "prompt": {"type": "string", "description": "Image generation prompt"},
+                            "save_path": {"type": "string", "description": "Path to save generated image (optional)"},
+                        },
+                        "required": ["prompt"],
+                    },
+                },
+            },
         ] + self._custom_schemas  # append @function_tool schemas
 
     # Tool schema → internal tool name mapping
@@ -795,6 +1069,23 @@ class ToolRegistry:
         "open_app": ("open_app", lambda a: a),
         "window_list": ("window_list", lambda a: a),
         "window_focus": ("window_focus", lambda a: a),
+        # X (Twitter) tools
+        "x_post_tweet": ("x_post_tweet", lambda a: a),
+        "x_post_thread": ("x_post_thread", lambda a: a),
+        "x_search": ("x_search", lambda a: a),
+        "x_get_trends": ("x_get_trends", lambda a: a),
+        "x_like": ("x_like", lambda a: a),
+        "x_retweet": ("x_retweet", lambda a: a),
+        "x_reply": ("x_reply", lambda a: a),
+        "x_get_user": ("x_get_user", lambda a: a),
+        "x_get_user_tweets": ("x_get_user_tweets", lambda a: a),
+        "x_follow": ("x_follow", lambda a: a),
+        "x_send_dm": ("x_send_dm", lambda a: a),
+        "x_delete_tweet": ("x_delete_tweet", lambda a: a),
+        # Grok AI tools
+        "grok_chat": ("grok_chat", lambda a: a),
+        "grok_analyze_image": ("grok_analyze_image", lambda a: a),
+        "grok_generate_image": ("grok_generate_image", lambda a: a),
     }
 
     async def execute_schema_tool(
@@ -1781,3 +2072,173 @@ class ToolRegistry:
         if result.get("success"):
             return f"🪟 {result['message']}"
         return f"❌ {result.get('error')}"
+
+    # ========== X (TWITTER) TOOLS ==========
+
+    async def _x_post_tweet_tool(self, params: Dict) -> str:
+        """Post a tweet on X"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized. Set X_USERNAME, X_EMAIL, X_PASSWORD in .env"
+        text = params.get("text", "")
+        media_paths = params.get("media_paths")
+        reply_to = params.get("reply_to")
+        result = await self.x_skill.post_tweet(text, media_paths=media_paths, reply_to=reply_to)
+        if result.get("success"):
+            url = result.get("url", "")
+            return f"✅ Tweet posted!\n📝 {text[:100]}{'...' if len(text)>100 else ''}\n🔗 {url}"
+        return f"❌ Failed to post tweet: {result.get('error')}"
+
+    async def _x_post_thread_tool(self, params: Dict) -> str:
+        """Post a thread on X"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized. Set X_USERNAME, X_EMAIL, X_PASSWORD in .env"
+        tweets = params.get("tweets", [])
+        if not tweets:
+            return "❌ No tweets provided for thread"
+        result = await self.x_skill.post_thread(tweets)
+        if result.get("success"):
+            url = result.get("thread_url", "")
+            return f"✅ Thread posted ({result['thread_length']} tweets)\n🔗 {url}"
+        return f"❌ Thread failed: {result.get('error')}"
+
+    async def _x_search_tool(self, params: Dict) -> str:
+        """Search tweets on X"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        query = params.get("query", "")
+        search_type = params.get("search_type", "Latest")
+        count = params.get("count", 10)
+        result = await self.x_skill.search_tweets(query, search_type=search_type, count=count)
+        if result.get("success"):
+            tweets = result.get("tweets", [])
+            if not tweets:
+                return f"🔍 No tweets found for '{query}'"
+            lines = []
+            for t in tweets:
+                lines.append(f"  @{t.get('username', '?')}: {t.get('text', '')[:120]}")
+                lines.append(f"    ❤️ {t.get('likes', 0)} | 🔁 {t.get('retweets', 0)}")
+            return f"🔍 Search results for '{query}' ({len(tweets)}):\n" + "\n".join(lines)
+        return f"❌ Search failed: {result.get('error')}"
+
+    async def _x_get_trends_tool(self, params: Dict) -> str:
+        """Get trending topics on X"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        category = params.get("category", "trending")
+        result = await self.x_skill.get_trends(category)
+        if result.get("success"):
+            trends = result.get("trends", [])
+            lines = [f"  {i+1}. {t.get('name', '?')}" for i, t in enumerate(trends)]
+            return f"📈 Trending on X ({category}):\n" + "\n".join(lines)
+        return f"❌ Trends failed: {result.get('error')}"
+
+    async def _x_like_tool(self, params: Dict) -> str:
+        """Like a tweet"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.like_tweet(params.get("tweet_id", ""))
+        return f"❤️ Tweet liked!" if result.get("success") else f"❌ {result.get('error')}"
+
+    async def _x_retweet_tool(self, params: Dict) -> str:
+        """Retweet a tweet"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.retweet(params.get("tweet_id", ""))
+        return f"🔁 Retweeted!" if result.get("success") else f"❌ {result.get('error')}"
+
+    async def _x_reply_tool(self, params: Dict) -> str:
+        """Reply to a tweet"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.reply(params.get("tweet_id", ""), params.get("text", ""))
+        if result.get("success"):
+            return f"💬 Reply posted! {result.get('url', '')}"
+        return f"❌ Reply failed: {result.get('error')}"
+
+    async def _x_get_user_tool(self, params: Dict) -> str:
+        """Get user profile"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.get_user(params.get("username", ""))
+        if result.get("success"):
+            return (
+                f"👤 @{result.get('username')}\n"
+                f"   Name: {result.get('name')}\n"
+                f"   Bio: {result.get('bio', 'N/A')}\n"
+                f"   Followers: {result.get('followers', 0):,}\n"
+                f"   Following: {result.get('following', 0):,}\n"
+                f"   Tweets: {result.get('tweets_count', 0):,}"
+            )
+        return f"❌ {result.get('error')}"
+
+    async def _x_get_user_tweets_tool(self, params: Dict) -> str:
+        """Get a user's tweets"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        username = params.get("username", "")
+        tweet_type = params.get("tweet_type", "Tweets")
+        count = params.get("count", 10)
+        result = await self.x_skill.get_user_tweets(username, tweet_type=tweet_type, count=count)
+        if result.get("success"):
+            tweets = result.get("tweets", [])
+            lines = [f"  - {t.get('text', '')[:140]}" for t in tweets]
+            return f"📜 @{username} tweets ({len(tweets)}):\n" + "\n".join(lines)
+        return f"❌ {result.get('error')}"
+
+    async def _x_follow_tool(self, params: Dict) -> str:
+        """Follow a user"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.follow_user(params.get("username", ""))
+        return f"✅ Followed @{params.get('username')}" if result.get("success") else f"❌ {result.get('error')}"
+
+    async def _x_send_dm_tool(self, params: Dict) -> str:
+        """Send a DM"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.send_dm(params.get("user_id", ""), params.get("text", ""))
+        return f"✉️ DM sent!" if result.get("success") else f"❌ {result.get('error')}"
+
+    async def _x_delete_tweet_tool(self, params: Dict) -> str:
+        """Delete a tweet"""
+        if not self.x_skill or not self.x_skill.is_available():
+            return "❌ X skill not initialized."
+        result = await self.x_skill.delete_tweet(params.get("tweet_id", ""))
+        return f"🗑️ Tweet deleted!" if result.get("success") else f"❌ {result.get('error')}"
+
+    # ========== GROK AI TOOLS ==========
+
+    async def _grok_chat_tool(self, params: Dict) -> str:
+        """Chat with Grok AI"""
+        if not self.grok_skill:
+            return "❌ Grok skill not initialized. Set X_USERNAME, X_EMAIL, X_PASSWORD in .env"
+        message = params.get("message", "")
+        conversation_id = params.get("conversation_id")
+        result = await self.grok_skill.chat(message, conversation_id=conversation_id)
+        if result.get("success"):
+            conv_id = result.get("conversation_id", "")
+            return f"🤖 **Grok**: {result['response']}\n\n_Conversation: {conv_id}_"
+        return f"❌ Grok error: {result.get('error')}"
+
+    async def _grok_analyze_image_tool(self, params: Dict) -> str:
+        """Analyze images with Grok"""
+        if not self.grok_skill:
+            return "❌ Grok skill not initialized."
+        image_paths = params.get("image_paths", [])
+        prompt = params.get("prompt", "Please describe these images in detail.")
+        result = await self.grok_skill.analyze_image(image_paths, prompt)
+        if result.get("success"):
+            return f"👁️ **Grok Vision**: {result['response']}"
+        return f"❌ Grok image analysis error: {result.get('error')}"
+
+    async def _grok_generate_image_tool(self, params: Dict) -> str:
+        """Generate images with Grok"""
+        if not self.grok_skill:
+            return "❌ Grok skill not initialized."
+        prompt = params.get("prompt", "")
+        save_path = params.get("save_path")
+        result = await self.grok_skill.generate_image(prompt, save_path=save_path)
+        if result.get("success"):
+            images = result.get("images", [])
+            return f"🎨 **Grok Image**: Generated {len(images)} image(s)\n" + "\n".join(f"  📁 {p}" for p in images)
+        return f"❌ Grok image generation error: {result.get('error')}"

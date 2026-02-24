@@ -282,4 +282,102 @@ class APIClient:
             return {"success": False, "error": str(e)}
 
 
-__all__ = ["VoiceSkill", "ImageSkill", "DatabaseSkill", "RAGSkill", "CodeExecutor", "APIClient"]
+# X (Twitter) & Grok skills
+class XSkill:
+    """X/Twitter automation wrapper"""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .x_skill import XSkill as XSkillImpl
+            self._impl = XSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"X skill init failed: {e}")
+            return False
+
+    async def post_tweet(self, text, **kwargs):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.post_tweet(text, **kwargs)
+
+    async def post_thread(self, tweets):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.post_thread(tweets)
+
+    async def search_tweets(self, query, **kwargs):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.search_tweets(query, **kwargs)
+
+    async def get_trends(self, category="trending"):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.get_trends(category)
+
+    async def like_tweet(self, tweet_id):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.like_tweet(tweet_id)
+
+    async def retweet(self, tweet_id):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.retweet(tweet_id)
+
+    async def reply(self, tweet_id, text):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.reply(tweet_id, text)
+
+    async def get_user(self, username):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.get_user(username)
+
+    async def get_user_tweets(self, username, **kwargs):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.get_user_tweets(username, **kwargs)
+
+    async def follow_user(self, username):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.follow_user(username)
+
+    async def send_dm(self, user_id, text):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.send_dm(user_id, text)
+
+    async def delete_tweet(self, tweet_id):
+        if not self._impl: raise RuntimeError("X not initialized")
+        return await self._impl.delete_tweet(tweet_id)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+class GrokSkill:
+    """Grok AI via X account wrapper"""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .grok_skill import GrokSkill as GrokSkillImpl
+            self._impl = GrokSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"Grok skill init failed: {e}")
+            return False
+
+    async def chat(self, message, **kwargs):
+        if not self._impl: raise RuntimeError("Grok not initialized")
+        return await self._impl.chat(message, **kwargs)
+
+    async def analyze_image(self, image_paths, prompt="Describe these images.", **kwargs):
+        if not self._impl: raise RuntimeError("Grok not initialized")
+        return await self._impl.analyze_image(image_paths, prompt, **kwargs)
+
+    async def generate_image(self, prompt, **kwargs):
+        if not self._impl: raise RuntimeError("Grok not initialized")
+        return await self._impl.generate_image(prompt, **kwargs)
+
+
+__all__ = ["VoiceSkill", "ImageSkill", "DatabaseSkill", "RAGSkill", "CodeExecutor", "APIClient", "XSkill", "GrokSkill"]

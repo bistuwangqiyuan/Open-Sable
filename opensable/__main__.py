@@ -125,9 +125,23 @@ async def async_main():
 
             autonomous = AutonomousMode(agent, config)
 
-            # Start autonomous operation
+            # Start autonomous operation (autoposter starts inside if configured)
             await autonomous.start()
             return
+
+        # ── X Autoposter (runs alongside any interface mode) ──────────────────
+        x_autoposter = None
+        if getattr(config, "x_autoposter_enabled", False) and getattr(
+            config, "x_enabled", False
+        ):
+            try:
+                from opensable.core.x_autoposter import XAutoposter
+
+                x_autoposter = XAutoposter(agent, config)
+                asyncio.create_task(x_autoposter.start())
+                console.print("[bold blue]🐦 X Autoposter running in background[/bold blue]")
+            except Exception as e:
+                logger.warning(f"X Autoposter failed to start: {e}")
 
         # Start interfaces
         interfaces = []
@@ -210,6 +224,8 @@ async def async_main():
         try:
             await asyncio.gather(*[interface.start() for interface in interfaces])
         finally:
+            if x_autoposter:
+                await x_autoposter.stop()
             if mobile_relay:
                 await mobile_relay.stop()
             if local_node:
