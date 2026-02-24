@@ -36,6 +36,9 @@ class OpenSableConfig(BaseModel):
     kimi_api_key: Optional[str] = None
     qwen_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
+    openwebui_api_key: Optional[str] = None
+    openwebui_api_url: Optional[str] = None
+    openwebui_model: Optional[str] = None
 
     # Chat Platforms
     telegram_bot_token: Optional[str] = None
@@ -189,6 +192,9 @@ def load_config() -> OpenSableConfig:
         "kimi_api_key": os.getenv("KIMI_API_KEY") or os.getenv("MOONSHOT_API_KEY"),
         "qwen_api_key": os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY"),
         "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
+        "openwebui_api_key": os.getenv("OPENWEBUI_API_KEY"),
+        "openwebui_api_url": os.getenv("OPENWEBUI_API_URL"),
+        "openwebui_model": os.getenv("OPENWEBUI_MODEL"),
         "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
         "telegram_allowed_users": [
             u.strip() for u in os.getenv("TELEGRAM_ALLOWED_USERS", "").split(",") if u.strip()

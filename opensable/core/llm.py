@@ -291,6 +291,7 @@ def get_llm(config):
             ("kimi", "kimi_api_key"),
             ("qwen", "qwen_api_key"),
             ("openrouter", "openrouter_api_key"),
+            ("openwebui", "openwebui_api_key"),
         ]
         for provider, key_attr in _CLOUD_FALLBACK_ORDER:
             if getattr(config, key_attr, None):
@@ -302,7 +303,8 @@ def get_llm(config):
             "OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, "
             "DEEPSEEK_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, "
             "TOGETHER_API_KEY, XAI_API_KEY, COHERE_API_KEY, "
-            "KIMI_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY"
+            "KIMI_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY, "
+            "OPENWEBUI_API_KEY + OPENWEBUI_API_URL"
         )
 
 
@@ -354,6 +356,11 @@ class CloudLLM:
             "openrouter_api_key",
             "openai/gpt-4o-mini",
         ),
+        "openwebui": (
+            None,  # user sets OPENWEBUI_API_URL in .env
+            "openwebui_api_key",
+            "llama3.2:latest",  # user sets OPENWEBUI_MODEL in .env
+        ),
         # Native SDK providers
         "anthropic": (None, "anthropic_api_key", "claude-sonnet-4-20250514"),
         "gemini": (None, "gemini_api_key", "gemini-2.5-flash"),
@@ -372,6 +379,23 @@ class CloudLLM:
         self.available_models = [self.current_model]
         self._client = None
 
+        # Open WebUI: user configures URL and model via .env
+        if provider == "openwebui":
+            custom_url = getattr(config, "openwebui_api_url", None)
+            if not custom_url:
+                raise ValueError(
+                    "OPENWEBUI_API_URL is required for Open WebUI provider. "
+                    "Set it in .env (e.g. https://your-server.com/api)"
+                )
+            # Ensure URL ends with OpenAI-compatible path
+            self._openwebui_base_url = custom_url.rstrip("/")
+            if not self._openwebui_base_url.endswith(("/v1", "/api")):
+                self._openwebui_base_url += ""  # keep as-is, user knows their URL
+            custom_model = getattr(config, "openwebui_model", None)
+            if custom_model:
+                self.current_model = custom_model
+                self.available_models = [custom_model]
+
     def _get_api_key(self) -> str:
         """Retrieve the API key for the current provider from config."""
         _, key_attr, _ = self._PROVIDERS[self.provider]
@@ -385,13 +409,16 @@ class CloudLLM:
     # ── OpenAI-compatible providers ──────────────────────────────────────
 
     async def _openai_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
-        """Works for openai, deepseek, groq, together, xai, mistral."""
+        """Works for openai, deepseek, groq, together, xai, mistral, openwebui."""
         try:
             from openai import AsyncOpenAI
         except ImportError:
             raise ImportError("pip install openai  — required for OpenAI-compatible providers")
 
         base_url, _, _ = self._PROVIDERS[self.provider]
+        # Open WebUI: URL comes from config, not hardcoded in _PROVIDERS
+        if self.provider == "openwebui":
+            base_url = getattr(self, "_openwebui_base_url", base_url)
         client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
 
         kwargs: dict = {"model": self.current_model, "messages": messages}
@@ -651,6 +678,7 @@ class CloudLLM:
         "kimi",
         "qwen",
         "openrouter",
+        "openwebui",
     }
 
     async def invoke_with_tools(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
