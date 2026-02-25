@@ -889,7 +889,17 @@ class SableAgent:
                             for tc, r in zip(all_tool_calls, results)
                             if tc["name"] == "execute_code" and "❌" in r
                         )
-                        messages.append({"role": "assistant", "content": f"Used tools: {names}"})
+                        # Proper tool-use protocol: assistant message + tool results
+                        messages.append({
+                            "role": "assistant",
+                            "content": f"Calling tool(s): {names}",
+                        })
+                        for tc, r in zip(all_tool_calls, results):
+                            messages.append({
+                                "role": "tool",
+                                "name": tc["name"],
+                                "content": str(r),
+                            })
                         messages.append(
                             {
                                 "role": "user",
@@ -912,9 +922,16 @@ class SableAgent:
                             replanned = await self._replan(plan, step_result, base_system)
                             if replanned and plan.next_step():
                                 await self._notify_progress(f"📋 Revised plan:\n{plan.summary()}")
-                                messages.append(
-                                    {"role": "assistant", "content": f"Step failed:\n{step_result}"}
-                                )
+                                messages.append({
+                                    "role": "assistant",
+                                    "content": f"Calling tool(s): {names}",
+                                })
+                                for tc, r in zip(all_tool_calls, results):
+                                    messages.append({
+                                        "role": "tool",
+                                        "name": tc["name"],
+                                        "content": str(r),
+                                    })
                                 messages.append(
                                     {
                                         "role": "user",
@@ -933,9 +950,16 @@ class SableAgent:
                             await self._notify_progress(
                                 f"📋 Step {plan.current_step}/{len(plan.steps)}: {plan.next_step()}"
                             )
-                            messages.append(
-                                {"role": "assistant", "content": f"Results:\n{step_result}"}
-                            )
+                            messages.append({
+                                "role": "assistant",
+                                "content": f"Calling tool(s): {names}",
+                            })
+                            for tc, r in zip(all_tool_calls, results):
+                                messages.append({
+                                    "role": "tool",
+                                    "name": tc["name"],
+                                    "content": str(r),
+                                })
                             messages.append(
                                 {
                                     "role": "user",
@@ -948,11 +972,20 @@ class SableAgent:
                             break
                     else:
                         last_result = "\n".join(results)
-                        messages.append({"role": "assistant", "content": f"Used tools: {names}"})
+                        messages.append({
+                            "role": "assistant",
+                            "content": f"Calling tool(s): {names}",
+                        })
+                        for tc, r in zip(all_tool_calls, results):
+                            messages.append({
+                                "role": "tool",
+                                "name": tc["name"],
+                                "content": str(r),
+                            })
                         messages.append(
                             {
                                 "role": "user",
-                                "content": f"Tool results:\n{last_result}\n\nNow answer: {task}",
+                                "content": f"Using the tool results above, answer: {task}",
                             }
                         )
                 else:

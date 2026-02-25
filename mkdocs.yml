@@ -1,0 +1,75 @@
+site_name: Open-Sable Documentation
+site_description: "Your personal AI that actually does things — autonomous, local, and yours forever"
+site_url: https://opensable.dev/docs
+repo_url: https://github.com/IdeoaLabs/Open-Sable
+repo_name: IdeoaLabs/Open-Sable
+docs_dir: docs-site
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Guides:
+      - API Reference: guides/api-reference.md
+      - Auto-Adaptive AI: guides/auto-adaptive.md
+      - Web Scraping: guides/web-scraping.md
+      - Trading: guides/trading.md
+      - Userbot: guides/userbot.md
+      - Self-Modification: guides/self-modification.md
+  - Architecture:
+      - Security: architecture/security.md
+      - Production Deployment: architecture/production.md
+  - Contributing: contributing.md

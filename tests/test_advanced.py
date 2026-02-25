@@ -97,7 +97,7 @@ async def test_phase_2():
     # Test 1: Voice Handler
     print("\n1️⃣ Voice Handler")
     try:
-        from opensable.skills.voice_skill import VoiceSkill
+        from opensable.skills.media.voice_skill import VoiceSkill
 
         voice = VoiceSkill(config)
         print("   ✅ Voice skill available")

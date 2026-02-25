@@ -1,4 +1,13 @@
-"""Skills package for Open-Sable - High-level wrappers for all advanced capabilities"""
+"""Skills package for Open-Sable - High-level wrappers for all advanced capabilities.
+
+Organized into subpackages:
+  - social/   — X (Twitter), Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
+  - media/    — Image, Voice, OCR
+  - data/     — Database, RAG, File Manager, Documents, Clipboard
+  - automation/ — Code Executor, API Client, Browser, Scraper, Email, Calendar
+
+All classes are re-exported here for backward compatibility.
+"""
 
 import asyncio
 import logging
@@ -18,7 +27,7 @@ class VoiceSkill:
     async def initialize(self):
         """Initialize voice engines"""
         try:
-            from .voice_skill import TTSEngine, STTEngine
+            from .media.voice_skill import TTSEngine, STTEngine
 
             self._tts_engine = TTSEngine(self.config)
             self._stt_engine = STTEngine(self.config)
@@ -52,7 +61,7 @@ class ImageSkill:
     async def initialize(self):
         """Initialize image engines"""
         try:
-            from .image_skill import ImageGenerator, ImageAnalyzer
+            from .media.image_skill import ImageGenerator, ImageAnalyzer
 
             self._generator = ImageGenerator(
                 provider=getattr(self.config, "image_api", "stable-diffusion"),
@@ -107,7 +116,7 @@ class ImageSkill:
     async def ocr(self, image_path: str, language: str = "eng") -> dict:
         """Extract text from image"""
         try:
-            from .image_skill import perform_ocr
+            from .media.image_skill import perform_ocr
 
             result = perform_ocr(image_path, language)
             if result.success:
@@ -138,7 +147,7 @@ class DatabaseSkill:
     ) -> dict:
         """Execute SQL query"""
         try:
-            from .database_skill import DatabaseManager, DatabaseConfig
+            from .data.database_skill import DatabaseManager, DatabaseConfig
 
             db_config = DatabaseConfig(type=db_type, database=database)
 
@@ -163,7 +172,7 @@ class RAGSkill:
     async def initialize(self):
         """Initialize vector store"""
         try:
-            from .rag_skill import RAGSystem
+            from .data.rag_skill import RAGSystem
 
             persist_dir = str(getattr(self.config, "vector_db_path", "./data/vectordb"))
             self._store = RAGSystem(persist_directory=persist_dir)
@@ -262,7 +271,7 @@ class APIClient:
     ) -> dict:
         """Make HTTP request"""
         try:
-            from .api_client import APIClient as APIClientImpl
+            from .automation.api_client import APIClient as APIClientImpl
 
             client = APIClientImpl(
                 base_url=getattr(self.config, "api_base_url", "") or url.rsplit("/", 1)[0],
@@ -308,7 +317,7 @@ class XSkill:
 
     async def initialize(self):
         try:
-            from .x_skill import XSkill as XSkillImpl
+            from .social.x_skill import XSkill as XSkillImpl
             self._impl = XSkillImpl(self.config)
             result = await self._impl.initialize()
             # Register impl with the queue
@@ -385,7 +394,7 @@ class GrokSkill:
 
     async def initialize(self):
         try:
-            from .grok_skill import GrokSkill as GrokSkillImpl
+            from .social.grok_skill import GrokSkill as GrokSkillImpl
             self._impl = GrokSkillImpl(self.config)
             result = await self._impl.initialize()
             # Register impl with the queue
@@ -428,7 +437,7 @@ class InstagramSkill:
 
     async def initialize(self):
         try:
-            from .instagram_skill import InstagramSkill as InstagramSkillImpl
+            from .social.instagram_skill import InstagramSkill as InstagramSkillImpl
             self._impl = InstagramSkillImpl(self.config)
             return await self._impl.initialize()
         except Exception as e:
@@ -528,7 +537,7 @@ class FacebookSkill:
 
     async def initialize(self):
         try:
-            from .facebook_skill import FacebookSkill as FacebookSkillImpl
+            from .social.facebook_skill import FacebookSkill as FacebookSkillImpl
             self._impl = FacebookSkillImpl(self.config)
             return await self._impl.initialize()
         except Exception as e:
@@ -592,7 +601,7 @@ class LinkedInSkill:
 
     async def initialize(self):
         try:
-            from .linkedin_skill import LinkedInSkill as LinkedInSkillImpl
+            from .social.linkedin_skill import LinkedInSkill as LinkedInSkillImpl
             self._impl = LinkedInSkillImpl(self.config)
             return await self._impl.initialize()
         except Exception as e:
@@ -664,7 +673,7 @@ class TikTokSkill:
 
     async def initialize(self):
         try:
-            from .tiktok_skill import TikTokSkill as TikTokSkillImpl
+            from .social.tiktok_skill import TikTokSkill as TikTokSkillImpl
             self._impl = TikTokSkillImpl(self.config)
             return await self._impl.initialize()
         except Exception as e:
@@ -724,7 +733,7 @@ class YouTubeSkill:
 
     async def initialize(self):
         try:
-            from .youtube_skill import YouTubeSkill as YouTubeSkillImpl
+            from .social.youtube_skill import YouTubeSkill as YouTubeSkillImpl
             self._impl = YouTubeSkillImpl(self.config)
             return await self._impl.initialize()
         except Exception as e:

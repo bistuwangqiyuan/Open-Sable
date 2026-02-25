@@ -6,7 +6,7 @@ Demonstrates various scraping techniques inspired by Maxun.
 
 import asyncio
 import json
-from opensable.skills.advanced_scraper import (
+from opensable.skills.automation.advanced_scraper import (
     AdvancedScraper,
     ScrapingRecipe,
     ScrapingAction,

@@ -13,15 +13,15 @@ import json
 from opensable.core.gateway import GatewayServer
 from opensable.core.session_manager import SessionManager
 from opensable.core.config import Config
-from opensable.skills.code_executor import CodeExecutor, ExecutionConfig
-from opensable.skills.file_manager import FileManager
-from opensable.skills.database_skill import DatabaseManager, DatabaseConfig
-from opensable.skills.api_client import APIClient, APIAuth, AuthType
-from opensable.skills.rag_skill import RAGSystem
+from opensable.skills.automation.code_executor import CodeExecutor, ExecutionConfig
+from opensable.skills.data.file_manager import FileManager
+from opensable.skills.data.database_skill import DatabaseManager, DatabaseConfig
+from opensable.skills.automation.api_client import APIClient, APIAuth, AuthType
+from opensable.skills.data.rag_skill import RAGSystem
 from opensable.core.monitoring import MetricsCollector, HealthChecker
 
 try:
-    from opensable.skills.advanced_scraper import (
+    from opensable.skills.automation.advanced_scraper import (
         AdvancedScraper,
         ScrapingRecipe,
         ExtractionRule,
@@ -32,7 +32,7 @@ try:
 except ImportError:
     SCRAPER_AVAILABLE = False
 
-from opensable.skills.image_skill import ImageGenerator, OCREngine, ImageAnalyzer
+from opensable.skills.media.image_skill import ImageGenerator, OCREngine, ImageAnalyzer
 from opensable.core.advanced_ai import PromptLibrary
 from opensable.core.enterprise import MultiTenancy
 from opensable.core.workflow_persistence import WorkflowEngine, WorkflowLibrary
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
-@click.version_option(version="1.0.0")
+@click.version_option(version="1.1.0")
 def cli():
     """🚀 Open-Sable - Personal AI Assistant (100% Feature Parity)"""
     pass

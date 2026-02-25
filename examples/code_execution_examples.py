@@ -5,7 +5,7 @@ Demonstrates Python, JavaScript, and Bash execution with Docker isolation.
 """
 
 import asyncio
-from opensable.skills.code_executor import CodeExecutor, ExecutionConfig, Language
+from opensable.skills.automation.code_executor import CodeExecutor, ExecutionConfig, Language
 
 
 async def main():

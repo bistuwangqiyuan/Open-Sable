@@ -2,7 +2,7 @@
 Tests for Image Skill - Generation, OCR, Analysis.
 """
 
-from opensable.skills.image_skill import (
+from opensable.skills.media.image_skill import (
     ImageGenerator,
     OCREngine,
     ImageAnalyzer,

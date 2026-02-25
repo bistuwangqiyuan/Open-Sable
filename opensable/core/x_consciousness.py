@@ -1336,7 +1336,7 @@ REASONING: <explanation>"""
         try:
             grok = getattr(self.agent.tools, "grok_skill", None)
             if grok:
-                from opensable.skills.grok_skill import TWIKIT_GROK_AVAILABLE
+                from opensable.skills.social.grok_skill import TWIKIT_GROK_AVAILABLE
                 if TWIKIT_GROK_AVAILABLE:
                     result = await grok.chat(f"{system}\n\n{user}")
                     if result.get("success"):

@@ -3,12 +3,14 @@ Open-Sable Multi-Agent Orchestration
 
 Coordinates multiple AI agents working together on complex tasks.
 Supports agent delegation, parallel execution, result aggregation,
-and distributed coordination across network nodes via the Gateway.
+shared memory (blackboard), crew-style high-level API, and
+distributed coordination across network nodes via the Gateway.
 """
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any
+import time as _time
+from typing import Dict, List, Optional, Any, Callable, Awaitable
 from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass, field
@@ -32,6 +34,8 @@ class AgentRole(Enum):
     CODER = "coder"  # Writes code
     REVIEWER = "reviewer"  # Reviews and validates output
     EXECUTOR = "executor"  # Executes tasks
+    PLANNER = "planner"  # Breaks down complex goals into tasks
+    CUSTOM = "custom"  # User-defined role
 
 
 @dataclass
@@ -48,6 +52,58 @@ class AgentTask:
     error: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    max_iterations: int = 10  # guardrail: max LLM turns per task
+    output_schema: Optional[Dict] = None  # expected JSON output structure
+    allow_delegation: bool = False  # can this agent delegate sub-tasks?
+
+
+# ─── Shared Blackboard ──────────────────────────────────────────────────────
+
+
+class SharedBlackboard:
+    """
+    Shared memory space for agents in a workflow or crew.
+
+    Agents can read/write arbitrary keys, enabling data flow beyond
+    simple dependency chains.  Thread-safe via asyncio.Lock.
+    """
+
+    def __init__(self):
+        self._data: Dict[str, Any] = {}
+        self._lock = asyncio.Lock()
+        self._history: List[Dict[str, Any]] = []  # audit trail
+
+    async def write(self, key: str, value: Any, *, author: str = "system"):
+        async with self._lock:
+            self._data[key] = value
+            self._history.append(
+                {"action": "write", "key": key, "author": author, "ts": _time.time()}
+            )
+
+    async def read(self, key: str, default: Any = None) -> Any:
+        async with self._lock:
+            return self._data.get(key, default)
+
+    async def read_all(self) -> Dict[str, Any]:
+        async with self._lock:
+            return dict(self._data)
+
+    async def append_list(self, key: str, item: Any, *, author: str = "system"):
+        """Append to a list value (create if missing)."""
+        async with self._lock:
+            lst = self._data.setdefault(key, [])
+            lst.append(item)
+            self._history.append(
+                {"action": "append", "key": key, "author": author, "ts": _time.time()}
+            )
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Non-async snapshot (for logging)."""
+        return dict(self._data)
+
+    @property
+    def history(self) -> List[Dict[str, Any]]:
+        return list(self._history)
 
 
 class AgentPool:
@@ -84,6 +140,11 @@ class AgentPool:
             "You are the Reviewer agent. You critically evaluate work "
             "for accuracy, completeness, and quality. Point out issues "
             "and suggest specific improvements."
+        ),
+        AgentRole.PLANNER: (
+            "You are the Planner agent. You decompose complex goals into "
+            "ordered, actionable sub-tasks, identify dependencies between "
+            "them, and assign each to the most appropriate specialist role."
         ),
     }
 
@@ -122,6 +183,7 @@ class MultiAgentOrchestrator:
         self.config = config
         self.agent_pool = AgentPool(config)
         self.session_manager = SessionManager()
+        self.blackboard: Optional[SharedBlackboard] = None
 
         # Task tracking
         self.tasks: Dict[str, AgentTask] = {}
@@ -234,21 +296,32 @@ class MultiAgentOrchestrator:
             if not agent:
                 raise ValueError(f"No agent found for role: {task.role}")
 
-            # Build context from dependencies
+            # Build context from dependencies + blackboard
             context = self._build_context(task, previous_results)
 
-            # Build prompt with role-specific instructions
+            # Build prompt with role-specific instructions (+ backstory/goal from CrewMember)
             role_prompt = self.agent_pool.get_role_prompt(task.role)
-            prompt = f"""{role_prompt}
+            input_data = task.input_data if isinstance(task.input_data, dict) else {"data": task.input_data}
 
-Task: {task.description}
+            backstory = input_data.get("backstory", "")
+            goal = input_data.get("goal", "")
 
-Input Data:
-{json.dumps(task.input_data, indent=2) if task.input_data else '(none)'}
+            prompt_parts = [role_prompt]
+            if backstory:
+                prompt_parts.append(f"\nBackstory: {backstory}")
+            if goal:
+                prompt_parts.append(f"Goal: {goal}")
+            prompt_parts.append(f"\nTask: {task.description}")
+            if input_data:
+                # Strip internal meta keys for the prompt
+                display_data = {k: v for k, v in input_data.items() if k not in ("backstory", "goal", "context_keys")}
+                if display_data:
+                    prompt_parts.append(f"\nInput Data:\n{json.dumps(display_data, indent=2)}")
+            if context:
+                prompt_parts.append(f"\n{context}")
+            prompt_parts.append("\nComplete this task and provide your output.")
 
-{context}
-
-Complete this task and provide your output."""
+            prompt = "\n".join(prompt_parts)
 
             # Get session
             session = None
@@ -264,6 +337,12 @@ Complete this task and provide your output."""
             task.status = "completed"
             task.completed_at = datetime.utcnow()
             task.result = result
+
+            # Write result to shared blackboard
+            if self.blackboard:
+                await self.blackboard.write(
+                    f"result:{task.task_id}", result, author=task.role.value
+                )
 
             self.stats["completed_tasks"] += 1
             self.stats["total_agents_used"] += 1
@@ -284,21 +363,28 @@ Complete this task and provide your output."""
             return None
 
     def _build_context(self, task: AgentTask, previous_results: Dict[str, Any]) -> str:
-        """Build context from dependency results"""
-        if not task.dependencies:
-            return ""
+        """Build context from dependency results and shared blackboard."""
+        parts: List[str] = []
 
-        context = "Previous Task Results:\n\n"
+        if task.dependencies:
+            parts.append("Previous Task Results:\n")
+            for dep_id in task.dependencies:
+                dep_task = self.tasks.get(dep_id)
+                result = previous_results.get(dep_id)
+                if dep_task and result:
+                    parts.append(f"Task: {dep_task.description}\nResult: {result}\n")
 
-        for dep_id in task.dependencies:
-            dep_task = self.tasks.get(dep_id)
-            result = previous_results.get(dep_id)
+        # Inject shared blackboard keys requested by the task
+        context_keys = (task.input_data or {}).get("context_keys", []) if isinstance(task.input_data, dict) else []
+        if context_keys and self.blackboard:
+            bb = self.blackboard.snapshot()
+            parts.append("Shared Memory (Blackboard):\n")
+            for key in context_keys:
+                val = bb.get(key)
+                if val is not None:
+                    parts.append(f"  {key}: {json.dumps(val, default=str)[:2000]}\n")
 
-            if dep_task and result:
-                context += f"Task: {dep_task.description}\n"
-                context += f"Result: {result}\n\n"
-
-        return context
+        return "\n".join(parts)
 
     def _task_to_dict(self, task: AgentTask) -> dict:
         """Convert task to dictionary"""
@@ -501,6 +587,139 @@ class WorkflowBuilder:
         )
 
         return [analysis_task, coding_task, review_task]
+
+
+# ─── Crew API (CrewAI-style high-level builder) ─────────────────────────────
+
+
+@dataclass
+class CrewMember:
+    """Declarative definition of a crew member."""
+
+    role: AgentRole
+    goal: str  # what this member is trying to achieve
+    backstory: str = ""  # extra context injected into the system prompt
+    max_iterations: int = 10
+    allow_delegation: bool = False
+    output_schema: Optional[Dict] = None  # JSON schema for structured output
+    custom_prompt: Optional[str] = None  # override the default role prompt
+
+
+@dataclass
+class CrewTask:
+    """Declarative task for a crew."""
+
+    description: str
+    assigned_to: AgentRole  # which crew member handles this
+    expected_output: str = ""  # human description of what to produce
+    depends_on: List[str] = field(default_factory=list)  # indexes (0-based) or labels
+    context_keys: List[str] = field(default_factory=list)  # blackboard keys to inject
+    label: str = ""  # optional human-readable label for dependency referencing
+
+
+class Crew:
+    """
+    High-level orchestration builder (inspired by CrewAI).
+
+    Example::
+
+        crew = Crew(
+            config=config,
+            members=[
+                CrewMember(role=AgentRole.RESEARCHER, goal="Find relevant papers"),
+                CrewMember(role=AgentRole.WRITER, goal="Draft an article"),
+                CrewMember(role=AgentRole.REVIEWER, goal="Ensure quality"),
+            ],
+            tasks=[
+                CrewTask(description="Research quantum computing", assigned_to=AgentRole.RESEARCHER, label="research"),
+                CrewTask(description="Write article from research", assigned_to=AgentRole.WRITER, depends_on=["research"], label="draft"),
+                CrewTask(description="Review the draft", assigned_to=AgentRole.REVIEWER, depends_on=["draft"]),
+            ],
+        )
+        result = await crew.kickoff()
+    """
+
+    def __init__(
+        self,
+        config: Config,
+        members: List[CrewMember],
+        tasks: List[CrewTask],
+        *,
+        verbose: bool = True,
+        shared_memory: Optional[SharedBlackboard] = None,
+        on_task_complete: Optional[Callable[[AgentTask, Any], Awaitable[None]]] = None,
+    ):
+        self.config = config
+        self.members = {m.role: m for m in members}
+        self.crew_tasks = tasks
+        self.verbose = verbose
+        self.blackboard = shared_memory or SharedBlackboard()
+        self._on_task_complete = on_task_complete
+        self._orchestrator = MultiAgentOrchestrator(config)
+        self._orchestrator.blackboard = self.blackboard
+
+    async def kickoff(self, inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Start the crew workflow.
+
+        Args:
+            inputs: Optional initial data to seed the blackboard.
+
+        Returns:
+            Dict with ``results``, ``blackboard``, and per-task metadata.
+        """
+        # Seed blackboard
+        if inputs:
+            for k, v in inputs.items():
+                await self.blackboard.write(k, v, author="crew.kickoff")
+
+        # Convert CrewTasks → AgentTasks with label-based dependency resolution
+        label_to_id: Dict[str, str] = {}
+        agent_tasks: List[AgentTask] = []
+
+        for idx, ct in enumerate(self.crew_tasks):
+            task_id = str(_uuid.uuid4())
+            label = ct.label or f"task_{idx}"
+            label_to_id[label] = task_id
+            label_to_id[str(idx)] = task_id
+
+        for idx, ct in enumerate(self.crew_tasks):
+            label = ct.label or f"task_{idx}"
+            task_id = label_to_id[label]
+
+            member = self.members.get(ct.assigned_to)
+            deps = [label_to_id.get(d, d) for d in ct.depends_on]
+
+            at = AgentTask(
+                task_id=task_id,
+                role=ct.assigned_to,
+                description=ct.description,
+                input_data={
+                    "expected_output": ct.expected_output,
+                    "context_keys": ct.context_keys,
+                    "goal": member.goal if member else "",
+                    "backstory": member.backstory if member else "",
+                },
+                dependencies=deps,
+                max_iterations=member.max_iterations if member else 10,
+                output_schema=ct.expected_output if isinstance(ct.expected_output, dict) else None,
+                allow_delegation=member.allow_delegation if member else False,
+            )
+            agent_tasks.append(at)
+
+        if self.verbose:
+            roles = [ct.assigned_to.value for ct in self.crew_tasks]
+            logger.info(f"🚀 Crew kickoff — {len(self.crew_tasks)} tasks, roles: {roles}")
+
+        # Execute the workflow
+        result = await self._orchestrator.execute_workflow(agent_tasks)
+
+        # Write final results to blackboard
+        for task_id, res in result.get("results", {}).items():
+            await self.blackboard.write(f"result:{task_id}", res, author="crew")
+
+        result["blackboard"] = self.blackboard.snapshot()
+        return result
 
 
 # ─── Distributed Multi-Agent Coordination ────────────────────────────────────

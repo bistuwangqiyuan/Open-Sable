@@ -113,3 +113,6 @@ aggr/
 
 # Website (built separately)
 website/
+
+# MkDocs build output
+site/

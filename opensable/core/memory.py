@@ -1,9 +1,13 @@
 """
-Memory management for Open-Sable - ChromaDB for vectors + JSON for structured data
+Memory management for Open-Sable - ChromaDB for vectors + JSON for structured data.
+Structured memory is encrypted at rest using Fernet symmetric encryption.
 """
 
+import base64
+import hashlib
 import logging
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -12,8 +16,18 @@ import chromadb
 logger = logging.getLogger(__name__)
 
 
+def _derive_key(secret: str) -> bytes:
+    """Derive a 32-byte (URL-safe base64) Fernet key from an arbitrary secret string."""
+    raw = hashlib.sha256(secret.encode()).digest()
+    return base64.urlsafe_b64encode(raw)
+
+
 class MemoryManager:
-    """Manages both vector and structured memory"""
+    """Manages both vector and structured memory.
+
+    Structured memory (data/memory.json) is encrypted at rest using Fernet.
+    The encryption key is derived from the MEMORY_SECRET env var (or a default).
+    """
 
     def __init__(self, config):
         self.config = config
@@ -21,6 +35,16 @@ class MemoryManager:
         self.collection = None
         self.structured_memory_path = Path("./data/memory.json")
         self.structured_memory = {}
+
+        # Encryption setup — Fernet is an optional dependency
+        self._fernet = None
+        try:
+            from cryptography.fernet import Fernet
+            secret = os.environ.get("MEMORY_SECRET") or getattr(config, "memory_secret", None) or "opensable-default-key"
+            self._fernet = Fernet(_derive_key(secret))
+            logger.debug("Memory encryption enabled (Fernet)")
+        except ImportError:
+            logger.info("cryptography package not installed — memory stored in plaintext. pip install cryptography to enable encryption.")
 
     async def initialize(self):
         """Initialize memory systems"""
@@ -34,10 +58,35 @@ class MemoryManager:
             name="opensable_memory", metadata={"description": "User interactions and context"}
         )
 
-        # Load structured memory
+        # Load structured memory (handles encrypted, plaintext, or missing)
         if self.structured_memory_path.exists():
-            with open(self.structured_memory_path, "r") as f:
-                self.structured_memory = json.load(f)
+            raw = self.structured_memory_path.read_bytes()
+            loaded = False
+
+            # Try decrypting first (encrypted file)
+            if self._fernet and raw:
+                try:
+                    decrypted = self._fernet.decrypt(raw)
+                    self.structured_memory = json.loads(decrypted)
+                    loaded = True
+                except Exception:
+                    pass  # Not encrypted yet — fall through to plaintext
+
+            # Try plaintext JSON (legacy / migration path)
+            if not loaded:
+                try:
+                    self.structured_memory = json.loads(raw)
+                    loaded = True
+                    # Re-save encrypted to migrate the file
+                    if self._fernet:
+                        self._save_structured_memory()
+                        logger.info("Migrated plaintext memory.json to encrypted format")
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    logger.warning("Could not read memory.json — starting fresh")
+
+            if not loaded:
+                self.structured_memory = {}
+                self._save_structured_memory()
         else:
             self.structured_memory = {}
             self._save_structured_memory()
@@ -142,10 +191,12 @@ class MemoryManager:
         logger.info(f"Cleaned up memories older than {self.config.memory_retention_days} days")
 
     def _save_structured_memory(self):
-        """Save structured memory to disk"""
+        """Save structured memory to disk (encrypted if cryptography is available)."""
         self.structured_memory_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.structured_memory_path, "w") as f:
-            json.dump(self.structured_memory, f, indent=2)
+        payload = json.dumps(self.structured_memory, indent=2).encode()
+        if self._fernet:
+            payload = self._fernet.encrypt(payload)
+        self.structured_memory_path.write_bytes(payload)
 
     async def close(self):
         """Cleanup on shutdown"""

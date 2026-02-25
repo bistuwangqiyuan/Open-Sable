@@ -27,7 +27,7 @@ class VoiceMessageHandler:
             return
 
         try:
-            from opensable.skills.voice_skill import VoiceSkill
+            from opensable.skills.media.voice_skill import VoiceSkill
 
             self.voice_skill = VoiceSkill(self.config)
             await self.voice_skill.initialize()

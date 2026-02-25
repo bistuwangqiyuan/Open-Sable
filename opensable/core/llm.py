@@ -8,10 +8,101 @@ Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
 
 import logging
 import json
+import time
+from dataclasses import dataclass, field
 from typing import Dict, List, Any, AsyncIterator
 import ollama
 
 logger = logging.getLogger(__name__)
+
+
+# ── Token & cost tracking ────────────────────────────────────────────
+
+# Approximate costs per 1M tokens (USD) — updated periodically
+_COST_PER_1M: Dict[str, Dict[str, float]] = {
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-4-turbo": {"input": 10.00, "output": 30.00},
+    "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
+    "claude-3-haiku": {"input": 0.25, "output": 1.25},
+    "claude-3-opus": {"input": 15.00, "output": 75.00},
+    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
+    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+    "deepseek-chat": {"input": 0.14, "output": 0.28},
+    "deepseek-reasoner": {"input": 0.55, "output": 2.19},
+    "mistral-large": {"input": 2.00, "output": 6.00},
+    "llama-3.1-70b": {"input": 0.59, "output": 0.79},
+    "llama-3.1-8b": {"input": 0.05, "output": 0.08},
+}
+
+
+@dataclass
+class TokenUsage:
+    """Token usage for a single LLM call."""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    model: str = ""
+    provider: str = ""
+    estimated_cost_usd: float = 0.0
+    timestamp: float = field(default_factory=time.time)
+
+
+class TokenTracker:
+    """Cumulative token usage tracker across all LLM calls."""
+
+    def __init__(self):
+        self.total_prompt_tokens: int = 0
+        self.total_completion_tokens: int = 0
+        self.total_tokens: int = 0
+        self.total_cost_usd: float = 0.0
+        self.call_count: int = 0
+        self.history: List[TokenUsage] = []
+
+    def record(self, usage: TokenUsage):
+        """Record a single LLM call's token usage."""
+        self.total_prompt_tokens += usage.prompt_tokens
+        self.total_completion_tokens += usage.completion_tokens
+        self.total_tokens += usage.total_tokens
+        self.total_cost_usd += usage.estimated_cost_usd
+        self.call_count += 1
+        self.history.append(usage)
+        logger.debug(
+            f"Tokens: +{usage.total_tokens} ({usage.prompt_tokens}in/{usage.completion_tokens}out) "
+            f"| Total: {self.total_tokens} | Cost: ${self.total_cost_usd:.6f}"
+        )
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Return a serializable summary of current usage."""
+        return {
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_completion_tokens": self.total_completion_tokens,
+            "total_tokens": self.total_tokens,
+            "total_cost_usd": round(self.total_cost_usd, 6),
+            "call_count": self.call_count,
+        }
+
+    def reset(self):
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.total_tokens = 0
+        self.total_cost_usd = 0.0
+        self.call_count = 0
+        self.history.clear()
+
+    @staticmethod
+    def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+        """Estimate cost in USD for a given model and token counts."""
+        # Try exact match, then prefix match
+        costs = _COST_PER_1M.get(model)
+        if not costs:
+            for key, val in _COST_PER_1M.items():
+                if key in model or model in key:
+                    costs = val
+                    break
+        if not costs:
+            return 0.0  # Local model or unknown — free
+        return (prompt_tokens * costs["input"] + completion_tokens * costs["output"]) / 1_000_000
 
 
 # Model capabilities database (using actually available Ollama models)
@@ -44,6 +135,7 @@ class AdaptiveLLM:
         self.current_model = initial_model
         self.base_url = config.ollama_base_url
         self.available_models = []
+        self.token_tracker = TokenTracker()
         self._update_available_models()
 
     def _create_llm(self, model: str):
@@ -174,6 +266,18 @@ class AdaptiveLLM:
                 tools=tools,
             )
             msg = response.get("message", {})
+
+            # Track tokens (Ollama provides prompt_eval_count / eval_count)
+            prompt_tokens = response.get("prompt_eval_count", 0)
+            completion_tokens = response.get("eval_count", 0)
+            self.token_tracker.record(TokenUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                model=self.current_model,
+                provider="ollama",
+                estimated_cost_usd=0.0,  # local model — free
+            ))
 
             # Tool call path — collect ALL tool calls for parallel execution
             raw_calls = msg.get("tool_calls") or []
@@ -378,6 +482,7 @@ class CloudLLM:
         self.current_model = default_model
         self.available_models = [self.current_model]
         self._client = None
+        self.token_tracker = TokenTracker()
 
         # Open WebUI: user configures URL and model via .env
         if provider == "openwebui":
@@ -428,6 +533,20 @@ class CloudLLM:
         resp = await client.chat.completions.create(**kwargs)
         choice = resp.choices[0]
         msg = choice.message
+
+        # Track token usage
+        usage = getattr(resp, "usage", None)
+        if usage:
+            pt = getattr(usage, "prompt_tokens", 0)
+            ct = getattr(usage, "completion_tokens", 0)
+            self.token_tracker.record(TokenUsage(
+                prompt_tokens=pt,
+                completion_tokens=ct,
+                total_tokens=pt + ct,
+                model=self.current_model,
+                provider=self.provider,
+                estimated_cost_usd=TokenTracker.estimate_cost(self.current_model, pt, ct),
+            ))
 
         if msg.tool_calls:
             parsed = []

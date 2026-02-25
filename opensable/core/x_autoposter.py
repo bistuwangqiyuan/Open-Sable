@@ -799,7 +799,7 @@ class XAutonomousAgent:
             return f"[This post contains {count} image{'s' if count > 1 else ''} — vision not available]"
 
         # ── Download images to temp files (max 2 to conserve budget) ──
-        from opensable.skills.x_skill import XSkill
+        from opensable.skills.social.x_skill import XSkill
         local_paths = []
         try:
             for url in image_urls[:2]:
@@ -1307,7 +1307,7 @@ class XAutonomousAgent:
         try:
             if not getattr(self.agent.tools, "grok_skill", None):
                 return None
-            from opensable.skills.grok_skill import TWIKIT_GROK_AVAILABLE
+            from opensable.skills.social.grok_skill import TWIKIT_GROK_AVAILABLE
             if not TWIKIT_GROK_AVAILABLE:
                 return None
             result = await self.agent.tools.grok_skill.chat(f"{system}\n\n{user}")
@@ -1450,7 +1450,7 @@ class XAutonomousAgent:
         if not grok:
             return None
         try:
-            from opensable.skills.grok_skill import TWIKIT_GROK_AVAILABLE
+            from opensable.skills.social.grok_skill import TWIKIT_GROK_AVAILABLE
             if not TWIKIT_GROK_AVAILABLE:
                 return None
         except ImportError:

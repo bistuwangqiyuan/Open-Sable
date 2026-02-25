@@ -9,13 +9,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests: 9/9](https://img.shields.io/badge/tests-9%2F9-brightgreen.svg)](#-running-tests)
+[![Tests: 297](https://img.shields.io/badge/tests-297%20passing-brightgreen.svg)](#-running-tests)
 [![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets).
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
@@ -1536,10 +1536,16 @@ Open-Sable/
 │   ├── core/                   # 56 core modules
 │   │   ├── agent.py            # Main agent loop
 │   │   ├── config.py           # Configuration management
-│   │   ├── llm.py              # LLM engine (Ollama, OpenAI, Anthropic)
-│   │   ├── commands.py         # Command handler
-│   │   ├── sessions.py         # Session management
-│   │   ├── session_manager.py  # Advanced session management
+│   │   ├── llm.py              # LLM engine + token/cost tracking
+│   │   ├── tools/              # Modular tool registry (split into mixins)
+│   │   │   ├── __init__.py     # ToolRegistry base + schemas + execute
+│   │   │   ├── _core_tools.py  # CoreToolsMixin (browser, files, code, etc.)
+│   │   │   ├── _social.py      # SocialToolsMixin (X, IG, FB, LinkedIn…)
+│   │   │   ├── _productivity.py # ProductivityToolsMixin (docs, email…)
+│   │   │   ├── _desktop_vision.py # DesktopVisionToolsMixin (screen, click…)
+│   │   │   └── _trading.py     # TradingToolsMixin
+│   │   ├── multi_agent.py      # Crew API, shared blackboard, orchestrator
+│   │   ├── memory.py           # Encrypted at-rest memory (Fernet)
 │   │   │
 │   │   ├── # — Agentic AI Subsystems —
 │   │   ├── agi_integration.py  # Agentic AI agent (orchestrates all subsystems)
@@ -1613,10 +1619,13 @@ Open-Sable/
 │   │   ├── mobile_api.py       # Mobile REST API (FastAPI)
 │   │   └── voice_call.py       # Voice Call (SIP/WebRTC)
 │   │
-│   └── skills/                 # Skill plugins
-│       └── community/          # Community skills
-│           ├── skills_catalog.json   # 16 real skills
-│           └── SKILL.md        # Skill format spec
+│   └── skills/                 # Skill plugins (organized by category)
+│       ├── social/             # X, Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
+│       ├── media/              # Image, Voice, OCR
+│       ├── data/               # Database, RAG, File Manager, Documents, Clipboard
+│       ├── automation/         # Code Executor, API Client, Browser, Scraper, Email, Calendar
+│       ├── trading/            # Multi-exchange trading engine
+│       └── community/          # Community skills (16 real APIs)
 │
 ├── examples/                   # 16 runnable demos
 │   ├── agi_capabilities_example.py
@@ -1626,18 +1635,27 @@ Open-Sable/
 │   ├── workflow_examples.py
 │   └── ...
 │
-├── tests/                      # Test suite (9/9 passing)
+├── tests/                      # Test suite (297 passing)
+│   ├── test_agentic_loop.py    # Agentic loop integration tests (13)
+│   ├── mock_llm.py             # MockLLM for testing without Ollama
 │   ├── test_features.py        # Core feature tests
-│   ├── test_core.py
-│   ├── test_advanced.py
-│   ├── test_enterprise.py
-│   ├── test_integration.py
-│   └── ...
 │
-├── docs/                       # 8 documentation files
+├── docs/                       # 8 documentation files (canonical)
 │   ├── API_REFERENCE.md
 │   ├── PRODUCTION_DEPLOYMENT.md
 │   ├── SECURITY.md
+│   ├── SELF_MODIFICATION.md
+│   ├── AUTO_ADAPTIVE_GUIDE.md
+│   ├── USERBOT_GUIDE.md
+│   └── WEB_SCRAPING_GUIDE.md
+│
+├── docs-site/                  # MkDocs site (Material theme)
+│   ├── index.md
+│   ├── getting-started/
+│   ├── guides/
+│   └── architecture/
+│
+├── mkdocs.yml                  # MkDocs configuration
 │   ├── SELF_MODIFICATION.md
 │   ├── AUTO_ADAPTIVE_GUIDE.md
 │   ├── USERBOT_GUIDE.md
@@ -1666,14 +1684,15 @@ Open-Sable/
 │   └── sablecore.service
 │
 ├── main.py                     # Main entry point
-├── sable.py                    # Menu / onboarding entry
+├── sable.py                    # Deprecated — redirects to main.py
 ├── cli.py                      # Click CLI interface
 ├── start.sh                    # Quick start script
 ├── install.py                  # Installation wizard
 ├── quickstart.sh               # One-command setup
 ├── demo.py                     # Interactive demo
-├── pyproject.toml              # Dependencies & metadata
-├── requirements.txt            # Pip requirements (66 packages)
+├── pyproject.toml              # Dependencies & metadata (v1.1.0)
+├── requirements.txt            # Pip requirements
+├── requirements-lock.txt       # Pinned lockfile (pip-compile)
 ├── docker-compose.yml          # Docker deployment
 ├── Dockerfile                  # Container image
 └── LICENSE                     # MIT License
@@ -1837,7 +1856,7 @@ python3 examples/workflow_examples.py
 
 ## 📊 Project Statistics
 
-**Current Version**: 0.1.0-beta
+**Current Version**: 1.1.0
 
 | Component | Files | Lines | Status |
 |-----------|-------|-------|--------|
@@ -1846,10 +1865,10 @@ python3 examples/workflow_examples.py
 | Phase 3 Engines | 5 | 3,000+ | ✅ Complete |
 | Voice & Multimodal | 4 | 3,000+ | 🧪 Experimental |
 | Interfaces | 13 | 7,000+ | ✅ Complete |
-| Skills (Community) | 16 | 2,500+ | ✅ Complete |
+| Skills (4 categories) | 24 | 4,000+ | ✅ Complete |
 | Examples | 16 | 3,000+ | ✅ Complete |
-| Tests | 16 | 2,000+ | ✅ 9/9 Passing |
-| Documentation | 8 | 1,500+ | ✅ Complete |
+| Tests | 16 | 3,000+ | ✅ 297 Passing |
+| Documentation | 10 | 2,000+ | ✅ Complete |
 | Kubernetes | 7 | 500+ | 📝 Templates |
 | **Total** | **179** | **82,000+** | **✅ Core Complete** |
 
