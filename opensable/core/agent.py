@@ -653,6 +653,29 @@ class SableAgent:
             if role in ("user", "assistant"):
                 history_for_ollama.append({"role": role, "content": m.get("content", "")})
 
+        # Build social media instructions if any social skill is available
+        social_instructions = ""
+        if self.tools and any([
+            getattr(self.tools, 'instagram_skill', None),
+            getattr(self.tools, 'facebook_skill', None),
+            getattr(self.tools, 'linkedin_skill', None),
+            getattr(self.tools, 'tiktok_skill', None),
+            getattr(self.tools, 'youtube_skill', None),
+        ]):
+            parts = ["\n\nSOCIAL MEDIA TOOLS AVAILABLE:"]
+            if getattr(self.tools, 'instagram_skill', None):
+                parts.append("- Instagram (ig_*): upload photos/reels/stories, search users/hashtags, like, comment, follow, DM")
+            if getattr(self.tools, 'facebook_skill', None):
+                parts.append("- Facebook (fb_*): post, upload photos, get feed, like, comment, search pages")
+            if getattr(self.tools, 'linkedin_skill', None):
+                parts.append("- LinkedIn (linkedin_*): search people/companies/jobs, post updates, send messages/connections")
+            if getattr(self.tools, 'tiktok_skill', None):
+                parts.append("- TikTok (tiktok_*): trending videos, search videos/users, get user info (read-only)")
+            if getattr(self.tools, 'youtube_skill', None):
+                parts.append("- YouTube (yt_*): search videos/channels, get video info/comments, upload, like, subscribe")
+            parts.append("Use the appropriate social media tool when the user asks to interact with these platforms.")
+            social_instructions = "\n".join(parts)
+
         # Build trading instructions if trading is enabled
         trading_instructions = ""
         if getattr(self.config, "trading_enabled", False):
@@ -674,10 +697,11 @@ class SableAgent:
             self._get_personality_prompt()
             + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
             + f"\n\nToday's date: {today}."
+            + social_instructions
             + trading_instructions
             + "\n\nIMPORTANT: For general knowledge questions (not prices/markets), answer directly. "
             "Use tools when the task requires reading files, executing code, searching the web, "
-            "interacting with the system, or getting real-time market/price data."
+            "interacting with the system, managing social media, or getting real-time market/price data."
         )
 
         ei = getattr(self, "emotional_intelligence", None)
