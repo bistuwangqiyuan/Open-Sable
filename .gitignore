@@ -22,6 +22,7 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 ENV/
 env/
 
@@ -103,3 +104,8 @@ models/
 *_check.txt
 discord_clean_check.txt
 config/permissions.json
+
+# Trading runtime data
+trading_backtest_results/
+*.trading.db
+*.portfolio.db

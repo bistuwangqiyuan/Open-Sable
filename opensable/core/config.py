@@ -161,6 +161,46 @@ class OpenSableConfig(BaseModel):
     webchat_token: Optional[str] = None  # if set, URL must include ?token=<value>
     webchat_tailscale: bool = False  # also bind on Tailscale IP (100.x.x.x)
 
+    # ── Trading Bot ──────────────────────────────────────────────
+    trading_enabled: bool = False
+    trading_paper_mode: bool = True  # SAFETY: paper trade by default
+    trading_auto_trade: bool = False  # autonomous trading in autonomous mode
+    trading_scan_interval: int = 60  # seconds between market scans
+
+    # Exchange API keys
+    binance_api_key: Optional[str] = None
+    binance_api_secret: Optional[str] = None
+    binance_testnet: bool = True
+
+    coinbase_api_key: Optional[str] = None
+    coinbase_api_secret: Optional[str] = None
+
+    alpaca_api_key: Optional[str] = None
+    alpaca_api_secret: Optional[str] = None
+    alpaca_paper: bool = True
+
+    polymarket_private_key: Optional[str] = None
+    polymarket_funder: Optional[str] = None
+
+    hyperliquid_private_key: Optional[str] = None
+    hyperliquid_testnet: bool = True
+
+    jupiter_private_key: Optional[str] = None
+    jupiter_rpc_url: str = "https://api.mainnet-beta.solana.com"
+
+    # Risk limits
+    trading_max_position_pct: float = 5.0
+    trading_max_daily_loss_pct: float = 2.0
+    trading_max_drawdown_pct: float = 10.0
+    trading_max_open_positions: int = 10
+    trading_max_order_usd: float = 10000.0
+    trading_require_approval_above_usd: float = 100.0
+    trading_banned_assets: str = ""  # comma-separated
+
+    # Strategy settings
+    trading_strategies: str = "momentum,mean_reversion,sentiment"  # comma-separated
+    trading_watchlist: str = "BTC/USDT,ETH/USDT,SOL/USDT"  # comma-separated
+
     # Misc compat
     Config_alias: Optional[str] = None
 
@@ -298,6 +338,37 @@ def load_config() -> OpenSableConfig:
         "elevenlabs_voice_id": os.getenv("ELEVENLABS_VOICE_ID"),
         "elevenlabs_model": os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
         "whisper_model_size": os.getenv("WHISPER_MODEL_SIZE", "base"),
+        # ── Trading Bot ──────────────────────────────────────────
+        "trading_enabled": os.getenv("TRADING_ENABLED", "false").lower() == "true",
+        "trading_paper_mode": os.getenv("TRADING_PAPER_MODE", "true").lower() == "true",
+        "trading_auto_trade": os.getenv("TRADING_AUTO_TRADE", "false").lower() == "true",
+        "trading_scan_interval": int(os.getenv("TRADING_SCAN_INTERVAL", "60")),
+        # Exchange keys
+        "binance_api_key": os.getenv("BINANCE_API_KEY"),
+        "binance_api_secret": os.getenv("BINANCE_API_SECRET"),
+        "binance_testnet": os.getenv("BINANCE_TESTNET", "true").lower() == "true",
+        "coinbase_api_key": os.getenv("COINBASE_API_KEY"),
+        "coinbase_api_secret": os.getenv("COINBASE_API_SECRET"),
+        "alpaca_api_key": os.getenv("ALPACA_API_KEY"),
+        "alpaca_api_secret": os.getenv("ALPACA_API_SECRET"),
+        "alpaca_paper": os.getenv("ALPACA_PAPER", "true").lower() == "true",
+        "polymarket_private_key": os.getenv("POLYMARKET_PRIVATE_KEY"),
+        "polymarket_funder": os.getenv("POLYMARKET_FUNDER"),
+        "hyperliquid_private_key": os.getenv("HYPERLIQUID_PRIVATE_KEY"),
+        "hyperliquid_testnet": os.getenv("HYPERLIQUID_TESTNET", "true").lower() == "true",
+        "jupiter_private_key": os.getenv("JUPITER_PRIVATE_KEY"),
+        "jupiter_rpc_url": os.getenv("JUPITER_RPC_URL", "https://api.mainnet-beta.solana.com"),
+        # Risk limits
+        "trading_max_position_pct": float(os.getenv("TRADING_MAX_POSITION_PCT", "5.0")),
+        "trading_max_daily_loss_pct": float(os.getenv("TRADING_MAX_DAILY_LOSS_PCT", "2.0")),
+        "trading_max_drawdown_pct": float(os.getenv("TRADING_MAX_DRAWDOWN_PCT", "10.0")),
+        "trading_max_open_positions": int(os.getenv("TRADING_MAX_OPEN_POSITIONS", "10")),
+        "trading_max_order_usd": float(os.getenv("TRADING_MAX_ORDER_USD", "10000")),
+        "trading_require_approval_above_usd": float(os.getenv("TRADING_REQUIRE_APPROVAL_ABOVE_USD", "100")),
+        "trading_banned_assets": os.getenv("TRADING_BANNED_ASSETS", ""),
+        # Strategy & watchlist
+        "trading_strategies": os.getenv("TRADING_STRATEGIES", "momentum,mean_reversion,sentiment"),
+        "trading_watchlist": os.getenv("TRADING_WATCHLIST", "BTC/USDT,ETH/USDT,SOL/USDT"),
     }
 
     return OpenSableConfig(**config_data)

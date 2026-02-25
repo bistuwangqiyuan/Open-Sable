@@ -111,6 +111,17 @@ _DEFAULT_RISK_MAP: Dict[str, RiskLevel] = {
     "calendar": RiskLevel.LOW,
     "system_info": RiskLevel.LOW,
     "vector_search": RiskLevel.LOW,
+    # Trading — read operations are LOW, executions are CRITICAL
+    "trading_portfolio": RiskLevel.LOW,
+    "trading_price": RiskLevel.LOW,
+    "trading_analyze": RiskLevel.LOW,
+    "trading_signals": RiskLevel.LOW,
+    "trading_history": RiskLevel.LOW,
+    "trading_risk_status": RiskLevel.LOW,
+    "trading_place_trade": RiskLevel.CRITICAL,
+    "trading_cancel_order": RiskLevel.HIGH,
+    "trading_start_scan": RiskLevel.HIGH,
+    "trading_stop_scan": RiskLevel.MEDIUM,
 }
 
 # Type alias for the callback that asks a human

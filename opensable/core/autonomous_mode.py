@@ -121,6 +121,10 @@ class AutonomousMode:
         if "system_monitoring" in self.enabled_sources:
             await self._check_system()
 
+        # Check for trading opportunities
+        if "trading" in self.enabled_sources:
+            await self._check_trading()
+
         # Check for scheduled goals (if AGI available)
         if self.goal_manager:
             await self._check_goals()
@@ -167,6 +171,46 @@ class AutonomousMode:
 
         except Exception as e:
             logger.error(f"Failed to check system: {e}")
+
+    async def _check_trading(self):
+        """Check for trading opportunities and portfolio health"""
+        try:
+            trading_skill = getattr(self.agent.tools, "trading_skill", None)
+            if not trading_skill or not trading_skill._initialized:
+                return
+
+            # 1. Scan watchlist for signals
+            signals_result = await trading_skill.get_signals()
+            if signals_result and "No signals" not in signals_result:
+                task = {
+                    "id": f"trading_signals_{datetime.now().strftime('%H%M')}",
+                    "type": "trading",
+                    "description": f"Trading signals detected:\n{signals_result[:500]}",
+                    "priority": 7,  # High priority
+                    "created_at": datetime.now(),
+                }
+                if not any(t.get("type") == "trading" and "signals" in t.get("id", "") for t in self.task_queue):
+                    self.task_queue.append(task)
+                    logger.info("📊 Added trading signal task to queue")
+
+            # 2. Check portfolio health (risk status)
+            risk_result = await trading_skill.get_risk_status()
+            if risk_result and "Emergency Halt: 🔴 YES" in risk_result:
+                task = {
+                    "id": f"trading_risk_alert_{datetime.now().strftime('%H%M')}",
+                    "type": "trading_alert",
+                    "description": "⚠️ TRADING EMERGENCY HALT ACTIVE — review portfolio immediately",
+                    "priority": 10,  # Maximum priority
+                    "created_at": datetime.now(),
+                }
+                if not any(t.get("type") == "trading_alert" for t in self.task_queue):
+                    self.task_queue.append(task)
+                    logger.warning("🚨 Trading emergency halt detected!")
+
+            logger.debug("Checked trading opportunities")
+
+        except Exception as e:
+            logger.error(f"Failed to check trading: {e}")
 
     async def _check_goals(self):
         """Check for pending goals (AGI mode)"""

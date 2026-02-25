@@ -471,6 +471,17 @@ class SableAgent:
         "open_app": "🚀",
         "window_list": "🪟",
         "window_focus": "🪟",
+        # Trading
+        "trading_portfolio": "💼",
+        "trading_price": "📊",
+        "trading_analyze": "📈",
+        "trading_place_trade": "💰",
+        "trading_cancel_order": "🚫",
+        "trading_history": "📜",
+        "trading_signals": "📡",
+        "trading_start_scan": "🔄",
+        "trading_stop_scan": "⏹️",
+        "trading_risk_status": "🛡️",
     }
 
     _TOOL_LABELS = {
@@ -498,6 +509,17 @@ class SableAgent:
         "open_app": "Opening application",
         "window_list": "Listing windows",
         "window_focus": "Focusing window",
+        # Trading
+        "trading_portfolio": "Checking portfolio",
+        "trading_price": "Fetching live price",
+        "trading_analyze": "Analyzing market",
+        "trading_place_trade": "Placing trade",
+        "trading_cancel_order": "Cancelling order",
+        "trading_history": "Loading trade history",
+        "trading_signals": "Checking signals",
+        "trading_start_scan": "Starting market scan",
+        "trading_stop_scan": "Stopping market scan",
+        "trading_risk_status": "Checking risk status",
     }
 
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:
@@ -631,13 +653,31 @@ class SableAgent:
             if role in ("user", "assistant"):
                 history_for_ollama.append({"role": role, "content": m.get("content", "")})
 
+        # Build trading instructions if trading is enabled
+        trading_instructions = ""
+        if getattr(self.config, "trading_enabled", False):
+            trading_instructions = (
+                "\n\nTRADING RULES (MANDATORY):"
+                "\n- You have access to real-time trading tools. NEVER answer price, market, or portfolio questions from memory or training data."
+                "\n- For ANY question about cryptocurrency prices, stock prices, market data, or asset values: ALWAYS call the trading_price tool first."
+                "\n- For portfolio status: ALWAYS call trading_portfolio."
+                "\n- For market analysis: ALWAYS call trading_analyze."
+                "\n- For placing trades: ALWAYS call trading_place_trade."
+                "\n- For trade history: ALWAYS call trading_history."
+                "\n- For active signals: ALWAYS call trading_signals."
+                "\n- For risk status: ALWAYS call trading_risk_status."
+                "\n- NEVER guess, estimate, or cite external sources for prices. The trading tools provide live data."
+                "\n- When a user asks 'what is the price of X', call trading_price with symbol=X."
+            )
+
         base_system = (
             self._get_personality_prompt()
             + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
             + f"\n\nToday's date: {today}."
-            + "\n\nIMPORTANT: For general knowledge questions, answer directly. "
-            "Only use tools when the task specifically requires reading files, "
-            "executing code, searching the web, or interacting with the system."
+            + trading_instructions
+            + "\n\nIMPORTANT: For general knowledge questions (not prices/markets), answer directly. "
+            "Use tools when the task requires reading files, executing code, searching the web, "
+            "interacting with the system, or getting real-time market/price data."
         )
 
         ei = getattr(self, "emotional_intelligence", None)
@@ -687,7 +727,46 @@ class SableAgent:
 
         tool_results = []
 
-        if is_search:
+        # ── Fast path: Trading price queries → route to trading_price tool ──
+        is_trading_price_query = False
+        if getattr(self.config, "trading_enabled", False):
+            _crypto_tokens = [
+                "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "bnb",
+                "xrp", "doge", "dogecoin", "ada", "cardano", "avax", "dot",
+                "matic", "link", "uni", "atom", "ltc", "near", "apt", "arb",
+                "op", "sui", "sei", "tia", "jup", "wif", "pepe", "shib",
+                "bonk", "floki", "crypto", "coin", "token", "meme coin",
+            ]
+            _price_patterns = ["price of ", "price for ", "how much is ", "what does ", "current price",
+                               "what is btc", "what is eth", "what is sol", "btc price", "eth price",
+                               "bitcoin price", "ethereum price", "check price", "get price"]
+            has_price_intent = any(p in task_lower for p in _price_patterns)
+            has_crypto_token = any(t in task_lower for t in _crypto_tokens)
+            if has_price_intent or (has_crypto_token and ("price" in task_lower or "worth" in task_lower or "value" in task_lower or "cost" in task_lower)):
+                is_trading_price_query = True
+                # Extract the symbol
+                symbol = "BTC"  # default
+                _symbol_map = {
+                    "bitcoin": "BTC", "btc": "BTC", "ethereum": "ETH", "eth": "ETH",
+                    "solana": "SOL", "sol": "SOL", "bnb": "BNB", "xrp": "XRP",
+                    "doge": "DOGE", "dogecoin": "DOGE", "ada": "ADA", "cardano": "ADA",
+                    "avax": "AVAX", "dot": "DOT", "matic": "MATIC", "link": "LINK",
+                    "uni": "UNI", "atom": "ATOM", "ltc": "LTC", "near": "NEAR",
+                    "apt": "APT", "arb": "ARB", "op": "OP", "sui": "SUI",
+                    "sei": "SEI", "tia": "TIA", "jup": "JUP", "wif": "WIF",
+                    "pepe": "PEPE", "shib": "SHIB", "bonk": "BONK", "floki": "FLOKI",
+                }
+                for token_name, sym in _symbol_map.items():
+                    if token_name in task_lower:
+                        symbol = sym
+                        break
+                logger.info(f"📊 [FORCED] Trading price query detected → {symbol}")
+                result = await self._execute_tool(
+                    "trading_price", {"symbol": symbol}, user_id=user_id
+                )
+                tool_results.append(result)
+
+        if is_search and not is_trading_price_query:
             logger.info("🔍 [FORCED] Search intent detected")
             query = task
             for filler in ["search for", "busca", "find", "look up", "google", "what is", "who is"]:

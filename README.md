@@ -15,7 +15,7 @@
 Open-Sable is a next-generation autonomous AI agent framework with AGI-inspired cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself – all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets).
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
@@ -1263,6 +1263,104 @@ await desktop.sync_item(
 # Real-time sync
 await desktop.start_real_time_sync("ws://sync-server:8080")
 ```
+
+---
+
+## 📈 Trading Bot (Multi-Exchange)
+
+Open-Sable includes a built-in multi-exchange trading engine that supports crypto, stocks, commodities, and prediction markets — all accessible through natural language chat.
+
+### Quick Start
+
+```bash
+# 1. Install trading dependencies
+pip install -r requirements-trading.txt
+
+# 2. Enable trading in .env
+TRADING_ENABLED=true
+TRADING_PAPER_MODE=true    # Safe paper trading (no real money)
+
+# 3. Start the bot
+python main.py
+# Open http://127.0.0.1:8789 for the web trading terminal
+```
+
+### Supported Exchanges
+
+| Exchange | Asset Types | Status |
+|----------|-------------|--------|
+| **Paper Trading** | All (simulated) | ✅ Built-in |
+| **CoinGecko** | Crypto prices (free) | ✅ No API key needed |
+| **Binance** | Crypto spot & futures | ✅ Requires API key |
+| **Coinbase** | Crypto spot | ✅ Requires API key |
+| **Alpaca** | US stocks & ETFs | ✅ Requires API key |
+| **Polymarket** | Prediction markets | ✅ Requires wallet |
+| **Hyperliquid** | Crypto perpetuals | ✅ Requires wallet |
+| **Jupiter (Solana)** | DeFi / meme coins | ✅ Requires wallet |
+
+### Chat Commands
+
+Just talk naturally — the AI routes to the right trading tool:
+
+```
+"What's the price of Bitcoin?"          → Live price from CoinGecko
+"Show my portfolio"                     → Portfolio snapshot with P&L
+"Buy 0.1 BTC on paper"                 → Paper trade execution
+"Analyze ETH/USDT"                     → Technical analysis with signals
+"Show risk status"                      → Risk manager limits & status
+"Start scanning BTC/USDT,ETH/USDT"     → Background market scanner
+"Show trade history"                    → Recent trade log
+```
+
+### Trading Tools (10 total)
+
+| Tool | Description |
+|------|-------------|
+| `trading_price` | Live prices from exchanges or CoinGecko |
+| `trading_portfolio` | Portfolio value, positions, P&L |
+| `trading_buy` / `trading_sell` | Execute trades (paper or live) |
+| `trading_analyze` | Technical analysis with strategy signals |
+| `trading_signals` | Scan watchlist for opportunities |
+| `trading_history` | Trade history log |
+| `trading_risk_status` | Risk limits and current exposure |
+| `trading_scanner` | Start/stop background market scanner |
+| `trading_set_risk` | Update risk parameters |
+
+### Risk Management
+
+Built-in risk guardrails protect against losses:
+
+- **Max position size**: Default 5% of portfolio per trade
+- **Max daily loss**: Default 2% — halts trading if exceeded
+- **Max drawdown**: Default 10% — emergency halt
+- **Max open positions**: Default 10
+- **Approval gate**: Trades above $100 require confirmation (HITL)
+- **Banned assets**: Configurable block list
+
+### Strategies
+
+| Strategy | Description |
+|----------|-------------|
+| Momentum | RSI, MACD, volume breakout detection |
+| Mean Reversion | Bollinger Bands, z-score, RSI oversold/overbought |
+| Sentiment | News & social sentiment analysis |
+| Arbitrage | Cross-exchange price differential detection |
+| Polymarket Edge | Prediction market mispricing |
+
+### Going Live (Real Money)
+
+> ⚠️ **WARNING**: Real trading involves financial risk. Start with paper mode.
+
+```bash
+# In .env — switch to live trading
+TRADING_PAPER_MODE=false
+BINANCE_API_KEY=your_key
+BINANCE_API_SECRET=your_secret
+TRADING_REQUIRE_APPROVAL_ABOVE_USD=50    # Low threshold for safety
+TRADING_MAX_ORDER_USD=100                # Small position limit
+```
+
+See [docs/TRADING_GUIDE.md](docs/TRADING_GUIDE.md) for the full trading documentation.
 
 ---
 

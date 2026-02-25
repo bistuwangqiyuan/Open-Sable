@@ -3,43 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sable WebChat</title>
+<title>Sable Trading Terminal</title>
 <style>
-  /* ── Reset & base ─────────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:        #0d1117;
-    --surface:   #161b22;
-    --border:    #30363d;
+    --bg:        #0a0e14;
+    --surface:   #12161e;
+    --surface2:  #181d27;
+    --border:    #252b38;
     --accent:    #7c3aed;
     --accent2:   #a855f7;
     --text:      #e6edf3;
-    --text-dim:  #8b949e;
-    --user-bg:   #21262d;
-    --bot-bg:    #1a1f2e;
-    --success:   #3fb950;
-    --warning:   #d29922;
-    --danger:    #f85149;
-    --radius:    12px;
+    --text-dim:  #6b7a8d;
+    --user-bg:   #1a1f2e;
+    --bot-bg:    #131825;
+    --green:     #22c55e;
+    --green-dim: rgba(34,197,94,.12);
+    --red:       #ef4444;
+    --red-dim:   rgba(239,68,68,.12);
+    --yellow:    #eab308;
+    --blue:      #3b82f6;
+    --radius:    10px;
     --font:      'Inter', system-ui, -apple-system, sans-serif;
-    --mono:      'JetBrains Mono', 'Fira Code', monospace;
+    --mono:      'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
   }
   html, body { height: 100%; overflow: hidden; }
   body {
     font-family: var(--font);
     background: var(--bg);
     color: var(--text);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
   }
+
   /* ── Layout ──────────────────────────────────────────────────────── */
   #app {
     display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 56px 1fr;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: 48px 1fr;
     height: 100vh;
   }
+
   /* ── Header ──────────────────────────────────────────────────────── */
   #header {
     grid-column: 1 / -1;
@@ -47,362 +49,472 @@
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    gap: 14px;
+    padding: 0 18px;
+    gap: 12px;
   }
-  #header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.3px; }
-  #header h1 span { color: var(--accent2); }
-  .pill {
-    font-size: .7rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 999px;
-    letter-spacing: .04em;
-  }
-  .pill-secure { background: rgba(63,185,80,.15); color: var(--success); border: 1px solid rgba(63,185,80,.35); }
   #conn-dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--danger);
-    flex-shrink: 0;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--red); flex-shrink: 0;
     transition: background .3s;
   }
-  #conn-dot.on  { background: var(--success); box-shadow: 0 0 6px var(--success); }
-  #conn-label { font-size: .75rem; color: var(--text-dim); }
-  #header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  #conn-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,.5); }
+  #header h1 { font-size: .95rem; font-weight: 700; letter-spacing: -.3px; }
+  #header h1 span { color: var(--accent2); }
+  .hdr-pill {
+    font-size: .62rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+    letter-spacing: .05em; text-transform: uppercase;
+  }
+  .pill-paper { background: rgba(234,179,8,.12); color: var(--yellow); border: 1px solid rgba(234,179,8,.3); }
+  .pill-live  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .pill-conn  { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
+  .pill-conn.on { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,.3); }
+  #header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   #model-badge {
-    font-family: var(--mono);
-    font-size: .7rem;
-    padding: 3px 10px;
-    background: rgba(124,58,237,.15);
-    border: 1px solid rgba(124,58,237,.35);
-    border-radius: 999px;
+    font-family: var(--mono); font-size: .65rem;
+    padding: 2px 10px; border-radius: 999px;
+    background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.3);
     color: var(--accent2);
   }
-  /* ── Sidebar ─────────────────────────────────────────────────────── */
-  #sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #sidebar-header {
-    padding: 14px 16px 10px;
-    font-size: .7rem;
-    font-weight: 700;
-    letter-spacing: .08em;
+  #time-badge {
+    font-family: var(--mono); font-size: .65rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
   }
-  #sessions-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 0;
-  }
-  .session-item {
-    padding: 8px 16px;
-    cursor: pointer;
-    border-radius: 6px;
-    margin: 2px 6px;
-    transition: background .15s;
-    font-size: .82rem;
-  }
-  .session-item:hover { background: rgba(255,255,255,.06); }
-  .session-item.active { background: rgba(124,58,237,.2); color: var(--accent2); }
-  .session-item .s-id  { font-family: var(--mono); font-size: .7rem; color: var(--text-dim); }
-  .session-item .s-ch  { font-weight: 600; }
-  .session-item .s-n   { font-size: .68rem; color: var(--text-dim); margin-top: 1px; }
-  #sidebar-footer { padding: 10px 14px; border-top: 1px solid var(--border); }
-  #stats { font-size: .72rem; color: var(--text-dim); line-height: 1.7; }
-  /* ── Chat panel ──────────────────────────────────────────────────── */
+
+  /* ── Chat area ───────────────────────────────────────────────────── */
   #chat {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border-right: 1px solid var(--border);
   }
   #messages {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 28px;
+    padding: 20px 24px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
     scroll-behavior: smooth;
   }
-  /* ── Message bubbles ─────────────────────────────────────────────── */
-  .msg { display: flex; gap: 12px; max-width: 780px; }
+  .msg { display: flex; gap: 10px; max-width: 100%; }
   .msg.user { align-self: flex-end; flex-direction: row-reverse; }
   .msg.bot  { align-self: flex-start; }
   .avatar {
-    width: 34px; height: 34px;
-    border-radius: 50%;
+    width: 30px; height: 30px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    margin-top: 2px;
+    font-size: .9rem; flex-shrink: 0; margin-top: 2px;
   }
-  .avatar.user-av { background: rgba(124,58,237,.25); border: 1px solid rgba(124,58,237,.4); }
-  .avatar.bot-av  { background: rgba(168,85,247,.2);  border: 1px solid rgba(168,85,247,.4); }
+  .avatar.user-av { background: rgba(124,58,237,.2); border: 1px solid rgba(124,58,237,.35); }
+  .avatar.bot-av  { background: rgba(168,85,247,.15); border: 1px solid rgba(168,85,247,.3); }
   .bubble {
-    padding: 12px 16px;
-    border-radius: var(--radius);
-    line-height: 1.65;
-    font-size: .88rem;
-    max-width: 100%;
-    word-break: break-word;
+    padding: 10px 14px; border-radius: var(--radius);
+    line-height: 1.6; font-size: .84rem; max-width: 720px; word-break: break-word;
   }
-  .msg.user .bubble {
-    background: var(--user-bg);
-    border: 1px solid var(--border);
-    border-top-right-radius: 3px;
-  }
-  .msg.bot .bubble {
-    background: var(--bot-bg);
-    border: 1px solid rgba(168,85,247,.25);
-    border-top-left-radius: 3px;
-  }
+  .msg.user .bubble { background: var(--user-bg); border: 1px solid var(--border); border-top-right-radius: 3px; }
+  .msg.bot .bubble  { background: var(--bot-bg); border: 1px solid rgba(168,85,247,.2); border-top-left-radius: 3px; }
   .bubble pre {
-    background: #0d1117;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    overflow-x: auto;
-    font-family: var(--mono);
-    font-size: .8rem;
-    margin: 8px 0;
+    background: #080b11; border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; overflow-x: auto;
+    font-family: var(--mono); font-size: .76rem; margin: 6px 0;
   }
-  .bubble code { font-family: var(--mono); font-size: .82em; }
+  .bubble code { font-family: var(--mono); font-size: .8em; }
   .bubble strong { font-weight: 700; }
-  .bubble em { font-style: italic; color: var(--text-dim); }
-  /* streaming cursor */
-  .cursor { display: inline-block; width: 8px; height: 1em; background: var(--accent2); vertical-align: text-bottom; animation: blink .8s step-end infinite; }
+  .bubble em { color: var(--text-dim); }
+  .cursor { display: inline-block; width: 7px; height: 1em; background: var(--accent2); vertical-align: text-bottom; animation: blink .8s step-end infinite; }
   @keyframes blink { 50% { opacity: 0; } }
-  /* system / command result */
   .msg.system .bubble {
-    background: rgba(210,153,34,.07);
-    border-color: rgba(210,153,34,.25);
-    color: var(--warning);
-    font-family: var(--mono);
-    font-size: .78rem;
+    background: rgba(210,153,34,.06); border-color: rgba(210,153,34,.2);
+    color: var(--yellow); font-family: var(--mono); font-size: .75rem;
   }
-  /* ── Input bar ───────────────────────────────────────────────────── */
+  .msg.progress .bubble {
+    background: rgba(124,58,237,.06); border-color: rgba(124,58,237,.15);
+    color: var(--accent2); font-family: var(--mono); font-size: .75rem;
+  }
+
+  /* ── Input ───────────────────────────────────────────────────────── */
   #input-area {
     border-top: 1px solid var(--border);
-    padding: 14px 24px 16px;
+    padding: 12px 18px 14px;
     background: var(--surface);
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
+    display: flex; gap: 8px; align-items: flex-end;
   }
   #input-wrap {
-    flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    display: flex;
-    align-items: flex-end;
-    padding: 10px 14px;
-    gap: 10px;
-    transition: border-color .2s;
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; align-items: flex-end;
+    padding: 8px 12px; gap: 8px; transition: border-color .2s;
   }
-  #input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
+  #input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
   #input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: var(--font);
-    font-size: .9rem;
-    resize: none;
-    max-height: 160px;
-    line-height: 1.5;
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font); font-size: .85rem;
+    resize: none; max-height: 140px; line-height: 1.5;
   }
   #send-btn {
-    width: 36px; height: 36px;
-    border-radius: 9px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    cursor: pointer;
+    width: 34px; height: 34px; border-radius: 8px; border: none;
+    background: var(--accent); color: #fff; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background .15s, transform .1s;
-    flex-shrink: 0;
+    transition: background .15s; flex-shrink: 0;
   }
   #send-btn:hover:not(:disabled) { background: var(--accent2); }
-  #send-btn:active { transform: scale(.93); }
   #send-btn:disabled { background: var(--border); cursor: not-allowed; }
-  #hint { font-size: .7rem; color: var(--text-dim); padding: 4px 26px 0; }
-  /* ── Empty state ─────────────────────────────────────────────────── */
-  #empty {
-    flex: 1;
+  .quick-actions {
+    display: flex; gap: 6px; padding: 0 18px 8px;
+    background: var(--surface); flex-wrap: wrap;
+  }
+  .qa-btn {
+    font-size: .68rem; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text-dim); cursor: pointer; font-family: var(--mono);
+    transition: all .15s;
+  }
+  .qa-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* ── Right panel ─────────────────────────────────────────────────── */
+  #panel {
+    background: var(--surface);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    color: var(--text-dim);
-    text-align: center;
-    padding: 40px;
+    overflow: hidden;
   }
-  #empty .logo { font-size: 3.5rem; }
-  #empty h2 { font-size: 1.4rem; color: var(--text); }
-  #empty p  { font-size: .88rem; max-width: 380px; line-height: 1.6; }
-  #empty ul { list-style: none; font-size: .82rem; margin-top: 6px; }
-  #empty ul li::before { content: '/'; color: var(--accent2); margin-right: 5px; font-weight: 700; }
+  .tab-bar {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .tab-btn {
+    flex: 1; padding: 10px 0; font-size: .7rem; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-dim); background: none; border: none;
+    border-bottom: 2px solid transparent; cursor: pointer;
+    transition: all .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+  .tab-content {
+    flex: 1; overflow-y: auto; padding: 14px; display: none;
+  }
+  .tab-content.active { display: block; }
+
+  /* ── Portfolio tab ───────────────────────────────────────────────── */
+  .portfolio-header { margin-bottom: 14px; }
+  .portfolio-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -.5px; }
+  .portfolio-pnl { font-size: .78rem; margin-top: 2px; font-weight: 600; }
+  .pnl-pos { color: var(--green); }
+  .pnl-neg { color: var(--red); }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .stat-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .stat-label { font-size: .62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .stat-val { font-size: 1rem; font-weight: 700; margin-top: 2px; font-family: var(--mono); }
+  .section-title {
+    font-size: .65rem; font-weight: 700; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin: 14px 0 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .position-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;
+  }
+  .pos-sym { font-weight: 700; font-size: .82rem; }
+  .pos-side { font-size: .6rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+  .pos-side.long { background: var(--green-dim); color: var(--green); }
+  .pos-side.short { background: var(--red-dim); color: var(--red); }
+  .pos-info { text-align: right; font-size: .72rem; }
+  .pos-pnl { font-weight: 700; }
+
+  /* ── Prices tab ──────────────────────────────────────────────────── */
+  .price-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    transition: background .1s; cursor: pointer;
+  }
+  .price-row:hover { background: rgba(255,255,255,.02); }
+  .price-sym { font-weight: 700; font-size: .82rem; }
+  .price-icon { font-size: 1.1rem; margin-right: 8px; }
+  .price-left { display: flex; align-items: center; gap: 8px; }
+  .price-right { text-align: right; }
+  .price-val { font-family: var(--mono); font-size: .85rem; font-weight: 700; }
+  .price-chg { font-size: .68rem; font-weight: 600; }
+
+  /* ── Signals tab ─────────────────────────────────────────────────── */
+  .signal-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; margin-bottom: 8px;
+  }
+  .signal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .signal-sym { font-weight: 700; font-size: .85rem; }
+  .signal-action {
+    font-size: .6rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 4px; text-transform: uppercase;
+  }
+  .signal-buy { background: var(--green-dim); color: var(--green); }
+  .signal-sell { background: var(--red-dim); color: var(--red); }
+  .signal-hold { background: rgba(107,122,141,.15); color: var(--text-dim); }
+  .signal-conf { height: 4px; border-radius: 2px; background: var(--border); margin: 8px 0 4px; overflow: hidden; }
+  .signal-conf-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+  .signal-meta { font-size: .68rem; color: var(--text-dim); }
+  .signal-strategy { font-family: var(--mono); font-size: .65rem; color: var(--accent2); }
+
+  /* ── Risk tab ────────────────────────────────────────────────────── */
+  .risk-meter { text-align: center; padding: 16px 0; }
+  .risk-circle {
+    width: 90px; height: 90px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 800; font-family: var(--mono);
+  }
+  .risk-low    { background: var(--green-dim); color: var(--green); border: 2px solid rgba(34,197,94,.4); }
+  .risk-medium { background: rgba(234,179,8,.1); color: var(--yellow); border: 2px solid rgba(234,179,8,.35); }
+  .risk-high   { background: var(--red-dim); color: var(--red); border: 2px solid rgba(239,68,68,.35); }
+  .risk-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: 8px; }
+  .risk-stat-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .78rem;
+  }
+  .risk-stat-label { color: var(--text-dim); }
+  .risk-stat-val { font-weight: 700; font-family: var(--mono); }
+
+  /* ── Empty state ─────────────────────────────────────────────────── */
+  #empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; color: var(--text-dim); text-align: center; padding: 40px;
+  }
+  #empty .logo { font-size: 3rem; }
+  #empty h2 { font-size: 1.2rem; color: var(--text); }
+  #empty p  { font-size: .82rem; max-width: 400px; line-height: 1.6; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+  .example-btn {
+    font-size: .72rem; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-dim); cursor: pointer; transition: all .15s;
+  }
+  .example-btn:hover { border-color: var(--accent); color: var(--accent2); background: rgba(124,58,237,.06); }
+
   /* ── Scrollbar ───────────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
   /* ── Responsive ──────────────────────────────────────────────────── */
-  @media (max-width: 680px) {
+  @media (max-width: 900px) {
     #app { grid-template-columns: 1fr; }
-    #sidebar { display: none; }
+    #panel { display: none; }
+    #chat { border-right: none; }
   }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <!-- ── Header ──────────────────────────────────────────────────── -->
   <header id="header">
     <div id="conn-dot"></div>
-    <h1>Sable <span>WebChat</span></h1>
-    <span class="pill pill-secure">🔒 Unix Socket</span>
-    <span id="conn-label">Connecting…</span>
+    <h1>Sable <span>Trading</span></h1>
+    <span id="mode-pill" class="hdr-pill pill-paper">PAPER</span>
+    <span id="conn-pill" class="hdr-pill pill-conn">Offline</span>
     <div id="header-right">
-      <span id="model-badge">—</span>
+      <span id="model-badge">--</span>
+      <span id="time-badge"></span>
     </div>
   </header>
 
-  <!-- ── Sidebar ────────────────────────────────────────────────────── -->
-  <aside id="sidebar">
-    <div id="sidebar-header">Sessions</div>
-    <div id="sessions-list"><p style="padding:12px 16px;color:var(--text-dim);font-size:.8rem">No sessions yet</p></div>
-    <div id="sidebar-footer">
-      <div id="stats">Gateway: v—<br>Uptime: —</div>
-    </div>
-  </aside>
-
-  <!-- ── Chat ───────────────────────────────────────────────────────── -->
+  <!-- ── Chat ────────────────────────────────────────────────────── -->
   <main id="chat">
     <div id="messages">
       <div id="empty">
-        <div class="logo">🤖</div>
-        <h2>Sable is ready</h2>
-        <p>Secure internal connection via Unix socket. No ports open. Type a message or a slash command.</p>
-        <ul>
-          <li>status — show session info</li>
-          <li>reset  — clear conversation</li>
-          <li>compact — summarise history</li>
-          <li>model llama3.1:8b — switch model</li>
-          <li>think high — set thinking depth</li>
-        </ul>
+        <div class="logo">📈</div>
+        <h2>Sable Trading Terminal</h2>
+        <p>AI-powered multi-market trading. Ask anything about markets, check your portfolio, or place trades using natural language.</p>
+        <div class="examples">
+          <button class="example-btn" onclick="fillInput('What is the price of Bitcoin?')">BTC Price</button>
+          <button class="example-btn" onclick="fillInput('Show my portfolio')">Portfolio</button>
+          <button class="example-btn" onclick="fillInput('Analyze ETH/USDT')">Analyze ETH</button>
+          <button class="example-btn" onclick="fillInput('What are the current trading signals?')">Signals</button>
+          <button class="example-btn" onclick="fillInput('What is the price of SOL?')">SOL Price</button>
+          <button class="example-btn" onclick="fillInput('Show risk status')">Risk Status</button>
+        </div>
       </div>
+    </div>
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="sendText('Show my portfolio')">📊 Portfolio</button>
+      <button class="qa-btn" onclick="sendText('What is the price of BTC?')">₿ BTC</button>
+      <button class="qa-btn" onclick="sendText('What is the price of ETH?')">Ξ ETH</button>
+      <button class="qa-btn" onclick="sendText('What are the current trading signals?')">📡 Signals</button>
+      <button class="qa-btn" onclick="sendText('Show risk status')">🛡 Risk</button>
     </div>
     <div id="input-area">
       <div id="input-wrap">
-        <textarea id="input" rows="1" placeholder="Message Sable… or type /help"></textarea>
+        <textarea id="input" rows="1" placeholder="Ask about prices, analyze markets, or place trades..."></textarea>
         <button id="send-btn" title="Send (Enter)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>
     </div>
-    <div id="hint">Enter to send · Shift+Enter for new line · /help for commands</div>
   </main>
+
+  <!-- ── Right Panel ─────────────────────────────────────────────── -->
+  <aside id="panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="portfolio" onclick="switchTab('portfolio')">Portfolio</button>
+      <button class="tab-btn" data-tab="prices" onclick="switchTab('prices')">Prices</button>
+      <button class="tab-btn" data-tab="signals" onclick="switchTab('signals')">Signals</button>
+      <button class="tab-btn" data-tab="risk" onclick="switchTab('risk')">Risk</button>
+    </div>
+
+    <!-- Portfolio tab -->
+    <div class="tab-content active" id="tab-portfolio">
+      <div class="portfolio-header">
+        <div class="portfolio-value" id="port-value">$10,000.00</div>
+        <div class="portfolio-pnl pnl-pos" id="port-pnl">+$0.00 (0.00%)</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-val" id="stat-winrate">--</div></div>
+        <div class="stat-card"><div class="stat-label">Total Trades</div><div class="stat-val" id="stat-trades">0</div></div>
+        <div class="stat-card"><div class="stat-label">Sharpe Ratio</div><div class="stat-val" id="stat-sharpe">--</div></div>
+        <div class="stat-card"><div class="stat-label">Max Drawdown</div><div class="stat-val" id="stat-drawdown">--</div></div>
+      </div>
+      <div class="section-title">Open Positions</div>
+      <div id="positions-list"><div style="font-size:.75rem;color:var(--text-dim);padding:8px 0;">No open positions</div></div>
+      <div class="section-title">Balances</div>
+      <div id="balances-list"><div style="font-size:.75rem;color:var(--text-dim);padding:8px 0;">Loading...</div></div>
+    </div>
+
+    <!-- Prices tab -->
+    <div class="tab-content" id="tab-prices">
+      <div id="prices-list">
+        <div class="price-row" data-sym="BTC"><div class="price-left"><span class="price-icon">₿</span><span class="price-sym">BTC</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="ETH"><div class="price-left"><span class="price-icon">Ξ</span><span class="price-sym">ETH</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="SOL"><div class="price-left"><span class="price-icon">◎</span><span class="price-sym">SOL</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="BNB"><div class="price-left"><span class="price-icon">🔶</span><span class="price-sym">BNB</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="XRP"><div class="price-left"><span class="price-icon">✕</span><span class="price-sym">XRP</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="DOGE"><div class="price-left"><span class="price-icon">🐕</span><span class="price-sym">DOGE</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="ADA"><div class="price-left"><span class="price-icon">🔵</span><span class="price-sym">ADA</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="AVAX"><div class="price-left"><span class="price-icon">🔺</span><span class="price-sym">AVAX</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="LINK"><div class="price-left"><span class="price-icon">⬡</span><span class="price-sym">LINK</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="DOT"><div class="price-left"><span class="price-icon">●</span><span class="price-sym">DOT</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="PEPE"><div class="price-left"><span class="price-icon">🐸</span><span class="price-sym">PEPE</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+        <div class="price-row" data-sym="WIF"><div class="price-left"><span class="price-icon">🐶</span><span class="price-sym">WIF</span></div><div class="price-right"><div class="price-val">--</div><div class="price-chg">--</div></div></div>
+      </div>
+      <div style="padding:12px 0;text-align:center;"><button class="qa-btn" onclick="refreshAllPrices()" id="refresh-prices-btn">🔄 Refresh All</button></div>
+    </div>
+
+    <!-- Signals tab -->
+    <div class="tab-content" id="tab-signals">
+      <div id="signals-list">
+        <div style="font-size:.75rem;color:var(--text-dim);padding:20px 0;text-align:center;">No active signals.<br>Click "Refresh" or ask the AI to scan markets.</div>
+      </div>
+      <div style="padding:12px 0;text-align:center;">
+        <button class="qa-btn" onclick="sendText('What are the current trading signals?')">📡 Get Signals</button>
+        <button class="qa-btn" onclick="sendText('Start market scanning')">🔄 Start Scan</button>
+      </div>
+    </div>
+
+    <!-- Risk tab -->
+    <div class="tab-content" id="tab-risk">
+      <div class="risk-meter">
+        <div class="risk-circle risk-low" id="risk-circle">OK</div>
+        <div class="risk-label" id="risk-label">Low Risk</div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="risk-stat-row"><span class="risk-stat-label">Daily P&amp;L</span><span class="risk-stat-val" id="risk-daily-pnl">$0.00</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Daily Loss Limit</span><span class="risk-stat-val" id="risk-daily-limit">2.0%</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Max Drawdown</span><span class="risk-stat-val" id="risk-max-dd">10.0%</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Open Positions</span><span class="risk-stat-val" id="risk-open-pos">0 / 10</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Max Order Value</span><span class="risk-stat-val" id="risk-max-order">$10,000</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Trading Mode</span><span class="risk-stat-val" id="risk-mode" style="color:var(--yellow);">PAPER</span></div>
+        <div class="risk-stat-row"><span class="risk-stat-label">Emergency Halt</span><span class="risk-stat-val" id="risk-halt" style="color:var(--green);">OFF</span></div>
+      </div>
+      <div style="padding:14px 0;text-align:center;"><button class="qa-btn" onclick="sendText('Show risk status')">🛡 Refresh Risk</button></div>
+    </div>
+  </aside>
 
 </div>
 
 <script>
-// ── Config ──────────────────────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────────
 const SESSION_ID = 'webchat_' + Math.random().toString(36).slice(2, 10);
 const USER_ID    = 'webchat_user';
+const _params    = new URLSearchParams(location.search);
+const _token     = _params.get('token') || '';
+const WS_URL     = _token
+  ? 'ws://' + location.host + '/?token=' + encodeURIComponent(_token)
+  : 'ws://' + location.host + '/';
 
-// If a ?token= is present in the URL, forward it on the WS connection too.
-// That way a bookmarked URL like http://100.x.x.x:8789/?token=abc works
-// without any extra SSH tunnel.
-const _params = new URLSearchParams(location.search);
-const _token  = _params.get('token') || '';
-const WS_URL  = _token
-  ? `ws://${location.host}/?token=${encodeURIComponent(_token)}`
-  : `ws://${location.host}/`;
+// ── State ────────────────────────────────────────────────────────────
+var ws = null, streaming = null, streamFull = '', reconnTimer = null, connecting = false;
+var progressEl = null;
+var priceCache = {};
 
-// ── State ────────────────────────────────────────────────────────────────────
-let ws         = null;
-let streaming  = null;   // current streaming bubble element
-let streamFull = '';
-let reconnTimer = null;
-let connecting  = false;
+// ── DOM ──────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+var elMessages = $('messages'), elEmpty = $('empty'), elInput = $('input');
+var elSendBtn = $('send-btn'), elConnDot = $('conn-dot'), elConnPill = $('conn-pill');
+var elModelBadge = $('model-badge'), elTimeBadge = $('time-badge');
 
-// ── DOM refs ─────────────────────────────────────────────────────────────────
-const $messages   = document.getElementById('messages');
-const $empty      = document.getElementById('empty');
-const $input      = document.getElementById('input');
-const $sendBtn    = document.getElementById('send-btn');
-const $connDot    = document.getElementById('conn-dot');
-const $connLabel  = document.getElementById('conn-label');
-const $modelBadge = document.getElementById('model-badge');
-const $sessions   = document.getElementById('sessions-list');
-const $stats      = document.getElementById('stats');
+// ── Clock ────────────────────────────────────────────────────────────
+setInterval(function() {
+  elTimeBadge.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+}, 1000);
 
-// ── WebSocket ─────────────────────────────────────────────────────────────────
+// ── Tabs ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === name); });
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.toggle('active', t.id === 'tab-' + name); });
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────
 function connect() {
   if (connecting) return;
   connecting = true;
-  setConn(false, 'Connecting…');
+  setConn(false);
 
   ws = new WebSocket(WS_URL);
 
-  ws.onopen = () => {
+  ws.onopen = function() {
     connecting = false;
-    setConn(true, 'Connected');
+    setConn(true);
     clearTimeout(reconnTimer);
-    // Ask for session list + status
-    ws.send(JSON.stringify({ type: 'sessions.list' }));
     ws.send(JSON.stringify({ type: 'status' }));
   };
 
-  ws.onmessage = e => {
+  ws.onmessage = function(e) {
     try { handle(JSON.parse(e.data)); }
     catch(err) { console.warn('Parse error', err); }
   };
 
-  ws.onerror = () => {};
+  ws.onerror = function() {};
 
-  ws.onclose = () => {
+  ws.onclose = function() {
     connecting = false;
-    setConn(false, 'Disconnected – retrying…');
+    setConn(false);
     finishStream();
     reconnTimer = setTimeout(connect, 3500);
   };
 }
 
-function setConn(ok, label) {
-  $connDot.className = ok ? 'on' : '';
-  $connLabel.textContent = label;
-  $sendBtn.disabled = !ok;
+function setConn(ok) {
+  elConnDot.className = ok ? 'on' : '';
+  elConnPill.textContent = ok ? 'Connected' : 'Offline';
+  elConnPill.className = 'hdr-pill pill-conn' + (ok ? ' on' : '');
+  elSendBtn.disabled = !ok;
 }
 
-// ── Message dispatch ──────────────────────────────────────────────────────────
+// ── Message dispatch ─────────────────────────────────────────────────
 function handle(msg) {
   switch (msg.type) {
-    case 'connected':
-      // nothing extra needed
-      break;
+    case 'connected': break;
 
     case 'status':
-      $modelBadge.textContent = msg.model || '—';
-      $stats.innerHTML =
-        `Gateway: v${msg.version || '—'}<br>` +
-        `Uptime: ${fmtUptime(msg.uptime_sec)}<br>` +
-        `Clients: ${msg.clients ?? '—'}<br>` +
-        `Nodes: ${(msg.nodes||[]).join(', ') || 'none'}`;
+      elModelBadge.textContent = msg.model || '--';
       break;
 
     case 'message.start':
       hideEmpty();
+      clearProgress();
       streamFull = '';
       streaming = appendBubble('bot', '');
       streaming.querySelector('.bubble').appendChild(
@@ -413,18 +525,19 @@ function handle(msg) {
     case 'message.chunk':
       streamFull += msg.text || '';
       if (streaming) {
-        streaming.querySelector('.bubble').innerHTML = renderMarkdown(streamFull) +
-          '<span class="cursor"></span>';
+        streaming.querySelector('.bubble').innerHTML = renderMd(streamFull) + '<span class="cursor"></span>';
         scrollBottom();
+        tryParseTradingData(streamFull);
       }
       break;
 
     case 'message.done':
-      streamFull += msg.text || '';   // in case chunk was skipped
+      streamFull += msg.text || '';
       if (streaming) {
-        streaming.querySelector('.bubble').innerHTML = renderMarkdown(streamFull || msg.text || '');
+        streaming.querySelector('.bubble').innerHTML = renderMd(streamFull || msg.text || '');
         streaming = null;
         scrollBottom();
+        tryParseTradingData(streamFull || msg.text || '');
       }
       break;
 
@@ -433,12 +546,8 @@ function handle(msg) {
       appendBubble('system', msg.text || '(no output)');
       break;
 
-    case 'sessions.list.result':
-      renderSessions(msg.sessions || []);
-      break;
-
-    case 'sessions.history.result':
-      loadHistory(msg.messages || []);
+    case 'progress':
+      showProgress(msg.text || '');
       break;
 
     case 'error':
@@ -446,151 +555,201 @@ function handle(msg) {
       appendBubble('system', '⚠️ ' + (msg.text || 'Unknown error'));
       break;
 
-    case 'heartbeat':
-      // Keep alive — no UI update needed
-      break;
+    case 'heartbeat': break;
   }
 }
 
-// ── Send ─────────────────────────────────────────────────────────────────────
+// ── Send ─────────────────────────────────────────────────────────────
 function send() {
-  const text = $input.value.trim();
+  var text = elInput.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-  $input.value = '';
+  elInput.value = '';
   autoResize();
   hideEmpty();
 
-  if (text.startsWith('/')) {
+  if (text.charAt(0) === '/') {
     appendBubble('user', text);
-    ws.send(JSON.stringify({ type: 'command', session_id: SESSION_ID, user_id: USER_ID, text }));
+    ws.send(JSON.stringify({ type: 'command', session_id: SESSION_ID, user_id: USER_ID, text: text }));
   } else {
     appendBubble('user', text);
-    ws.send(JSON.stringify({ type: 'message', session_id: SESSION_ID, user_id: USER_ID, text }));
+    ws.send(JSON.stringify({ type: 'message', session_id: SESSION_ID, user_id: USER_ID, text: text }));
   }
 }
 
-$sendBtn.addEventListener('click', send);
-$input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-});
-$input.addEventListener('input', autoResize);
-
-function autoResize() {
-  $input.style.height = 'auto';
-  $input.style.height = Math.min($input.scrollHeight, 160) + 'px';
+function sendText(text) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  hideEmpty();
+  appendBubble('user', text);
+  ws.send(JSON.stringify({ type: 'message', session_id: SESSION_ID, user_id: USER_ID, text: text }));
 }
 
-// ── Bubble factory ────────────────────────────────────────────────────────────
-function appendBubble(role, text) {
-  const div    = document.createElement('div');
-  const bubble = document.createElement('div');
-  const av     = document.createElement('div');
-  div.className    = 'msg ' + role;
-  bubble.className = 'bubble';
-  av.className     = 'avatar ' + (role === 'user' ? 'user-av' : 'bot-av');
-  av.textContent   = role === 'user' ? '🧑' : (role === 'system' ? '⚙️' : '🤖');
+function fillInput(text) {
+  elInput.value = text;
+  elInput.focus();
+}
 
-  bubble.innerHTML = renderMarkdown(text);
-  if (role === 'system') {
+elSendBtn.addEventListener('click', send);
+elInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+elInput.addEventListener('input', autoResize);
+
+function autoResize() {
+  elInput.style.height = 'auto';
+  elInput.style.height = Math.min(elInput.scrollHeight, 140) + 'px';
+}
+
+// ── Bubble factory ───────────────────────────────────────────────────
+function appendBubble(role, text) {
+  var div    = document.createElement('div');
+  var bubble = document.createElement('div');
+  var av     = document.createElement('div');
+  div.className = 'msg ' + role;
+  bubble.className = 'bubble';
+  av.className = 'avatar ' + (role === 'user' ? 'user-av' : 'bot-av');
+  av.textContent = role === 'user' ? '🧑' : (role === 'system' ? '⚙️' : '📈');
+
+  bubble.innerHTML = renderMd(text);
+  if (role === 'system' || role === 'progress') {
     div.appendChild(bubble);
   } else {
     div.appendChild(av);
     div.appendChild(bubble);
   }
-  $messages.appendChild(div);
+  elMessages.appendChild(div);
   scrollBottom();
   return div;
 }
 
-function hideEmpty() {
-  if ($empty) $empty.style.display = 'none';
+function showProgress(text) {
+  if (!progressEl) {
+    progressEl = appendBubble('progress', text);
+  } else {
+    progressEl.querySelector('.bubble').innerHTML = renderMd(text);
+  }
+  scrollBottom();
 }
 
+function clearProgress() {
+  if (progressEl) {
+    progressEl.remove();
+    progressEl = null;
+  }
+}
+
+function hideEmpty() { if (elEmpty) elEmpty.style.display = 'none'; }
 function finishStream() {
   if (streaming) {
-    const c = streaming.querySelector('.cursor');
+    var c = streaming.querySelector('.cursor');
     if (c) c.remove();
     streaming = null;
   }
 }
-
-// ── Sessions sidebar ──────────────────────────────────────────────────────────
-function renderSessions(sessions) {
-  if (!sessions.length) {
-    $sessions.innerHTML = '<p style="padding:12px 16px;color:var(--text-dim);font-size:.8rem">No sessions yet</p>';
-    return;
-  }
-  $sessions.innerHTML = sessions.map(s => `
-    <div class="session-item" data-id="${s.id}" onclick="loadSession('${s.id}')">
-      <div class="s-ch">${escHtml(s.channel)} · ${escHtml(s.user_id)}</div>
-      <div class="s-id">${s.id.slice(0,12)}…</div>
-      <div class="s-n">${s.messages} messages</div>
-    </div>
-  `).join('');
-}
-
-function loadSession(sid) {
-  document.querySelectorAll('.session-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.id === sid)
-  );
-  ws && ws.send(JSON.stringify({ type: 'sessions.history', session_id: sid }));
-}
-
-function loadHistory(msgs) {
-  hideEmpty();
-  $messages.innerHTML = '';
-  msgs.forEach(m => {
-    if (m.role === 'system') return;
-    appendBubble(m.role === 'assistant' ? 'bot' : 'user', m.content || '');
-  });
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function scrollBottom() {
-  requestAnimationFrame(() => { $messages.scrollTop = $messages.scrollHeight; });
+  requestAnimationFrame(function() { elMessages.scrollTop = elMessages.scrollHeight; });
 }
 
-function fmtUptime(sec) {
-  if (!sec) return '—';
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
-  return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
+// ── Price refresh ────────────────────────────────────────────────────
+function refreshAllPrices() {
+  sendText('What are the current prices of BTC, ETH, and SOL?');
 }
 
-function escHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Click on price row to ask for that price
+document.querySelectorAll('.price-row').forEach(function(row) {
+  row.addEventListener('click', function() {
+    var sym = row.dataset.sym;
+    sendText('What is the price of ' + sym + '?');
+  });
+});
+
+// ── Parse trading data from bot responses ────────────────────────────
+function tryParseTradingData(text) {
+  // Parse single price response: "The current price of BTC is $97,234"
+  var singleMatch = text.match(/price of (\w+).*?\$([\d,]+\.?\d*)/i);
+  if (singleMatch) {
+    updatePriceUI(singleMatch[1].toUpperCase(), parseFloat(singleMatch[2].replace(/,/g, '')));
+  }
+
+  // Also try: "BTC/USDT: $97,234"
+  var pairRegex = /(\w+)\/USDT[:\s]+\$([\d,]+\.?\d*)/gi;
+  var pairMatch;
+  while ((pairMatch = pairRegex.exec(text)) !== null) {
+    updatePriceUI(pairMatch[1].toUpperCase(), parseFloat(pairMatch[2].replace(/,/g, '')));
+  }
+
+  // Try: "BTC: $97,234" or "Bitcoin (BTC): $97,234"
+  var labelRegex = /\b(BTC|ETH|SOL|BNB|XRP|DOGE|ADA|AVAX|LINK|DOT|PEPE|WIF|SHIB|BONK)\b[^$]*\$([\d,]+\.?\d*)/gi;
+  var labelMatch;
+  while ((labelMatch = labelRegex.exec(text)) !== null) {
+    updatePriceUI(labelMatch[1].toUpperCase(), parseFloat(labelMatch[2].replace(/,/g, '')));
+  }
+
+  // Parse portfolio value
+  var portfolioMatch = text.match(/(?:total|portfolio|equity|value)[:\s]*\$([\d,]+\.?\d*)/i);
+  if (portfolioMatch) {
+    var val = parseFloat(portfolioMatch[1].replace(/,/g, ''));
+    $('port-value').textContent = '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  }
+
+  // Parse win rate
+  var wrMatch = text.match(/win\s*rate[:\s]*([\d.]+)%/i);
+  if (wrMatch) $('stat-winrate').textContent = wrMatch[1] + '%';
+
+  // Parse trade count
+  var tcMatch = text.match(/(\d+)\s*(?:total\s*)?trades/i);
+  if (tcMatch) $('stat-trades').textContent = tcMatch[1];
 }
 
-// Minimal Markdown → HTML (bold, italic, code, fenced code blocks, links)
-function renderMarkdown(text) {
-  let h = escHtml(text);
-  // fenced code blocks
-  h = h.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) =>
-    `<pre><code class="lang-${lang||''}">${code}</code></pre>`);
-  // inline code
+function updatePriceUI(sym, price) {
+  if (!price || price <= 0 || isNaN(price)) return;
+  var old = priceCache[sym];
+  priceCache[sym] = price;
+
+  var row = document.querySelector('.price-row[data-sym="' + sym + '"]');
+  if (!row) return;
+
+  var valEl = row.querySelector('.price-val');
+  var chgEl = row.querySelector('.price-chg');
+
+  var formatted;
+  if (price > 1000) formatted = '$' + price.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  else if (price > 1) formatted = '$' + price.toFixed(2);
+  else if (price > 0.001) formatted = '$' + price.toFixed(4);
+  else formatted = '$' + price.toFixed(8);
+
+  valEl.textContent = formatted;
+
+  if (old && old !== price) {
+    var chg = ((price - old) / old * 100).toFixed(2);
+    var isUp = price >= old;
+    chgEl.textContent = (isUp ? '+' : '') + chg + '%';
+    chgEl.style.color = isUp ? 'var(--green)' : 'var(--red)';
+    valEl.style.color = isUp ? 'var(--green)' : 'var(--red)';
+    setTimeout(function() { valEl.style.color = ''; }, 1500);
+  }
+}
+
+// ── Markdown renderer ────────────────────────────────────────────────
+function renderMd(text) {
+  var h = escHtml(text);
+  h = h.replace(/```(\w+)?\n?([\s\S]*?)```/g, function(_, lang, code) {
+    return '<pre><code class="lang-' + (lang||'') + '">' + code + '</code></pre>';
+  });
   h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // bold
   h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // italic
   h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // links [text](url)
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  // newlines
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--accent2)">$1</a>');
   h = h.replace(/\n/g, '<br>');
   return h;
 }
 
-// Refresh sessions list every 30 s
-setInterval(() => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'sessions.list' }));
-    ws.send(JSON.stringify({ type: 'status' }));
-  }
-}, 30_000);
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────
 connect();
 </script>
 </body>

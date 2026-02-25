@@ -3,6 +3,8 @@ CLI Interface for Open-Sable
 Interactive terminal REPL with streaming progress indicators
 """
 
+import asyncio
+import functools
 import logging
 from rich.console import Console
 from rich.prompt import Prompt
@@ -54,7 +56,12 @@ class CLIInterface:
 
         while True:
             try:
-                user_input = Prompt.ask("\n[bold green]You[/bold green]")
+                # Run blocking input() in a thread so the event loop stays free
+                # for the gateway/WebChat to handle HTTP and WebSocket connections.
+                loop = asyncio.get_running_loop()
+                user_input = await loop.run_in_executor(
+                    None, functools.partial(Prompt.ask, "\n[bold green]You[/bold green]")
+                )
                 if not user_input.strip():
                     continue
 

@@ -485,7 +485,7 @@ class Gateway:
     # ── Handlers ──────────────────────────────────────────────────────────────
 
     async def _on_message(self, client: _Client, msg: dict):
-        """Stream an agent reply token-by-token back to the WebSocket client."""
+        """Process user message through the full agent pipeline (with tools)."""
         sid = msg.get("session_id", "webchat_default")
         text = msg.get("text", "").strip()
         user_id = msg.get("user_id", "webchat_user")
@@ -495,42 +495,21 @@ class Gateway:
 
         await client.send({"type": "message.start", "session_id": sid})
 
-        try:
-            import ollama
-
-            ollama_cli = ollama.AsyncClient(host=self.config.ollama_base_url)
-            model = (
-                self.agent.llm.current_model
-                if hasattr(self.agent, "llm") and hasattr(self.agent.llm, "current_model")
-                else getattr(self.config, "default_model", "llama3.1:8b")
-            )
-            system = (
-                self.agent._get_personality_prompt()
-                if hasattr(self.agent, "_get_personality_prompt")
-                else "You are Sable, a helpful AI assistant."
-            )
-            full = ""
-            async for chunk in await ollama_cli.chat(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": text},
-                ],
-                stream=True,
-            ):
-                delta = chunk.get("message", {}).get("content", "")
-                full += delta
-                await client.send({"type": "message.chunk", "session_id": sid, "text": delta})
-
-            await client.send({"type": "message.done", "session_id": sid, "text": full})
-
-        except Exception as e:
-            logger.warning(f"[Gateway] Streaming failed, falling back: {e}")
+        # Progress callback — streams intermediate steps to the WebSocket client
+        async def _progress(status_text: str):
             try:
-                reply = await self.agent.process_message(user_id, text)
-                await client.send({"type": "message.done", "session_id": sid, "text": reply})
-            except Exception as e2:
-                await client.send({"type": "error", "session_id": sid, "text": str(e2)})
+                await client.send({"type": "progress", "session_id": sid, "text": status_text})
+            except Exception:
+                pass
+
+        try:
+            # Use the full agent pipeline which includes tool calling, trading
+            # tools, guardrails, HITL gates, memory, and everything else.
+            reply = await self.agent.process_message(user_id, text, progress_callback=_progress)
+            await client.send({"type": "message.done", "session_id": sid, "text": reply})
+        except Exception as e:
+            logger.warning(f"[Gateway] Agent processing failed: {e}")
+            await client.send({"type": "error", "session_id": sid, "text": str(e)})
 
     async def _on_command(self, client: _Client, msg: dict):
         from opensable.core.commands import CommandHandler

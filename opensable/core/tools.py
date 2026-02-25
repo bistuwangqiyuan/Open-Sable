@@ -15,6 +15,11 @@ from .browser import BrowserEngine
 from .skill_creator import SkillCreator
 
 try:
+    from ..skills.trading.trading_skill import TradingSkill
+except ImportError:
+    TradingSkill = None  # type: ignore
+
+try:
     from ..skills import VoiceSkill, ImageSkill, DatabaseSkill, RAGSkill, CodeExecutor, APIClient, XSkill, GrokSkill
 except ImportError:
     # Graceful fallback if a skill is not available
@@ -58,6 +63,17 @@ class ToolRegistry:
         "open_document": "system_command",
         "clipboard_copy": "system_command",
         "clipboard_paste": "system_command",
+        # Trading tools
+        "trading_portfolio": "trading_read",
+        "trading_price": "trading_read",
+        "trading_analyze": "trading_read",
+        "trading_signals": "trading_read",
+        "trading_history": "trading_read",
+        "trading_risk_status": "trading_read",
+        "trading_place_trade": "trading_execute",
+        "trading_cancel_order": "trading_execute",
+        "trading_start_scan": "trading_execute",
+        "trading_stop_scan": "trading_execute",
     }
 
     def __init__(self, config):
@@ -118,6 +134,14 @@ class ToolRegistry:
         self.ocr_skill = OCRSkill(config)
         self.google_calendar_skill = GoogleCalendarSkill(config)
         self.email_skill = EmailSkill(config)
+
+        # Trading skill
+        self.trading_skill = None
+        if TradingSkill and getattr(config, "trading_enabled", False):
+            try:
+                self.trading_skill = TradingSkill(config)
+            except Exception as e:
+                logger.warning(f"Trading skill creation failed: {e}")
 
     async def initialize(self):
         """Initialize all tools"""
@@ -262,6 +286,24 @@ class ToolRegistry:
                 await skill_obj.initialize()
             except Exception as e:
                 logger.warning(f"{skill_name} skill initialization failed: {e}")
+
+        # Initialize trading skill
+        if self.trading_skill:
+            try:
+                await self.trading_skill.initialize()
+                self.register("trading_portfolio", self._trading_portfolio_tool)
+                self.register("trading_price", self._trading_price_tool)
+                self.register("trading_analyze", self._trading_analyze_tool)
+                self.register("trading_place_trade", self._trading_place_trade_tool)
+                self.register("trading_cancel_order", self._trading_cancel_order_tool)
+                self.register("trading_history", self._trading_history_tool)
+                self.register("trading_signals", self._trading_signals_tool)
+                self.register("trading_start_scan", self._trading_start_scan_tool)
+                self.register("trading_stop_scan", self._trading_stop_scan_tool)
+                self.register("trading_risk_status", self._trading_risk_status_tool)
+                logger.info("✅ Trading skill initialized with 10 tools")
+            except Exception as e:
+                logger.warning(f"Trading skill initialization failed: {e}")
 
         logger.info(f"Initialized {len(self.tools)} tools")
 
@@ -1334,6 +1376,124 @@ class ToolRegistry:
                     },
                 },
             },
+            # ── Trading tools ─────────────────────────────────
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_portfolio",
+                    "description": "Get the current trading portfolio summary — balances, positions, P&L, performance stats",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_price",
+                    "description": "Get the current price of a trading pair (crypto, stock, prediction market)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string", "description": "Trading pair, e.g. BTC/USDT, ETH/USDT, AAPL"},
+                        },
+                        "required": ["symbol"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_analyze",
+                    "description": "Analyze a market/asset using all active strategies. Returns trading signals with confidence levels.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string", "description": "Trading pair to analyze, e.g. BTC/USDT"},
+                        },
+                        "required": ["symbol"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_place_trade",
+                    "description": "Place a buy or sell trade. Goes through risk checks and requires approval for large amounts.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string", "description": "Trading pair, e.g. BTC/USDT"},
+                            "side": {"type": "string", "enum": ["buy", "sell"], "description": "Buy or sell"},
+                            "amount": {"type": "string", "description": "Amount to trade (in base currency)"},
+                            "type": {"type": "string", "enum": ["market", "limit"], "description": "Order type (default: market)"},
+                            "price": {"type": "string", "description": "Limit price (only for limit orders)"},
+                            "exchange": {"type": "string", "description": "Exchange to use: paper, binance, coinbase, alpaca, etc. (default: paper)"},
+                        },
+                        "required": ["symbol", "side", "amount"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_cancel_order",
+                    "description": "Cancel an open order on an exchange",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "order_id": {"type": "string", "description": "The order ID to cancel"},
+                            "exchange": {"type": "string", "description": "Exchange name (default: paper)"},
+                            "symbol": {"type": "string", "description": "Trading pair (some exchanges require it)"},
+                        },
+                        "required": ["order_id"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_history",
+                    "description": "Get recent trade history and execution log",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "description": "Number of trades to return (default: 20)"},
+                        },
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_signals",
+                    "description": "Scan all assets on the watchlist and return current trading signals from all strategies",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_start_scan",
+                    "description": "Start background market scanning — continuously monitors watchlist for trading opportunities",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_stop_scan",
+                    "description": "Stop the background market scanning loop",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trading_risk_status",
+                    "description": "Show the current risk manager status — limits, daily P&L, drawdown, emergency halt status",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
         ] + self._custom_schemas  # append @function_tool schemas
 
     # Tool schema → internal tool name mapping
@@ -1408,6 +1568,17 @@ class ToolRegistry:
         "clipboard_paste": ("clipboard_paste", lambda a: a),
         # OCR
         "ocr_extract": ("ocr_extract", lambda a: a),
+        # Trading
+        "trading_portfolio": ("trading_portfolio", lambda a: a),
+        "trading_price": ("trading_price", lambda a: a),
+        "trading_analyze": ("trading_analyze", lambda a: a),
+        "trading_place_trade": ("trading_place_trade", lambda a: a),
+        "trading_cancel_order": ("trading_cancel_order", lambda a: a),
+        "trading_history": ("trading_history", lambda a: a),
+        "trading_signals": ("trading_signals", lambda a: a),
+        "trading_start_scan": ("trading_start_scan", lambda a: a),
+        "trading_stop_scan": ("trading_stop_scan", lambda a: a),
+        "trading_risk_status": ("trading_risk_status", lambda a: a),
     }
 
     async def execute_schema_tool(
@@ -2914,3 +3085,65 @@ class ToolRegistry:
 
             return f"📄 **OCR Result** [{engine}{conf_str}]:\n\n{text}"
         return f"❌ OCR failed: {result.get('error')}"
+
+    # ========== TRADING TOOLS ==========
+
+    async def _trading_portfolio_tool(self, params: Dict) -> str:
+        """Get portfolio summary"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled. Set TRADING_ENABLED=true in your environment."
+        return await self.trading_skill.get_portfolio(params)
+
+    async def _trading_price_tool(self, params: Dict) -> str:
+        """Get current price"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.get_price(params)
+
+    async def _trading_analyze_tool(self, params: Dict) -> str:
+        """Analyze market"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.analyze_market(params)
+
+    async def _trading_place_trade_tool(self, params: Dict) -> str:
+        """Place a trade"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.place_trade(params)
+
+    async def _trading_cancel_order_tool(self, params: Dict) -> str:
+        """Cancel an order"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.cancel_order(params)
+
+    async def _trading_history_tool(self, params: Dict) -> str:
+        """Get trade history"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.get_trade_history(params)
+
+    async def _trading_signals_tool(self, params: Dict) -> str:
+        """Get current signals"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.get_signals(params)
+
+    async def _trading_start_scan_tool(self, params: Dict) -> str:
+        """Start background scanning"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.start_scanning(params)
+
+    async def _trading_stop_scan_tool(self, params: Dict) -> str:
+        """Stop background scanning"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.stop_scanning(params)
+
+    async def _trading_risk_status_tool(self, params: Dict) -> str:
+        """Get risk status"""
+        if not self.trading_skill:
+            return "⚠️ Trading is not enabled."
+        return await self.trading_skill.get_risk_status(params)
