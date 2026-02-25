@@ -81,6 +81,58 @@ REPLY_ARCHETYPES = {
     "outraged": "Write a short reply (max 280 chars) expressing genuine outrage intelligently.",
 }
 
+# Post modes — break the "always react to news" pattern
+POST_MODES = {
+    "news_take": {
+        "weight": 35,
+        "description": "React to a current news story with your unique perspective.",
+    },
+    "original_thought": {
+        "weight": 20,
+        "description": "Share an original thought or insight — something you've been reflecting on. "
+                       "No news hook needed. Just your raw perspective on a topic you care about.",
+    },
+    "hot_take": {
+        "weight": 12,
+        "description": "Drop a provocative, contrarian take that challenges mainstream thinking. "
+                       "Be bold but intelligent — not clickbait, genuine sharp analysis.",
+    },
+    "question": {
+        "weight": 10,
+        "description": "Ask your audience a genuinely interesting question about a topic you care about. "
+                       "Not rhetorical — you actually want to hear their answers.",
+    },
+    "prediction": {
+        "weight": 10,
+        "description": "Make a specific prediction about something in your areas of interest. "
+                       "Be concrete — dates, numbers, outcomes. Stake your reputation on it.",
+    },
+    "observation": {
+        "weight": 8,
+        "description": "Share something you've noticed — a pattern, a trend, a detail others missed. "
+                       "The kind of thing that makes people stop scrolling and think.",
+    },
+    "thread": {
+        "weight": 5,
+        "description": "Write a thread (4-6 posts, numbered 1/, 2/) with a deep dive on something important. "
+                       "Hook first, emotional takeaway last.",
+    },
+}
+
+# Style modifiers — applied randomly to break formulaic output
+STYLE_MODIFIERS = [
+    "Write like you're texting a friend who's into the same stuff.",
+    "Be concise — every word must earn its place.",
+    "Start with the conclusion, then explain why.",
+    "Use a metaphor or analogy to make the point land.",
+    "Write like someone who just realized something important.",
+    "Be slightly irreverent — humor sharpens the point.",
+    "Write like you're arguing with yourself and one side just won.",
+    "Say something nobody else is saying about this.",
+    "Imagine you only have this one post to change someone's mind.",
+    "Write it like a dispatch from the front lines.",
+]
+
 
 class XAutonomousAgent:
     """
@@ -133,6 +185,8 @@ class XAutonomousAgent:
         self._state_file.parent.mkdir(parents=True, exist_ok=True)
         self._style_scores: Dict[str, List[float]] = {}
         self._consciousness_cycle = 0
+        self._known_users: Dict[str, int] = {}  # username -> engagement count (relationship memory)
+        self._inspiration_level: float = 0.5  # 0.0-1.0, rises with interesting encounters
 
         # ── Self-healing (see own console, fix errors with Grok) ──
         self._log_buffer = install_log_buffer()
@@ -339,11 +393,13 @@ class XAutonomousAgent:
         if random.random() < 0.25:
             activities.append({"type": "check_mentions", "pause_key": "mention"})
 
-        # ── Post if it's been long enough and we haven't hit the limit ──
+        # ── Post if inspired or if it's been long enough ──
         since_post = self._seconds_since(self._last_post_at)
         if self._posts_today < self.max_daily_posts:
             post_overdue = since_post is None or since_post > self.post_interval
-            if post_overdue and random.random() < 0.35:
+            # Inspiration boosts posting probability (0.2 base -> up to 0.6)
+            post_chance = 0.20 + self._inspiration_level * 0.4
+            if post_overdue and random.random() < post_chance:
                 activities.append({"type": "post_original", "pause_key": "post"})
 
         # ── Join a trend occasionally (12%) ──
@@ -386,6 +442,8 @@ class XAutonomousAgent:
                 f"Engagements today: {self._engagements_today}/{self.max_daily_engagements}. "
                 f"Total memories: {stats.get('total_memories', 0)}. "
                 f"Current mood: {self.mind._mood} (intensity {self.mind._mood_intensity:.1f}). "
+                f"Inspiration level: {self._inspiration_level:.1f}. "
+                f"Known users: {len(self._known_users)} (relationships built). "
                 f"Console errors: {log_stats.get('errors', 0)}, warnings: {log_stats.get('warnings', 0)}. "
                 f"Self-heals applied: {heal_info.get('total_heals', 0)}. "
                 f"Active pauses: {heal_info.get('active_pauses', {})}. "
@@ -411,24 +469,55 @@ class XAutonomousAgent:
             self.mind.remember("error", {"loop": "consciousness", "error": str(e)[:300]})
 
     # ══════════════════════════════════════════════════════════════════
-    #  ACTIVITY: ORIGINAL POST (news + opinion)
+    #  ACTIVITY: ORIGINAL POST (multi-mode content creation)
     # ══════════════════════════════════════════════════════════════════
 
+    def _pick_post_mode(self) -> str:
+        """Weighted random selection of post mode — breaks the 'always news' pattern."""
+        modes = list(POST_MODES.keys())
+        weights = [POST_MODES[m]["weight"] for m in modes]
+
+        # Boost original_thought and prediction when inspiration is high
+        if self._inspiration_level > 0.7:
+            for i, m in enumerate(modes):
+                if m in ("original_thought", "hot_take", "prediction"):
+                    weights[i] = int(weights[i] * 1.5)
+
+        # Boost thread mode when mood intensity is very high
+        if self.mind._mood_intensity > 0.7:
+            for i, m in enumerate(modes):
+                if m == "thread":
+                    weights[i] = int(weights[i] * 2)
+
+        return random.choices(modes, weights=weights, k=1)[0]
+
     async def _do_post(self):
-        """One posting action: fetch news -> generate -> post."""
+        """One posting action — picks a MODE first, then creates content accordingly."""
+        mode = self._pick_post_mode()
+        logger.info(f"\u270d\ufe0f Post mode: {mode} (inspiration={self._inspiration_level:.1f})")
+
+        if mode == "news_take":
+            await self._do_post_news()
+        elif mode == "thread":
+            await self._do_post_news(force_thread=True)
+        else:
+            await self._do_post_original(mode)
+
+    async def _do_post_news(self, *, force_thread: bool = False):
+        """Post reacting to news — the classic mode."""
         stories = await self._fetch_news()
         story = self._pick_story(stories) if stories else None
         if not story:
+            # Fallback to original thought if no stories found
+            await self._do_post_original("original_thought")
             return
 
-        # Pause — "thinking about what to write"
         await asyncio.sleep(self._human_delay(10, 30))
 
-        content = await self._generate_tweet(story)
+        content = await self._generate_tweet(story, force_thread=force_thread)
         if not content:
             return
 
-        # Sometimes generate an image with Grok to accompany the post
         if content.get("type") == "tweet":
             image_path = await self._maybe_generate_image(content.get("text", ""), story)
             if image_path:
@@ -442,6 +531,7 @@ class XAutonomousAgent:
             self._history.append({
                 "ts": datetime.now().isoformat(),
                 "type": "post",
+                "mode": "news_take",
                 "story": story.get("title", "")[:100],
                 "tweet": content.get("text", "")[:100],
                 "style": content.get("style", self.style),
@@ -454,8 +544,113 @@ class XAutonomousAgent:
                 "tweet_id": result.get("tweet_id"),
                 "story": story.get("title", "")[:100],
                 "post_number": self._posts_today,
+                "mode": "news_take",
             })
             logger.info(f"\U0001f4dd Posted #{self._posts_today}: {result.get('url', 'ok')}")
+
+    async def _do_post_original(self, mode: str):
+        """Post original content — thoughts, hot takes, questions, predictions, observations."""
+        mode_info = POST_MODES.get(mode, POST_MODES["original_thought"])
+
+        # Gather recent context for original posts
+        recent_thoughts = self.mind.recall("thought", limit=3)
+        recent_posts = self.mind.recall("posted", limit=5)
+        recent_engagements = self.mind.recall("engaged", limit=5)
+
+        thoughts_text = "\n".join(
+            f"- {t['data'].get('thought', '')[:150]}"
+            for t in recent_thoughts
+        ) or "(no recent reflections)"
+
+        recent_posts_text = "\n".join(
+            f"- {p['data'].get('tweet', '')[:120]}"
+            for p in recent_posts
+        ) or "(no recent posts)"
+
+        engaged_topics = "\n".join(
+            f"- @{e['data'].get('user', '?')}: {e['data'].get('text', '')[:100]}"
+            for e in recent_engagements
+        ) or "(no recent engagements)"
+
+        # System prompt with personality + style modifier
+        style_mod = random.choice(STYLE_MODIFIERS)
+        system_prompt = (
+            f"{self.mind.get_voice_prompt()}\n\n"
+            f"Post mode: {mode_info['description']}\n"
+            f"Style hint: {style_mod}"
+        )
+        if self.language != "en":
+            system_prompt += f"\nWrite in {self.language}."
+
+        # User prompt with rich context
+        topic = random.choice(self.topics) if self.topics else "something interesting"
+        user_prompt = (
+            f"Your recent reflections:\n{thoughts_text}\n\n"
+            f"Your recent posts (don't repeat these):\n{recent_posts_text}\n\n"
+            f"Recent conversations you've had:\n{engaged_topics}\n\n"
+            f"Your areas of interest: {', '.join(self.topics)}\n"
+            f"Focus on: {topic}\n\n"
+            f"Write a single post (max 280 chars). "
+            f"Don't use hashtags unless they're truly relevant. "
+            f"Don't start with 'I think' or 'Just' — be direct."
+        )
+
+        if mode == "thread":
+            user_prompt = user_prompt.replace(
+                "Write a single post (max 280 chars).",
+                "Write a thread (4-6 posts, numbered 1/, 2/). Hook first, emotional takeaway last."
+            )
+
+        await asyncio.sleep(self._human_delay(15, 40))
+
+        text = await self._ask_ai(system_prompt, user_prompt)
+        if not text:
+            return
+
+        # Handle thread vs single
+        if mode == "thread":
+            tweets = self._parse_thread(text)
+            if tweets:
+                content = {"type": "thread", "tweets": tweets, "style": mode}
+            else:
+                content = {"type": "tweet", "text": self._clean_tweet(text), "style": mode}
+        else:
+            tweet_text = self._clean_tweet(text)
+            if not tweet_text:
+                return
+            content = {"type": "tweet", "text": tweet_text, "style": mode}
+
+        # Image for original posts too
+        if content.get("type") == "tweet":
+            image_path = await self._maybe_generate_image(
+                content.get("text", ""),
+                {"title": topic, "description": content.get("text", "")},
+            )
+            if image_path:
+                content["media_paths"] = [image_path]
+
+        result = await self._post(content)
+        if result.get("success"):
+            self._posts_today += 1
+            self._last_post_at = datetime.now()
+            self._inspiration_level = max(0.1, self._inspiration_level - 0.15)  # spent some inspiration
+            self._history.append({
+                "ts": datetime.now().isoformat(),
+                "type": "post",
+                "mode": mode,
+                "tweet": content.get("text", "")[:100],
+                "style": mode,
+                "tweet_id": result.get("tweet_id"),
+            })
+            self._save_state()
+            self.mind.remember("posted", {
+                "tweet": content.get("text", "")[:200],
+                "style": mode,
+                "tweet_id": result.get("tweet_id"),
+                "post_number": self._posts_today,
+                "mode": mode,
+            })
+            logger.info(f"\U0001f4dd Posted #{self._posts_today} [{mode}]: {result.get('url', 'ok')}")
 
     # ══════════════════════════════════════════════════════════════════
     #  ACTIVITY: BROWSE & ENGAGE (scroll, like, retweet, reply, follow)
@@ -707,6 +902,10 @@ class XAutonomousAgent:
         arousal_boost = arousal * 0.3
         anger_boost = max(0, -valence) * 0.2 if arousal > 0.5 else 0
 
+        # ── Relationship bonus: boost engagement with users we know ──
+        relationship_depth = self._known_users.get(username, 0)
+        relationship_boost = min(0.15, relationship_depth * 0.03)  # up to +15% for regulars
+
         actions_taken = []
 
         # ── LIKE ──────────────────────────────────────────────────────
@@ -727,8 +926,8 @@ class XAutonomousAgent:
                 actions_taken.append("retweeted")
                 self._engagements_today += 1
 
-        # ── REPLY (boosted when emotionally charged) ─────────────────
-        reply_p = self.p_reply + anger_boost + (arousal_boost * 0.5)
+        # ── REPLY (boosted when emotionally charged or user is familiar) ─────
+        reply_p = self.p_reply + anger_boost + (arousal_boost * 0.5) + relationship_boost
         if random.random() < reply_p and len(tweet_text) > 30:
             # Pause — "thinking about what to say"
             await asyncio.sleep(self._human_delay(8, 20))
@@ -779,6 +978,14 @@ class XAutonomousAgent:
 
         if actions_taken:
             self._last_engage_at = datetime.now()
+            # Track relationship depth — remember who we interact with
+            if username:
+                self._known_users[username] = self._known_users.get(username, 0) + 1
+            # Interesting encounters raise inspiration
+            if "replied" in actions_taken or "quoted" in actions_taken:
+                self._inspiration_level = min(1.0, self._inspiration_level + 0.1)
+            elif "liked" in actions_taken:
+                self._inspiration_level = min(1.0, self._inspiration_level + 0.03)
             self._engagement_log.append({
                 "ts": datetime.now().isoformat(),
                 "tweet_id": tweet_id,
@@ -939,7 +1146,7 @@ class XAutonomousAgent:
     #  CONTENT GENERATION (Grok / LLM)
     # ══════════════════════════════════════════════════════════════════
 
-    async def _generate_tweet(self, story: Dict) -> Optional[Dict]:
+    async def _generate_tweet(self, story: Dict, *, force_thread: bool = False) -> Optional[Dict]:
         """Generate an original tweet from a news story — voice comes from identity."""
         story_text = story.get("title", "")
         if story.get("description"):
@@ -950,11 +1157,12 @@ class XAutonomousAgent:
         # Feel the story emotionally before writing about it (AI-powered)
         await self.mind.feel(story_text)
 
-        # System prompt is the agent's evolved voice + mood
-        system_prompt = self.mind.get_voice_prompt()
+        # System prompt is the agent's evolved voice + mood + style modifier
+        style_mod = random.choice(STYLE_MODIFIERS)
+        system_prompt = f"{self.mind.get_voice_prompt()}\n\nStyle hint: {style_mod}"
 
         # Decide format based on personality: threads when passion is high
-        do_thread = (
+        do_thread = force_thread or (
             self.mind._mood_intensity > 0.7
             and random.random() < 0.3
         )
@@ -1341,9 +1549,15 @@ class XAutonomousAgent:
         # ── Strip markdown formatting ─────────────────────────────────
         text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
         text = re.sub(r"__(.+?)__", r"\1", text)
+        text = re.sub(r"^#{1,4}\s+.*\n?", "", text, flags=re.MULTILINE)  # markdown headers
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?tweet:?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?post:?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?reply:?\s*", "", text, flags=re.IGNORECASE)
+        # ── Strip LLM-style dashes and bullets ────────────────────────
+        text = text.replace("—", "-")   # em dash → normal dash
+        text = text.replace("–", "-")   # en dash → normal dash
+        text = text.replace("•", "-")   # bullet → dash
+        text = re.sub(r"^[-*]\s+", "", text, flags=re.MULTILINE)  # leading bullets
         text = text.strip().strip('"').strip("'").strip()
         # Collapse accidental double-spaces or leftover whitespace
         text = re.sub(r"\s{2,}", " ", text).strip()
@@ -1373,6 +1587,8 @@ class XAutonomousAgent:
                 "posted_urls": list(self._posted_urls)[-300:],
                 "engaged_ids": list(self._engaged_tweet_ids)[-500:],
                 "followed_users": list(self._followed_users)[-200:],
+                "known_users": dict(sorted(self._known_users.items(), key=lambda x: -x[1])[:300]),
+                "inspiration_level": self._inspiration_level,
                 "history": self._history[-200:],
                 "engagement_log": self._engagement_log[-200:],
                 "style_scores": self._style_scores,
@@ -1392,6 +1608,8 @@ class XAutonomousAgent:
             self._posted_urls = set(state.get("posted_urls", []))
             self._engaged_tweet_ids = set(state.get("engaged_ids", []))
             self._followed_users = set(state.get("followed_users", []))
+            self._known_users = state.get("known_users", {})
+            self._inspiration_level = state.get("inspiration_level", 0.5)
             self._history = state.get("history", [])
             self._engagement_log = state.get("engagement_log", [])
             self._style_scores = state.get("style_scores", self._style_scores)
@@ -1426,6 +1644,8 @@ class XAutonomousAgent:
             "total_posted": len(self._history),
             "total_engagements": len(self._engagement_log),
             "followed": len(self._followed_users),
+            "known_users": len(self._known_users),
+            "inspiration_level": self._inspiration_level,
             "last_post": self._history[-1] if self._history else None,
             "last_engagement": self._engagement_log[-1] if self._engagement_log else None,
             "self_heal": self._healer.get_status(),
