@@ -110,3 +110,6 @@ trading_backtest_results/
 *.trading.db
 *.portfolio.db
 aggr/
+
+# Website (built separately)
+website/
