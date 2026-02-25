@@ -20,6 +20,17 @@ Run locally, chat via Telegram, create goals, store memory, run tools safely, au
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
+### 🆕 What's new in v1.1.0
+- **Token & cost tracking** — per-request and cumulative token/cost metrics via `TokenTracker`
+- **Encrypted memory** — Fernet encryption for all memory stored at rest
+- **Crew API** — CrewAI-style multi-agent orchestration with `SharedBlackboard`
+- **Tool-use protocol** — proper tool_calls → tool results loop (no more regex parsing)
+- **Skills reorganized** — 22 skills sorted into `social/`, `media/`, `data/`, `automation/`
+- **Tools split** — monolithic `tools.py` → mixin-based `tools/` package (5 domain files)
+- **MkDocs site** — Material-themed docs at `docs-site/` with guides & architecture
+- **Pinned lockfile** — `requirements-lock.txt` generated via `pip-compile`
+- **297 tests** — comprehensive test suite (up from 9)
+
 ---
 
 ## ⚡ Quick Start (5 minutes)
@@ -1551,7 +1562,6 @@ Open-Sable/
 │   │   ├── agi_integration.py  # Agentic AI agent (orchestrates all subsystems)
 │   │   ├── goal_system.py      # Autonomous goal management
 │   │   ├── advanced_memory.py  # 3-layer memory (episodic/semantic/working)
-│   │   ├── memory.py           # Base memory system
 │   │   ├── meta_learning.py    # Self-improvement strategies
 │   │   ├── tool_synthesis.py   # Dynamic tool creation
 │   │   ├── world_model.py      # Environment model & prediction
@@ -1573,7 +1583,6 @@ Open-Sable/
 │   │   ├── voice.py            # Voice utilities
 │   │   ├── voice_handler.py    # Voice command handler
 │   │   ├── multi_device_sync.py # Cross-device synchronization
-│   │   ├── multi_agent.py      # Multi-agent coordination
 │   │   ├── multi_messenger.py  # Multi-platform messaging
 │   │   │
 │   │   ├── # — Infrastructure —
@@ -1656,10 +1665,6 @@ Open-Sable/
 │   └── architecture/
 │
 ├── mkdocs.yml                  # MkDocs configuration
-│   ├── SELF_MODIFICATION.md
-│   ├── AUTO_ADAPTIVE_GUIDE.md
-│   ├── USERBOT_GUIDE.md
-│   └── WEB_SCRAPING_GUIDE.md
 │
 ├── k8s/                        # Kubernetes manifests
 │   ├── deployment.yaml
