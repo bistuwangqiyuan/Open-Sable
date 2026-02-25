@@ -360,6 +360,102 @@ class XSkill:
             logger.error(f"X search error: {e}")
             return {"success": False, "error": str(e)}
 
+    async def get_home_timeline(
+        self,
+        count: int = 20,
+        tab: str = "latest",
+    ) -> Dict[str, Any]:
+        """
+        Read the home timeline — like a real user opening the app and scrolling.
+
+        Args:
+            count: Max tweets to return
+            tab: 'latest' (Following) or 'foryou' (For You)
+        """
+        self._ensure_initialized()
+
+        try:
+            if tab == "latest":
+                raw_tweets = await self._client.get_latest_timeline(count=count)
+            else:
+                raw_tweets = await self._client.get_timeline(count=count)
+
+            results = []
+            for i, tweet in enumerate(raw_tweets):
+                if i >= count:
+                    break
+                media = self._extract_media(tweet)
+                results.append({
+                    "id": getattr(tweet, "id", None),
+                    "text": getattr(tweet, "text", str(tweet)),
+                    "user": getattr(getattr(tweet, "user", None), "name", "Unknown"),
+                    "username": getattr(getattr(tweet, "user", None), "screen_name", ""),
+                    "created_at": str(getattr(tweet, "created_at", "")),
+                    "likes": getattr(tweet, "favorite_count", 0),
+                    "retweets": getattr(tweet, "retweet_count", 0),
+                    "media": media,
+                    "has_media": bool(media),
+                })
+
+            await asyncio.sleep(self._action_delay)
+
+            return {
+                "success": True,
+                "tab": tab,
+                "count": len(results),
+                "tweets": results,
+            }
+
+        except Exception as e:
+            logger.error(f"X timeline error: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_notifications(
+        self,
+        notification_type: str = "Mentions",
+        count: int = 10,
+    ) -> Dict[str, Any]:
+        """
+        Get notifications (mentions, likes, etc.) — the real notifications tab.
+
+        Args:
+            notification_type: 'All', 'Verified', or 'Mentions'
+            count: Max notifications to return
+        """
+        self._ensure_initialized()
+
+        try:
+            notifications = await self._client.get_notifications(notification_type, count=count)
+
+            results = []
+            for i, notif in enumerate(notifications):
+                if i >= count:
+                    break
+                tweet = getattr(notif, "tweet", None)
+                from_user = getattr(notif, "from_user", None)
+                results.append({
+                    "id": getattr(notif, "id", None),
+                    "message": getattr(notif, "message", ""),
+                    "timestamp_ms": getattr(notif, "timestamp_ms", 0),
+                    "tweet_id": getattr(tweet, "id", None) if tweet else None,
+                    "tweet_text": getattr(tweet, "text", "") if tweet else "",
+                    "username": getattr(from_user, "screen_name", "") if from_user else "",
+                    "user_name": getattr(from_user, "name", "") if from_user else "",
+                })
+
+            await asyncio.sleep(self._action_delay)
+
+            return {
+                "success": True,
+                "type": notification_type,
+                "count": len(results),
+                "notifications": results,
+            }
+
+        except Exception as e:
+            logger.error(f"X notifications error: {e}")
+            return {"success": False, "error": str(e)}
+
     async def get_trends(self, category: str = "trending") -> Dict[str, Any]:
         """
         Get trending topics on X.

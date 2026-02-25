@@ -322,7 +322,7 @@ class XAutonomousAgent:
                 self.mind.remember("error", {"session": "main", "error": str(e)[:300]})
 
             # ── Between sessions: "close the app" and take a break ──
-            break_mins = random.uniform(20, 90)
+            break_mins = random.uniform(10, 40)
             logger.info(f"\U0001f4f1 Session done — closing X, break ~{break_mins:.0f}min")
 
             # Think during the break (uses LLM only, no X API calls)
@@ -389,8 +389,8 @@ class XAutonomousAgent:
         # ── Always start by browsing (scrolling the feed) ──
         activities.append({"type": "browse_engage", "pause_key": "engage"})
 
-        # ── Sometimes check mentions (25% chance) ──
-        if random.random() < 0.25:
+        # ── Check mentions more frequently (40% — uses notifications, not search) ──
+        if random.random() < 0.40:
             activities.append({"type": "check_mentions", "pause_key": "mention"})
 
         # ── Post if inspired or if it's been long enough ──
@@ -685,24 +685,37 @@ class XAutonomousAgent:
             await asyncio.sleep(self._human_delay(10, 30))
 
     def _pick_engagement_source(self) -> Dict:
-        """Pick what to browse — topic search, watched account, or trends."""
+        """Pick what to browse — home feed first, then topic search or watched accounts."""
         choices = []
+        # Home timeline is the primary source (like a real user opening the app)
+        choices.append({"type": "timeline", "value": "latest"})
+        choices.append({"type": "timeline", "value": "latest"})
+        choices.append({"type": "timeline", "value": "foryou"})
+        # Topic search and watched accounts are secondary
         for topic in self.topics:
             choices.append({"type": "topic", "value": topic})
         for account in self.accounts_to_watch:
             choices.append({"type": "account", "value": account})
         choices.append({"type": "trending", "value": "trending"})
-        return random.choice(choices) if choices else {"type": "topic", "value": "news"}
+        return random.choice(choices) if choices else {"type": "timeline", "value": "latest"}
 
     async def _discover_tweets(self, source: Dict) -> List[Dict]:
         """Discover tweets to engage with."""
         # If search is disabled by self-heal (404), skip search-based sources
         if self._healer.remedy.is_search_disabled() and source["type"] in ("topic", "trending"):
-            logger.debug("Search disabled by self-heal — skipping")
-            return []
+            # Fall back to timeline instead
+            source = {"type": "timeline", "value": "latest"}
 
         try:
-            if source["type"] == "topic":
+            if source["type"] == "timeline":
+                tab = source.get("value", "latest")
+                result = await self._x().get_home_timeline(count=15, tab=tab)
+                tweets = result.get("tweets", []) if result.get("success") else []
+                if tweets:
+                    logger.info(f"📱 Scrolling {tab} feed — {len(tweets)} tweets")
+                return tweets
+
+            elif source["type"] == "topic":
                 result = await self._x().search_tweets(
                     source["value"],
                     search_type=random.choice(["Latest", "Top"]),
@@ -1047,36 +1060,33 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _check_mentions(self):
-        """Search for mentions of our account and respond."""
-        username = getattr(self.config, "x_username", None)
-        if not username:
-            return
-
+        """Check notifications for mentions and respond — uses the real notifications tab, not search."""
         try:
-            result = await self._x().search_tweets(
-                f"@{username}", search_type="Latest", count=5
-            )
+            result = await self._x().get_notifications("Mentions", count=10)
             if not result.get("success"):
                 return
 
-            for tweet in result.get("tweets", []):
-                tweet_id = tweet.get("id")
+            for notif in result.get("notifications", []):
+                tweet_id = notif.get("tweet_id")
                 if not tweet_id or tweet_id in self._engaged_tweet_ids:
                     continue
 
-                mention_text = tweet.get("text", "")
-                mentioner = tweet.get("username", "someone")
+                mention_text = notif.get("tweet_text", "")
+                mentioner = notif.get("username", "someone")
+                if not mention_text:
+                    continue
 
                 # Pause — "reading the mention"
                 await asyncio.sleep(self._human_delay(8, 15))
 
-                # Analyze images if the mention includes media
-                media_desc = await self._analyze_tweet_media(tweet)
-                reply_text = await self._generate_mention_reply(mention_text, mentioner, media_description=media_desc)
+                reply_text = await self._generate_mention_reply(mention_text, mentioner)
                 if reply_text:
                     await self._safe_action("mention_reply", self._x().reply, tweet_id, reply_text)
                     self._engaged_tweet_ids.add(tweet_id)
                     self._engagements_today += 1
+                    # Track relationship
+                    if mentioner:
+                        self._known_users[mentioner] = self._known_users.get(mentioner, 0) + 2
                     self.mind.remember("mentioned", {
                         "by": mentioner,
                         "text": mention_text[:200],
@@ -1085,6 +1095,9 @@ class XAutonomousAgent:
                     })
                     logger.info(f"\U0001f4ac Replied to mention from @{mentioner}")
                     await asyncio.sleep(self._human_delay(10, 20))
+
+        except Exception as e:
+            logger.debug(f"Check mentions error: {e}")
 
         except Exception as e:
             logger.debug(f"Check mentions error: {e}")
