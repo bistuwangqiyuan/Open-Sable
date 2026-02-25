@@ -1859,6 +1859,18 @@ python3 examples/workflow_examples.py
 
 ---
 
+## ⭐ Star History
+
+<a href="https://star-history.com/#IdeoaLabs/Open-Sable&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=IdeoaLabs/Open-Sable&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=IdeoaLabs/Open-Sable&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=IdeoaLabs/Open-Sable&type=Date" width="100%" />
+  </picture>
+</a>
+
+---
+
 ## 📊 Project Statistics
 
 **Current Version**: 1.1.0
@@ -2495,6 +2507,22 @@ Open-Sable is built in the open. Contributions welcome!
 5. Open Pull Request
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+---
+
+## 🚨 Crypto & Token Disclaimer
+
+> **As of today, Open-Sable is NOT associated with any cryptocurrency, token, memecoin, or blockchain project.**
+
+- There is currently **no** "$SABLE" token, no ICO, no presale, no airdrop.
+- This is an **open-source AI software project** licensed under MIT.
+- If Open-Sable ever launches an official token or partnership, the contract address (CA) and details will be announced **exclusively** on the official website ([opensable.com](https://opensable.com)) and this GitHub repository.
+- Anyone promoting a token that is not announced through our official channels is acting independently and is **not affiliated** with this project.
+- The built-in trading module is a software tool, it does NOT issue tokens and is NOT a financial service.
+
+*This notice is informational only and does not constitute financial advice. Always DYOR.*
+
+**If you encounter a scam using our name, please [report it here](https://github.com/IdeoaLabs/Open-Sable/issues).**
 
 ---
 

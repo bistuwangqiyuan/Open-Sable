@@ -63,10 +63,12 @@ nav:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
   - Guides:
+      - Skills & Capabilities: guides/skills.md
+      - Multi-Agent Orchestration: guides/multi-agent.md
       - API Reference: guides/api-reference.md
-      - Auto-Adaptive AI: guides/auto-adaptive.md
-      - Web Scraping: guides/web-scraping.md
       - Trading: guides/trading.md
+      - Web Scraping: guides/web-scraping.md
+      - Auto-Adaptive AI: guides/auto-adaptive.md
       - Userbot: guides/userbot.md
       - Self-Modification: guides/self-modification.md
   - Architecture:

@@ -213,7 +213,7 @@ class SkillRegistry:
                 rating=0.0,
                 reviews_count=56,
                 downloads=0,
-                published_at=datetime(2025, 12, 20),
+                published_at=datetime(2026, 12, 20),
                 verified=True,
             ),
             SkillMetadata(

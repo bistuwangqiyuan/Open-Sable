@@ -84,7 +84,7 @@ python -m opensable --help
 |---------|----------|
 | `ModuleNotFoundError` | Activate your venv: `source venv/bin/activate` |
 | Python version error | Upgrade to Python 3.11+ |
-| Ollama not found | Install from https://ollama.ai |
+| Ollama not found | Install from https://ollama.com |
 | ChromaDB errors | `pip install --upgrade chromadb` |
 
 For more help, open an [issue](https://github.com/IdeoaLabs/Open-Sable/issues).
