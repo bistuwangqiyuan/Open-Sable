@@ -1,101 +1,140 @@
 """
-Email skill for Open-Sable - Gmail integration
+Email skill for Open-Sable — SMTP/IMAP (no Google API dependency)
 """
 
 import logging
-from typing import List, Dict, Any
-from pathlib import Path
-import base64
+import smtplib
+import imaplib
+import email as email_mod
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.header import decode_header
+from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class EmailSkill:
-    """Gmail integration skill"""
+    """Email integration via SMTP (send) and IMAP (read)"""
 
     def __init__(self, config):
         self.config = config
-        self.service = None
+        self._ready = False
+
+    # ── init ──────────────────────────────────────────────────────────────
 
     async def initialize(self):
-        """Initialize Gmail API"""
+        """Validate SMTP config. No persistent connection needed."""
         if not self.config.gmail_enabled:
-            logger.info("Gmail skill disabled")
+            logger.info("Email skill disabled (GMAIL_ENABLED=false)")
             return
 
+        host = self.config.smtp_host
+        user = self.config.smtp_user
+        password = self.config.smtp_password
+
+        if not host or not user or not password:
+            logger.warning(
+                "SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASSWORD in .env). "
+                "Email skill will run in demo mode."
+            )
+            return
+
+        self._ready = True
+        logger.info(f"Email skill ready (SMTP → {host}:{self.config.smtp_port})")
+
+    # ── helpers ───────────────────────────────────────────────────────────
+
+    def _smtp_connect(self) -> smtplib.SMTP:
+        """Open an authenticated SMTP connection."""
+        port = self.config.smtp_port or 587
+        s = smtplib.SMTP(self.config.smtp_host, port, timeout=15)
+        s.ehlo()
+        if port != 25:
+            s.starttls()
+            s.ehlo()
+        s.login(self.config.smtp_user, self.config.smtp_password)
+        return s
+
+    def _imap_connect(self) -> Optional[imaplib.IMAP4_SSL]:
+        """Open an IMAP connection (auto-derives host from SMTP host)."""
+        smtp_host = self.config.smtp_host or ""
+        imap_host = getattr(self.config, "imap_host", None)
+        if not imap_host:
+            imap_host = smtp_host.replace("smtp.", "imap.", 1)
+
         try:
-            from google.oauth2.credentials import Credentials
-            from google_auth_oauthlib.flow import InstalledAppFlow
-            from google.auth.transport.requests import Request
-            from googleapiclient.discovery import build
-
-            SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
-            creds = None
-
-            # Load credentials
-            token_path = Path("./config/gmail_token.json")
-            if token_path.exists():
-                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
-
-            # Refresh or get new credentials
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                elif self.config.gmail_credentials_path.exists():
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        str(self.config.gmail_credentials_path), SCOPES
-                    )
-                    creds = flow.run_local_server(port=0)
-                else:
-                    logger.warning(
-                        "Gmail credentials not found. Email skill will run in demo mode."
-                    )
-                    return
-
-                # Save credentials
-                token_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(token_path, "w") as token:
-                    token.write(creds.to_json())
-
-            self.service = build("gmail", "v1", credentials=creds)
-            logger.info("Gmail skill initialized")
-
+            conn = imaplib.IMAP4_SSL(imap_host, timeout=15)
+            conn.login(self.config.smtp_user, self.config.smtp_password)
+            return conn
         except Exception as e:
-            logger.error(f"Failed to initialize Gmail: {e}")
-            logger.info("Email skill will run in demo mode")
+            logger.error(f"IMAP connect failed ({imap_host}): {e}")
+            return None
+
+    @staticmethod
+    def _decode_header(raw: str) -> str:
+        """Decode RFC-2047 encoded header value."""
+        if not raw:
+            return ""
+        parts = decode_header(raw)
+        decoded = []
+        for data, charset in parts:
+            if isinstance(data, bytes):
+                decoded.append(data.decode(charset or "utf-8", errors="replace"))
+            else:
+                decoded.append(data)
+        return " ".join(decoded)
+
+    # ── public API ────────────────────────────────────────────────────────
 
     async def read_emails(
         self, max_results: int = 10, unread_only: bool = True
     ) -> List[Dict[str, Any]]:
-        """Read recent emails"""
-        if not self.service:
+        """Read recent emails via IMAP."""
+        if not self._ready:
+            return self._demo_emails()
+
+        conn = self._imap_connect()
+        if not conn:
             return self._demo_emails()
 
         try:
-            query = "is:unread" if unread_only else ""
-            results = (
-                self.service.users()
-                .messages()
-                .list(userId="me", q=query, maxResults=max_results)
-                .execute()
-            )
+            conn.select("INBOX", readonly=True)
+            criterion = "UNSEEN" if unread_only else "ALL"
+            _status, data = conn.search(None, criterion)
 
-            messages = results.get("messages", [])
-            emails = []
+            ids = data[0].split() if data[0] else []
+            ids = ids[-max_results:][::-1]
 
-            for msg in messages:
-                msg_data = self.service.users().messages().get(userId="me", id=msg["id"]).execute()
+            emails: List[Dict[str, Any]] = []
+            for mid in ids:
+                _st, msg_data = conn.fetch(mid, "(RFC822)")
+                if not msg_data or not msg_data[0]:
+                    continue
+                raw = msg_data[0][1]
+                msg = email_mod.message_from_bytes(raw)
 
-                headers = {h["name"]: h["value"] for h in msg_data["payload"]["headers"]}
+                snippet = ""
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        ct = part.get_content_type()
+                        if ct == "text/plain":
+                            payload = part.get_payload(decode=True)
+                            if payload:
+                                snippet = payload.decode(errors="replace")[:200]
+                            break
+                else:
+                    payload = msg.get_payload(decode=True)
+                    if payload:
+                        snippet = payload.decode(errors="replace")[:200]
 
                 emails.append(
                     {
-                        "id": msg["id"],
-                        "from": headers.get("From", "Unknown"),
-                        "subject": headers.get("Subject", "No subject"),
-                        "date": headers.get("Date", ""),
-                        "snippet": msg_data.get("snippet", ""),
+                        "id": mid.decode(),
+                        "from": self._decode_header(msg.get("From", "")),
+                        "subject": self._decode_header(msg.get("Subject", "")),
+                        "date": msg.get("Date", ""),
+                        "snippet": snippet.strip(),
                     }
                 )
 
@@ -104,21 +143,29 @@ class EmailSkill:
         except Exception as e:
             logger.error(f"Failed to read emails: {e}")
             return self._demo_emails()
+        finally:
+            try:
+                conn.close()
+                conn.logout()
+            except Exception:
+                pass
 
     async def send_email(self, to: str, subject: str, body: str) -> bool:
-        """Send an email"""
-        if not self.service:
+        """Send an email via SMTP."""
+        if not self._ready:
             logger.info(f"[DEMO] Would send email to {to}: {subject}")
             return True
 
         try:
-            message = MIMEText(body)
-            message["to"] = to
-            message["subject"] = subject
+            sender = self.config.smtp_from or self.config.smtp_user
+            msg = MIMEMultipart("alternative")
+            msg["From"] = sender
+            msg["To"] = to
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
 
-            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-
-            self.service.users().messages().send(userId="me", body={"raw": raw}).execute()
+            with self._smtp_connect() as smtp:
+                smtp.sendmail(sender, [to], msg.as_string())
 
             logger.info(f"Sent email to {to}")
             return True
@@ -128,21 +175,32 @@ class EmailSkill:
             return False
 
     async def mark_as_read(self, email_id: str) -> bool:
-        """Mark email as read"""
-        if not self.service:
+        """Mark email as read via IMAP."""
+        if not self._ready:
             return True
 
+        conn = self._imap_connect()
+        if not conn:
+            return False
+
         try:
-            self.service.users().messages().modify(
-                userId="me", id=email_id, body={"removeLabelIds": ["UNREAD"]}
-            ).execute()
+            conn.select("INBOX")
+            conn.store(email_id.encode(), "+FLAGS", "\\Seen")
             return True
         except Exception as e:
             logger.error(f"Failed to mark email as read: {e}")
             return False
+        finally:
+            try:
+                conn.close()
+                conn.logout()
+            except Exception:
+                pass
+
+    # ── demo fallback ─────────────────────────────────────────────────────
 
     def _demo_emails(self) -> List[Dict[str, Any]]:
-        """Return demo emails for testing"""
+        """Return demo emails when SMTP/IMAP not configured."""
         return [
             {
                 "id": "demo1",

@@ -31,12 +31,70 @@ is_running() {
     return 1
 }
 
+ensure_aggr() {
+    # Auto-install Aggr.trade if not built yet
+    local aggrdir="$DIR/aggr"
+    if [ -f "$aggrdir/dist/index.html" ]; then
+        return 0
+    fi
+    if ! command -v node &>/dev/null || ! command -v npm &>/dev/null; then
+        echo "⏭️  Aggr.trade skipped (Node.js not found)"
+        return 0
+    fi
+    echo "📈 Installing Aggr.trade charts..."
+    if [ ! -d "$aggrdir" ]; then
+        git clone --depth=1 https://github.com/Tucsky/aggr.git "$aggrdir" || return 0
+    fi
+    if [ ! -d "$aggrdir/templates" ]; then
+        git clone --depth=1 https://github.com/0xd3lbow/aggr.template.git "$aggrdir/templates" 2>/dev/null
+    fi
+    # Create .env.local with production CORS proxy
+    if [ ! -f "$aggrdir/.env.local" ]; then
+        cat > "$aggrdir/.env.local" << 'AGGRENV'
+VITE_APP_PROXY_URL=https://cors.aggr.trade/
+VITE_APP_API_URL=https://api.aggr.trade/
+VITE_APP_LIB_URL=https://lib.aggr.trade/
+VITE_APP_LIB_REPO_URL=https://github.com/Tucsky/aggr-lib
+VITE_APP_BASE_PATH=/aggr/
+VITE_APP_API_SUPPORTED_TIMEFRAMES=5,10,15,30,60,180,300,900,1260,1800,3600,7200,14400,21600,28800,43200,86400
+AGGRENV
+    fi
+    (cd "$aggrdir" && npm install && npx vite build --base /aggr/) || {
+        echo "⚠️  Aggr.trade build failed — continuing without it"
+        return 0
+    }
+    # Strip tracking (GTM, analytics, etc)
+    patch_aggr_tracking "$aggrdir"
+    [ -f "$aggrdir/dist/index.html" ] && echo "✅ Aggr.trade ready" || echo "⚠️  Aggr.trade dist not found"
+}
+
+patch_aggr_tracking() {
+    local dir="$1"
+    for f in "$dir/index.html" "$dir/dist/index.html"; do
+        [ -f "$f" ] || continue
+        # Remove GTM script block
+        sed -i '/<!-- Google Tag Manager -->/,/<!-- End Google Tag Manager -->/d' "$f"
+        # Remove GTM noscript block
+        sed -i '/<!-- Google Tag Manager (noscript) -->/,/<!-- End Google Tag Manager (noscript) -->/d' "$f"
+        # Remove any remaining GTM iframes/scripts
+        sed -i '/googletagmanager/d' "$f"
+        # Remove google-analytics
+        sed -i '/google-analytics/d' "$f"
+        # Fix base href for /aggr/ subpath
+        sed -i 's|<base href="/" />|<base href="/aggr/" />|g' "$f"
+    done
+    echo "   \U0001f6e1  Tracking stripped + base href fixed"
+}
+
 do_start() {
     if is_running; then
         echo "⚠️  Already running (PID $(cat "$PIDFILE"))"
         echo "   Use: ./start.sh stop   or   ./start.sh restart"
         exit 1
     fi
+
+    # Ensure aggr is installed
+    ensure_aggr
 
     mkdir -p "$DIR/logs"
     echo "🚀 Starting Open-Sable..."

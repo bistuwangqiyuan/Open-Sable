@@ -109,3 +109,4 @@ config/permissions.json
 trading_backtest_results/
 *.trading.db
 *.portfolio.db
+aggr/

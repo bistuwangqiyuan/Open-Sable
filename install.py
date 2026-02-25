@@ -134,6 +134,127 @@ def install_playwright():
         return False
 
 
+def patch_aggr_tracking(aggr_dir: Path):
+    """Remove all tracking/analytics from aggr (GTM, etc)."""
+    import re
+
+    targets = [
+        aggr_dir / "index.html",
+        aggr_dir / "dist" / "index.html",
+    ]
+
+    patterns = [
+        # Google Tag Manager <script> block
+        (r'\s*<!-- Google Tag Manager -->.*?<!-- End Google Tag Manager -->\s*', '\n'),
+        # Google Tag Manager (noscript) block
+        (r'\s*<!-- Google Tag Manager \(noscript\) -->.*?<!-- End Google Tag Manager \(noscript\) -->\s*', '\n'),
+        # Standalone GTM/gtag script tags (fallback)
+        (r'<script[^>]*>[^<]*googletagmanager[^<]*</script>', ''),
+        (r'<noscript[^>]*>[^<]*googletagmanager[^<]*</noscript>', ''),
+        # Any remaining GTM iframe
+        (r'<iframe[^>]*googletagmanager[^>]*>[^<]*</iframe[^>]*>', ''),
+        # Google Analytics
+        (r'<script[^>]*>[^<]*google-analytics[^<]*</script>', ''),
+        (r'<script[^>]*>[^<]*\.google\.com/analytics[^<]*</script>', ''),
+        # Generic tracking pixels / beacons
+        (r'<script[^>]*>[^<]*(?:hotjar|fbq|mixpanel|amplitude|segment\.io|fullstory|clarity\.ms)[^<]*</script>', ''),
+        # Fix base href for /aggr/ subpath
+        (r'<base\s+href="/"\s*/>', '<base href="/aggr/" />'),
+    ]
+
+    patched_count = 0
+    for fp in targets:
+        if not fp.exists():
+            continue
+        content = fp.read_text(encoding="utf-8")
+        original = content
+        for pat, repl in patterns:
+            content = re.sub(pat, repl, content, flags=re.DOTALL | re.IGNORECASE)
+        if content != original:
+            fp.write_text(content, encoding="utf-8")
+            patched_count += 1
+
+    if patched_count:
+        print(f"   \U0001f6e1\ufe0f  Stripped tracking from {patched_count} file(s)")
+    return patched_count
+
+
+def install_aggr():
+    """Install Aggr.trade charts (crypto market visualization)"""
+    print("\n📈 Setting up Aggr.trade charts...")
+
+    aggr_dir = Path("aggr")
+    aggr_dist = aggr_dir / "dist"
+    templates_dir = aggr_dir / "templates"
+
+    # Check if already built
+    if aggr_dist.exists() and (aggr_dist / "index.html").exists():
+        print("✅ Aggr.trade already installed and built")
+        return True
+
+    # Check Node.js
+    try:
+        result = subprocess.run(["node", "--version"], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("⚠️  Node.js required for Aggr.trade - skipping")
+            return False
+        print(f"   Node.js {result.stdout.strip()} detected")
+    except FileNotFoundError:
+        print("⚠️  Node.js not found - skipping Aggr.trade installation")
+        return False
+
+    try:
+        # Clone main aggr app
+        if not aggr_dir.exists():
+            print("   📥 Cloning Aggr.trade...")
+            subprocess.run(
+                ["git", "clone", "--depth=1", "https://github.com/Tucsky/aggr.git", str(aggr_dir)],
+                check=True,
+            )
+
+        # Clone templates
+        if not templates_dir.exists():
+            print("   📥 Cloning Aggr templates...")
+            subprocess.run(
+                ["git", "clone", "--depth=1", "https://github.com/0xd3lbow/aggr.template.git", str(templates_dir)],
+                check=True,
+            )
+
+        # npm install
+        print("   📦 Installing Aggr dependencies (this may take a minute)...")
+        subprocess.run(["npm", "install"], cwd=str(aggr_dir), check=True)
+        # Create .env.local with production settings (CORS proxy + base path)
+        env_local = aggr_dir / ".env.local"
+        if not env_local.exists():
+            env_local.write_text(
+                "VITE_APP_PROXY_URL=https://cors.aggr.trade/\n"
+                "VITE_APP_API_URL=https://api.aggr.trade/\n"
+                "VITE_APP_LIB_URL=https://lib.aggr.trade/\n"
+                "VITE_APP_LIB_REPO_URL=https://github.com/Tucsky/aggr-lib\n"
+                "VITE_APP_BASE_PATH=/aggr/\n"
+                "VITE_APP_API_SUPPORTED_TIMEFRAMES=5,10,15,30,60,180,300,900,1260,1800,3600,7200,14400,21600,28800,43200,86400\n"
+            )
+        # Build static dist with correct base path for /aggr/ route
+        print("   🔨 Building Aggr.trade...")
+        subprocess.run(["npx", "vite", "build", "--base", "/aggr/"], cwd=str(aggr_dir), check=True)
+
+        if aggr_dist.exists() and (aggr_dist / "index.html").exists():
+            patch_aggr_tracking(aggr_dir)
+            print("✅ Aggr.trade installed and built successfully")
+            return True
+        else:
+            print("⚠️  Build completed but dist not found")
+            return False
+
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Aggr.trade installation failed: {e}")
+        print("   You can install manually later: cd aggr && npm install && npm run build")
+        return False
+    except FileNotFoundError:
+        print("⚠️  git or npm not found - skipping Aggr.trade")
+        return False
+
+
 def install_whatsapp_bridge():
     """Install WhatsApp bridge (whatsapp-web.js) for WhatsApp integration"""
     print("\n💬 Install WhatsApp bridge? (y/n): ", end="")
@@ -446,6 +567,9 @@ def main():
 
     # Optional playwright
     install_playwright()
+
+    # Install Aggr.trade charts
+    install_aggr()
 
     # Install WhatsApp bridge
     install_whatsapp_bridge()

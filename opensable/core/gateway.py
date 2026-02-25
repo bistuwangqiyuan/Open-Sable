@@ -136,24 +136,80 @@ class _WS:
         proto_token = headers.get("sec-websocket-protocol", "")
 
         if webchat_token:
-            supplied = url_token or proto_token
-            if not hmac.compare_digest(str(supplied or ""), webchat_token):
-                writer.write(b"HTTP/1.1 401 Unauthorized\r\nContent-Type: text/html\r\n\r\n")
-                writer.write(
-                    b"<html><body><h1>401 Unauthorized</h1><p>Invalid or missing token.</p></body></html>"
-                )
-                await writer.drain()
-                writer.close()
-                return None
+            # Allow static sub-resources (CSS/JS/images/fonts/aggr assets …)
+            # through without a token so pages already authenticated can load
+            # their assets normally.
+            _path = parsed.path.lower()
+            _need_auth = True
+
+            # Routes that serve sub-resources (aggr SPA, favicon, etc.)
+            if _path.startswith("/aggr/") or _path == "/favicon.ico":
+                _need_auth = False
+            else:
+                import os.path as _osp
+                _ASSET_EXTS = {
+                    ".css", ".js", ".mjs", ".map", ".json",
+                    ".ico", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
+                    ".woff", ".woff2", ".ttf", ".eot",
+                    ".webmanifest", ".txt",
+                }
+                _ext = _osp.splitext(_path)[1]
+                if _ext in _ASSET_EXTS:
+                    _need_auth = False
+
+            if _need_auth:
+                supplied = url_token or proto_token
+                if not hmac.compare_digest(str(supplied or ""), webchat_token):
+                    writer.write(b"HTTP/1.1 401 Unauthorized\r\nContent-Type: text/html\r\n\r\n")
+                    writer.write(
+                        b"<html><body><h1>401 Unauthorized</h1><p>Invalid or missing token.</p></body></html>"
+                    )
+                    await writer.drain()
+                    writer.close()
+                    return None
 
         # ── Serve plain HTML (no Upgrade header) ──────────────────────────────
         if "upgrade" not in headers:
-            # Route: /monitor serves the monitor page, / serves the chat
-            if parsed.path.rstrip("/") == "/monitor":
-                monitor_path = webchat_path.parent / "monitor.html" if webchat_path else None
-                await cls._serve_html(writer, monitor_path)
-            else:
+            route = parsed.path.rstrip("/") or "/"
+            static_dir = webchat_path.parent if webchat_path else None
+            # project root = static_dir parent (static/ -> project root)
+            project_root = static_dir.parent if static_dir else None
+
+            if route == "/favicon.ico":
+                # Serve favicon from static/ or return 204 if absent
+                fav = static_dir / "favicon.ico" if static_dir else None
+                if fav and fav.exists():
+                    data = fav.read_bytes()
+                    writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: image/x-icon\r\nContent-Length: " + str(len(data)).encode() + b"\r\nConnection: close\r\n\r\n")
+                    writer.write(data)
+                else:
+                    writer.write(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+                await writer.drain()
+                writer.close()
+            elif route == "/monitor":
+                html = static_dir / "monitor.html" if static_dir else None
+                await cls._serve_html(writer, html)
+            elif route == "/chat":
                 await cls._serve_html(writer, webchat_path)
+            elif route == "/dashboard":
+                html = static_dir / "dashboard_modern.html" if static_dir else None
+                await cls._serve_html(writer, html)
+            elif route == "/aggr" or route.startswith("/aggr/"):
+                # Serve aggr.trade static files from aggr/dist/
+                aggr_dist = project_root / "aggr" / "dist" if project_root else None
+                if aggr_dist and aggr_dist.exists():
+                    # Strip /aggr prefix to get the relative file path
+                    rel = parsed.path.split("/aggr", 1)[1].lstrip("/") or "index.html"
+                    await cls._serve_static(writer, aggr_dist, rel)
+                else:
+                    body = b"<html><body><h1>Aggr.trade not installed</h1><p>Run: <code>cd aggr && npm install && npm run build</code></p></body></html>"
+                    writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + str(len(body)).encode() + b"\r\nConnection: close\r\n\r\n" + body)
+                    await writer.drain()
+                    writer.close()
+            else:
+                # / → unified hub
+                html = static_dir / "hub.html" if static_dir else None
+                await cls._serve_html(writer, html)
             return None
 
         # ── WebSocket upgrade ─────────────────────────────────────────────────
@@ -169,6 +225,55 @@ class _WS:
         writer.write(resp.encode())
         await writer.drain()
         return cls(reader, writer)
+
+    # ── MIME types for static file serving ────────────────────────────────────
+    _MIME = {
+        ".html": "text/html; charset=utf-8",
+        ".js":   "application/javascript; charset=utf-8",
+        ".mjs":  "application/javascript; charset=utf-8",
+        ".css":  "text/css; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".png":  "image/png",
+        ".jpg":  "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif":  "image/gif",
+        ".svg":  "image/svg+xml",
+        ".ico":  "image/x-icon",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf":  "font/ttf",
+        ".map":  "application/json",
+    }
+
+    @classmethod
+    async def _serve_static(cls, writer: asyncio.StreamWriter, base_dir: Path, rel_path: str):
+        """Serve any static file from a directory (for aggr SPA)."""
+        import mimetypes
+        # Sanitize path to prevent directory traversal
+        safe = Path(rel_path).as_posix().replace("..", "")
+        target = base_dir / safe
+        # Vite with --base /aggr/ nests some assets under dist/aggr/
+        if not target.exists() or not target.is_file():
+            target = base_dir / "aggr" / safe
+        if not target.exists() or not target.is_file():
+            # SPA fallback: serve index.html for unknown routes
+            target = base_dir / "index.html"
+        if target.exists() and target.is_file():
+            body = target.read_bytes()
+            suffix = target.suffix.lower()
+            ct = cls._MIME.get(suffix, mimetypes.guess_type(str(target))[0] or "application/octet-stream")
+        else:
+            body = b"404 Not Found"
+            ct = "text/plain"
+        hdr = (
+            f"HTTP/1.1 200 OK\r\nContent-Type: {ct}\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            f"Cache-Control: public, max-age=3600\r\n"
+            f"Connection: close\r\n\r\n"
+        ).encode()
+        writer.write(hdr + body)
+        await writer.drain()
+        writer.close()
 
     @staticmethod
     async def _serve_html(writer: asyncio.StreamWriter, html_path: Optional[Path]):

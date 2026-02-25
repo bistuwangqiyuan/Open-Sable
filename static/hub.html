@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SableCore — Control Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #06080d;
+    --surface:  #0e1117;
+    --border:   #1e2330;
+    --accent:   #7c3aed;
+    --accent2:  #a855f7;
+    --text:     #e6edf3;
+    --text-dim: #6b7a8d;
+  }
+  html, body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  /* ── Top Nav ──────────────────────────────────────────────────── */
+  nav {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    gap: 6px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 20px;
+  }
+  .brand-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .brand-name {
+    font-weight: 700; font-size: .92rem; letter-spacing: -.3px;
+  }
+  .brand-name span { color: var(--accent2); }
+
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 16px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text); background: rgba(255,255,255,.03); }
+  .nav-tab.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent2);
+    background: rgba(124,58,237,.06);
+  }
+  .nav-tab .tab-icon { font-size: 1rem; }
+  .nav-tab .tab-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34,197,94,.5);
+    display: none;
+  }
+
+  .nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .status-pill {
+    font-size: .62rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .pill-online {
+    background: rgba(34,197,94,.12);
+    color: #22c55e;
+    border: 1px solid rgba(34,197,94,.3);
+  }
+  .pill-offline {
+    background: rgba(239,68,68,.12);
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,.2);
+  }
+
+  .clock {
+    font-size: .68rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Frame Container ──────────────────────────────────────────── */
+  .frame-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .frame-container iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+  }
+  .frame-container iframe.active {
+    display: block;
+  }
+
+  /* ── Loading overlay ──────────────────────────────────────────── */
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity .3s;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .brand-name { display: none; }
+    .nav-tab { padding: 0 10px; font-size: .72rem; }
+    .nav-tab .tab-label { display: none; }
+    .clock { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="brand-icon">🧠</div>
+    <div class="brand-name">Sable<span>Core</span></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="chat" onclick="switchPage('chat')">
+      <span class="tab-icon">💬</span>
+      <span class="tab-label">Chat</span>
+    </button>
+    <button class="nav-tab" data-page="monitor" onclick="switchPage('monitor')">
+      <span class="tab-icon">📡</span>
+      <span class="tab-label">Monitor</span>
+      <span class="tab-dot" id="monitor-dot"></span>
+    </button>
+    <button class="nav-tab" data-page="dashboard" onclick="switchPage('dashboard')">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">Dashboard</span>
+    </button>
+    <button class="nav-tab" data-page="aggr" onclick="switchPage('aggr')">
+      <span class="tab-icon">📈</span>
+      <span class="tab-label">Aggr Charts</span>
+    </button>
+  </div>
+
+  <div class="nav-right">
+    <span id="status-pill" class="status-pill pill-offline">Offline</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</nav>
+
+<div class="frame-container" id="frame-container">
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+  </div>
+  <!-- iframes are created dynamically to pass token -->
+</div>
+
+<script>
+(function() {
+  // ── Token ──────────────────────────────────────────────────────
+  var params = new URLSearchParams(location.search);
+  var token = params.get('token') || '';
+  var qs = token ? '?token=' + encodeURIComponent(token) : '';
+
+  // ── Pages config ───────────────────────────────────────────────
+  var pageOrder = ['chat', 'monitor', 'dashboard', 'aggr'];
+  var pages = {
+    chat:      { src: '/chat' + qs,      srcSet: false, iframe: null },
+    monitor:   { src: '/monitor' + qs,   srcSet: false, iframe: null },
+    dashboard: { src: '/dashboard' + qs, srcSet: false, iframe: null },
+    aggr:      { src: '/aggr' + qs,      srcSet: false, iframe: null },
+  };
+
+  var activePage = 'chat';
+  var container = document.getElementById('frame-container');
+  var loading = document.getElementById('loading');
+
+  // ── Create iframes ─────────────────────────────────────────────
+  pageOrder.forEach(function(key) {
+    var iframe = document.createElement('iframe');
+    iframe.id = 'frame-' + key;
+    // NO loading="lazy" — it prevents hidden iframes from loading
+    iframe.addEventListener('load', function() {
+      if (key === activePage) {
+        loading.classList.add('hidden');
+      }
+    });
+    container.insertBefore(iframe, loading);
+    pages[key].iframe = iframe;
+
+    // Load chat immediately, others on demand
+    if (key === 'chat') {
+      iframe.src = pages[key].src;
+      iframe.classList.add('active');
+      pages[key].srcSet = true;
+    }
+  });
+
+  // ── Switch page ────────────────────────────────────────────────
+  window.switchPage = function(key) {
+    if (key === activePage) return;
+    activePage = key;
+
+    // Update nav tabs
+    document.querySelectorAll('.nav-tab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.page === key);
+    });
+
+    // Show/hide iframes
+    pageOrder.forEach(function(k) {
+      var p = pages[k];
+      if (k === key) {
+        // First visit: set src now and show loading
+        if (!p.srcSet) {
+          loading.classList.remove('hidden');
+          p.iframe.src = p.src;
+          p.srcSet = true;
+        } else {
+          loading.classList.add('hidden');
+        }
+        p.iframe.classList.add('active');
+      } else {
+        p.iframe.classList.remove('active');
+      }
+    });
+  };
+
+  // ── Clock ──────────────────────────────────────────────────────
+  var clockEl = document.getElementById('clock');
+  setInterval(function() {
+    clockEl.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  }, 1000);
+
+  // ── WebSocket for status ───────────────────────────────────────
+  var statusPill = document.getElementById('status-pill');
+  var monitorDot = document.getElementById('monitor-dot');
+
+  function connectStatus() {
+    var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    var url = proto + '://' + location.host + '/' + (token ? '?token=' + encodeURIComponent(token) : '');
+    var ws = new WebSocket(url);
+
+    ws.onopen = function() {
+      statusPill.textContent = 'Online';
+      statusPill.className = 'status-pill pill-online';
+      ws.send(JSON.stringify({ type: 'status' }));
+    };
+
+    ws.onclose = function() {
+      statusPill.textContent = 'Offline';
+      statusPill.className = 'status-pill pill-offline';
+      setTimeout(connectStatus, 5000);
+    };
+
+    ws.onmessage = function(evt) {
+      try {
+        var msg = JSON.parse(evt.data);
+        if (msg.type === 'monitor.event') {
+          monitorDot.style.display = 'block';
+          clearTimeout(monitorDot._timer);
+          monitorDot._timer = setTimeout(function() {
+            if (activePage !== 'monitor') monitorDot.style.display = 'none';
+          }, 3000);
+        }
+      } catch(e) {}
+    };
+  }
+
+  connectStatus();
+})();
+</script>
+</body>
+</html>
