@@ -2,11 +2,11 @@
 Open-Sable - Autonomous AI Agent Framework
 AGI-inspired cognitive subsystems for autonomous agents
 
-Version: 0.1.0-beta
+Version: 1.1.0
 """
 
-__version__ = "0.1.0-beta"
-__author__ = "IdeoaLabs"
+__version__ = "1.1.0"
+__author__ = "Ideoa Labs"
 __license__ = "MIT"
 
 # Core imports for convenience

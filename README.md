@@ -1,10 +1,10 @@
 # Open-Sable 🚀
 
 <p align="center">
-  <img src="https://aswss.com/images/sable.png" alt="Sable – the Open-Sable mascot" width="420"/>
+  <img src="https://aswss.com/images/sable.png" alt="Sable the Open-Sable mascot" width="420"/>
 </p>
 
-**Your personal AI that actually does things – autonomous, local, and yours forever.**
+**Your personal AI that actually does things autonomous, local, and yours forever.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -12,7 +12,7 @@
 [![Tests: 9/9](https://img.shields.io/badge/tests-9%2F9-brightgreen.svg)](#-running-tests)
 [![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
 
-Open-Sable is a next-generation autonomous AI agent framework with AGI-inspired cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself – all while keeping your data private.
+Open-Sable is a next-generation autonomous AI agent framework with AGI-inspired cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
 Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets).
@@ -2485,16 +2485,12 @@ See [LICENSE](LICENSE) for full details.
 
 ---
 
-## 📞 Support
+## Support
 
 - **Documentation**: [Full docs](docs/)
 - **Examples**: [examples/](examples/)
-- **Issues**: [GitHub Issues](https://github.com/IdeoaLabs/Open-Sable/issues)
 
 ---
 
-**Built with ❤️ by [IdeoaLabs](https://github.com/IdeoaLabs) as the agent framework that actually works – autonomous, intelligent, and truly useful.**
+**Built with ❤️ as the agent framework that actually works. Autonomous, intelligent, secure and truly useful.**
 
-**Version**: 0.1.0-beta  
-**Status**: Beta — Stable core, experimental modules  
-**Total**: 179 files, 82,000+ lines of code, 56 core modules, 13 interfaces, 21+ skills

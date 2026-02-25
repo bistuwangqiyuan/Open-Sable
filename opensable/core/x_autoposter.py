@@ -1288,6 +1288,15 @@ class XAutonomousAgent:
 
     async def _ask_ai(self, system_prompt: str, user_prompt: str) -> Optional[str]:
         """Ask the configured LLM (primary) or fall back to Grok chat."""
+        # Inject anti-meta-commentary directive so the LLM never adds bot-revealing text
+        system_prompt += (
+            "\n\nCRITICAL: Output ONLY the final text to post. "
+            "NEVER include meta-commentary, stage directions, visual notes, "
+            "descriptions of images/videos, disclaimers, tone annotations, "
+            "or parenthetical remarks about how you are replying. "
+            "No brackets like [Visual note:...] or parentheticals like (Replying in...). "
+            "Just the raw post text, nothing else."
+        )
         text = await self._ask_llm(system_prompt, user_prompt)
         if text:
             return text
@@ -1559,6 +1568,31 @@ class XAutonomousAgent:
         text = re.sub(r"<xai:[^>]*/?>", "", text)
         # Remove any remaining XML/HTML-like tags that aren't part of content
         text = re.sub(r"</?[a-zA-Z_][a-zA-Z0-9_:.-]*(?:\s[^>]*)?>", "", text)
+
+        # ── Strip LLM meta-commentary that exposes bot behaviour ──────
+        # Parenthetical meta: (Replying in Sable's characteristic… ), (In my usual tone… )
+        text = re.sub(
+            r"\((?:Replying|Responding|Writing|Speaking|Posted|Tweeting|In my|In Sable|"
+            r"As Sable|With Sable|Using|Note:|Author'?s?\s*note)"
+            r"[^)]{0,300}\)?",
+            "", text, flags=re.IGNORECASE | re.DOTALL,
+        )
+        # Bracketed meta: [Visual note: ...], [Note: ...], [Context: ...], [Image: ...]
+        text = re.sub(
+            r"\[(?:Visual\s*(?:note|content|description)|Note|Context|Image|Video|"
+            r"Media|Content\s*note|Editor'?s?\s*note|Author'?s?\s*note|"
+            r"Alt\s*text|Description|Disclaimer|Tone|Style|Voice|Mood)"
+            r"[:\s][^\]]{0,500}\]?",
+            "", text, flags=re.IGNORECASE | re.DOTALL,
+        )
+        # Asterisk-wrapped stage directions: *adjusts glasses*, *laughs*
+        text = re.sub(r"\*[^*\n]{2,80}\*", "", text)
+        # "As an AI..." / "As a language model..." / "In character as..." disclaimers
+        text = re.sub(
+            r"(?:^|\n)\s*(?:As an? (?:AI|language model|bot|assistant)|In character(?: as)?)[^.\n]{0,150}[.\n]",
+            "", text, flags=re.IGNORECASE,
+        )
+
         # ── Strip markdown formatting ─────────────────────────────────
         text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
         text = re.sub(r"__(.+?)__", r"\1", text)
@@ -1567,9 +1601,9 @@ class XAutonomousAgent:
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?post:?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^(here'?s?\s*(a|my|the)\s*)?reply:?\s*", "", text, flags=re.IGNORECASE)
         # ── Strip LLM-style dashes and bullets ────────────────────────
-        text = text.replace("—", "-")   # em dash → normal dash
-        text = text.replace("–", "-")   # en dash → normal dash
-        text = text.replace("•", "-")   # bullet → dash
+        text = text.replace("\u2014", "-")   # em dash → normal dash
+        text = text.replace("\u2013", "-")   # en dash → normal dash
+        text = text.replace("\u2022", "-")   # bullet → dash
         text = re.sub(r"^[-*]\s+", "", text, flags=re.MULTILINE)  # leading bullets
         text = text.strip().strip('"').strip("'").strip()
         # Collapse accidental double-spaces or leftover whitespace
