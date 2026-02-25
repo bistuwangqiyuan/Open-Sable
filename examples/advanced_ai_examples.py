@@ -34,7 +34,7 @@ async def main():
     # Summarize template
     summary_prompt = library.render(
         "summarize",
-        text="Open-Sable is a production-ready AI assistant framework. It includes multi-agent orchestration, 11 chat interfaces, advanced skills like RAG and code execution, enterprise features with RBAC, and comprehensive monitoring.",
+        text="Open-Sable is a comprehensive AI assistant framework. It includes multi-agent orchestration, 11 chat interfaces, advanced skills like RAG and code execution, enterprise features with RBAC, and comprehensive monitoring.",
         max_words="25",
     )
 

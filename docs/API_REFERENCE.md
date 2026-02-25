@@ -1,10 +1,6 @@
-"""
-Open-Sable API Documentation
-
-Complete API reference for all Open-Sable components.
-"""
-
 # Open-Sable API Documentation
+
+> Complete API reference for all Open-Sable components.
 
 ## Table of Contents
 

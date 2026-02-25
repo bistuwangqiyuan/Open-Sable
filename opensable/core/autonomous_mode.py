@@ -42,15 +42,15 @@ class AutonomousMode:
         """Start autonomous operation"""
         logger.info("🤖 Starting autonomous mode...")
 
-        # Initialize goal manager if AGI is available
+        # Initialize goal manager if Agentic AI is available
         try:
             from opensable.core.agi_integration import AGIAgent
 
             if hasattr(self.agent, "agi"):
                 self.goal_manager = self.agent.agi.goals
-                logger.info("AGI goal system available")
+                logger.info("Agentic AI goal system available")
         except ImportError:
-            logger.warning("AGI not available, using basic autonomous mode")
+            logger.warning("Agentic AI not available, using basic autonomous mode")
 
         # Initialize X Autoposter if enabled
         if getattr(self.config, "x_autoposter_enabled", False) and getattr(
@@ -92,7 +92,7 @@ class AutonomousMode:
                 # 3. Execute tasks (up to max_concurrent)
                 await self._execute_tasks()
 
-                # 4. Self-improvement (if AGI available)
+                # 4. Self-improvement (if Agentic AI available)
                 if self.goal_manager:
                     await self._self_improve()
 
@@ -125,7 +125,7 @@ class AutonomousMode:
         if "trading" in self.enabled_sources:
             await self._check_trading()
 
-        # Check for scheduled goals (if AGI available)
+        # Check for scheduled goals (if Agentic AI available)
         if self.goal_manager:
             await self._check_goals()
 
@@ -213,7 +213,7 @@ class AutonomousMode:
             logger.error(f"Failed to check trading: {e}")
 
     async def _check_goals(self):
-        """Check for pending goals (AGI mode)"""
+        """Check for pending goals (Agentic AI mode)"""
         if not self.goal_manager:
             return
 
@@ -284,7 +284,7 @@ class AutonomousMode:
         task_type = task.get("type")
 
         if task_type == "goal":
-            # Execute goal using AGI
+            # Execute goal using Agentic AI
             if self.goal_manager:
                 goal_id = task["id"]
                 return await self.goal_manager.execute_goal(goal_id)
@@ -306,7 +306,7 @@ class AutonomousMode:
             return None
 
     async def _self_improve(self):
-        """Run self-improvement (AGI meta-learning)"""
+        """Run self-improvement (Agentic AI meta-learning)"""
         if not self.goal_manager:
             return
 
@@ -318,7 +318,7 @@ class AutonomousMode:
             if datetime.now() - self._last_improvement >= timedelta(hours=24):
                 logger.info("Running self-improvement...")
 
-                # Use AGI meta-learning
+                # Use Agentic AI meta-learning
                 if hasattr(self.agent, "agi"):
                     improvement = await self.agent.agi.self_improve()
                     logger.info(f"Self-improvement complete: {improvement}")

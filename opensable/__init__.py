@@ -1,6 +1,6 @@
 """
 Open-Sable - Autonomous AI Agent Framework
-AGI-inspired cognitive subsystems for autonomous agents
+Agentic AI cognitive subsystems for autonomous agents
 
 Version: 1.1.0
 """

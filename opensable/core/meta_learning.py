@@ -1,5 +1,5 @@
 """
-Meta-Learning and Self-Improvement - AGI learns how to learn and improve itself.
+Meta-Learning and Self-Improvement - Agentic AI learns how to learn and improve itself.
 
 Features:
 - Performance tracking and analysis

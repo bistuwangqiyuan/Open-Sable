@@ -1,5 +1,5 @@
 """
-Metacognition - Self-awareness, error detection, and adaptive recovery for AGI.
+Metacognition - Self-awareness, error detection, and adaptive recovery for Agentic AI.
 
 Features:
 - Self-monitoring of reasoning processes

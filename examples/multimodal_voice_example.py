@@ -1,12 +1,12 @@
 """
-Complete Multimodal Voice-Enabled AGI Example
+Complete Multimodal Voice-Enabled Agentic AI Example
 
 Demonstrates:
 - Voice commands with STT/TTS
 - Image understanding
 - Multi-device sync
 - Skills marketplace
-- Full AGI integration
+- Full Agentic AI integration
 """
 
 import asyncio
@@ -27,10 +27,10 @@ logging.basicConfig(
 
 
 async def demo_voice_controlled_agi():
-    """Demo: Voice-controlled AGI with multimodal capabilities."""
+    """Demo: Voice-controlled Agentic AI with multimodal capabilities."""
 
     print("\n" + "=" * 60)
-    print("1. VOICE-CONTROLLED MULTIMODAL AGI")
+    print("1. VOICE-CONTROLLED MULTIMODAL AGENTIC AI")
     print("=" * 60)
 
     # Initialize voice interface
@@ -39,13 +39,13 @@ async def demo_voice_controlled_agi():
         whisper_model=WhisperModel.BASE, tts_voice=TTSVoice.EN_US_FEMALE, language="en"
     )
 
-    # Initialize multimodal AGI
-    print("🧠 Initializing multimodal AGI...")
+    # Initialize multimodal Agentic AI
+    print("🧠 Initializing multimodal Agentic AI...")
     agi = MultimodalAGI(device="cpu")
 
     # Voice command handler that uses AGI
     async def voice_agi_handler(text: str) -> str:
-        """Handle voice commands with AGI."""
+        """Handle voice commands with Agentic AI."""
         text_lower = text.lower()
 
         if "analyze image" in text_lower or "what do you see" in text_lower:
@@ -69,14 +69,14 @@ async def demo_voice_controlled_agi():
     print("  User: 'What can you help me with?'")
 
     response = await voice_agi_handler("What can you help me with?")
-    print(f"  AGI: {response}")
+    print(f"  Sable: {response}")
 
     # Synthesize voice response
     print("\n🔊 Generating voice response...")
     synthesis = await voice.tts.synthesize(response)
     print(f"  ✅ Generated {synthesis.duration:.2f}s of audio")
 
-    print("\n✅ Voice-controlled AGI demo complete")
+    print("\n✅ Voice-controlled Agentic AI demo complete")
 
 
 async def demo_multimodal_reasoning():
@@ -235,10 +235,10 @@ async def demo_complete_voice_agi_workflow():
     """Demo: Complete workflow combining all features."""
 
     print("\n" + "=" * 60)
-    print("5. COMPLETE VOICE AGI WORKFLOW")
+    print("5. COMPLETE VOICE AGENTIC AI WORKFLOW")
     print("=" * 60)
 
-    print("\n🚀 Initializing complete AGI system...")
+    print("\n🚀 Initializing complete Agentic AI system...")
 
     # Initialize all components
     agi_agent = AGIAgent()
@@ -271,7 +271,7 @@ async def demo_complete_voice_agi_workflow():
         print("    (Using mock image analysis)")
         caption_text = "A scenic landscape with mountains"
 
-    # Step 3: Create goal using AGI
+    # Step 3: Create goal using Agentic AI
     print("3️⃣  Creating goal...")
 
     goal = await agi_agent.set_goal(
@@ -332,21 +332,21 @@ async def demo_complete_voice_agi_workflow():
     print(f"  • Memories: {status['subsystems']['memory']['episodic_count']} episodic")
     print(f"  • Sync pending: {sync.get_sync_status()['pending_items']} items")
 
-    print("\n✅ Complete voice AGI workflow demo finished")
+    print("\n✅ Complete voice Agentic AI workflow demo finished")
 
 
 async def main():
     """Run all demonstrations."""
 
     print("=" * 60)
-    print("🎙️  SABLECORE - COMPLETE MULTIMODAL VOICE AGI")
+    print("🎙️  SABLECORE - COMPLETE MULTIMODAL VOICE AGENTIC AI")
     print("=" * 60)
     print("\nDemonstrating:")
     print("  ✅ Voice interface (STT + TTS)")
-    print("  ✅ Multimodal AGI (vision + audio)")
+    print("  ✅ Multimodal Agentic AI (vision + audio)")
     print("  ✅ Multi-device sync")
     print("  ✅ Skills marketplace")
-    print("  ✅ Full AGI integration")
+    print("  ✅ Full Agentic AI integration")
 
     # Run demos
     await demo_voice_controlled_agi()
@@ -366,7 +366,7 @@ async def main():
     print("  🔀 Multimodal reasoning")
     print("  📱 Multi-device sync")
     print("  🏪 Skills marketplace")
-    print("  🧠 Complete AGI capabilities")
+    print("  🧠 Complete Agentic AI capabilities")
 
     print("\n💡 Next steps:")
     print("  • Install dependencies: pip install -r requirements.txt")

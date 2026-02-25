@@ -12,7 +12,7 @@
 [![Tests: 9/9](https://img.shields.io/badge/tests-9%2F9-brightgreen.svg)](#-running-tests)
 [![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
 
-Open-Sable is a next-generation autonomous AI agent framework with AGI-inspired cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
+Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
 Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets).
@@ -160,7 +160,7 @@ graph TB
         CMD[Command Handler]
     end
     
-    subgraph "AGI Systems"
+    subgraph "Agentic AI Layer"
         GOALS[Goal System]
         MEMORY[Advanced Memory]
         META[Meta-Learning]
@@ -252,6 +252,14 @@ graph TB
 - 🧪 **Telegram Userbot** (Telethon, experimental)
 - 🧪 **Telegram Progress** (live progress bars)
 
+### 📱 Social Media & Platform Integrations (6 platforms)
+- ✅ **X (Twitter)** — post, search, like, retweet, DM, follow (twikit — mobile device session)
+- ✅ **Instagram** — upload photos/reels/stories, DM, search, like, follow (instagrapi — mobile device session)
+- ✅ **Facebook** — post, upload photos, feed, like, comment, search (facebook-sdk — Graph API)
+- ✅ **LinkedIn** — search people/jobs/companies, post, message, connect (linkedin-api — mobile device session)
+- ✅ **YouTube** — search, upload, comment, like, subscribe, trending, playlists (python-youtube — YouTube Data API v3)
+- ✅ **TikTok** — trending, search videos/users, hashtags, user info (TikTokApi — read-only, mobile device session)
+
 ### Automation
 - ✅ **Local LLM via Ollama** (Llama 3.1, Mistral, etc.)
 - ✅ **Goal execution loop** (autonomous decomposition & replanning)
@@ -299,11 +307,11 @@ graph TB
 
 ---
 
-## 🧠 Cognitive Subsystems (AGI-inspired)
+## 🧠 Cognitive Subsystems (Agentic AI)
 
 Open-Sable includes six core subsystems that work together to provide autonomous, self-improving intelligence.
 
-### AGI Architecture
+### Agentic AI Architecture
 
 ```mermaid
 graph LR
@@ -317,7 +325,7 @@ graph LR
     end
     
     subgraph "Integration Layer"
-        AGI[AGI Agent]
+        AGENT[Agentic AI Core]
     end
     
     subgraph "External World"
@@ -326,16 +334,16 @@ graph LR
         TASKS[Tasks]
     end
     
-    USER --> AGI
+    USER --> AGENT
     ENV --> W
     TASKS --> G
     
-    AGI --> G
-    AGI --> M
-    AGI --> ML
-    AGI --> T
-    AGI --> W
-    AGI --> MC
+    AGENT --> G
+    AGENT --> M
+    AGENT --> ML
+    AGENT --> T
+    AGENT --> W
+    AGENT --> MC
     
     G --> M
     ML --> T
@@ -779,7 +787,7 @@ report = metacog.get_introspection_report()
 # {'total_errors_detected': 2, 'avg_confidence': 0.85, ...}
 ```
 
-### AGI Integration
+### Agentic AI Integration
 
 All six subsystems work together in the `AGIAgent` class:
 
@@ -787,7 +795,7 @@ All six subsystems work together in the `AGIAgent` class:
 from opensable.core.agi_integration import AGIAgent
 from opensable.core.goal_system import GoalPriority
 
-# Initialize complete AGI agent
+# Initialize complete Agentic AI agent
 agent = AGIAgent(llm_function=your_llm)
 
 # Set autonomous goal (uses all subsystems)
@@ -1046,8 +1054,8 @@ graph LR
     end
     
     subgraph "Processing"
-        TRANS --> AGI[AGI Agent]
-        AGI --> RESP[Response Text]
+        TRANS --> AGENT[Agentic AI Core]
+        AGENT --> RESP[Response Text]
     end
     
     subgraph "TTS"
@@ -1088,7 +1096,7 @@ result = await voice.voice_command(
 # - response_audio: bytes (synthesized speech)
 ```
 
-### Multimodal AGI
+### Multimodal Agentic AI
 
 ```mermaid
 graph TB
@@ -1452,7 +1460,7 @@ sequenceDiagram
     participant User
     participant Voice
     participant Vision
-    participant AGI
+    participant AGENT as Agentic AI
     participant Goals
     participant Memory
     participant RAG
@@ -1465,17 +1473,17 @@ sequenceDiagram
     RAG->>RAG: Chunk → Embed → Retrieve
     RAG-->>Voice: Relevant Context
     
-    Voice->>AGI: Process Command + Context
-    AGI->>Goals: Create Goal "Summarize Report"
+    Voice->>AGENT: Process Command + Context
+    AGENT->>Goals: Create Goal "Summarize Report"
     Goals->>Goals: Decompose into Sub-Goals
     
-    AGI->>Skills: Use text_summarizer skill
-    Skills-->>AGI: Summary Generated
+    AGENT->>Skills: Use text_summarizer skill
+    Skills-->>AGENT: Summary Generated
     
-    AGI->>Memory: Store Experience
+    AGENT->>Memory: Store Experience
     Memory->>Memory: Episodic + Semantic
     
-    AGI->>Voice: Generate Response
+    AGENT->>Voice: Generate Response
     Voice->>Voice: Piper TTS
     Voice->>User: Audio Summary
 ```
@@ -1533,8 +1541,8 @@ Open-Sable/
 │   │   ├── sessions.py         # Session management
 │   │   ├── session_manager.py  # Advanced session management
 │   │   │
-│   │   ├── # — AGI Subsystems —
-│   │   ├── agi_integration.py  # AGI agent (orchestrates all subsystems)
+│   │   ├── # — Agentic AI Subsystems —
+│   │   ├── agi_integration.py  # Agentic AI agent (orchestrates all subsystems)
 │   │   ├── goal_system.py      # Autonomous goal management
 │   │   ├── advanced_memory.py  # 3-layer memory (episodic/semantic/working)
 │   │   ├── memory.py           # Base memory system
@@ -1809,7 +1817,7 @@ python -m pytest tests/test_features.py::test_skill_factory -v
 ### Running Examples
 
 ```bash
-# AGI Capabilities
+# Agentic AI Capabilities
 python3 examples/agi_capabilities_example.py
 
 # Autonomous Demo
@@ -1834,7 +1842,7 @@ python3 examples/workflow_examples.py
 | Component | Files | Lines | Status |
 |-----------|-------|-------|--------|
 | Core Modules | 56 | 45,000+ | ✅ Complete |
-| AGI Systems | 6 | 5,500+ | ✅ Complete |
+| Agentic AI Systems | 6 | 5,500+ | ✅ Complete |
 | Phase 3 Engines | 5 | 3,000+ | ✅ Complete |
 | Voice & Multimodal | 4 | 3,000+ | 🧪 Experimental |
 | Interfaces | 13 | 7,000+ | ✅ Complete |
@@ -1847,7 +1855,7 @@ python3 examples/workflow_examples.py
 
 ### Module Inventory (56 Core Modules)
 
-**AGI Core** (6):
+**Agentic AI Core** (6):
 `goal_system` · `advanced_memory` · `meta_learning` · `tool_synthesis` · `world_model` · `metacognition`
 
 **Phase 3 Engines** (5):
@@ -1902,7 +1910,7 @@ graph TB
         CMD[Command Handler]
     end
     
-    subgraph "AGI Layer"
+    subgraph "Agentic AI Layer"
         GOALS[Goal System]
         MEM[Advanced Memory]
         META[Meta-Learning]
@@ -1967,7 +1975,7 @@ graph TB
 - **Agent**: LangGraph, LangChain
 - **LLM**: Ollama (Llama 3.1) — fully local
 - **Memory**: ChromaDB (vector) + Advanced multi-layer system
-- **AGI**: Custom implementations (5,500+ lines)
+- **Agentic AI**: Custom implementations (5,500+ lines)
 - **RAG**: ChromaDB + sentence chunking + PDF/TXT/MD ingestion
 - **Voice**: faster-whisper (STT), Piper (TTS)
 - **Vision**: BLIP, CLIP, YOLOv8, EasyOCR, ViLT
@@ -1988,7 +1996,7 @@ TELEGRAM_BOT_TOKEN=your_token
 LLM_ENDPOINT=http://localhost:11434
 LOG_LEVEL=INFO
 
-# AGI Configuration
+# Agentic AI Configuration
 AGI_STORAGE_DIR=./data/agi
 AGI_MEMORY_CONSOLIDATION_INTERVAL=1  # hours
 AGI_META_LEARNING_INTERVAL=24  # hours
@@ -2031,7 +2039,7 @@ ENTERPRISE_SSO_ENABLED=false
 
 ## 📚 API Reference
 
-### AGI Agent
+### Agentic AI Agent
 
 ```python
 from opensable.core.agi_integration import AGIAgent
@@ -2252,7 +2260,7 @@ updated_skills = await manager.update_all_skills()
 
 ## 🎓 Learning & Adaptation
 
-The AGI system learns and improves over time:
+The Agentic AI system learns and improves over time:
 
 ### Learning Curve
 
@@ -2313,7 +2321,7 @@ graph LR
 - [x] Cognitive subsystems (goals, memory, learning, tool synthesis, world model, metacognition)
 - [x] Voice interface (experimental)
 - [x] Multi-device sync (experimental)
-- [x] Multimodal AGI (experimental)
+- [x] Multimodal Agentic AI (experimental)
 - [x] 13 chat platform interfaces
 - [x] SkillFactory (autonomous skill creation)
 - [x] RAG pipeline (document ingestion & retrieval)
@@ -2325,10 +2333,10 @@ graph LR
 - [ ] Skills marketplace (public registry)
 - [ ] Mobile app (Expo + React Native)
 - [x] Neural tool synthesis (pattern-match + AST compose + optional LLM refinement)
-- [x] Distributed AGI (multi-agent coordination with network node delegation)
+- [x] Distributed Agentic AI (multi-agent coordination with network node delegation)
 - [x] Emotional intelligence layer (lexicon + pattern + emoji detection, state tracking, response adaptation)
 - [x] Cross-platform tool synthesis (Python, JavaScript, Rust code generation)
-- [x] Web dashboard (production-ready with token auth + rate limiting)
+- [x] Web dashboard (with token auth + rate limiting)
 
 ---
 

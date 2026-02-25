@@ -99,7 +99,7 @@ class SableAgent:
         self._monitor_subscribers: list = []
         self._monitor_stats = {"messages": 0, "tool_calls": 0, "errors": 0}
 
-        # AGI components
+        # Agentic AI components
         self.advanced_memory = None
         self.goals = None
         self.plugins = None
@@ -123,7 +123,7 @@ class SableAgent:
         logger.info("Agent initialized successfully")
 
     async def _initialize_agi_systems(self):
-        """Initialize advanced AGI components"""
+        """Initialize advanced Agentic AI components"""
         try:
             from .advanced_memory import AdvancedMemorySystem
 

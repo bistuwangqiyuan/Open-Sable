@@ -1,5 +1,5 @@
 """
-AGI Capabilities Example - Demonstrates all AGI features working together.
+Agentic AI Capabilities Example - Demonstrates all cognitive features working together.
 
 This example shows:
 1. Autonomous goal creation and decomposition
@@ -354,12 +354,12 @@ async def demonstrate_metacognition(agent: AGIAgent):
 
 
 async def demonstrate_full_agi_cycle(agent: AGIAgent):
-    """Demonstrate complete AGI cycle."""
+    """Demonstrate complete Agentic AI cycle."""
     print("\n" + "=" * 60)
-    print("7. FULL AGI CYCLE - Everything Together")
+    print("7. FULL AGENTIC AI CYCLE - Everything Together")
     print("=" * 60)
 
-    print("\n🚀 Running complete AGI cycle...")
+    print("\n🚀 Running complete Agentic AI cycle...")
     print("   This combines all subsystems working together:\n")
 
     # 1. Set autonomous goal
@@ -419,16 +419,16 @@ async def demonstrate_full_agi_cycle(agent: AGIAgent):
     await agent.memory.consolidate_memories()
     print("      ✓ Working memory consolidated into long-term storage")
 
-    print("\n✨ Complete AGI cycle finished!")
+    print("\n✨ Complete Agentic AI cycle finished!")
 
 
 async def main():
-    """Run complete AGI demonstration."""
+    """Run complete Agentic AI demonstration."""
 
     print("\n" + "=" * 60)
-    print("🤖 Open-Sable AGI System - Complete Demonstration")
+    print("🤖 Open-Sable Agentic AI System - Complete Demonstration")
     print("=" * 60)
-    print("\nThis demonstrates a complete AGI-capable system with:")
+    print("\nThis demonstrates a complete Agentic AI system with:")
     print("• Autonomous goal setting and planning")
     print("• Multi-layered memory (episodic, semantic, working)")
     print("• Meta-learning and continuous self-improvement")
@@ -437,7 +437,7 @@ async def main():
     print("• Metacognitive self-monitoring and error recovery")
 
     # Initialize agent
-    print("\n⏳ Initializing AGI agent...")
+    print("\n⏳ Initializing Agentic AI agent...")
     agent = AGIAgent()
 
     # Run demonstrations
@@ -482,9 +482,9 @@ async def main():
     print(f"   Errors detected: {status['subsystems']['metacognition']['total_errors_detected']}")
 
     print("\n" + "=" * 60)
-    print("✅ AGI DEMONSTRATION COMPLETE")
+    print("✅ AGENTIC AI DEMONSTRATION COMPLETE")
     print("=" * 60)
-    print("\nThe agent is now fully operational with AGI capabilities!")
+    print("\nThe agent is now fully operational with Agentic AI capabilities!")
 
 
 if __name__ == "__main__":

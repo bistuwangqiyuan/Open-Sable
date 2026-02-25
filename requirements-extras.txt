@@ -63,3 +63,10 @@ black>=23.12.1
 ruff>=0.1.9
 pytest-cov>=4.1.0
 pytest-mock>=3.12.0
+
+# Social Media
+instagrapi>=2.0.0          # Instagram (Private API)
+facebook-sdk>=3.1.0        # Facebook (Graph API)
+linkedin-api>=2.2.0        # LinkedIn (Voyager API)
+TikTokApi>=6.3.0           # TikTok (read-only, requires Playwright)
+python-youtube>=0.9.0      # YouTube (Data API V3)

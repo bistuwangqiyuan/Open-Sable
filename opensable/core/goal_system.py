@@ -1,5 +1,5 @@
 """
-AGI Goal System - Autonomous goal setting, decomposition, and execution.
+Agentic AI Goal System - Autonomous goal setting, decomposition, and execution.
 
 Features:
 - Goal hierarchy (high-level → sub-goals → actions)
@@ -632,7 +632,7 @@ async def main():
     """Example goal system usage."""
 
     print("=" * 50)
-    print("AGI Goal System Example")
+    print("Agentic AI Goal System Example")
     print("=" * 50)
 
     # Initialize goal manager

@@ -1,5 +1,5 @@
 """
-Advanced Memory System - Episodic, Semantic, and Working Memory for AGI.
+Advanced Memory System - Episodic, Semantic, and Working Memory for Agentic AI.
 
 Features:
 - Episodic memory (autobiographical experiences)

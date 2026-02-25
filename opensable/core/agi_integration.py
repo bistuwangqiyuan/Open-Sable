@@ -1,5 +1,5 @@
 """
-AGI Integration - Combines all AGI capabilities into unified system.
+Agentic AI Integration - Combines all cognitive capabilities into unified system.
 
 Integrates:
 - Goal System: Autonomous goal setting and planning
@@ -45,7 +45,7 @@ class AGIAgent:
         storage_dir: Optional[Path] = None,
     ):
         """
-        Initialize AGI agent.
+        Initialize Agentic AI agent.
 
         Args:
             llm_function: LLM for reasoning
@@ -401,7 +401,7 @@ async def main():
     print("AGI Agent - Complete System Example")
     print("=" * 60)
 
-    # Initialize AGI agent
+    # Initialize Agentic AI agent
     print("\n🤖 Initializing AGI agent...")
     agent = AGIAgent()
     print("  ✅ Agent ready")

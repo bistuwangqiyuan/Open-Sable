@@ -1,5 +1,5 @@
 """
-Tool Synthesis - Dynamic tool creation and code generation for AGI.
+Tool Synthesis - Dynamic tool creation and code generation for Agentic AI.
 
 Features:
 - Automatic tool generation from descriptions
@@ -524,7 +524,7 @@ class NeuralSynthesizer:
             try:
                 refined = await self.llm_function(
                     f"Improve this Python tool. Fix any issues, fill in placeholder "
-                    f"logic, make it production-ready. Keep it async, typed, and safe.\n\n"
+                    f"logic, make it robust and well-structured. Keep it async, typed, and safe.\n\n"
                     f"Specification: {spec.description}\n"
                     f"Current code:\n```python\n{assembled}\n```\n\n"
                     f"Return ONLY the improved code, no explanation."

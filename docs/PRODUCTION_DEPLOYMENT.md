@@ -1,10 +1,6 @@
-"""
-Production Deployment Guide for Open-Sable
-
-Complete guide for deploying Open-Sable in production environments.
-"""
-
 # Production Deployment Guide
+
+> Complete guide for deploying Open-Sable in production environments.
 
 ## Overview
 

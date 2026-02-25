@@ -417,4 +417,383 @@ class GrokSkill:
         return await q.enqueue("grok_generate", prompt, **kwargs)
 
 
-__all__ = ["VoiceSkill", "ImageSkill", "DatabaseSkill", "RAGSkill", "CodeExecutor", "APIClient", "XSkill", "GrokSkill"]
+# ── Social media skills (Instagram, Facebook, LinkedIn, TikTok) ──────
+
+class InstagramSkill:
+    """Instagram automation wrapper — uses instagrapi (unofficial Private API)."""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .instagram_skill import InstagramSkill as InstagramSkillImpl
+            self._impl = InstagramSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"Instagram skill init failed: {e}")
+            return False
+
+    async def upload_photo(self, path, caption="", **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_photo(path, caption, **kwargs)
+
+    async def upload_video(self, path, caption="", **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_video(path, caption, **kwargs)
+
+    async def upload_reel(self, path, caption="", **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_reel(path, caption, **kwargs)
+
+    async def upload_story(self, path, caption="", **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_story(path, caption, **kwargs)
+
+    async def upload_album(self, paths, caption=""):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_album(paths, caption)
+
+    async def search_users(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_users(query, count)
+
+    async def search_hashtags(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_hashtags(query, count)
+
+    async def get_user_info(self, username):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_info(username)
+
+    async def get_user_medias(self, username, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_medias(username, count)
+
+    async def get_timeline(self, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_timeline(count)
+
+    async def like_media(self, media_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.like_media(media_id)
+
+    async def comment(self, media_id, text):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.comment(media_id, text)
+
+    async def follow_user(self, username):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.follow_user(username)
+
+    async def unfollow_user(self, username):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.unfollow_user(username)
+
+    async def send_dm(self, username, text):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.send_dm(username, text)
+
+    async def get_direct_threads(self, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_direct_threads(count)
+
+    async def delete_media(self, media_pk):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.delete_media(media_pk)
+
+    async def get_hashtag_medias(self, hashtag, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_hashtag_medias(hashtag, count)
+
+    async def get_user_stories(self, username):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_stories(username)
+
+    async def download_media(self, media_pk, folder="/tmp"):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.download_media(media_pk, folder)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+class FacebookSkill:
+    """Facebook Graph API wrapper — uses facebook-sdk."""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .facebook_skill import FacebookSkill as FacebookSkillImpl
+            self._impl = FacebookSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"Facebook skill init failed: {e}")
+            return False
+
+    async def post(self, message, link=None, use_page=False):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.post(message, link, use_page)
+
+    async def upload_photo(self, path, caption="", use_page=False):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_photo(path, caption, use_page)
+
+    async def get_feed(self, count=10, use_page=False):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_feed(count, use_page)
+
+    async def get_post(self, post_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_post(post_id)
+
+    async def like_post(self, post_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.like_post(post_id)
+
+    async def comment_on_post(self, post_id, message):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.comment_on_post(post_id, message)
+
+    async def get_comments(self, post_id, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_comments(post_id, count)
+
+    async def get_profile(self):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_profile()
+
+    async def get_page_info(self, page_id=None):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_page_info(page_id)
+
+    async def search(self, query, search_type="page", count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search(query, search_type, count)
+
+    async def delete_post(self, post_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.delete_post(post_id)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+class LinkedInSkill:
+    """LinkedIn automation wrapper — uses linkedin-api (Voyager API, unofficial)."""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .linkedin_skill import LinkedInSkill as LinkedInSkillImpl
+            self._impl = LinkedInSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"LinkedIn skill init failed: {e}")
+            return False
+
+    async def get_profile(self, public_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_profile(public_id)
+
+    async def search_people(self, keywords, limit=10, **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_people(keywords, limit, **kwargs)
+
+    async def search_companies(self, keywords, limit=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_companies(keywords, limit)
+
+    async def search_jobs(self, keywords, location=None, limit=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_jobs(keywords, location, limit)
+
+    async def post_update(self, text, **kwargs):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.post_update(text, **kwargs)
+
+    async def react_to_post(self, post_urn, reaction_type="LIKE"):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.react_to_post(post_urn, reaction_type)
+
+    async def send_message(self, public_id, text):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.send_message(public_id, text)
+
+    async def get_conversations(self, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_conversations(count)
+
+    async def send_connection_request(self, public_id, message=""):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.send_connection_request(public_id, message)
+
+    async def remove_connection(self, public_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.remove_connection(public_id)
+
+    async def get_feed_posts(self, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_feed_posts(count)
+
+    async def get_user_posts(self, public_id, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_posts(public_id, count)
+
+    async def get_company(self, company_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_company(company_id)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+class TikTokSkill:
+    """TikTok data retrieval wrapper — uses TikTokApi (read-only, no posting)."""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .tiktok_skill import TikTokSkill as TikTokSkillImpl
+            self._impl = TikTokSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"TikTok skill init failed: {e}")
+            return False
+
+    async def get_trending_videos(self, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_trending_videos(count)
+
+    async def search_videos(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_videos(query, count)
+
+    async def search_users(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_users(query, count)
+
+    async def get_user_info(self, username):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_info(username)
+
+    async def get_user_videos(self, username, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_user_videos(username, count)
+
+    async def get_video_info(self, video_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_video_info(video_id)
+
+    async def get_video_comments(self, video_id, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_video_comments(video_id, count)
+
+    async def get_hashtag_info(self, hashtag):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_hashtag_info(hashtag)
+
+    async def get_hashtag_videos(self, hashtag, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_hashtag_videos(hashtag, count)
+
+    async def download_video(self, video_id, path="/tmp"):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.download_video(video_id, path)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+class YouTubeSkill:
+    """YouTube wrapper — uses python-youtube (pyyoutube) for YouTube Data API v3."""
+
+    def __init__(self, config):
+        self.config = config
+        self._impl = None
+
+    async def initialize(self):
+        try:
+            from .youtube_skill import YouTubeSkill as YouTubeSkillImpl
+            self._impl = YouTubeSkillImpl(self.config)
+            return await self._impl.initialize()
+        except Exception as e:
+            logger.warning(f"YouTube skill init failed: {e}")
+            return False
+
+    async def search_videos(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_videos(query, count)
+
+    async def search_channels(self, query, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.search_channels(query, count)
+
+    async def get_channel_info(self, channel_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_channel_info(channel_id)
+
+    async def get_channel_videos(self, channel_id, count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_channel_videos(channel_id, count)
+
+    async def get_video_info(self, video_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_video_info(video_id)
+
+    async def get_video_comments(self, video_id, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_video_comments(video_id, count)
+
+    async def comment_on_video(self, video_id, text):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.comment_on_video(video_id, text)
+
+    async def get_playlist_items(self, playlist_id, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_playlist_items(playlist_id, count)
+
+    async def rate_video(self, video_id, rating="like"):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.rate_video(video_id, rating)
+
+    async def subscribe(self, channel_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.subscribe(channel_id)
+
+    async def get_my_subscriptions(self, count=20):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_my_subscriptions(count)
+
+    async def upload_video(self, file_path, title="", description="", tags=None, privacy="private"):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.upload_video(file_path, title, description, tags, privacy)
+
+    async def get_trending(self, region_code="US", count=10):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_trending(region_code, count)
+
+    async def get_captions(self, video_id):
+        if not self._impl: return {"success": False, "error": "Not initialized"}
+        return await self._impl.get_captions(video_id)
+
+    def is_available(self):
+        return self._impl is not None and self._impl.is_available()
+
+
+__all__ = [
+    "VoiceSkill", "ImageSkill", "DatabaseSkill", "RAGSkill",
+    "CodeExecutor", "APIClient", "XSkill", "GrokSkill",
+    "InstagramSkill", "FacebookSkill", "LinkedInSkill", "TikTokSkill",
+    "YouTubeSkill",
+]
