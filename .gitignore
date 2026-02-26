@@ -116,3 +116,4 @@ website/
 
 # MkDocs build output
 site/
+/data/benchmarks
