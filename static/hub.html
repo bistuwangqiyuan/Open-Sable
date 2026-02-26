@@ -185,8 +185,12 @@
       <span class="tab-dot" id="monitor-dot"></span>
     </button>
     <button class="nav-tab" data-page="dashboard" onclick="switchPage('dashboard')">
-      <span class="tab-icon">📊</span>
+      <span class="tab-icon">�️</span>
       <span class="tab-label">Dashboard</span>
+    </button>
+    <button class="nav-tab" data-page="classic" onclick="switchPage('classic')">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">Classic</span>
     </button>
     <button class="nav-tab" data-page="aggr" onclick="switchPage('aggr')">
       <span class="tab-icon">📈</span>
@@ -215,12 +219,13 @@
   var qs = token ? '?token=' + encodeURIComponent(token) : '';
 
   // ── Pages config ───────────────────────────────────────────────
-  var pageOrder = ['chat', 'monitor', 'dashboard', 'aggr'];
+  var pageOrder = ['chat', 'monitor', 'dashboard', 'classic', 'aggr'];
   var pages = {
-    chat:      { src: '/chat' + qs,      srcSet: false, iframe: null },
-    monitor:   { src: '/monitor' + qs,   srcSet: false, iframe: null },
-    dashboard: { src: '/dashboard' + qs, srcSet: false, iframe: null },
-    aggr:      { src: '/aggr' + qs,      srcSet: false, iframe: null },
+    chat:      { src: '/chat' + qs,             srcSet: false, iframe: null },
+    monitor:   { src: '/monitor' + qs,           srcSet: false, iframe: null },
+    dashboard: { src: '/dashboard' + qs,         srcSet: false, iframe: null },
+    classic:   { src: '/dashboard-classic' + qs, srcSet: false, iframe: null },
+    aggr:      { src: '/aggr' + qs,              srcSet: false, iframe: null },
   };
 
   var activePage = 'chat';

@@ -6,7 +6,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -125,6 +124,9 @@ trading_backtest_results/
 *.trading.db
 *.portfolio.db
 aggr/
+
+# Dashboard (React app — keep dist/ for gateway, ignore node_modules)
+dashboard/node_modules/
 
 # Website (built separately)
 website/

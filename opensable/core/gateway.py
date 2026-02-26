@@ -191,7 +191,17 @@ class _WS:
                 await cls._serve_html(writer, html)
             elif route == "/chat":
                 await cls._serve_html(writer, webchat_path)
-            elif route == "/dashboard":
+            elif route == "/dashboard" or route.startswith("/dashboard/"):
+                # React dashboard SPA — serve from dashboard/dist/
+                dash_dist = project_root / "dashboard" / "dist" if project_root else None
+                if dash_dist and dash_dist.exists():
+                    rel = parsed.path.split("/dashboard", 1)[1].lstrip("/") or "index.html"
+                    await cls._serve_static(writer, dash_dist, rel)
+                else:
+                    # Fallback to old dashboard_v2.html
+                    html = static_dir / "dashboard_v2.html" if static_dir else None
+                    await cls._serve_html(writer, html)
+            elif route == "/dashboard-classic":
                 html = static_dir / "dashboard_v2.html" if static_dir else None
                 await cls._serve_html(writer, html)
             elif route == "/dashboard-legacy":
@@ -250,14 +260,19 @@ class _WS:
 
     @classmethod
     async def _serve_static(cls, writer: asyncio.StreamWriter, base_dir: Path, rel_path: str):
-        """Serve any static file from a directory (for aggr SPA)."""
+        """Serve any static file from a directory (for SPAs like aggr, dashboard)."""
         import mimetypes
         # Sanitize path to prevent directory traversal
         safe = Path(rel_path).as_posix().replace("..", "")
         target = base_dir / safe
-        # Vite with --base /aggr/ nests some assets under dist/aggr/
+        # Vite with --base nests some assets under dist/<name>/
         if not target.exists() or not target.is_file():
-            target = base_dir / "aggr" / safe
+            # Check common Vite sub-directories
+            for sub in ("aggr", "dashboard", "assets"):
+                alt = base_dir / sub / safe
+                if alt.exists() and alt.is_file():
+                    target = alt
+                    break
         if not target.exists() or not target.is_file():
             # SPA fallback: serve index.html for unknown routes
             target = base_dir / "index.html"
