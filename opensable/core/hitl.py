@@ -127,6 +127,12 @@ _DEFAULT_RISK_MAP: Dict[str, RiskLevel] = {
     "marketplace_info": RiskLevel.LOW,
     "marketplace_install": RiskLevel.HIGH,       # Requires human approval
     "marketplace_review": RiskLevel.MEDIUM,
+    # Mobile phone tools — notifications/reminders are MEDIUM, reads are LOW
+    "phone_notify": RiskLevel.MEDIUM,
+    "phone_reminder": RiskLevel.MEDIUM,
+    "phone_geofence": RiskLevel.MEDIUM,
+    "phone_location": RiskLevel.LOW,
+    "phone_device": RiskLevel.LOW,
 }
 
 # Type alias for the callback that asks a human

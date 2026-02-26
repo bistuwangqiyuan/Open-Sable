@@ -104,6 +104,9 @@ class SableAgent:
         self._monitor_subscribers: list = []
         self._monitor_stats = {"messages": 0, "tool_calls": 0, "errors": 0}
 
+        # Mobile phone context (updated by MobileRelay)
+        self._mobile_context: dict = {"location": None, "battery": None, "clipboard": None}
+
         # Agentic AI components
         self.advanced_memory = None
         self.goals = None
@@ -492,6 +495,12 @@ class SableAgent:
         "marketplace_info": "📋",
         "marketplace_install": "📥",
         "marketplace_review": "⭐",
+        # Mobile phone
+        "phone_notify": "📱",
+        "phone_reminder": "⏰",
+        "phone_geofence": "📍",
+        "phone_location": "🗺️",
+        "phone_device": "🔋",
     }
 
     _TOOL_LABELS = {
@@ -535,6 +544,12 @@ class SableAgent:
         "marketplace_info": "Getting skill details",
         "marketplace_install": "Installing skill from marketplace",
         "marketplace_review": "Reviewing skill",
+        # Mobile phone
+        "phone_notify": "Sending phone notification",
+        "phone_reminder": "Creating phone reminder",
+        "phone_geofence": "Setting up geofence",
+        "phone_location": "Getting phone location",
+        "phone_device": "Checking phone status",
     }
 
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:
@@ -737,6 +752,19 @@ class SableAgent:
             "\n- NEVER install a skill without the user's explicit permission unless auto-approve mode is enabled."
         )
 
+        # Build Mobile phone instructions
+        mobile_instructions = (
+            "\n\nMOBILE PHONE INTEGRATION (SETP/1.0):"
+            "\n- You can interact with the user's phone via E2E encrypted tunnel (X25519 + XSalsa20-Poly1305)."
+            "\n- Available tools: phone_notify (push notifications), phone_reminder (smart reminders), "
+            "phone_geofence (location triggers), phone_location (GPS), phone_device (battery/network)."
+            "\n- For location-based reminders (e.g. 'remind me to buy X when near a pharmacy'), use phone_reminder with type='geo'."
+            "\n- You can send proactive notifications for important events, trade alerts, or task completions."
+            "\n- Check phone_device to adapt behavior when battery is low or connectivity is poor."
+            "\n- The user's phone location and battery status are periodically updated — use them for context-aware responses."
+            "\n- All phone communication is encrypted end-to-end. No data passes through third parties."
+        )
+
         base_system = (
             self._get_personality_prompt()
             + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
@@ -744,10 +772,11 @@ class SableAgent:
             + social_instructions
             + trading_instructions
             + marketplace_instructions
+            + mobile_instructions
             + "\n\nIMPORTANT: For general knowledge questions (not prices/markets), answer directly. "
             "Use tools when the task requires reading files, executing code, searching the web, "
             "interacting with the system, managing social media, getting real-time market/price data, "
-            "or searching/installing skills from the marketplace."
+            "searching/installing skills from the marketplace, or interacting with the user's phone."
         )
 
         ei = getattr(self, "emotional_intelligence", None)

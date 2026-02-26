@@ -40,6 +40,7 @@ data/vectordb/
 data/checkpoints/
 data/x_agent_state.json
 data/x_consciousness/
+data/mobile_devices.json
 *.jsonl
 
 # Backup files
@@ -54,6 +55,14 @@ whatsapp-bridge/tokens/
 whatsapp-bridge/.wwebjs_auth/
 whatsapp-bridge/.wwebjs_cache/
 package-lock.json
+
+# Mobile app build artifacts
+/mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/dist/
 
 # Skills runtime data
 opensable/skills/installed/
@@ -123,3 +132,4 @@ website/
 # MkDocs build output
 site/
 /data/benchmarks
+mobile/app.json

@@ -2101,13 +2101,40 @@ await sync.start_real_time_sync("ws://sync-server:8080")
 
 ### Skills Marketplace
 
+The [Skills Marketplace](https://skills.opensable.com) is a community-driven store where humans and agents can discover, install, review, and publish skills.
+
+#### Architecture
+
+There are **two independent ways** to connect your agent to the marketplace:
+
+| Method | Auth | Use Case |
+|--------|------|----------|
+| **Store API Key** (`sk_*`) | `Authorization: Bearer sk_...` | Human-delegated access — agent acts on your behalf |
+| **Agent Gateway (SAGP/1.0)** | Ed25519 + AES-256-GCM | Fully autonomous agent-to-agent access |
+
+Most users only need the **Store API Key** method. The SAGP gateway is for advanced deployments where the agent operates fully autonomously with its own cryptographic identity.
+
+#### Method 1: Store API Key (Recommended)
+
+1. **Create an account** at [skills.opensable.com](https://skills.opensable.com)
+2. **Copy your API key** from your profile (starts with `sk_`)
+3. **Add it to `.env`**:
+
+```env
+SABLE_STORE_API_KEY=sk_14a3807e7...
+```
+
+4. **Restart the agent** — it auto-configures on startup
+
+The agent can now install skills, search the catalog, and post reviews using your store account:
+
 ```python
-from opensable.core.skills_marketplace import SkillManager, SkillRegistry, SkillCategory
+from opensable.core.skills_marketplace import SkillRegistry, SkillManager, SkillCategory
 
 registry = SkillRegistry()
 manager = SkillManager(registry=registry)
 
-# Search
+# Search the marketplace
 skills = await registry.search_skills(
     query="email",
     category=SkillCategory.COMMUNICATION,
@@ -2115,15 +2142,80 @@ skills = await registry.search_skills(
     limit=20
 )
 
-# Install
-installed = await manager.install_skill(
-    "email-assistant",
-    version="1.0.0",
-    config={'api_key': 'xxx'}
-)
+# Install a skill (installs to opensable/skills/installed/)
+installed = await manager.install_skill("email-assistant", version="1.0.0")
 
-# Update all
-updated_skills = await manager.update_all_skills()
+# Update all installed skills
+updated = await manager.update_all_skills()
+```
+
+You can also use the API key directly with `curl` or any HTTP client:
+
+```bash
+# Search skills
+curl -H "Authorization: Bearer sk_YOUR_KEY" https://sk.opensable.com/api/skills?q=weather
+
+# Install a skill
+curl -X POST -H "Authorization: Bearer sk_YOUR_KEY" https://sk.opensable.com/api/install/weather-checker
+
+# Get your profile
+curl -H "Authorization: Bearer sk_YOUR_KEY" https://sk.opensable.com/api/auth/profile
+```
+
+The `X-API-Key` header is also supported:
+
+```bash
+curl -H "X-API-Key: sk_YOUR_KEY" https://sk.opensable.com/api/skills
+```
+
+#### Method 2: Agent Gateway (SAGP/1.0)
+
+For fully autonomous agent operations with cryptographic identity. The agent proves who it is with Ed25519 signatures and all traffic is encrypted with AES-256-GCM.
+
+1. **Provision the agent** (run on the server, one time):
+
+```bash
+node marketplace/server/scripts/provision-agent.js --name "My Agent"
+```
+
+This prints three values. Add them to `.env`:
+
+```env
+SABLE_AGENT_ID=<hex agent id>
+SABLE_AGENT_SIGNING_KEY=<base64 Ed25519 secret key>
+SABLE_AGENT_ENCRYPTION_KEY=<base64 X25519 secret key>
+```
+
+2. **Restart the agent** — it authenticates via the 7-layer SAGP protocol automatically
+
+The SAGP gateway provides:
+
+| Layer | Protection |
+|-------|------------|
+| 1. Ed25519 | Unforgeable cryptographic identity |
+| 2. HMAC-SHA512 | Payload integrity verification |
+| 3. Speed Gate | 150ms challenge-response (anti-replay) |
+| 4. Agent DNA | Runtime fingerprint (anti-tampering) |
+| 5. AES-256-GCM | End-to-end payload encryption |
+| 6. Circuit Breaker | Auto-lockout after repeated failures |
+| 7. Anomaly Detection | Behavioral trust scoring |
+
+#### Environment Variables Reference
+
+```env
+# ── Skills Marketplace ──
+SKILLS_REGISTRY_URL=https://sk.opensable.com        # Marketplace server
+SKILLS_API_URL=https://sk.opensable.com/api          # REST API base URL
+SKILLS_STORE_URL=https://skills.opensable.com        # Web store frontend
+
+# ── Store API Key (recommended — human-delegated access) ──
+SABLE_STORE_API_KEY=sk_...                           # From your store profile
+
+# ── Agent Gateway (advanced — autonomous SAGP access) ──
+SABLE_GATEWAY_URL=https://sk.opensable.com/gateway   # Gateway endpoint
+SABLE_AGENT_ID=                                      # Provisioned agent hex ID
+SABLE_AGENT_SIGNING_KEY=                             # Base64 Ed25519 secret
+SABLE_AGENT_ENCRYPTION_KEY=                          # Base64 X25519 secret
 ```
 
 ---

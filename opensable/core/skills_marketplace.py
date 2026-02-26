@@ -138,8 +138,8 @@ class SkillRegistry:
     """
 
     # ── Default marketplace config ──
-    DEFAULT_GATEWAY_URL = "http://192.168.68.75:4800/gateway"
-    AGENT_CREDENTIALS_FILE = "agent-credentials.json"
+    DEFAULT_GATEWAY_URL = "https://sk.opensable.com/gateway"
+    AGENT_CREDENTIALS_FILE = "agent-credentials.json"  # kept for backward compat reference only
 
     def __init__(
         self,
@@ -156,22 +156,26 @@ class SkillRegistry:
         Priority for config:
           1. Explicit parameters
           2. Environment variables
-          3. Credentials file
-          4. Defaults
+          3. That's it — no filesystem scanning for security
 
         Args:
             registry_url: Legacy URL (ignored when gateway is available)
-            gateway_url: Agent Gateway URL (e.g., http://192.168.68.75:4800/gateway)
+            gateway_url: Agent Gateway URL (e.g., https://sk.opensable.com/gateway)
             agent_id: Provisioned agent ID
             signing_key: Base64-encoded Ed25519 secret key
             encryption_key: Base64-encoded X25519 secret key
-            credentials_file: Path to agent-*.json credentials file
+            credentials_file: IGNORED (removed for security — use env vars)
         """
-        self.registry_url = registry_url or "http://192.168.68.75:4800/api"
+        self.registry_url = registry_url or os.environ.get("SKILLS_API_URL", "https://sk.opensable.com/api")
         self.cache: Dict[str, SkillMetadata] = {}
         self.cache_updated: Optional[datetime] = None
 
-        # ── Load gateway credentials ──
+        # ── Store API key (human-delegated access) ──
+        # If the owner has a store account, they can set their sk_* API key
+        # so the agent can install/review skills via the REST API on their behalf.
+        self._store_api_key = os.environ.get("SABLE_STORE_API_KEY")
+
+        # ── Load gateway credentials (env vars ONLY — no filesystem scanning) ──
         self._gateway_url = (
             gateway_url
             or os.environ.get("SABLE_GATEWAY_URL")
@@ -181,9 +185,17 @@ class SkillRegistry:
         self._signing_key = signing_key or os.environ.get("SABLE_AGENT_SIGNING_KEY")
         self._encryption_key = encryption_key or os.environ.get("SABLE_AGENT_ENCRYPTION_KEY")
 
-        # Try loading from credentials file if params not provided
+        # SECURITY: No automatic credentials file scanning.
+        # Credentials MUST be provided via env vars or explicit parameters.
+        # The owner provisions agents offline with:
+        #   node marketplace/server/scripts/provision-agent.js --name "MyAgent"
+        # Then sets env vars: SABLE_AGENT_ID, SABLE_AGENT_SIGNING_KEY, SABLE_AGENT_ENCRYPTION_KEY
         if not self._agent_id or not self._signing_key:
-            self._load_credentials(credentials_file)
+            logger.info(
+                "Agent gateway credentials not configured. Gateway features disabled. "
+                "Set SABLE_AGENT_ID, SABLE_AGENT_SIGNING_KEY, SABLE_AGENT_ENCRYPTION_KEY "
+                "env vars to enable."
+            )
 
         # Gateway client (lazy-initialized)
         self._gateway_client = None
@@ -194,59 +206,93 @@ class SkillRegistry:
             f"agent: {self._agent_id[:8] + '...' if self._agent_id else 'NOT CONFIGURED'}"
         )
 
-    def _load_credentials(self, credentials_file: Optional[str] = None):
-        """Load agent credentials from a JSON file."""
-        search_paths = []
+    # _load_credentials and _parse_credentials_file REMOVED for security.
+    # Agents must NEVER scan the filesystem for credentials.
+    # The owner sets env vars manually after offline provisioning.
 
-        if credentials_file:
-            search_paths.append(Path(credentials_file))
+    # ── Store REST API (uses human's sk_* API key) ──
 
-        # Check common locations
-        project_root = Path(__file__).parent.parent.parent
-        marketplace_server = project_root / "marketplace" / "server"
+    async def _store_api_request(
+        self, method: str, path: str, json_body: Optional[Dict] = None
+    ) -> Optional[Dict]:
+        """
+        Make an authenticated REST API request to the Skills Store
+        using the owner's API key (SABLE_STORE_API_KEY).
 
-        search_paths.extend([
-            project_root / self.AGENT_CREDENTIALS_FILE,
-            project_root / "config" / self.AGENT_CREDENTIALS_FILE,
-            marketplace_server / "agent-*.json",
-        ])
+        This lets the agent act on behalf of the human owner —
+        install skills, post reviews, etc. — without needing the
+        full SAGP handshake.
 
-        for pattern in search_paths:
-            if "*" in str(pattern):
-                # Glob pattern
-                parent = pattern.parent
-                if parent.exists():
-                    for match in parent.glob(pattern.name):
-                        if match.name.startswith("agent-") and match.suffix == ".json":
-                            try:
-                                self._parse_credentials_file(match)
-                                return
-                            except Exception as e:
-                                logger.warning(f"Failed to parse {match}: {e}")
-            elif pattern.exists():
-                try:
-                    self._parse_credentials_file(pattern)
-                    return
-                except Exception as e:
-                    logger.warning(f"Failed to parse {pattern}: {e}")
+        Returns:
+            Response JSON dict, or None on failure.
+        """
+        if not self._store_api_key:
+            return None
 
-        logger.warning(
-            "No agent credentials found. Gateway features disabled. "
-            "Set SABLE_AGENT_ID, SABLE_AGENT_SIGNING_KEY, SABLE_AGENT_ENCRYPTION_KEY "
-            "env vars or provide a credentials file."
-        )
+        try:
+            import aiohttp
 
-    def _parse_credentials_file(self, path: Path):
-        """Parse an agent credentials JSON file."""
-        with open(path, "r") as f:
-            creds = json.load(f)
+            url = f"{self.registry_url}{path}"
+            headers = {
+                "Authorization": f"Bearer {self._store_api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "OpenSable-Agent/1.0",
+            }
 
-        self._agent_id = self._agent_id or creds.get("agentId")
-        self._gateway_url = creds.get("gatewayUrl", self._gateway_url)
-        self._signing_key = self._signing_key or creds.get("signingKeys", {}).get("secretKey")
-        self._encryption_key = self._encryption_key or creds.get("encryptionKeys", {}).get("secretKey")
+            async with aiohttp.ClientSession() as session:
+                async with session.request(
+                    method, url, headers=headers, json=json_body, timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
+                    data = await resp.json()
+                    if resp.status >= 400:
+                        logger.warning(f"Store API {method} {path} → {resp.status}: {data.get('error', '?')}")
+                        return None
+                    return data
 
-        logger.info(f"Loaded agent credentials from {path}")
+        except ImportError:
+            logger.warning("aiohttp not available for Store API requests")
+            return None
+        except Exception as e:
+            logger.warning(f"Store API request failed: {e}")
+            return None
+
+    async def install_skill_via_api(self, slug: str) -> Optional[Dict]:
+        """
+        Install a skill via the REST API using the owner's API key.
+
+        Fallback when SAGP gateway is not configured. Requires SABLE_STORE_API_KEY.
+        """
+        if not self._store_api_key:
+            return None
+
+        # The install endpoint is /install/:slug (relative to registry_url base)
+        # registry_url = https://sk.opensable.com/api
+        # install endpoint = https://sk.opensable.com/api/install/:slug
+        # But actually install routes are at /api/install/:slug
+        # Since registry_url already ends with /api, we use a relative path
+        result = await self._store_api_request("POST", f"/install/{slug}")
+        if result:
+            logger.info(f"✅ Skill '{slug}' installed via Store API key")
+        return result
+
+    async def search_skills_via_api(
+        self, query: Optional[str] = None, category: Optional[str] = None, limit: int = 20
+    ) -> Optional[List[Dict]]:
+        """Search skills via the REST API (no auth required, but API key adds context)."""
+        params = []
+        if query:
+            params.append(f"q={query}")
+        if category:
+            params.append(f"category={category}")
+        if limit:
+            params.append(f"limit={limit}")
+        qs = "&".join(params)
+        path = f"/skills?{qs}" if qs else "/skills"
+
+        result = await self._store_api_request("GET", path)
+        if result and "skills" in result:
+            return result["skills"]
+        return None
 
     async def _ensure_gateway(self) -> bool:
         """Ensure gateway client is authenticated. Returns True if available."""
@@ -391,7 +437,22 @@ class SkillRegistry:
             except Exception as e:
                 logger.warning(f"Marketplace search failed: {e} — using fallback")
 
-        # ── Fallback: local mock data ──
+        # ── Fallback 2: REST API with owner's API key ──
+        if self._store_api_key:
+            category_str = category.value if category else None
+            query_str = query
+            if tags and not query_str:
+                query_str = " ".join(tags)
+            api_results = await self.search_skills_via_api(query_str, category_str, limit)
+            if api_results:
+                results = [self._to_metadata(s) for s in api_results]
+                for meta in results:
+                    self.cache[meta.skill_id] = meta
+                self.cache_updated = datetime.utcnow()
+                logger.info(f"🏪 Store API returned {len(results)} skills")
+                return results
+
+        # ── Fallback 3: local mock data ──
         return await self._search_skills_mock(query, category, tags, limit)
 
     async def get_skill(self, skill_id: str) -> Optional[SkillMetadata]:
@@ -464,6 +525,13 @@ class SkillRegistry:
                 # so SkillManager doesn't break
             except Exception as e:
                 logger.warning(f"Gateway install failed: {e} — creating mock package")
+
+        # Try REST API install with owner's API key
+        if self._store_api_key:
+            api_result = await self.install_skill_via_api(skill_id)
+            if api_result:
+                logger.info(f"🏪 Store API install result: {api_result}")
+                return await self._create_mock_package(skill_id)
 
         # Create mock tarball for backward compatibility
         return await self._create_mock_package(skill_id)
