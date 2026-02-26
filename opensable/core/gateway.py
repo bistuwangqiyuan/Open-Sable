@@ -192,6 +192,9 @@ class _WS:
             elif route == "/chat":
                 await cls._serve_html(writer, webchat_path)
             elif route == "/dashboard":
+                html = static_dir / "dashboard_v2.html" if static_dir else None
+                await cls._serve_html(writer, html)
+            elif route == "/dashboard-legacy":
                 html = static_dir / "dashboard_modern.html" if static_dir else None
                 await cls._serve_html(writer, html)
             elif route == "/aggr" or route.startswith("/aggr/"):

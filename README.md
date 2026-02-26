@@ -21,15 +21,15 @@ Run locally, chat via Telegram, create goals, store memory, run tools safely, au
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
 ### 🆕 What's new in v1.1.0
-- **Token & cost tracking** — per-request and cumulative token/cost metrics via `TokenTracker`
-- **Encrypted memory** — Fernet encryption for all memory stored at rest
-- **Crew API** — CrewAI-style multi-agent orchestration with `SharedBlackboard`
-- **Tool-use protocol** — proper tool_calls → tool results loop (no more regex parsing)
-- **Skills reorganized** — 22 skills sorted into `social/`, `media/`, `data/`, `automation/`
-- **Tools split** — monolithic `tools.py` → mixin-based `tools/` package (5 domain files)
-- **MkDocs site** — Material-themed docs at `docs-site/` with guides & architecture
-- **Pinned lockfile** — `requirements-lock.txt` generated via `pip-compile`
-- **297 tests** — comprehensive test suite (up from 9)
+- **Token & cost tracking**, per-request and cumulative token/cost metrics via `TokenTracker`
+- **Encrypted memory**, Fernet encryption for all memory stored at rest
+- **Crew API**, CrewAI-style multi-agent orchestration with `SharedBlackboard`
+- **Tool-use protocol**, proper tool_calls → tool results loop (no more regex parsing)
+- **Skills reorganized**, 22 skills sorted into `social/`, `media/`, `data/`, `automation/`
+- **Tools split**, monolithic `tools.py` → mixin-based `tools/` package (5 domain files)
+- **MkDocs site**, Material-themed docs at `docs-site/` with guides & architecture
+- **Pinned lockfile**, `requirements-lock.txt` generated via `pip-compile`
+- **297 tests**, comprehensive test suite (up from 9)
 
 ---
 
@@ -189,7 +189,7 @@ graph TB
     end
     
     subgraph "Skills System"
-        HUB[Skills Hub — 21+]
+        HUB[Skills Hub, 21+]
         COMMUNITY[Community Skills]
         MARKET[Skills Marketplace]
     end
@@ -250,7 +250,7 @@ graph TB
 ## 🎯 Core Features
 
 ### Communication & Interfaces (13 platforms)
-- ✅ **Telegram** (primary — bot + userbot)
+- ✅ **Telegram** (primary, bot + userbot)
 - ✅ **Discord** (full bot with slash commands)
 - ✅ **WhatsApp** (whatsapp-web.js bridge)
 - ✅ **Slack** (Bolt SDK)
@@ -264,12 +264,12 @@ graph TB
 - 🧪 **Telegram Progress** (live progress bars)
 
 ### 📱 Social Media & Platform Integrations (6 platforms)
-- ✅ **X (Twitter)** — post, search, like, retweet, DM, follow (twikit — mobile device session)
-- ✅ **Instagram** — upload photos/reels/stories, DM, search, like, follow (instagrapi — mobile device session)
-- ✅ **Facebook** — post, upload photos, feed, like, comment, search (facebook-sdk — Graph API)
-- ✅ **LinkedIn** — search people/jobs/companies, post, message, connect (linkedin-api — mobile device session)
-- ✅ **YouTube** — search, upload, comment, like, subscribe, trending, playlists (python-youtube — YouTube Data API v3)
-- ✅ **TikTok** — trending, search videos/users, hashtags, user info (TikTokApi — read-only, mobile device session)
+- ✅ **X (Twitter)**, post, search, like, retweet, DM, follow (twikit, mobile device session)
+- ✅ **Instagram**, upload photos/reels/stories, DM, search, like, follow (instagrapi, mobile device session)
+- ✅ **Facebook**, post, upload photos, feed, like, comment, search (facebook-sdk, Graph API)
+- ✅ **LinkedIn**, search people/jobs/companies, post, message, connect (linkedin-api, mobile device session)
+- ✅ **YouTube**, search, upload, comment, like, subscribe, trending, playlists (python-youtube, YouTube Data API v3)
+- ✅ **TikTok**, trending, search videos/users, hashtags, user info (TikTokApi, read-only, mobile device session)
 
 ### Automation
 - ✅ **Local LLM via Ollama** (Llama 3.1, Mistral, etc.)
@@ -277,22 +277,22 @@ graph TB
 - ✅ **Sandboxed code runner** (resource-limited; network off by default)
 - ✅ **RAG pipeline** (ingest → chunk → embed → retrieve → answer)
 - ✅ **Workflow engine** (multi-step, conditions, retries, templates)
-- ✅ **Document creation** (Word, Excel, PDF, PowerPoint — cross-platform, no LibreOffice needed)
+- ✅ **Document creation** (Word, Excel, PDF, PowerPoint, cross-platform, no LibreOffice needed)
 - ✅ **Real email** (SMTP send + IMAP read with attachments)
-- ✅ **Google Calendar** (list, add, delete events — with local fallback)
+- ✅ **Google Calendar** (list, add, delete events, with local fallback)
 - ✅ **Clipboard** (cross-platform copy/paste between apps)
 - ✅ **OCR** (extract text from images and scanned PDFs)
-- 🧪 **Browser automation** (Playwright) — optional
+- 🧪 **Browser automation** (Playwright), optional
 
 ### 👁️ Computer Use (Vision AI)
-- ✅ **`screen_analyze`** — screenshot → Qwen2.5-VL → describe what's on screen (buttons, dialogs, text, errors)
-- ✅ **`screen_find`** — "find the Login button" → returns `(x, y)` pixel coords via VLM
-- ✅ **`screen_click_on`** — one-shot: find UI element visually and click it (`screen_find` + `desktop_click`)
-- ✅ **`open_app`** — open Firefox, terminal, VS Code, Spotify, etc. by name
-- ✅ **`window_list`** — list all open windows on the desktop
-- ✅ **`window_focus`** — bring any window to the front by title
-- ✅ **`desktop_screenshot`** — take screenshot + auto-analyze with VLM (agent sees what's on screen)
-- ✅ **`desktop_click`** / **`desktop_type`** / **`desktop_hotkey`** / **`desktop_scroll`** — raw mouse & keyboard control
+- ✅ **`screen_analyze`**, screenshot → Qwen2.5-VL → describe what's on screen (buttons, dialogs, text, errors)
+- ✅ **`screen_find`**, "find the Login button" → returns `(x, y)` pixel coords via VLM
+- ✅ **`screen_click_on`**, one-shot: find UI element visually and click it (`screen_find` + `desktop_click`)
+- ✅ **`open_app`**, open Firefox, terminal, VS Code, Spotify, etc. by name
+- ✅ **`window_list`**, list all open windows on the desktop
+- ✅ **`window_focus`**, bring any window to the front by title
+- ✅ **`desktop_screenshot`**, take screenshot + auto-analyze with VLM (agent sees what's on screen)
+- ✅ **`desktop_click`** / **`desktop_type`** / **`desktop_hotkey`** / **`desktop_scroll`**, raw mouse & keyboard control
 - **Vision model:** auto-detects Qwen2.5-VL, LLaVA, MiniCPM-V or any vision model installed in Ollama
 - **Dependencies:** `pyautogui`, `Pillow`, `xdotool`, `wmctrl` (all pre-installed)
 
@@ -312,7 +312,7 @@ graph TB
 - ✅ **Enterprise features** (multi-tenancy, RBAC, SSO, JWT)
 - ✅ **Observability** (structured logging, tracing, metrics)
 - ✅ **Prometheus monitoring** (with graceful fallback)
-- 🧪 **Multi-device sync** (experimental — WebSocket, offline queue)
+- 🧪 **Multi-device sync** (experimental, WebSocket, offline queue)
 - 📝 **Kubernetes deployment templates** (k8s/ directory)
 - 📝 **Docker Compose** (single-command deployment)
 
@@ -424,16 +424,16 @@ result = await goals.execute_goal(goal.goal_id)
 ```mermaid
 graph TB
     subgraph "Working Memory"
-        WM[7±2 Active Items — Miller's Law]
+        WM[7±2 Active Items, Miller's Law]
     end
     
     subgraph "Consolidation"
-        CONS[Background Process — Every 1 hour]
+        CONS[Background Process, Every 1 hour]
     end
     
     subgraph "Long-Term Memory"
-        EM[Episodic Memory — Personal Experiences — Temporal Context]
-        SM[Semantic Memory — Factual Knowledge — Concept Indexing]
+        EM[Episodic Memory, Personal Experiences, Temporal Context]
+        SM[Semantic Memory, Factual Knowledge, Concept Indexing]
     end
     
     subgraph "Memory Processes"
@@ -652,7 +652,7 @@ graph TB
     subgraph "World State"
         ENT[Entities]
         REL[Relations]
-        SNAP[Snapshots — Last 100]
+        SNAP[Snapshots, Last 100]
     end
     
     subgraph "Reasoning"
@@ -840,7 +840,7 @@ status = agent.get_status()
 
 ## 🏭 Phase 3 Engines
 
-### SkillFactory — Autonomous Skill Creation
+### SkillFactory, Autonomous Skill Creation
 
 **Generate, validate, and publish new skills from natural language descriptions.**
 
@@ -878,7 +878,7 @@ skill = await factory.create_skill(
 print(skill.status)  # "published"
 ```
 
-### RAG Pipeline — Retrieval-Augmented Generation
+### RAG Pipeline, Retrieval-Augmented Generation
 
 **Ingest documents, chunk smartly, embed into vectors, retrieve with context.**
 
@@ -892,9 +892,9 @@ flowchart LR
 ```
 
 **Chunking Strategies**:
-- `fixed_size` — 500 chars with 50 char overlap
-- `by_sentences` — max 5 sentences per chunk
-- `by_paragraphs` — natural paragraph boundaries
+- `fixed_size`, 500 chars with 50 char overlap
+- `by_sentences`, max 5 sentences per chunk
+- `by_paragraphs`, natural paragraph boundaries
 
 **Features**:
 - Ingest single files or entire directories
@@ -926,7 +926,7 @@ answer = await rag.query(
 )
 ```
 
-### Workflow Engine — Multi-Step Automation
+### Workflow Engine, Multi-Step Automation
 
 **Define, execute, and monitor complex multi-step workflows with conditions and retries.**
 
@@ -947,9 +947,9 @@ flowchart TD
 ```
 
 **Built-in Templates**:
-- `etl` — Extract → Transform → Load pipeline
-- `ci_cd` — Build → Test → Deploy pipeline
-- `data_pipeline` — Fetch → Process → Store pipeline
+- `etl`, Extract → Transform → Load pipeline
+- `ci_cd`, Build → Test → Deploy pipeline
+- `data_pipeline`, Fetch → Process → Store pipeline
 
 **Features**:
 - Sequential step execution with dependency resolution
@@ -978,7 +978,7 @@ print(result.status)  # "completed"
 print(result.duration)  # timedelta
 ```
 
-### Self-Modification Engine — Runtime Evolution
+### Self-Modification Engine, Runtime Evolution
 
 **Safely modify own source code at runtime with full rollback and audit trail.**
 
@@ -1020,7 +1020,7 @@ modifier.rollback(result.modification_id)
 history = modifier.get_history()
 ```
 
-### Image Generation — Visual Content Creation
+### Image Generation, Visual Content Creation
 
 **Generate images, QR codes, and thumbnails using Pillow.**
 
@@ -1060,7 +1060,7 @@ graph LR
     end
     
     subgraph "STT"
-        VAD --> WHISPER[Whisper Model — faster-whisper]
+        VAD --> WHISPER[Whisper Model, faster-whisper]
         WHISPER --> TRANS[Transcription]
     end
     
@@ -1070,7 +1070,7 @@ graph LR
     end
     
     subgraph "TTS"
-        RESP --> PIPER[Piper TTS — Local Synthesis]
+        RESP --> PIPER[Piper TTS, Local Synthesis]
         PIPER --> AUDIO[Audio Output]
     end
     
@@ -1119,10 +1119,10 @@ graph TB
     end
     
     subgraph "Vision Processing"
-        CAPTION[Image Captioning — BLIP]
-        DETECT[Object Detection — YOLOv8]
-        OCR[Text Extraction — EasyOCR]
-        VQA[Visual Q&A — ViLT]
+        CAPTION[Image Captioning, BLIP]
+        DETECT[Object Detection, YOLOv8]
+        OCR[Text Extraction, EasyOCR]
+        VQA[Visual Q&A, ViLT]
     end
     
     subgraph "Audio Processing"
@@ -1287,7 +1287,7 @@ await desktop.start_real_time_sync("ws://sync-server:8080")
 
 ## 📈 Trading Bot (Multi-Exchange)
 
-Open-Sable includes a built-in multi-exchange trading engine that supports crypto, stocks, commodities, and prediction markets — all accessible through natural language chat.
+Open-Sable includes a built-in multi-exchange trading engine that supports crypto, stocks, commodities, and prediction markets, all accessible through natural language chat.
 
 ### Quick Start
 
@@ -1319,7 +1319,7 @@ python main.py
 
 ### Chat Commands
 
-Just talk naturally — the AI routes to the right trading tool:
+Just talk naturally, the AI routes to the right trading tool:
 
 ```
 "What's the price of Bitcoin?"          → Live price from CoinGecko
@@ -1350,8 +1350,8 @@ Just talk naturally — the AI routes to the right trading tool:
 Built-in risk guardrails protect against losses:
 
 - **Max position size**: Default 5% of portfolio per trade
-- **Max daily loss**: Default 2% — halts trading if exceeded
-- **Max drawdown**: Default 10% — emergency halt
+- **Max daily loss**: Default 2%, halts trading if exceeded
+- **Max drawdown**: Default 10%, emergency halt
 - **Max open positions**: Default 10
 - **Approval gate**: Trades above $100 require confirmation (HITL)
 - **Banned assets**: Configurable block list
@@ -1371,7 +1371,7 @@ Built-in risk guardrails protect against losses:
 > ⚠️ **WARNING**: Real trading involves financial risk. Start with paper mode.
 
 ```bash
-# In .env — switch to live trading
+# In .env, switch to live trading
 TRADING_PAPER_MODE=false
 BINANCE_API_KEY=your_key
 BINANCE_API_SECRET=your_secret
@@ -1457,7 +1457,7 @@ hub.rate_skill("web_search", 5, "Excellent results!")
 
 # List all installed
 for skill in hub.list_installed():
-    print(f"{skill.name} v{skill.version} — ⭐{skill.rating}")
+    print(f"{skill.name} v{skill.version}, ⭐{skill.rating}")
 ```
 
 ---
@@ -1535,172 +1535,6 @@ result = await voice.voice_command(
     respond_with_voice=True,
     command_handler=handle_command
 )
-```
-
----
-
-## 📁 Project Layout
-
-```
-Open-Sable/
-├── opensable/                  # Main package
-│   ├── core/                   # 56 core modules
-│   │   ├── agent.py            # Main agent loop
-│   │   ├── config.py           # Configuration management
-│   │   ├── llm.py              # LLM engine + token/cost tracking
-│   │   ├── tools/              # Modular tool registry (split into mixins)
-│   │   │   ├── __init__.py     # ToolRegistry base + schemas + execute
-│   │   │   ├── _core_tools.py  # CoreToolsMixin (browser, files, code, etc.)
-│   │   │   ├── _social.py      # SocialToolsMixin (X, IG, FB, LinkedIn…)
-│   │   │   ├── _productivity.py # ProductivityToolsMixin (docs, email…)
-│   │   │   ├── _desktop_vision.py # DesktopVisionToolsMixin (screen, click…)
-│   │   │   └── _trading.py     # TradingToolsMixin
-│   │   ├── multi_agent.py      # Crew API, shared blackboard, orchestrator
-│   │   ├── memory.py           # Encrypted at-rest memory (Fernet)
-│   │   │
-│   │   ├── # — Agentic AI Subsystems —
-│   │   ├── agi_integration.py  # Agentic AI agent (orchestrates all subsystems)
-│   │   ├── goal_system.py      # Autonomous goal management
-│   │   ├── advanced_memory.py  # 3-layer memory (episodic/semantic/working)
-│   │   ├── meta_learning.py    # Self-improvement strategies
-│   │   ├── tool_synthesis.py   # Dynamic tool creation
-│   │   ├── world_model.py      # Environment model & prediction
-│   │   ├── metacognition.py    # Self-monitoring & error recovery
-│   │   │
-│   │   ├── # — Phase 3 Engines —
-│   │   ├── skill_factory.py    # Autonomous skill creation
-│   │   ├── skills_hub.py       # Skill registry & marketplace
-│   │   ├── rag.py              # RAG pipeline (ingest/chunk/search)
-│   │   ├── workflow.py         # Multi-step workflow engine
-│   │   ├── self_modify.py      # Runtime self-modification
-│   │   ├── image_gen.py        # Image generation (Pillow)
-│   │   │
-│   │   ├── # — Advanced Features —
-│   │   ├── advanced_ai.py      # Advanced AI capabilities
-│   │   ├── autonomous_mode.py  # 24/7 autonomous operation
-│   │   ├── multimodal_agi.py   # Vision + Audio processing
-│   │   ├── voice_interface.py  # Whisper STT + Piper TTS
-│   │   ├── voice.py            # Voice utilities
-│   │   ├── voice_handler.py    # Voice command handler
-│   │   ├── multi_device_sync.py # Cross-device synchronization
-│   │   ├── multi_messenger.py  # Multi-platform messaging
-│   │   │
-│   │   ├── # — Infrastructure —
-│   │   ├── enterprise.py       # Multi-tenancy, RBAC, SSO
-│   │   ├── security.py         # Permission system & audit
-│   │   ├── monitoring.py       # Prometheus metrics
-│   │   ├── observability.py    # Structured logging & tracing
-│   │   ├── analytics.py        # Usage analytics
-│   │   ├── cache.py            # Intelligent caching
-│   │   ├── rate_limiter.py     # API rate limiting
-│   │   ├── sandbox_runner.py   # Sandboxed code execution
-│   │   ├── task_queue.py       # Async task queue
-│   │   ├── gateway.py          # API gateway
-│   │   ├── webhooks.py         # Webhook management
-│   │   ├── heartbeat.py        # Health monitoring
-│   │   │
-│   │   ├── # — Utilities —
-│   │   ├── context_manager.py  # Context window management
-│   │   ├── computer_tools.py   # Computer interaction tools
-│   │   ├── image_analyzer.py   # Image analysis
-│   │   ├── interface_sdk.py    # Interface development SDK
-│   │   ├── mobile_relay.py     # Mobile device relay
-│   │   ├── nodes.py            # Node-based processing
-│   │   ├── onboarding.py       # 8-step installation wizard
-│   │   ├── pdf_parser.py       # PDF parsing (PyPDF2/pdfplumber)
-│   │   ├── plugins.py          # Plugin system
-│   │   ├── skill_creator.py    # Legacy skill creator
-│   │   ├── skills_marketplace.py # Marketplace (planned)
-│   │   ├── system_detector.py  # System detection
-│   │   └── workflow_persistence.py # Workflow state persistence
-│   │
-│   ├── interfaces/             # 13 chat platform integrations
-│   │   ├── telegram_bot.py     # Telegram Bot API
-│   │   ├── telegram_userbot.py # Telegram Userbot (Telethon)
-│   │   ├── telegram_progress.py # Live progress bars
-│   │   ├── discord_bot.py      # Discord (discord.py)
-│   │   ├── whatsapp_bot.py     # WhatsApp (whatsapp-web.js bridge)
-│   │   ├── slack_bot.py        # Slack (Bolt SDK)
-│   │   ├── matrix_bot.py       # Matrix (nio)
-│   │   ├── irc_bot.py          # IRC (asyncio)
-│   │   ├── email_bot.py        # Email (IMAP/SMTP)
-│   │   ├── cli_interface.py    # CLI (Rich)
-│   │   ├── mobile_api.py       # Mobile REST API (FastAPI)
-│   │   └── voice_call.py       # Voice Call (SIP/WebRTC)
-│   │
-│   └── skills/                 # Skill plugins (organized by category)
-│       ├── social/             # X, Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
-│       ├── media/              # Image, Voice, OCR
-│       ├── data/               # Database, RAG, File Manager, Documents, Clipboard
-│       ├── automation/         # Code Executor, API Client, Browser, Scraper, Email, Calendar
-│       ├── trading/            # Multi-exchange trading engine
-│       └── community/          # Community skills (16 real APIs)
-│
-├── examples/                   # 16 runnable demos
-│   ├── agi_capabilities_example.py
-│   ├── autonomous_demo.py
-│   ├── multimodal_voice_example.py
-│   ├── rag_examples.py
-│   ├── workflow_examples.py
-│   └── ...
-│
-├── tests/                      # Test suite (297 passing)
-│   ├── test_agentic_loop.py    # Agentic loop integration tests (13)
-│   ├── mock_llm.py             # MockLLM for testing without Ollama
-│   ├── test_features.py        # Core feature tests
-│
-├── docs/                       # 8 documentation files (canonical)
-│   ├── API_REFERENCE.md
-│   ├── PRODUCTION_DEPLOYMENT.md
-│   ├── SECURITY.md
-│   ├── SELF_MODIFICATION.md
-│   ├── AUTO_ADAPTIVE_GUIDE.md
-│   ├── USERBOT_GUIDE.md
-│   └── WEB_SCRAPING_GUIDE.md
-│
-├── docs-site/                  # MkDocs site (Material theme)
-│   ├── index.md
-│   ├── getting-started/
-│   ├── guides/
-│   └── architecture/
-│
-├── mkdocs.yml                  # MkDocs configuration
-│
-├── k8s/                        # Kubernetes manifests
-│   ├── deployment.yaml
-│   ├── configmap.yaml
-│   ├── hpa.yaml
-│   ├── ingress.yaml
-│   ├── monitoring.yaml
-│   ├── dependencies.yaml
-│   └── namespace.yaml
-│
-├── whatsapp-bridge/            # WhatsApp bridge (Node.js, wwebjs)
-│   ├── bridge.js
-│   └── package.json
-│
-├── static/                     # Web dashboards
-│   ├── dashboard.html
-│   └── dashboard_modern.html
-│
-├── scripts/                    # Deployment scripts
-│   ├── deploy.sh
-│   ├── backup.sh
-│   └── sablecore.service
-│
-├── main.py                     # Main entry point
-├── sable.py                    # Deprecated — redirects to main.py
-├── cli.py                      # Click CLI interface
-├── start.sh                    # Quick start script
-├── install.py                  # Installation wizard
-├── quickstart.sh               # One-command setup
-├── demo.py                     # Interactive demo
-├── pyproject.toml              # Dependencies & metadata (v1.1.0)
-├── requirements.txt            # Pip requirements
-├── requirements-lock.txt       # Pinned lockfile (pip-compile)
-├── docker-compose.yml          # Docker deployment
-├── Dockerfile                  # Container image
-└── LICENSE                     # MIT License
 ```
 
 ---
@@ -1935,14 +1769,14 @@ python3 examples/workflow_examples.py
 ```mermaid
 graph TB
     subgraph "Frontend Layer"
-        WEB[Web Dashboard — FastAPI + WebSocket]
-        VOICE[Voice Interface — Whisper + Piper]
-        CHAT[Chat Platforms — 13 Interfaces]
+        WEB[Web Dashboard, FastAPI + WebSocket]
+        VOICE[Voice Interface, Whisper + Piper]
+        CHAT[Chat Platforms, 13 Interfaces]
     end
     
     subgraph "Agent Core"
-        LANG[LangGraph — Multi-step Reasoning]
-        SESSION[Session Manager — Persistent State]
+        LANG[LangGraph, Multi-step Reasoning]
+        SESSION[Session Manager, Persistent State]
         CMD[Command Handler]
     end
     
@@ -1963,21 +1797,21 @@ graph TB
     end
     
     subgraph "AI/ML"
-        LLM[Ollama — Llama 3.1 Local]
-        VISION[Vision Models — BLIP, YOLO, ViLT]
-        AUDIO[Audio Models — Whisper, Piper]
+        LLM[Ollama, Llama 3.1 Local]
+        VISION[Vision Models, BLIP, YOLO, ViLT]
+        AUDIO[Audio Models, Whisper, Piper]
     end
     
     subgraph "Storage"
-        VECTOR[ChromaDB — Vector Store]
-        JSON[JSON — Structured Data]
-        FILES[File System — Skills & Models]
+        VECTOR[ChromaDB, Vector Store]
+        JSON[JSON, Structured Data]
+        FILES[File System, Skills & Models]
     end
     
     subgraph "Infrastructure"
-        DOCKER[Docker — Containerization]
-        K8S[Kubernetes — Orchestration]
-        MONITOR[Prometheus — Monitoring]
+        DOCKER[Docker, Containerization]
+        K8S[Kubernetes, Orchestration]
+        MONITOR[Prometheus, Monitoring]
     end
     
     WEB --> LANG
@@ -2009,7 +1843,7 @@ graph TB
 
 **Core Technologies**:
 - **Agent**: LangGraph, LangChain
-- **LLM**: Ollama (Llama 3.1) — fully local
+- **LLM**: Ollama (Llama 3.1), fully local
 - **Memory**: ChromaDB (vector) + Advanced multi-layer system
 - **Agentic AI**: Custom implementations (5,500+ lines)
 - **RAG**: ChromaDB + sentence chunking + PDF/TXT/MD ingestion
@@ -2303,15 +2137,15 @@ The Agentic AI system learns and improves over time:
 ```mermaid
 graph LR
     subgraph "Session 1 (Initial)"
-        S1[Success: 60% — Strategies: 5 — Tools: 10]
+        S1[Success: 60%, Strategies: 5, Tools: 10]
     end
     
     subgraph "After 1 Week"
-        W1[Success: 75% ↑15% — Strategies: 18 ↑13 — Tools: 25 ↑15]
+        W1[Success: 75% ↑15%, Strategies: 18 ↑13, Tools: 25 ↑15]
     end
     
     subgraph "After 1 Month"
-        M1[Success: 88% ↑28% — Strategies: 32 ↑27 — Tools: 45 ↑35 — Mastered: 12 tasks]
+        M1[Success: 88% ↑28%, Strategies: 32 ↑27, Tools: 45 ↑35, Mastered: 12 tasks]
     end
     
     S1 --> W1
@@ -2399,7 +2233,7 @@ Open-Sable supports **12 cloud LLM providers** out of the box. If Ollama is not 
 
 1. **Local first**: The agent always tries Ollama at `OLLAMA_BASE_URL` first.
 2. **Cloud fallback**: If Ollama is unavailable, it walks through the list above in order, skipping any provider whose API key is empty.
-3. **One key is enough**: You only need to set a single provider's API key — the agent will find it and use it.
+3. **One key is enough**: You only need to set a single provider's API key, the agent will find it and use it.
 4. **Tool calling**: All 12 providers support tool/function calling. The agent automatically converts tool schemas into each provider's native format.
 5. **Override the model**: Set `DEFAULT_MODEL` in `.env` to use a specific model name instead of the provider's default.
 
@@ -2417,10 +2251,46 @@ GROQ_API_KEY=gsk_...
 
 ---
 
-## 🔧 Recent Improvements
+## �️ Productivity & System Tools
+
+```mermaid
+graph TB
+    subgraph "Document Creation"
+        DOCX["📝 Word (.docx)<br>python-docx"]
+        XLSX["📊 Excel (.xlsx)<br>openpyxl"]
+        PDF["📄 PDF<br>reportlab"]
+        PPTX["📽️ PowerPoint (.pptx)<br>python-pptx"]
+        READ["📖 Document Reader<br>.docx .xlsx .pdf .pptx"]
+    end
+
+    subgraph "Communication"
+        EMAIL["✉️ Email (SMTP/IMAP)<br>Send, Read, Attachments"]
+        CAL["📅 Google Calendar<br>List, Add, Delete"]
+        CLIP["📋 Clipboard<br>Cross-Platform"]
+    end
+
+    subgraph "Vision & OCR"
+        EOCR["👁️ EasyOCR<br>GPU, Multi-Language"]
+        TESS["🔤 Tesseract<br>Lightweight"]
+        FITZ["📑 PyMuPDF<br>PDF + Scanned Pages"]
+    end
+
+    subgraph "Reliability Engine"
+        HEAL["🩹 Self-Healing<br>Auto-Repair on Errors"]
+        RATE["⏱️ Rate Limiter<br>Adaptive FIFO Queue"]
+        SEQ["🔗 Sequential Executor<br>One API Call at a Time"]
+        HTTP["🌐 HTTP Client<br>curl_cffi + httpx"]
+        BROWSER["🧹 Session Manager<br>WhatsApp Bridge"]
+    end
+
+    AGENT((Agent)) --> DOCX & XLSX & PDF & PPTX
+    AGENT --> EMAIL & CAL & CLIP
+    AGENT --> EOCR & TESS & FITZ
+    HEAL --> RATE --> SEQ --> HTTP
+```
 
 ### Document Creation Suite (Cross-Platform)
-Full office document creation using pure Python libraries — no LibreOffice or OpenOffice required. Works identically on **Windows, macOS, and Linux**.
+Full office document creation using pure Python libraries, no LibreOffice or OpenOffice required. Works identically on **Windows, macOS, and Linux**.
 
 - **Word (.docx)**: Create documents with titles, paragraphs, and tables (`python-docx`)
 - **Excel (.xlsx)**: Spreadsheets with multiple sheets, headers, auto-width columns, styled headers (`openpyxl`)
@@ -2429,8 +2299,8 @@ Full office document creation using pure Python libraries — no LibreOffice or 
 - **Document Reader**: Extract text from existing .docx, .xlsx, .pdf, .pptx files
 - **Open Document**: Launch any file with the system's default application (xdg-open / open / start)
 
-### Real Email Integration (SMTP/IMAP)
-Send and receive real emails — fully wired to the LLM via tool schemas.
+### Email Integration (SMTP/IMAP)
+Send and receive real emails, fully wired to the LLM via tool schemas.
 
 - **Send emails** with subject, body, CC, and file attachments via SMTP
 - **Read emails** from any IMAP mailbox (inbox, folders, unread filter)
@@ -2452,7 +2322,7 @@ Read from and write to the system clipboard on any OS.
 - **Paste**: Read current clipboard contents
 - Backends: `pyperclip` (preferred), native commands (`pbcopy`/`pbpaste`, `xclip`/`xsel`, `wl-copy`, `clip.exe`)
 
-### OCR — Scanned Document Recognition
+### OCR, Scanned Document Recognition
 Extract text from images and scanned PDFs using multiple OCR engines.
 
 - **EasyOCR**: Best accuracy, GPU-accelerated, multi-language
@@ -2462,18 +2332,18 @@ Extract text from images and scanned PDFs using multiple OCR engines.
 - Confidence scoring and per-page extraction
 
 ### Autonomous Self-Healing System
-The agent monitors its own API interactions and takes corrective action automatically — no human intervention required.
+The agent monitors its own API interactions and takes corrective action automatically, no human intervention required.
 
 - **Pattern detection**: Recognizes rate limits (429), access restrictions (226), search failures (404), auth errors, and general exceptions
 - **Grok-assisted diagnosis**: On unrecognized errors, consults Grok AI for root-cause analysis, then **executes the recommended fix** (not just logs it)
-- **Concrete auto-repair actions**: Pause loops, reduce activity by 50%, disable problematic features, rotate User-Agent, increase cooldowns — chosen based on Grok's analysis
+- **Concrete auto-repair actions**: Pause loops, reduce activity by 50%, disable problematic features, rotate User-Agent, increase cooldowns, chosen based on Grok's analysis
 - **Safe fallback**: If no specific action can be parsed, applies a conservative 10-minute pause
 - **Operator alerts**: Critical errors trigger Telegram notifications with deduplication (max 1 alert per error type every 5 minutes)
 
 ### Adaptive Rate-Limiting Queue
 All outbound social-media API calls are routed through a centralized **FIFO queue** with self-tuning rate limits.
 
-- **Three risk tiers** (passive/active/aggressive) that self-tune based on API response patterns — cooldowns shrink 5% on success, increase 60–80% on errors
+- **Three risk tiers** (passive/active/aggressive) that self-tune based on API response patterns, cooldowns shrink 5% on success, increase 60–80% on errors
 - **Configurable defaults**: 3s / 5s / 10s base cooldowns with 1.5s floor and 120s ceiling
 - **Persistent timings**: Learned values are saved to disk and restored on restart
 - **Human-like jitter**: ±20% randomized delay on every call
@@ -2485,10 +2355,10 @@ The WhatsApp bridge (wwebjs/Puppeteer) intelligently manages its browser lifecyc
 - **Stale process cleanup**: On startup, detects and terminates orphaned Chromium and Node.js processes
 - **Lock file recovery**: Removes stale `SingletonLock` files that block browser launch
 - **Port conflict resolution**: Frees occupied ports before starting
-- **Self-message filtering**: Own messages are dropped at the bridge level — the agent never processes messages it sent itself
+- **Self-message filtering**: Own messages are dropped at the bridge level, the agent never processes messages it sent itself
 - **Graceful shutdown**: Clean stop with timeout→force-kill→cleanup
 
-### Enhanced HTTP Client Compatibility
+### HTTP Client Compatibility
 The networking layer supports `curl_cffi` as a transport backend, providing broader compatibility with platforms that enforce strict client-validation policies. When available, it is used automatically; otherwise the system falls back to `httpx`.
 
 ### Sequential Execution Architecture
@@ -2528,7 +2398,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## 📄 License
 
-MIT License — Use it, fork it, make it yours.
+MIT License, Use it, fork it, make it yours.
 
 See [LICENSE](LICENSE) for full details.
 

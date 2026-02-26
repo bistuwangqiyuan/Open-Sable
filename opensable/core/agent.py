@@ -860,6 +860,16 @@ class SableAgent:
                     logger.error(f"LLM call failed: {e}")
                     break
 
+                # Emit DeepSeek reasoning if present
+                reasoning = response.get("reasoning")
+                if reasoning:
+                    await self._notify_progress("💭 Deep reasoning completed")
+                    await self._emit_monitor("reasoning", {
+                        "content": reasoning[:2000],
+                        "length": len(reasoning),
+                        "round": _round + 1,
+                    })
+
                 # Collect tool calls (parallel support)
                 all_tool_calls = response.get("tool_calls", [])
                 single_tc = response.get("tool_call")
@@ -1038,6 +1048,13 @@ class SableAgent:
         try:
             resp = await self.llm.invoke_with_tools(synth_messages, [])
             final_text = resp.get("text", "")
+            # Emit DeepSeek reasoning from synthesis step
+            if resp.get("reasoning"):
+                await self._emit_monitor("reasoning", {
+                    "content": resp["reasoning"][:2000],
+                    "length": len(resp["reasoning"]),
+                    "phase": "synthesis",
+                })
         except Exception as e:
             logger.error(f"Synthesis failed: {e}")
             final_text = f"I found results but had trouble formatting them:\n\n{tool_context}"

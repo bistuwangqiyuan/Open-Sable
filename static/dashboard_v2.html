@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open-Sable — Dashboard</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary:   #0a0b0f;
+  --bg-secondary: #12141a;
+  --bg-tertiary:  #1a1d26;
+  --bg-hover:     #22252f;
+  --border:       #2a2d38;
+  --border-light: #363a47;
+  --accent:       #7c3aed;
+  --accent-light: #a78bfa;
+  --accent-dim:   rgba(124,58,237,0.15);
+  --teal:         #00cec9;
+  --teal-dim:     rgba(0,206,201,0.12);
+  --green:        #22c55e;
+  --green-dim:    rgba(34,197,94,0.12);
+  --red:          #ef4444;
+  --red-dim:      rgba(239,68,68,0.12);
+  --yellow:       #eab308;
+  --yellow-dim:   rgba(234,179,8,0.12);
+  --text:         #e6edf3;
+  --text-secondary: #9ca3af;
+  --text-muted:   #6b7280;
+  --mono:         'JetBrains Mono', monospace;
+  --sans:         'Inter', system-ui, -apple-system, sans-serif;
+  --radius:       10px;
+  --radius-sm:    6px;
+  --radius-lg:    14px;
+}
+
+html, body { height: 100%; overflow: hidden; font-family: var(--sans); background: var(--bg-primary); color: var(--text); }
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* ── Layout ──────────────────────────────────────────────── */
+#root { height: 100%; }
+.app { display: flex; flex-direction: column; height: 100%; }
+.topbar {
+  display: flex; align-items: center; height: 48px; min-height: 48px;
+  background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+  padding: 0 16px; gap: 12px; z-index: 100; flex-shrink: 0;
+}
+.main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.sidebar {
+  width: 52px; min-width: 52px; background: var(--bg-secondary);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0;
+}
+.sidebar-btn {
+  width: 38px; height: 38px; border-radius: var(--radius-sm); border: none;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  transition: all .15s; position: relative;
+}
+.sidebar-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.sidebar-btn.active { background: var(--accent-dim); color: var(--accent-light); }
+.sidebar-btn .badge {
+  position: absolute; top: 2px; right: 2px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 6px rgba(34,197,94,.6);
+}
+
+/* ── Content Panels ─────────────────────────────────────── */
+.content { flex: 1; display: flex; min-width: 0; overflow: hidden; }
+.panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.panel-header {
+  display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); min-height: 44px; flex-shrink: 0;
+}
+.panel-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.panel-body { flex: 1; overflow-y: auto; padding: 0; }
+
+/* ── Chat ────────────────────────────────────────────────── */
+.chat-panel { flex: 1; min-width: 380px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; }
+.chat-msg { margin-bottom: 16px; display: flex; gap: 10px; }
+.chat-msg.user { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 32px; height: 32px; border-radius: var(--radius-sm); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.chat-msg.user .chat-avatar { background: var(--accent-dim); color: var(--accent-light); }
+.chat-msg.assistant .chat-avatar { background: var(--teal-dim); color: var(--teal); }
+.chat-bubble {
+  max-width: 80%; padding: 10px 14px; border-radius: var(--radius);
+  font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+}
+.chat-msg.user .chat-bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+.chat-msg.assistant .chat-bubble { background: var(--bg-tertiary); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.chat-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.chat-msg.user .chat-time { text-align: right; }
+
+.chat-input-area {
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  background: var(--bg-secondary); flex-shrink: 0;
+}
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input {
+  flex: 1; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg-tertiary); color: var(--text); font-family: var(--sans);
+  font-size: 13.5px; outline: none; resize: none;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-send {
+  padding: 0 18px; border-radius: var(--radius); border: none;
+  background: var(--accent); color: white; font-weight: 600; font-size: 13px;
+  cursor: pointer; transition: background .15s;
+}
+.chat-send:hover { background: #6d28d9; }
+.chat-send:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Activity Feed ───────────────────────────────────────── */
+.activity-panel { width: 380px; min-width: 280px; }
+.activity-item {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; display: flex; gap: 10px; align-items: flex-start;
+  transition: background .1s;
+}
+.activity-item:hover { background: var(--bg-hover); }
+.activity-icon {
+  width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.activity-icon.tool    { background: var(--accent-dim); color: var(--accent-light); }
+.activity-icon.think   { background: var(--yellow-dim); color: var(--yellow); }
+.activity-icon.success { background: var(--green-dim);  color: var(--green); }
+.activity-icon.error   { background: var(--red-dim);    color: var(--red); }
+.activity-icon.info    { background: var(--teal-dim);   color: var(--teal); }
+.activity-body { flex: 1; min-width: 0; }
+.activity-title { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.activity-detail {
+  color: var(--text-muted); font-size: 11.5px; line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.activity-detail code {
+  font-family: var(--mono); font-size: 11px; background: var(--bg-primary);
+  padding: 1px 5px; border-radius: 3px; color: var(--teal);
+}
+.activity-time { font-size: 10px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Status Panel ────────────────────────────────────────── */
+.status-panel { width: 340px; min-width: 260px; border-right: none; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; }
+.stat-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 500; }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--text); }
+.stat-value.accent { color: var(--accent-light); }
+.stat-value.teal { color: var(--teal); }
+.stat-value.green { color: var(--green); }
+
+.session-item {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; cursor: pointer; transition: background .1s;
+}
+.session-item:hover { background: var(--bg-hover); }
+
+/* ── Terminal Panel ──────────────────────────────────────── */
+.terminal-body {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.7;
+  color: var(--green); background: var(--bg-primary);
+}
+.terminal-line { white-space: pre-wrap; word-break: break-all; }
+.terminal-line.error { color: var(--red); }
+.terminal-line.info  { color: var(--text-muted); }
+.terminal-line.cmd   { color: var(--teal); }
+
+/* ── Topbar elements ─────────────────────────────────────── */
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.brand-name { font-weight: 800; font-size: 14px; letter-spacing: -.3px; }
+.brand-name span { color: var(--accent-light); }
+
+.conn-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.conn-dot.on  { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,.5); }
+.conn-dot.off { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,.5); }
+
+.topbar-pill {
+  font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* ── Typing indicator ────────────────────────────────────── */
+@keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+.typing-dots span {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent-light); animation: pulse 1.2s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+
+/* ── Progress bar ────────────────────────────────────────── */
+.progress-bar {
+  height: 2px; background: var(--accent-dim); overflow: hidden;
+}
+.progress-bar-inner {
+  height: 100%; background: var(--accent);
+  animation: progress-slide 2s ease-in-out infinite;
+}
+@keyframes progress-slide {
+  0% { width: 0; margin-left: 0; }
+  50% { width: 60%; margin-left: 20%; }
+  100% { width: 0; margin-left: 100%; }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .status-panel { display: none; }
+}
+@media (max-width: 900px) {
+  .activity-panel { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ══════════════════════════════════════════════════════════════════════
+   ICONS (inline SVG to avoid external deps)
+   ══════════════════════════════════════════════════════════════════════ */
+const Icon = ({ d, size = 18, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+       strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+
+const Icons = {
+  chat:     (s) => <Icon size={s} d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+  activity: (s) => <Icon size={s} d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+  terminal: (s) => <Icon size={s} d="M4 17l6-6-6-6M12 19h8" />,
+  status:   (s) => <Icon size={s} d="M12 20V10M18 20V4M6 20v-4" />,
+  send:     (s) => <Icon size={s} d="M22 2L11 13M22 2l-7 20-4-9-9-4z" />,
+  clear:    (s) => <Icon size={s} d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+  tool:     (s) => <Icon size={s} d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />,
+  brain:    (s) => <Icon size={s} d="M12 2a7 7 0 0 0-7 7c0 3 2 5 4 7l3 4 3-4c2-2 4-4 4-7a7 7 0 0 0-7-7z" />,
+  plug:     (s) => <Icon size={s} d="M12 22v-5M9 8V2M15 8V2M9 8h6a4 4 0 0 1 0 8H9a4 4 0 0 1 0-8z" />,
+  users:    (s) => <Icon size={s} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />,
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════════════ */
+function getWSUrl() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  return token
+    ? `${proto}://${location.host}/?token=${encodeURIComponent(token)}`
+    : `${proto}://${location.host}/`;
+}
+
+function fmtTime(ts) {
+  try {
+    const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch { return ''; }
+}
+
+function fmtUptime(sec) {
+  if (!sec) return '0m';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function truncate(str, len = 120) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len) + '…' : str;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   APP
+   ══════════════════════════════════════════════════════════════════════ */
+function App() {
+  const [tab, setTab] = useState('chat');             // chat | activity | terminal | status
+  const [connected, setConnected] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [activity, setActivity] = useState([]);        // { id, type, icon, title, detail, ts }
+  const [terminal, setTerminal] = useState([]);        // { text, cls }
+  const [stats, setStats] = useState({});
+  const [sessions, setSessions] = useState([]);
+  const [input, setInput] = useState('');
+  const [model, setModel] = useState('');
+  const wsRef = useRef(null);
+  const streamBuf = useRef('');
+  const actIdRef = useRef(0);
+  const chatEndRef = useRef(null);
+  const actEndRef = useRef(null);
+  const termEndRef = useRef(null);
+
+  /* ── Helpers ──────────────────────────────────────────── */
+  const addActivity = useCallback((type, icon, title, detail) => {
+    const id = ++actIdRef.current;
+    setActivity(prev => [{ id, type, icon, title, detail, ts: Date.now() / 1000 }, ...prev].slice(0, 200));
+  }, []);
+
+  const addTerminal = useCallback((text, cls = '') => {
+    setTerminal(prev => [...prev, { text, cls }].slice(-500));
+  }, []);
+
+  /* ── WebSocket ────────────────────────────────────────── */
+  const connect = useCallback(() => {
+    const ws = new WebSocket(getWSUrl());
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setConnected(true);
+      addActivity('info', '🔗', 'Connected', 'WebSocket connection established');
+      ws.send(JSON.stringify({ type: 'status' }));
+      ws.send(JSON.stringify({ type: 'sessions.list' }));
+      ws.send(JSON.stringify({ type: 'monitor.subscribe' }));
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+      addActivity('error', '🔌', 'Disconnected', 'Reconnecting in 3s…');
+      setTimeout(connect, 3000);
+    };
+
+    ws.onerror = () => {};
+
+    ws.onmessage = (evt) => {
+      let msg;
+      try { msg = JSON.parse(evt.data); } catch { return; }
+      handleMessage(msg);
+    };
+  }, []);
+
+  const handleMessage = useCallback((msg) => {
+    switch (msg.type) {
+      case 'connected':
+        break;
+
+      /* ── Streaming ──────────────────────────────── */
+      case 'message.start':
+        streamBuf.current = '';
+        setStreaming(true);
+        addActivity('info', '💬', 'Processing', 'Agent is thinking…');
+        break;
+
+      case 'message.chunk':
+        streamBuf.current += msg.text;
+        setMessages(prev => {
+          const copy = [...prev];
+          if (copy.length && copy[copy.length - 1]._streaming) {
+            copy[copy.length - 1] = { ...copy[copy.length - 1], content: streamBuf.current };
+          } else {
+            copy.push({ role: 'assistant', content: streamBuf.current, ts: Date.now(), _streaming: true });
+          }
+          return copy;
+        });
+        break;
+
+      case 'message.done':
+        setStreaming(false);
+        setMessages(prev => {
+          const copy = [...prev];
+          if (copy.length && copy[copy.length - 1]._streaming) {
+            copy[copy.length - 1] = { role: 'assistant', content: msg.text, ts: Date.now() };
+          } else {
+            copy.push({ role: 'assistant', content: msg.text, ts: Date.now() });
+          }
+          return copy;
+        });
+        addActivity('success', '✅', 'Response sent', truncate(msg.text, 80));
+        break;
+
+      case 'progress':
+        addActivity('info', '⚡', 'Progress', msg.text || '');
+        addTerminal(`[progress] ${msg.text}`, 'info');
+        break;
+
+      case 'error':
+        setStreaming(false);
+        setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ ' + msg.text, ts: Date.now() }]);
+        addActivity('error', '❌', 'Error', msg.text);
+        addTerminal(`[error] ${msg.text}`, 'error');
+        break;
+
+      /* ── Status ─────────────────────────────────── */
+      case 'status':
+        setStats(msg);
+        if (msg.model) setModel(msg.model);
+        break;
+
+      case 'sessions.list.result':
+        setSessions(msg.sessions || []);
+        break;
+
+      /* ── Monitor events ─────────────────────────── */
+      case 'monitor.subscribed':
+        addActivity('info', '📡', 'Monitor', 'Subscribed to real-time events');
+        break;
+
+      case 'monitor.event':
+        handleMonitorEvent(msg.event, msg.data || {});
+        break;
+
+      case 'monitor.snapshot':
+        if (msg.model) setModel(msg.model);
+        break;
+
+      case 'heartbeat':
+        break;
+      case 'pong':
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  const handleMonitorEvent = useCallback((event, data) => {
+    switch (event) {
+      case 'tool.start':
+        addActivity('tool', '🔧', `Tool: ${data.name}`, data.args ? JSON.stringify(data.args).slice(0, 100) : '');
+        addTerminal(`[tool.start] ${data.name}(${data.args ? JSON.stringify(data.args).slice(0, 80) : ''})`, 'cmd');
+        break;
+      case 'tool.done':
+        if (data.success) {
+          addActivity('success', '✅', `Tool done: ${data.name}`, `${data.duration_ms}ms — ${truncate(data.result, 80)}`);
+        } else {
+          addActivity('error', '❌', `Tool failed: ${data.name}`, truncate(data.result, 80));
+        }
+        addTerminal(`[tool.done] ${data.name} → ${data.success ? 'OK' : 'FAIL'} (${data.duration_ms}ms)`, data.success ? '' : 'error');
+        break;
+      case 'thinking':
+        addActivity('think', '🧠', 'Thinking', truncate(data.message, 100));
+        addTerminal(`[thinking] Round ${data.round || '?'}: ${truncate(data.message, 100)}`, 'info');
+        break;
+      case 'reasoning':
+        addActivity('think', '💭', 'Deep Reasoning', `${data.length} chars — ${truncate(data.content, 120)}`);
+        addTerminal(`[reasoning] (${data.length} chars) ${truncate(data.content, 200)}`, 'info');
+        break;
+      case 'thinking.done':
+        addActivity('success', '💡', 'Thinking complete', '');
+        break;
+      case 'message.received':
+        addActivity('info', '📥', 'Message received', truncate(data.text, 80));
+        break;
+      case 'response.sent':
+        addActivity('success', '📤', 'Response sent', `${data.length} chars`);
+        break;
+      default:
+        addActivity('info', '📌', event, JSON.stringify(data).slice(0, 80));
+        addTerminal(`[${event}] ${JSON.stringify(data).slice(0, 120)}`, 'info');
+        break;
+    }
+  }, []);
+
+  useEffect(() => {
+    connect();
+    const iv = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'status' }));
+      }
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [connect]);
+
+  /* ── Auto-scroll ─────────────────────────────────────── */
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { termEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [terminal]);
+
+  /* ── Send message ────────────────────────────────────── */
+  const send = (e) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    setMessages(prev => [...prev, { role: 'user', content: text, ts: Date.now() }]);
+    setInput('');
+    if (text.startsWith('/')) {
+      wsRef.current.send(JSON.stringify({ type: 'command', text, session_id: 'webchat_default' }));
+    } else {
+      wsRef.current.send(JSON.stringify({ type: 'message', text, session_id: 'webchat_default', user_id: 'dashboard_user' }));
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send(e);
+    }
+  };
+
+  /* ── Derived ─────────────────────────────────────────── */
+  const toolCalls = activity.filter(a => a.type === 'tool').length;
+  const errors = activity.filter(a => a.type === 'error').length;
+
+  /* ════════════════════════════════════════════════════════
+     RENDER
+     ════════════════════════════════════════════════════════ */
+  return (
+    <div className="app">
+      {/* ── Top Bar ──────────────────────────────────── */}
+      <div className="topbar">
+        <div className="brand">
+          <div className="brand-icon">🤖</div>
+          <div className="brand-name">Open<span>-Sable</span></div>
+        </div>
+
+        <div className="topbar-pill">
+          <span className={`conn-dot ${connected ? 'on' : 'off'}`} />
+          {connected ? 'Connected' : 'Disconnected'}
+        </div>
+
+        {model && (
+          <div className="topbar-pill">
+            🧠 {model}
+          </div>
+        )}
+
+        <div className="topbar-right">
+          <div className="topbar-pill">
+            ⏱ {fmtUptime(stats.uptime_sec)}
+          </div>
+          <div className="topbar-pill">
+            👥 {stats.clients || 0}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Progress bar (visible when streaming) ──── */}
+      {streaming && <div className="progress-bar"><div className="progress-bar-inner" /></div>}
+
+      <div className="main">
+        {/* ── Sidebar ──────────────────────────────── */}
+        <div className="sidebar">
+          <button className={`sidebar-btn ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}
+                  title="Chat">
+            {Icons.chat(18)}
+            {streaming && <span className="badge" />}
+          </button>
+          <button className={`sidebar-btn ${tab === 'activity' ? 'active' : ''}`} onClick={() => setTab('activity')}
+                  title="Activity">
+            {Icons.activity(18)}
+          </button>
+          <button className={`sidebar-btn ${tab === 'terminal' ? 'active' : ''}`} onClick={() => setTab('terminal')}
+                  title="Terminal">
+            {Icons.terminal(18)}
+          </button>
+          <button className={`sidebar-btn ${tab === 'status' ? 'active' : ''}`} onClick={() => setTab('status')}
+                  title="Status">
+            {Icons.status(18)}
+          </button>
+        </div>
+
+        {/* ── Content ──────────────────────────────── */}
+        <div className="content">
+          {/* ── Chat Panel (always visible on large screens) ─── */}
+          <div className="panel chat-panel" style={{ display: (tab === 'chat' || window.innerWidth > 900) ? 'flex' : 'none' }}>
+            <div className="panel-header">
+              <span style={{ fontSize: 16 }}>💬</span>
+              <span className="panel-title">Chat</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                {messages.length} messages
+              </span>
+              <button onClick={() => setMessages([])}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                      title="Clear chat">
+                {Icons.clear(14)}
+              </button>
+            </div>
+
+            <div className="chat-messages">
+              {messages.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 48, opacity: .3 }}>🤖</div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Send a message to start chatting</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Use /help for available commands</p>
+                </div>
+              ) : (
+                messages.map((m, i) => (
+                  <div key={i} className={`chat-msg ${m.role}`}>
+                    <div className="chat-avatar">{m.role === 'user' ? '👤' : '🤖'}</div>
+                    <div>
+                      <div className="chat-bubble">
+                        {m.content}
+                        {m._streaming && (
+                          <span className="typing-dots" style={{ marginLeft: 6 }}>
+                            <span>●</span><span>●</span><span>●</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="chat-time">{fmtTime(m.ts)}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            <div className="chat-input-area">
+              <form onSubmit={send}>
+                <div className="chat-input-row">
+                  <textarea
+                    className="chat-input"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message… (/ for commands, Shift+Enter for newline)"
+                    disabled={streaming}
+                    rows={1}
+                  />
+                  <button type="submit" className="chat-send" disabled={streaming || !input.trim()}>
+                    {Icons.send(16)}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* ── Activity Feed ──────────────────────────── */}
+          {(tab === 'activity' || window.innerWidth > 900) && (
+            <div className="panel activity-panel">
+              <div className="panel-header">
+                <span style={{ fontSize: 16 }}>⚡</span>
+                <span className="panel-title">Activity</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                  {activity.length} events
+                </span>
+                <button onClick={() => setActivity([])}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                        title="Clear">
+                  {Icons.clear(14)}
+                </button>
+              </div>
+              <div className="panel-body">
+                {activity.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                    No activity yet. Send a message to see real-time agent events.
+                  </div>
+                ) : (
+                  activity.map(a => (
+                    <div key={a.id} className="activity-item">
+                      <div className={`activity-icon ${a.type}`}>{a.icon}</div>
+                      <div className="activity-body">
+                        <div className="activity-title">{a.title}</div>
+                        {a.detail && <div className="activity-detail">{a.detail}</div>}
+                      </div>
+                      <div className="activity-time">{fmtTime(a.ts)}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Terminal ────────────────────────────────── */}
+          {tab === 'terminal' && (
+            <div className="panel" style={{ flex: 1, borderRight: 'none' }}>
+              <div className="panel-header">
+                <span style={{ fontSize: 16 }}>🖥️</span>
+                <span className="panel-title">Terminal / Logs</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                  {terminal.length} lines
+                </span>
+                <button onClick={() => setTerminal([])}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                        title="Clear">
+                  {Icons.clear(14)}
+                </button>
+              </div>
+              <div className="terminal-body">
+                {terminal.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontSize: 12 }}>
+                    $ waiting for agent activity…
+                  </div>
+                ) : (
+                  terminal.map((l, i) => (
+                    <div key={i} className={`terminal-line ${l.cls}`}>{l.text}</div>
+                  ))
+                )}
+                <div ref={termEndRef} />
+              </div>
+            </div>
+          )}
+
+          {/* ── Status Panel ───────────────────────────── */}
+          {(tab === 'status' || window.innerWidth > 1200) && (
+            <div className="panel status-panel">
+              <div className="panel-header">
+                <span style={{ fontSize: 16 }}>📊</span>
+                <span className="panel-title">Status</span>
+              </div>
+              <div className="panel-body">
+                <div className="stat-grid">
+                  <div className="stat-card">
+                    <div className="stat-label">Uptime</div>
+                    <div className="stat-value accent">{fmtUptime(stats.uptime_sec)}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Clients</div>
+                    <div className="stat-value teal">{stats.clients || 0}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Messages</div>
+                    <div className="stat-value">{messages.length}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Tool Calls</div>
+                    <div className="stat-value accent">{toolCalls}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Nodes</div>
+                    <div className="stat-value teal">{(stats.nodes || []).length}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Errors</div>
+                    <div className="stat-value" style={{ color: errors > 0 ? 'var(--red)' : 'var(--green)' }}>{errors}</div>
+                  </div>
+                </div>
+
+                {model && (
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+                    <div className="stat-label" style={{ marginBottom: 6 }}>Active Model</div>
+                    <div style={{
+                      padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--teal)',
+                    }}>
+                      {model}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sessions */}
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: 8 }}>
+                  <div className="panel-header">
+                    <span style={{ fontSize: 14 }}>📋</span>
+                    <span className="panel-title">Sessions</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {sessions.length}
+                    </span>
+                  </div>
+                  {sessions.length === 0 ? (
+                    <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12 }}>No sessions</div>
+                  ) : (
+                    sessions.map((s, i) => (
+                      <div key={i} className="session-item">
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 600, fontSize: 12 }}>{s.channel}:{s.user_id}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.messages} msgs</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>
+                          {s.id?.slice(0, 24)}…
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Version */}
+                <div style={{ padding: '16px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Open-Sable v{stats.version || '1.1.0'} — Gateway {stats.version || '2.0.0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>

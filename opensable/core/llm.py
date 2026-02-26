@@ -8,12 +8,33 @@ Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
 
 import logging
 import json
+import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, AsyncIterator
+from typing import Dict, List, Any, AsyncIterator, Optional, Tuple
 import ollama
 
 logger = logging.getLogger(__name__)
+
+
+# ── DeepSeek <think> tag support ─────────────────────────────────────
+
+_THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+
+
+def parse_thinking(text: str) -> Tuple[str, Optional[str]]:
+    """Extract DeepSeek-style <think>...</think> reasoning from response text.
+
+    Returns:
+        (clean_text, reasoning)  --  reasoning is None when no tags found.
+    """
+    if not text or "<think>" not in text:
+        return text, None
+
+    reasoning_parts = _THINK_RE.findall(text)
+    clean = _THINK_RE.sub("", text).strip()
+    reasoning = "\n".join(p.strip() for p in reasoning_parts if p.strip()) or None
+    return clean, reasoning
 
 
 # ── Token & cost tracking ────────────────────────────────────────────
@@ -299,8 +320,14 @@ class AdaptiveLLM:
                     "text": None,
                 }
 
-            # Plain text path
-            return {"tool_call": None, "tool_calls": [], "text": msg.get("content", "")}
+            # Plain text path — check for DeepSeek reasoning tags
+            raw_text = msg.get("content", "")
+            clean_text, reasoning = parse_thinking(raw_text)
+            result = {"tool_call": None, "tool_calls": [], "text": clean_text}
+            if reasoning:
+                result["reasoning"] = reasoning
+                logger.info(f"💭 DeepSeek reasoning captured ({len(reasoning)} chars)")
+            return result
 
         except Exception as e:
             logger.warning(f"Tool calling failed ({e}), falling back to plain chat")
@@ -321,6 +348,9 @@ class AdaptiveLLM:
         """
         Yield text tokens one-by-one from Ollama streaming API.
 
+        DeepSeek models: <think>...</think> blocks are silently consumed
+        and emitted as a single ``[REASONING]`` event at the end.
+
         Usage:
             async for token in llm.astream(messages):
                 print(token, end="", flush=True)
@@ -332,10 +362,68 @@ class AdaptiveLLM:
                 messages=messages,
                 stream=True,
             )
+
+            # State machine for <think> block detection
+            _buf = ""        # accumulates partial tag matches
+            _inside = False  # currently inside <think>...</think>
+            _reasoning = []  # collected reasoning lines
+            _check_tags = "deepseek" in self.current_model.lower()
+
             async for chunk in stream:
                 token = chunk.get("message", {}).get("content", "")
-                if token:
+                if not token:
+                    continue
+
+                if not _check_tags:
                     yield token
+                    continue
+
+                # Tag-aware streaming
+                _buf += token
+                while _buf:
+                    if _inside:
+                        end_idx = _buf.find("</think>")
+                        if end_idx != -1:
+                            _reasoning.append(_buf[:end_idx])
+                            _buf = _buf[end_idx + 8:]  # skip </think>
+                            _inside = False
+                        else:
+                            # Still inside thinking — buffer everything
+                            _reasoning.append(_buf)
+                            _buf = ""
+                    else:
+                        start_idx = _buf.find("<think>")
+                        if start_idx != -1:
+                            # Yield text before the tag
+                            if start_idx > 0:
+                                yield _buf[:start_idx]
+                            _buf = _buf[start_idx + 7:]  # skip <think>
+                            _inside = True
+                        else:
+                            # Check for partial tag at end of buffer
+                            safe = True
+                            for i in range(1, min(len("<think>"), len(_buf) + 1)):
+                                if _buf.endswith("<think>"[:i]):
+                                    # Might be start of a tag — hold back
+                                    yield _buf[:-i]
+                                    _buf = _buf[-i:]
+                                    safe = False
+                                    break
+                            if safe:
+                                yield _buf
+                                _buf = ""
+
+            # Flush remaining buffer
+            if _buf:
+                yield _buf
+
+            # Emit reasoning summary if captured
+            if _reasoning:
+                reasoning_text = "".join(_reasoning).strip()
+                if reasoning_text:
+                    logger.info(f"💭 DeepSeek reasoning streamed ({len(reasoning_text)} chars)")
+                    yield f"\n\n---\n💭 **Reasoning** ({len(reasoning_text)} chars captured)\n"
+
         except Exception as e:
             logger.error(f"Streaming failed: {e}")
             yield f"Error: {e}"
@@ -564,11 +652,25 @@ class CloudLLM:
                 "text": None,
             }
 
-        return {
+        # Check for DeepSeek reasoning — API may return reasoning_content or <think> tags
+        raw_text = msg.content or ""
+        reasoning = None
+
+        # DeepSeek API returns reasoning_content as a separate field
+        if hasattr(msg, "reasoning_content") and msg.reasoning_content:
+            reasoning = msg.reasoning_content
+        else:
+            raw_text, reasoning = parse_thinking(raw_text)
+
+        result = {
             "tool_call": None,
             "tool_calls": [],
-            "text": msg.content or "",
+            "text": raw_text,
         }
+        if reasoning:
+            result["reasoning"] = reasoning
+            logger.info(f"💭 DeepSeek reasoning captured ({len(reasoning)} chars)")
+        return result
 
     # ── Anthropic ────────────────────────────────────────────────────────
 
@@ -849,22 +951,88 @@ class CloudLLM:
         """
         Yield text tokens from cloud LLM streaming.
 
+        DeepSeek API: reasoning_content is captured from stream deltas;
+        <think> tags in content are also handled as fallback.
+
         Supports OpenAI-compatible providers and Anthropic.
         """
         try:
             if self.provider in self._OPENAI_COMPAT:
                 from openai import AsyncOpenAI
                 base_url, _, _ = self._PROVIDERS[self.provider]
+                # Open WebUI: URL comes from config
+                if self.provider == "openwebui":
+                    base_url = getattr(self, "_openwebui_base_url", base_url)
                 client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
                 stream = await client.chat.completions.create(
                     model=self.current_model,
                     messages=messages,
                     stream=True,
                 )
+
+                _is_deepseek = self.provider == "deepseek" or "deepseek" in self.current_model.lower()
+                _reasoning_parts: list[str] = []
+                _buf = ""
+                _inside_think = False
+
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
-                    if delta and delta.content:
+                    if not delta:
+                        continue
+
+                    # DeepSeek API: reasoning_content comes as a separate field
+                    rc = getattr(delta, "reasoning_content", None)
+                    if rc:
+                        _reasoning_parts.append(rc)
+                        continue
+
+                    if not delta.content:
+                        continue
+
+                    if not _is_deepseek:
                         yield delta.content
+                        continue
+
+                    # Fallback: parse <think> tags from content stream
+                    _buf += delta.content
+                    while _buf:
+                        if _inside_think:
+                            end_idx = _buf.find("</think>")
+                            if end_idx != -1:
+                                _reasoning_parts.append(_buf[:end_idx])
+                                _buf = _buf[end_idx + 8:]
+                                _inside_think = False
+                            else:
+                                _reasoning_parts.append(_buf)
+                                _buf = ""
+                        else:
+                            start_idx = _buf.find("<think>")
+                            if start_idx != -1:
+                                if start_idx > 0:
+                                    yield _buf[:start_idx]
+                                _buf = _buf[start_idx + 7:]
+                                _inside_think = True
+                            else:
+                                safe = True
+                                for i in range(1, min(len("<think>"), len(_buf) + 1)):
+                                    if _buf.endswith("<think>"[:i]):
+                                        yield _buf[:-i]
+                                        _buf = _buf[-i:]
+                                        safe = False
+                                        break
+                                if safe:
+                                    yield _buf
+                                    _buf = ""
+
+                # Flush
+                if _buf:
+                    yield _buf
+                if _reasoning_parts:
+                    reasoning_text = "".join(_reasoning_parts).strip()
+                    if reasoning_text:
+                        logger.info(f"💭 DeepSeek reasoning streamed ({len(reasoning_text)} chars)")
+                        yield f"\n\n---\n💭 **Reasoning** ({len(reasoning_text)} chars captured)\n"
+
             elif self.provider == "anthropic":
                 from anthropic import AsyncAnthropic
                 client = AsyncAnthropic(api_key=self._get_api_key())
