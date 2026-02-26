@@ -59,6 +59,12 @@ package-lock.json
 opensable/skills/installed/
 opensable/skills/created/
 opensable/skills/marketplace/cache.json
+/marketplace
+# Marketplace server runtime data (secrets & DB)
+marketplace/server/agent-*.json
+marketplace/server/data/marketplace.db
+marketplace/server/uploads/
+marketplace/client/build/
 
 # Environment & Secrets
 .env

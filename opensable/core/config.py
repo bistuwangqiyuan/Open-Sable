@@ -197,6 +197,9 @@ class OpenSableConfig(BaseModel):
     trading_require_approval_above_usd: float = 100.0
     trading_banned_assets: str = ""  # comma-separated
 
+    # ── Skills Marketplace ───────────────────────────────────────
+    skill_install_auto_approve: bool = False  # If True, skip user approval for marketplace installs
+
     # Strategy settings
     trading_strategies: str = "momentum,mean_reversion,sentiment"  # comma-separated
     trading_watchlist: str = "BTC/USDT,ETH/USDT,SOL/USDT"  # comma-separated
@@ -369,6 +372,8 @@ def load_config() -> OpenSableConfig:
         # Strategy & watchlist
         "trading_strategies": os.getenv("TRADING_STRATEGIES", "momentum,mean_reversion,sentiment"),
         "trading_watchlist": os.getenv("TRADING_WATCHLIST", "BTC/USDT,ETH/USDT,SOL/USDT"),
+        # ── Skills Marketplace ──────────────────────────────────
+        "skill_install_auto_approve": os.getenv("SKILL_INSTALL_AUTO_APPROVE", "false").lower() == "true",
     }
 
     return OpenSableConfig(**config_data)

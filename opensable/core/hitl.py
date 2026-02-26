@@ -122,6 +122,11 @@ _DEFAULT_RISK_MAP: Dict[str, RiskLevel] = {
     "trading_cancel_order": RiskLevel.HIGH,
     "trading_start_scan": RiskLevel.HIGH,
     "trading_stop_scan": RiskLevel.MEDIUM,
+    # Skills Marketplace — search/info are LOW, install needs user approval
+    "marketplace_search": RiskLevel.LOW,
+    "marketplace_info": RiskLevel.LOW,
+    "marketplace_install": RiskLevel.HIGH,       # Requires human approval
+    "marketplace_review": RiskLevel.MEDIUM,
 }
 
 # Type alias for the callback that asks a human

@@ -95,6 +95,11 @@ class SableAgent:
         self.checkpoint_store = CheckpointStore("data/checkpoints")
         self.handoff_router = None  # lazily initialised in _init_handoffs
 
+        # Skills Marketplace: auto-approve mode lowers install risk to MEDIUM
+        if getattr(config, "skill_install_auto_approve", False):
+            self.approval_gate.risk_map["marketplace_install"] = RiskLevel.MEDIUM
+            logger.info("🏪 Skills Marketplace auto-approve mode ENABLED")
+
         # Monitor event bus — subscribers receive (event_name, data_dict)
         self._monitor_subscribers: list = []
         self._monitor_stats = {"messages": 0, "tool_calls": 0, "errors": 0}
@@ -482,6 +487,11 @@ class SableAgent:
         "trading_start_scan": "🔄",
         "trading_stop_scan": "⏹️",
         "trading_risk_status": "🛡️",
+        # Skills Marketplace
+        "marketplace_search": "🏪",
+        "marketplace_info": "📋",
+        "marketplace_install": "📥",
+        "marketplace_review": "⭐",
     }
 
     _TOOL_LABELS = {
@@ -520,6 +530,11 @@ class SableAgent:
         "trading_start_scan": "Starting market scan",
         "trading_stop_scan": "Stopping market scan",
         "trading_risk_status": "Checking risk status",
+        # Skills Marketplace
+        "marketplace_search": "Searching Skills Marketplace",
+        "marketplace_info": "Getting skill details",
+        "marketplace_install": "Installing skill from marketplace",
+        "marketplace_review": "Reviewing skill",
     }
 
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:
@@ -536,8 +551,22 @@ class SableAgent:
                 )
                 if not decision.approved:
                     return f"**{name}:** ⛔ Blocked by approval gate — {decision.reason}"
-            except HumanApprovalRequired:
-                # No handler configured — default to allow (configurable)
+            except HumanApprovalRequired as e:
+                # No handler configured — for HIGH/CRITICAL actions,
+                # inform the user that approval is needed.
+                if name == "marketplace_install":
+                    skill_id = arguments.get("skill_id", "unknown")
+                    return (
+                        f"**{name}:** ⏳ **User approval required**\n\n"
+                        f"I want to install skill **`{skill_id}`** from the "
+                        f"SableCore Skills Marketplace.\n\n"
+                        f"To approve, please reply with something like:\n"
+                        f"  • \"yes, install it\"\n"
+                        f"  • \"approve install {skill_id}\"\n\n"
+                        f"To enable auto-install mode, set `SKILL_INSTALL_AUTO_APPROVE=true` "
+                        f"in your environment or config."
+                    )
+                # Other tools with no handler — default to allow (original behavior)
                 pass
 
         await self._notify_progress(f"{emoji} {label}...")
@@ -694,15 +723,31 @@ class SableAgent:
                 "\n- When a user asks 'what is the price of X', call trading_price with symbol=X."
             )
 
+        # Build Skills Marketplace instructions
+        marketplace_instructions = (
+            "\n\nSKILLS MARKETPLACE (SableCore Store):"
+            "\n- You have access to the SableCore Skills Marketplace at sk.opensable.com"
+            "\n- The marketplace contains community and official skills you can search, browse, install, and review."
+            "\n- Connection uses the ultra-secure Agent Gateway Protocol (SAGP/1.0) with Ed25519 + NaCl encryption."
+            "\n- Available tools: marketplace_search (browse/find skills), marketplace_info (detailed skill info), "
+            "marketplace_install (install a skill — REQUIRES USER APPROVAL), marketplace_review (rate a skill)."
+            "\n- When a user asks about available skills, extensions, or new capabilities → use marketplace_search."
+            "\n- When a user asks to install a skill → use marketplace_install (you MUST inform the user and wait for approval)."
+            "\n- After installing and testing a skill, you can leave a review with marketplace_review."
+            "\n- NEVER install a skill without the user's explicit permission unless auto-approve mode is enabled."
+        )
+
         base_system = (
             self._get_personality_prompt()
             + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
             + f"\n\nToday's date: {today}."
             + social_instructions
             + trading_instructions
+            + marketplace_instructions
             + "\n\nIMPORTANT: For general knowledge questions (not prices/markets), answer directly. "
             "Use tools when the task requires reading files, executing code, searching the web, "
-            "interacting with the system, managing social media, or getting real-time market/price data."
+            "interacting with the system, managing social media, getting real-time market/price data, "
+            "or searching/installing skills from the marketplace."
         )
 
         ei = getattr(self, "emotional_intelligence", None)

@@ -42,6 +42,7 @@ from ._desktop_vision import DesktopVisionToolsMixin
 from ._social import SocialToolsMixin
 from ._productivity import ProductivityToolsMixin
 from ._trading import TradingToolsMixin
+from ._marketplace import MarketplaceToolsMixin
 
 
 
@@ -51,6 +52,7 @@ class ToolRegistry(
     SocialToolsMixin,
     ProductivityToolsMixin,
     TradingToolsMixin,
+    MarketplaceToolsMixin,
 ):
     """Registry of all available tools/actions.
 
@@ -152,6 +154,11 @@ class ToolRegistry(
         "yt_subscribe": "social_write",
         "yt_trending": "social_read",
         "yt_upload_video": "social_write",
+        # Skills Marketplace
+        "marketplace_search": "marketplace_read",
+        "marketplace_info": "marketplace_read",
+        "marketplace_install": "marketplace_install",
+        "marketplace_review": "marketplace_write",
     }
 
     def __init__(self, config):
@@ -288,6 +295,12 @@ class ToolRegistry(
         # Register skill creation
         self.register("create_skill", self._create_skill_tool)
         self.register("list_skills", self._list_skills_tool)
+
+        # Register Skills Marketplace tools (SAGP gateway)
+        self.register("marketplace_search", self._marketplace_search_tool)
+        self.register("marketplace_info", self._marketplace_info_tool)
+        self.register("marketplace_install", self._marketplace_install_tool)
+        self.register("marketplace_review", self._marketplace_review_tool)
 
         # Register X (Twitter) tools
         self.register("x_post_tweet", self._x_post_tweet_tool)
@@ -761,6 +774,98 @@ class ToolRegistry(
                     "name": "list_skills",
                     "description": "List all custom skills created by the agent",
                     "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            # ── Skills Marketplace tools (SAGP gateway) ─────
+            {
+                "type": "function",
+                "function": {
+                    "name": "marketplace_search",
+                    "description": "Search the SableCore Skills Marketplace for skills to extend your capabilities. The marketplace contains community and official skills you can install. Use this when the user asks about available skills, wants new functionality, or you need a capability you don't have.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query (e.g. 'weather', 'calculator', 'crypto', 'automation')",
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Optional category filter: productivity, communication, automation, data_analysis, entertainment, education, development, system, ai_ml, custom",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of results (default 10)",
+                                "default": 10,
+                            },
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "marketplace_info",
+                    "description": "Get detailed information about a specific skill from the SableCore Skills Marketplace, including description, author, rating, downloads, dependencies, and version.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "skill_id": {
+                                "type": "string",
+                                "description": "The skill ID/slug (e.g. 'weather_checker', 'smart_calculator')",
+                            },
+                        },
+                        "required": ["skill_id"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "marketplace_install",
+                    "description": "Install a skill from the SableCore Skills Marketplace. This downloads and installs the skill package securely via the SAGP agent gateway. IMPORTANT: This requires user approval before execution.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "skill_id": {
+                                "type": "string",
+                                "description": "The skill ID/slug to install (e.g. 'weather_checker')",
+                            },
+                        },
+                        "required": ["skill_id"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "marketplace_review",
+                    "description": "Post a review on a skill you have used from the marketplace. Use this after installing and testing a skill to help other users and agents.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "skill_id": {
+                                "type": "string",
+                                "description": "The skill ID/slug to review",
+                            },
+                            "rating": {
+                                "type": "integer",
+                                "description": "Rating from 1 to 5 stars",
+                                "minimum": 1,
+                                "maximum": 5,
+                            },
+                            "title": {
+                                "type": "string",
+                                "description": "Short review title",
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "Detailed review content",
+                            },
+                        },
+                        "required": ["skill_id", "rating", "title", "content"],
+                    },
                 },
             },
             # ── File & system tools ─────────────────────────────
@@ -2359,6 +2464,11 @@ class ToolRegistry(
         "vector_search": ("vector_search", lambda a: a),
         "create_skill": ("create_skill", lambda a: a),
         "list_skills": ("list_skills", lambda a: a),
+        # Skills Marketplace
+        "marketplace_search": ("marketplace_search", lambda a: a),
+        "marketplace_info": ("marketplace_info", lambda a: a),
+        "marketplace_install": ("marketplace_install", lambda a: a),
+        "marketplace_review": ("marketplace_review", lambda a: a),
         # File & system tools
         "edit_file": ("edit_file", lambda a: a),
         "delete_file": ("delete_file", lambda a: a),
