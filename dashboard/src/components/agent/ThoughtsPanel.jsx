@@ -141,8 +141,12 @@ function summarizeEntry(entry) {
       return `Mood: ${data.new_mood || data.emotion || '?'} (${(data.intensity ?? '?')}) — ${data.why || ''}`;
     case 'posted':
       return data.tweet || data.text || JSON.stringify(data).slice(0, 200);
-    case 'engaged':
-      return `${data.action || '?'} @${data.username || '?'} — ${(data.tweet_text || '').slice(0, 120)}`;
+    case 'engaged': {
+      const actions = Array.isArray(data.actions) ? data.actions.join(', ') : (data.action || '?');
+      const handle = data.username || data.user || '?';
+      const text = data.tweet_text || data.text || '';
+      return `${actions} @${handle} — ${text.slice(0, 120)}`;
+    }
     case 'reflection':
       return data.analysis || data.summary || JSON.stringify(data).slice(0, 200);
     case 'error':

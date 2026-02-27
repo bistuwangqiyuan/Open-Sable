@@ -893,8 +893,53 @@ class XAutonomousAgent:
             "let me analyze",
             "here are the key points",
             "the following instructions",
+            # ── DeepSeek / chain-of-thought reasoning traces ────────────
+            "i need to analyze",
+            "i need to carefully",
+            "i need to craft",
+            "i need to think",
+            "i need to consider",
+            "let me parse",
+            "let me think",
+            "let me craft",
+            "let me consider",
+            "let me examine",
+            "let me break",
+            "first, let me",
+            "first let me",
+            "i'll craft",
+            "i will craft",
+            "craft a substantive",
+            "craft a response",
+            "craft my response",
+            "carefully craft",
+            "carefully and craft",
+            "the original tweet makes",
+            "the original tweet contains",
+            "the original post makes",
+            "make several interesting",
+            "makes several claims",
+            "responding as sable",
+            "my response as sable",
+            "as sable, i need",
+            "as sable, i'll",
+            "as sable i need",
+            "key arguments",
+            "key claims",
+            "let me parse the",
+            "let me address",
         ]
-        return any(phrase in t for phrase in meta_phrases)
+        if any(phrase in t for phrase in meta_phrases):
+            return True
+        # Starts with first-person reasoning openers typical of chain-of-thought
+        reasoning_starters = re.compile(
+            r'^(i need to|let me|first,?\s+let me|i\'ll craft|i will craft|'
+            r'okay,?\s+let me|alright,?\s+let me|to (craft|write|compose|create) a)',
+            re.IGNORECASE,
+        )
+        if reasoning_starters.match(text.strip()):
+            return True
+        return False
 
     @staticmethod
     def _is_error_response(text: str) -> bool:

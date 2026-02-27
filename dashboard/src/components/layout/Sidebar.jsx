@@ -29,7 +29,7 @@ const sidebarStyles = {
   },
   btn: {
     width: 40, height: 40, borderRadius: 'var(--radius-sm)', border: 'none',
-    background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer',
+    background: 'transparent', color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     gap: 2, fontSize: 9, fontFamily: 'var(--sans)', transition: 'all .15s',
     position: 'relative',
@@ -50,7 +50,7 @@ export default function Sidebar({ tab, onTabChange, streaming }) {
           {(i === 4 || i === 8) && <div style={sidebarStyles.sep} />}
           <button
             style={{ ...sidebarStyles.btn, ...(tab === t.id ? sidebarStyles.active : {}),
-              color: tab === t.id ? 'var(--accent-light)' : undefined }}
+              color: tab === t.id ? 'var(--accent-light)' : 'rgba(255,255,255,0.7)' }}
             onClick={() => onTabChange(t.id)}
             title={t.label}
           >
