@@ -60,10 +60,17 @@ class AutonomousMode:
                 from .x_autoposter import XAutoposter
 
                 self.x_autoposter = XAutoposter(self.agent, self.config)
-                asyncio.create_task(self.x_autoposter.start())
+
+                async def _run_ap():
+                    try:
+                        await self.x_autoposter.start()
+                    except Exception as exc:
+                        logger.error(f"🐦 X Autoposter crashed: {exc}", exc_info=True)
+
+                asyncio.create_task(_run_ap())
                 logger.info("🐦 X Autoposter launched as background task")
             except Exception as e:
-                logger.error(f"Failed to start X Autoposter: {e}")
+                logger.error(f"Failed to start X Autoposter: {e}", exc_info=True)
 
         self.running = True
 

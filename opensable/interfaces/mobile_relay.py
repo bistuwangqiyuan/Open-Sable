@@ -241,8 +241,18 @@ class MobileRelay:
         self._monitor_subs: set = set()
         self._trading_subs: set = set()
 
+        self._runner = None
         self._data_path = self._resolve_data_path()
         self._load_devices()
+
+    async def stop(self):
+        """Stop the mobile relay server."""
+        if self._runner:
+            try:
+                await self._runner.cleanup()
+            except Exception:
+                pass
+            self._runner = None
 
     # ── Persistence ─────────────────────────────────────────────────
 
@@ -315,6 +325,8 @@ class MobileRelay:
             server_public_key=pub,
             created_at=now,
         )
+
+        logger.info(f"🔐 New QR token generated: {token[:12]}... (total active: {len(self._qr_tokens)})")
 
         # Clean expired tokens
         expired = [t for t, q in self._qr_tokens.items() if now - q.created_at > QR_TTL_SECONDS]
@@ -635,6 +647,16 @@ class MobileRelay:
 
     # ── WebSocket handler ───────────────────────────────────────────
 
+    async def _register_device_ws(self, device_id: str, ws):
+        """Register a WebSocket for a device, closing any previous one."""
+        old_ws = self._connections.get(device_id)
+        if old_ws and old_ws is not ws:
+            try:
+                await old_ws.close(code=4000, message=b'Replaced by new connection')
+            except Exception:
+                pass
+        self._connections[device_id] = ws
+
     async def _ws_handler(self, request):
         """Handle WebSocket connections from the mobile app."""
         ws = web.WebSocketResponse(heartbeat=HEARTBEAT_INTERVAL)
@@ -652,10 +674,11 @@ class MobileRelay:
 
                     # ── Pairing handshake (plaintext) ────
                     msg_type = raw.get("type", "")
+                    logger.debug(f"📨 WS message: type={msg_type}, keys={list(raw.keys())}")
                     if msg_type in ("PAIR_REQUEST", "system.pair_request"):
                         device_id = await self._handle_pairing(ws, raw)
                         if device_id:
-                            self._connections[device_id] = ws
+                            await self._register_device_ws(device_id, ws)
                             await self._flush_offline(device_id)
                         continue
 
@@ -663,7 +686,7 @@ class MobileRelay:
                     if msg_type in ("AUTH_RECONNECT", "system.auth_reconnect"):
                         device_id = await self._handle_reconnect(ws, raw)
                         if device_id:
-                            self._connections[device_id] = ws
+                            await self._register_device_ws(device_id, ws)
                             await self._flush_offline(device_id)
                         continue
 
@@ -681,7 +704,7 @@ class MobileRelay:
                         if not device_id:
                             device_id = await self._try_encrypted_auth(ws, raw)
                             if device_id:
-                                self._connections[device_id] = ws
+                                await self._register_device_ws(device_id, ws)
                                 await self._flush_offline(device_id)
                             continue
 
@@ -698,9 +721,13 @@ class MobileRelay:
             logger.error(f"WebSocket error: {e}")
         finally:
             if device_id:
-                self._connections.pop(device_id, None)
-                self._monitor_subs.discard(device_id)
-                logger.info(f"📱 Device disconnected: {device_id[:8]}")
+                # Only remove if this is still the active connection
+                if self._connections.get(device_id) is ws:
+                    self._connections.pop(device_id, None)
+                    self._monitor_subs.discard(device_id)
+                    logger.info(f"📱 Device disconnected: {device_id[:8]}")
+                else:
+                    logger.debug(f"📱 Stale WS closed for {device_id[:8]} (replaced by newer connection)")
 
         return ws
 
@@ -720,8 +747,8 @@ class MobileRelay:
                     # Auth succeeded — reset sequence for new session
                     device.rx_seq = seq
                     logger.info(f"📱 Device reconnected via encrypted auth: {did[:8]}")
-                    # Register WS connection first so send_to_device works
-                    self._connections[did] = ws
+                    # Register WS connection (closes old one if exists)
+                    await self._register_device_ws(did, ws)
                     # Send HEARTBEAT_ACK so app transitions to 'connected'
                     await self.send_to_device(did, "system.heartbeat_ack", {
                         "ts": time.time(),
@@ -742,9 +769,14 @@ class MobileRelay:
         device_id = data.get("deviceId", secrets.token_hex(16))
         push_token = data.get("pushToken")
 
+        logger.info(f"🔑 PAIR_REQUEST received: token={token[:12]}... device={device_name}")
+        logger.info(f"   Known tokens: {[t[:12]+'...' for t in self._qr_tokens.keys()]}")
+
         # Validate token
         qr = self._qr_tokens.get(token)
         if not qr or qr.used:
+            reason = "used" if qr and qr.used else "not found"
+            logger.warning(f"❌ Token validation failed: {reason} (token={token[:12]}...)")
             await ws.send_json({"type": "system.error", "message": "Invalid or expired token"})
             return None
 
@@ -977,14 +1009,8 @@ class MobileRelay:
         logger.info(f"   WebSocket:    ws://{host}:{port}/mobile/ws")
         logger.info(f"   Status:       http://{host}:{port}/mobile/status")
 
-        # Keep running
-        try:
-            while True:
-                await asyncio.sleep(3600)
-        except asyncio.CancelledError:
-            pass
-        finally:
-            await runner.cleanup()
+        # Store runner for cleanup in stop()
+        self._runner = runner
 
 
 # ── CLI entry ─────────────────────────────────────────────────────────

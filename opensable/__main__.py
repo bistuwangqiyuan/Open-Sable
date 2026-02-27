@@ -139,10 +139,18 @@ async def async_main():
                 from opensable.core.x_autoposter import XAutoposter
 
                 x_autoposter = XAutoposter(agent, config)
-                asyncio.create_task(x_autoposter.start())
+
+                async def _run_autoposter():
+                    try:
+                        await x_autoposter.start()
+                    except Exception as exc:
+                        logger.error(f"🐦 X Autoposter crashed: {exc}", exc_info=True)
+
+                asyncio.create_task(_run_autoposter())
+                logger.info("🐦 X Autoposter task created")
                 console.print("[bold blue]🐦 X Autoposter running in background[/bold blue]")
             except Exception as e:
-                logger.warning(f"X Autoposter failed to start: {e}")
+                logger.warning(f"X Autoposter failed to start: {e}", exc_info=True)
 
         # Start interfaces
         interfaces = []

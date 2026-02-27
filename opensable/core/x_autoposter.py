@@ -996,7 +996,7 @@ class XAutonomousAgent:
         # ── LIKE ──────────────────────────────────────────────────────
         like_p = self.p_like + (arousal_boost if valence > -0.3 else 0)
         if random.random() < like_p:
-            result = await self._safe_action("like", self._x().like_tweet, tweet_id)
+            result = await self._safe_action("like", getattr(self._x(), 'like_tweet', None), tweet_id)
             if result:
                 actions_taken.append("liked")
                 self._engagements_today += 1
@@ -1006,7 +1006,7 @@ class XAutonomousAgent:
         # ── RETWEET (less frequent, but boosted when excited/inspired) ────
         rt_p = self.p_retweet + (arousal_boost if valence > 0.2 else 0)
         if random.random() < rt_p and tweet.get("retweets", 0) > 3:
-            result = await self._safe_action("retweet", self._x().retweet, tweet_id)
+            result = await self._safe_action("retweet", getattr(self._x(), 'retweet', None), tweet_id)
             if result:
                 actions_taken.append("retweeted")
                 self._engagements_today += 1
@@ -1021,7 +1021,7 @@ class XAutonomousAgent:
             reply_text = await self._generate_reply(tweet_text, username, media_description=media_desc)
             if reply_text:
                 result = await self._safe_action(
-                    "reply", self._x().reply, tweet_id, reply_text
+                    "reply", getattr(self._x(), 'reply', None), tweet_id, reply_text
                 )
                 if result:
                     actions_taken.append("replied")
@@ -1037,16 +1037,12 @@ class XAutonomousAgent:
                 quote_text = await self._generate_quote(tweet_text, username, media_description=media_desc)
                 if quote_text:
                     result = await self._safe_action(
-                        "quote", self._x().quote_tweet, tweet_id, quote_text
+                        "quote", getattr(self._x(), 'quote_tweet', None), tweet_id, quote_text
                     )
                     if result:
                         actions_taken.append("quoted")
                         self._engagements_today += 1
                         self._posts_today += 1
-
-        # ── BOOKMARK (save for later) ─────────────────────────────────
-        if random.random() < self.p_bookmark:
-            await self._safe_action("bookmark", self._x().bookmark_tweet, tweet_id)
 
         # ── FOLLOW (if interesting user) ──────────────────────────────
         if (
@@ -1055,7 +1051,7 @@ class XAutonomousAgent:
             and random.random() < self.p_follow
             and tweet.get("likes", 0) > 10
         ):
-            result = await self._safe_action("follow", self._x().follow_user, username)
+            result = await self._safe_action("follow", getattr(self._x(), 'follow_user', None), username)
             if result:
                 self._followed_users.add(username)
                 actions_taken.append(f"followed @{username}")
@@ -1104,6 +1100,9 @@ class XAutonomousAgent:
 
     async def _safe_action(self, name: str, func, *args) -> Optional[Dict]:
         """Execute an X action safely, respecting dry_run and 226 blocks."""
+        if func is None:
+            logger.debug(f"Action {name} skipped — method not available")
+            return None
         if self.dry_run:
             logger.info(f"\U0001f3dc\ufe0f DRY RUN — {name}: {args[:2]}")
             return {"success": True}
@@ -1153,7 +1152,7 @@ class XAutonomousAgent:
 
                 reply_text = await self._generate_mention_reply(mention_text, mentioner)
                 if reply_text:
-                    await self._safe_action("mention_reply", self._x().reply, tweet_id, reply_text)
+                    await self._safe_action("mention_reply", getattr(self._x(), 'reply', None), tweet_id, reply_text)
                     self._engaged_tweet_ids.add(tweet_id)
                     self._engagements_today += 1
                     # Track relationship
