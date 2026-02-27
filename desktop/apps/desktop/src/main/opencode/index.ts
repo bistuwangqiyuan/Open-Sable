@@ -40,38 +40,60 @@ import {
   getBundledOpenCodeVersion,
 } from './electron-options';
 import { getDesktopConfig } from '../config';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 let taskManagerInstance: TaskManagerAPI | null = null;
 
 /**
- * Detects whether we should use OpenSable gateway mode.
- * Uses gateway if OPENSABLE_API_URL or SABLE_TOKEN is set, or if the
- * default gateway URL is configured (non-production accomplish URL).
+ * Reads WEBCHAT_TOKEN from the SableCore .env file.
+ * Tries ~/SableCore_/.env first, then the directory two levels up from this file (monorepo).
  */
-function shouldUseOpenSableMode(): boolean {
-  return !!(process.env.OPENSABLE_API_URL || process.env.SABLE_TOKEN);
+function readSableCoreToken(): string | undefined {
+  const candidates = [
+    path.join(os.homedir(), 'SableCore_', '.env'),
+    path.resolve(__dirname, '..', '..', '..', '..', '.env'),
+  ];
+  for (const envPath of candidates) {
+    try {
+      if (!fs.existsSync(envPath)) continue;
+      const content = fs.readFileSync(envPath, 'utf-8');
+      const match = content.match(/^WEBCHAT_TOKEN=(.+)$/m);
+      if (match) return match[1].trim();
+    } catch {
+      // ignore read errors, try next candidate
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Resolve the WebSocket gateway URL.
+ * Converts http(s) to ws(s) if needed.
+ */
+function resolveGatewayUrl(): string {
+  const raw = process.env.OPENSABLE_API_URL || getDesktopConfig().apiUrl;
+  return raw.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
 }
 
 export function getTaskManager(): TaskManagerAPI {
   if (!taskManagerInstance) {
-    if (shouldUseOpenSableMode()) {
-      // Use OpenSable gateway adapter (WebSocket)
-      const config = getDesktopConfig();
-      const opts = createElectronTaskManagerOptions();
-      taskManagerInstance = createTaskManager({
-        ...opts,
-        adapterMode: 'opensable',
-        opensableConfig: {
-          gatewayUrl: process.env.OPENSABLE_API_URL || config.apiUrl.replace('http', 'ws'),
-          authToken: process.env.SABLE_TOKEN,
-          userId: 'desktop',
-        },
-      });
-      console.log('[OpenSable] Using gateway adapter:', process.env.OPENSABLE_API_URL || config.apiUrl);
-    } else {
-      // Fall back to OpenCode CLI adapter (original behavior)
-      taskManagerInstance = createTaskManager(createElectronTaskManagerOptions());
-    }
+    // Always use the OpenSable gateway adapter — connects to the local SableCore agent.
+    const gatewayUrl = resolveGatewayUrl();
+    const authToken = process.env.SABLE_TOKEN || readSableCoreToken();
+    const opts = createElectronTaskManagerOptions();
+    taskManagerInstance = createTaskManager({
+      ...opts,
+      onBeforeTaskStart: undefined, // Not needed in OpenSable mode — gateway handles AI
+      adapterMode: 'opensable',
+      opensableConfig: {
+        gatewayUrl,
+        authToken,
+        userId: 'desktop',
+      },
+    });
+    console.log('[OpenSable] Using gateway adapter:', gatewayUrl);
   }
   return taskManagerInstance;
 }

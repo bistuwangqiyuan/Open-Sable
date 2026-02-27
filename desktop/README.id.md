@@ -32,9 +32,9 @@ OpenSable adalah agen desktop AI open source yang mengotomatisasi manajemen file
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>Unduh untuk Windows 11</strong></a>
   ·
-  <a href="https://www.opensable.ai/">Website OpenSable</a>
+  <a href="https://opensable.com/">Website OpenSable</a>
   ·
-  <a href="https://www.opensable.ai/blog/">Blog OpenSable</a>
+  <a href="https://opensable.com/blog/">Blog OpenSable</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">Rilis OpenSable</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[Website OpenSable](https://www.opensable.ai/)** · **[Blog OpenSable](https://www.opensable.ai/blog/)** · **[Rilis OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[Website OpenSable](https://opensable.com/)** · **[Blog OpenSable](https://opensable.com/blog/)** · **[Rilis OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-Lisensi MIT · Dibuat oleh [OpenSable](https://www.opensable.ai)
+Lisensi MIT · Dibuat oleh [OpenSable](https://opensable.com)
 
 <br />
 

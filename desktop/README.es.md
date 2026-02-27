@@ -32,9 +32,9 @@ OpenSable es un agente de escritorio de IA de código abierto que automatiza la 
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>Descargar para Windows 11</strong></a>
   ·
-  <a href="https://www.opensable.ai/">Sitio web de OpenSable</a>
+  <a href="https://opensable.com/">Sitio web de OpenSable</a>
   ·
-  <a href="https://www.opensable.ai/blog/">Blog de OpenSable</a>
+  <a href="https://opensable.com/blog/">Blog de OpenSable</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">Versiones de OpenSable</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[Sitio web de OpenSable](https://www.opensable.ai/)** · **[Blog de OpenSable](https://www.opensable.ai/blog/)** · **[Versiones de OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[Sitio web de OpenSable](https://opensable.com/)** · **[Blog de OpenSable](https://opensable.com/blog/)** · **[Versiones de OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-Licencia MIT · Creado por [OpenSable](https://www.opensable.ai)
+Licencia MIT · Creado por [OpenSable](https://opensable.com)
 
 <br />
 

@@ -68,13 +68,15 @@ export function TaskLauncher() {
       if (index === 0) {
         // "New task" selected
         if (searchQuery.trim()) {
-          // Check if any provider is ready before starting task
-          const settings = await opensable.getProviderSettings();
-          if (!hasAnyReadyProvider(settings)) {
-            // No ready provider - navigate to home which will show settings
-            closeLauncher();
-            navigate('/');
-            return;
+          // In OpenSable mode the agent already has its own AI — skip provider check
+          const isOpenSableMode = true;
+          if (!isOpenSableMode) {
+            const settings = await opensable.getProviderSettings();
+            if (!hasAnyReadyProvider(settings)) {
+              closeLauncher();
+              navigate('/');
+              return;
+            }
           }
           closeLauncher();
           const taskId = `task_${Date.now()}`;

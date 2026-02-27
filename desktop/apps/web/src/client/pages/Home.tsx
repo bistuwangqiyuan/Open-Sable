@@ -78,7 +78,8 @@ export function HomePage() {
     if (!prompt.trim()) return;
 
     const isE2EMode = await opensable.isE2EMode();
-    if (!isE2EMode) {
+    const isOpenSableMode = true; // OpenSable mode: bypass provider check
+    if (!isE2EMode && !isOpenSableMode) {
       const settings = await opensable.getProviderSettings();
       if (!hasAnyReadyProvider(settings)) {
         setSettingsInitialTab('providers');

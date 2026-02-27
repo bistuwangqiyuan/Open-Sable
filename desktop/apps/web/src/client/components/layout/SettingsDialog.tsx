@@ -293,7 +293,7 @@ export function SettingsDialog({
             <img
               src={logoImage}
               alt="OpenSable"
-              className="dark:invert"
+              className="invert dark:invert-0"
               style={{ height: '20px', paddingLeft: '6px' }}
             />
           </div>

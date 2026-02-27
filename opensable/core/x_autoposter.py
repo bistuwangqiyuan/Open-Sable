@@ -1355,7 +1355,31 @@ class XAutonomousAgent:
             f"or what it means. Include the hashtag if relevant."
         )
         text = await self._ask_ai(system_prompt, user_prompt)
+        if not text:
+            # Retry with a stripped-down prompt — some LLMs choke on long system prompts
+            minimal_system = "You are a witty social media personality. Write only the tweet, nothing else."
+            if self.language != "en":
+                minimal_system += f" Write in {self.language}."
+            minimal_user = f'"{trend_name}" is trending. Write your hot take in max 240 chars. Output ONLY the tweet text — complete sentence, no prefixes, no code, nothing else.'
+            text = await self._ask_ai(minimal_system, minimal_user)
         return self._clean_tweet(text) if text else None
+
+    @staticmethod
+    def _salvage_tweet_from_meta(text: str) -> Optional[str]:
+        """Try to extract an actual tweet from a response that failed the meta-check.
+        Looks for quoted text, or last short paragraph that could be a real post."""
+        # Try: find content inside quotes
+        quoted = re.findall(r'["\u201c\u201d]([^"“”]{10,280})["\u201c\u201d]', text)
+        for q in reversed(quoted):
+            q = q.strip()
+            if len(q) >= 10 and not XAutonomousAgent._is_meta_response(q):
+                return q
+        # Try: last non-empty paragraph that's short enough to be a tweet
+        paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
+        for para in reversed(paragraphs):
+            if 10 <= len(para) <= 290 and not XAutonomousAgent._is_meta_response(para):
+                return para
+        return None
 
     async def _ask_ai(self, system_prompt: str, user_prompt: str) -> Optional[str]:
         """Ask the configured LLM (primary) or fall back to Grok chat."""
@@ -1367,7 +1391,9 @@ class XAutonomousAgent:
             "or parenthetical remarks about how you are replying. "
             "No brackets like [Visual note:...] or parentheticals like (Replying in...). "
             "Do NOT wrap your reasoning in <think> tags. "
-            "Just the raw post text, nothing else."
+            "Write a COMPLETE thought that ends naturally — never stop mid-sentence. "
+            "Keep it under 240 characters so it fits comfortably in a tweet. "
+            "Just the raw post text, nothing else. No code, no random tokens, no prefixes."
         )
         text = await self._ask_llm(system_prompt, user_prompt)
         if not text:
@@ -1377,9 +1403,17 @@ class XAutonomousAgent:
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
             text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
             text = text.strip()
+            # Strip leading role labels that some models prepend (e.g. "system\n...", "assistant:")
+            text = re.sub(r'^(system|user|assistant|human)\s*[:;\n]\s*', '', text, flags=re.IGNORECASE)
+            text = text.strip()
         # Reject meta-responses where the model echoes/summarises the system prompt
         # instead of generating actual content
         if text and self._is_meta_response(text):
+            # Try to salvage: look for quoted content or last clean short paragraph
+            salvaged = self._salvage_tweet_from_meta(text)
+            if salvaged:
+                logger.debug(f"X autoposter: salvaged tweet from meta-response")
+                return salvaged
             logger.warning(f"X autoposter: rejected meta-response from LLM ({text[:100]}...)")
             return None
         return text or None
@@ -1697,11 +1731,47 @@ class XAutonomousAgent:
         text = re.sub(r"^(?:Assistant|User|System|Human|AI|Bot)\s*:?\s+", "", text, flags=re.IGNORECASE)
         # Also strip multi-line role-label blocks: "system\nThe user has..."
         text = re.sub(r"^(?:system|user|assistant|human)\s*\n", "", text, flags=re.IGNORECASE)
+        # ── Strip DeepSeek / LLM artifact tokens at the start ────────
+        # Some models leak code fragments or random tokens before the actual reply.
+        # Examples: "rand_range(0,1) # seed: 42\n", "ipro ", "0x1f\n", etc.
+        # Strategy: strip any leading line that looks like code or a lone short token.
+        lines = text.split("\n")
+        cleaned_lines = []
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                if cleaned_lines:           # keep blank lines only after real content
+                    cleaned_lines.append(line)
+                continue
+            # Detect garbage line: looks like code (has brackets, operators, #comments)
+            # OR is a lone word/token ≤6 chars that can't start a sentence
+            is_code_like = bool(re.search(r"[()=;{}\[\]]|#\s*\w|->|::", stripped))
+            is_lone_token = len(stripped) <= 6 and not re.search(r"[.!?,]", stripped) and i == 0
+            if (is_code_like or is_lone_token) and not cleaned_lines:
+                continue    # skip artifact lines before any real content
+            cleaned_lines.append(line)
+        text = "\n".join(cleaned_lines)
         text = text.strip().strip('"').strip("'").strip()
         # Collapse accidental double-spaces or leftover whitespace
         text = re.sub(r"\s{2,}", " ", text).strip()
+        # ── Strip trailing ellipsis the LLM uses as a stylistic cliffhanger ──
+        # e.g. "But the..." or "…" — these indicate an incomplete thought
+        text = re.sub(r"\s*\.{2,}\s*$", "", text).strip()   # trailing ... or ....
+        text = re.sub(r"\s*\u2026\s*$", "", text).strip()   # trailing …
+        # ── Ensure tweet ends at a complete sentence ─────────────────
+        # If text doesn't end with sentence-ending punctuation, cut at the last one
+        if text and not re.search(r"[.!?]$", text):
+            match = re.search(r"[.!?](?=[^.!?]*$)", text)
+            if match:
+                text = text[:match.start() + 1].strip()
+        # ── Respect X's 280-char limit ────────────────────────────────
         if len(text) > 280:
-            text = text[:277].rsplit(" ", 1)[0] + "..."
+            # Cut at last sentence boundary within 280 chars
+            match = re.search(r"[.!?](?=[^.!?]*$)", text[:280])
+            if match:
+                text = text[:match.start() + 1].strip()
+            else:
+                text = text[:280].rsplit(" ", 1)[0].strip()
         return text if len(text) >= 10 else ""
 
     def _parse_thread(self, text: str) -> List[str]:

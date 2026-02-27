@@ -32,9 +32,9 @@ OpenSable 是一款开源 AI 桌面代理，可在您的本地机器上自动化
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>下载 Windows 11 版</strong></a>
   ·
-  <a href="https://www.opensable.ai/">OpenSable 官网</a>
+  <a href="https://opensable.com/">OpenSable 官网</a>
   ·
-  <a href="https://www.opensable.ai/blog/">OpenSable 博客</a>
+  <a href="https://opensable.com/blog/">OpenSable 博客</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">OpenSable 发布版本</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[OpenSable 官网](https://www.opensable.ai/)** · **[OpenSable 博客](https://www.opensable.ai/blog/)** · **[OpenSable 发布版本](https://github.com/opensable/opensable/releases)** · **[问题反馈](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[OpenSable 官网](https://opensable.com/)** · **[OpenSable 博客](https://opensable.com/blog/)** · **[OpenSable 发布版本](https://github.com/opensable/opensable/releases)** · **[问题反馈](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-MIT 许可证 · 由 [OpenSable](https://www.opensable.ai) 构建
+MIT 许可证 · 由 [OpenSable](https://opensable.com) 构建
 
 <br />
 

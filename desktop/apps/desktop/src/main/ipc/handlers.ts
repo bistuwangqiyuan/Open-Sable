@@ -122,6 +122,11 @@ function isE2ESkipAuthEnabled(): boolean {
   );
 }
 
+/** Always true — we always run in OpenSable gateway mode. */
+function isOpenSableModeEnabled(): boolean {
+  return true;
+}
+
 function handle<Args extends unknown[], ReturnType = unknown>(
   channel: string,
   handler: (event: IpcMainInvokeEvent, ...args: Args) => ReturnType,
@@ -147,7 +152,7 @@ export function registerIPCHandlers(): void {
     const sender = event.sender;
     const validatedConfig = validateTaskConfig(config);
 
-    if (!isMockTaskEventsEnabled() && !storage.hasReadyProvider()) {
+    if (!isMockTaskEventsEnabled() && !isOpenSableModeEnabled() && !storage.hasReadyProvider()) {
       throw new Error(
         'No provider is ready. Please connect a provider and select a model in Settings.',
       );
@@ -315,7 +320,7 @@ export function registerIPCHandlers(): void {
         ? sanitizeString(existingTaskId, 'taskId', 128)
         : undefined;
 
-      if (!isMockTaskEventsEnabled() && !storage.hasReadyProvider()) {
+      if (!isMockTaskEventsEnabled() && !isOpenSableModeEnabled() && !storage.hasReadyProvider()) {
         throw new Error(
           'No provider is ready. Please connect a provider and select a model in Settings.',
         );
@@ -1063,6 +1068,8 @@ export function registerIPCHandlers(): void {
       return transcribeAudio(buffer, mimeType);
     },
   );
+  handle('app:is-opensable-mode', () => isOpenSableModeEnabled());
+
   handle('provider-settings:get', async () => {
     return storage.getProviderSettings();
   });

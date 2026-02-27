@@ -32,9 +32,9 @@ OpenSable — это открытый ИИ-агент для рабочего с
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>Скачать для Windows 11</strong></a>
   ·
-  <a href="https://www.opensable.ai/">Сайт OpenSable</a>
+  <a href="https://opensable.com/">Сайт OpenSable</a>
   ·
-  <a href="https://www.opensable.ai/blog/">Блог OpenSable</a>
+  <a href="https://opensable.com/blog/">Блог OpenSable</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">Релизы OpenSable</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[Сайт OpenSable](https://www.opensable.ai/)** · **[Блог OpenSable](https://www.opensable.ai/blog/)** · **[Релизы OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[Сайт OpenSable](https://opensable.com/)** · **[Блог OpenSable](https://opensable.com/blog/)** · **[Релизы OpenSable](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-Лицензия MIT · Сделано в [OpenSable](https://www.opensable.ai)
+Лицензия MIT · Сделано в [OpenSable](https://opensable.com)
 
 <br />
 

@@ -111,7 +111,7 @@ export default function Sidebar() {
             <img
               src={logoImage}
               alt="OpenSable"
-              className="dark:invert"
+              className="invert dark:invert-0"
               style={{ height: '20px', paddingLeft: '6px' }}
             />
           </div>

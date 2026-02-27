@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import logoImage from '/assets/logo-1.png';
 
 export default function Header() {
   const location = useLocation();
@@ -12,22 +13,12 @@ export default function Header() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
         <Link to="/" className="no-drag flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-            <svg
-              className="h-4 w-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-          </div>
-          <span className="text-base font-medium text-text">{t('app.name')}</span>
+          <img
+            src={logoImage}
+            alt="OpenSable"
+            className="invert dark:invert-0"
+            style={{ height: '22px' }}
+          />
         </Link>
 
         {/* Navigation */}

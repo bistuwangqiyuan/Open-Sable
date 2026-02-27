@@ -315,6 +315,7 @@ const opensableAPI = {
 
   // E2E Testing
   isE2EMode: (): Promise<boolean> => ipcRenderer.invoke('app:is-e2e-mode'),
+  isOpenSableMode: (): Promise<boolean> => ipcRenderer.invoke('app:is-opensable-mode'),
 
   // New Provider Settings API
   getProviderSettings: (): Promise<unknown> => ipcRenderer.invoke('provider-settings:get'),

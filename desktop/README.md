@@ -32,9 +32,9 @@ OpenSable is an open source AI desktop agent that automates file management, doc
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>Download for Windows 11</strong></a>
   ·
-  <a href="https://www.opensable.ai/">OpenSable website</a>
+  <a href="https://opensable.com/">OpenSable website</a>
   ·
-  <a href="https://www.opensable.ai/blog/">OpenSable blog</a>
+  <a href="https://opensable.com/blog/">OpenSable blog</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">OpenSable releases</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[OpenSable website](https://www.opensable.ai/)** · **[OpenSable blog](https://www.opensable.ai/blog/)** · **[OpenSable releases](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[OpenSable website](https://opensable.com/)** · **[OpenSable blog](https://opensable.com/blog/)** · **[OpenSable releases](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-MIT License · Built by [OpenSable](https://www.opensable.ai)
+MIT License · Built by [OpenSable](https://opensable.com)
 
 <br />
 

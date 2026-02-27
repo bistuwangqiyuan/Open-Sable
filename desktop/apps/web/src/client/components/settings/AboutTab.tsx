@@ -20,7 +20,7 @@ export function AboutTab({ appVersion }: AboutTabProps) {
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              www.opensable.ai
+              opensable.com
             </a>
           </div>
           <div>

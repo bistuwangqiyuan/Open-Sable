@@ -32,9 +32,9 @@ OpenSable, bilgisayarınızda yerel olarak dosya yönetimi, belge oluşturma ve 
   ·
   <a href="https://downloads.opensable.ai/downloads/0.3.10/windows/OpenSable-0.3.10-win-x64.exe"><strong>Windows 11 için İndirin</strong></a>
   ·
-  <a href="https://www.opensable.ai/">OpenSable web sitesi</a>
+  <a href="https://opensable.com/">OpenSable web sitesi</a>
   ·
-  <a href="https://www.opensable.ai/blog/">OpenSable blogu</a>
+  <a href="https://opensable.com/blog/">OpenSable blogu</a>
   ·
   <a href="https://github.com/opensable/opensable/releases">OpenSable sürümleri</a>
 </p>
@@ -318,11 +318,11 @@ git push origin feature/amazing-feature
 
 <div align="center">
 
-**[OpenSable web sitesi](https://www.opensable.ai/)** · **[OpenSable blogu](https://www.opensable.ai/blog/)** · **[OpenSable sürümleri](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
+**[OpenSable web sitesi](https://opensable.com/)** · **[OpenSable blogu](https://opensable.com/blog/)** · **[OpenSable sürümleri](https://github.com/opensable/opensable/releases)** · **[Issues](https://github.com/opensable/opensable/issues)** · **[Twitter](https://x.com/OpenSable)**
 
 <br />
 
-MIT Lisansı · [OpenSable](https://www.opensable.ai) tarafından yapıldı
+MIT Lisansı · [OpenSable](https://opensable.com) tarafından yapıldı
 
 <br />
 
