@@ -149,6 +149,7 @@ export function useWebSocket() {
       ws.send(JSON.stringify({ type: 'status' }));
       ws.send(JSON.stringify({ type: 'sessions.list' }));
       ws.send(JSON.stringify({ type: 'monitor.subscribe' }));
+      ws.send(JSON.stringify({ type: 'thoughts.list', limit: 500 }));
     };
 
     ws.onclose = () => {

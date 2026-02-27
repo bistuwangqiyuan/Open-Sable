@@ -164,7 +164,7 @@ function fmtDate(ts) {
 }
 
 // ── Main Component ───────────────────────────────────────────────────
-export default function ThoughtsPanel({ ws, thoughts: data }) {
+export default function ThoughtsPanel({ ws, thoughts: data, connected }) {
   const [subTab, setSubTab] = useState('stream');
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -172,17 +172,16 @@ export default function ThoughtsPanel({ ws, thoughts: data }) {
   const bodyRef = useRef(null);
 
   const fetchThoughts = useCallback(() => {
-    if (!ws?.current?.readyState || ws.current.readyState !== WebSocket.OPEN) return;
+    if (!ws?.current || ws.current.readyState !== WebSocket.OPEN) return;
     setLoading(true);
     ws.current.send(JSON.stringify({ type: 'thoughts.list', limit: 500 }));
-    // Loading will reset when data arrives
     setTimeout(() => setLoading(false), 3000);
   }, [ws]);
 
-  // Auto-fetch on mount
+  // Fetch when panel mounts or when WS connects/reconnects
   useEffect(() => {
-    fetchThoughts();
-  }, [fetchThoughts]);
+    if (connected) fetchThoughts();
+  }, [connected, fetchThoughts]);
 
   // Reset loading when data arrives
   useEffect(() => {

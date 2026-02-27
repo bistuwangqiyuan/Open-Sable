@@ -42,7 +42,7 @@ export default function App() {
     trading:  { stats: ws.stats, messages: ws.messages, streaming: ws.streaming, sendMessage: ws.sendMessage },
     tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
     history:  { messages: ws.messages, sessions: ws.sessions },
-    thoughts: { ws: ws.wsRef, thoughts: ws.thoughts },
+    thoughts: { ws: ws.wsRef, thoughts: ws.thoughts, connected: ws.connected },
     qr:       {},
     agent:    {},
     devices:  {},
