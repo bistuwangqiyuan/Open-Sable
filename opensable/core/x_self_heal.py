@@ -188,6 +188,15 @@ KNOWN_ERRORS: List[ErrorPattern] = [
         description="Grok API failed. Fallback to LLM.",
     ),
     ErrorPattern(
+        name="daily_limit",
+        pattern=r"reached your daily limit|daily limit for sending Tweets|\b344\b",
+        severity=Severity.MEDIUM,
+        remedy="pause_until_midnight",
+        params={},
+        cooldown=86400,
+        description="Twitter daily post limit (344). Block posting until midnight, no emergency pause.",
+    ),
+    ErrorPattern(
         name="permission_error",
         pattern=r"Permissions.*Error|AuthorizationError|suspended|locked",
         severity=Severity.CRITICAL,
@@ -290,6 +299,8 @@ class RemedyEngine:
                 result.update(self._fallback_llm())
             elif remedy == "emergency_pause":
                 result.update(await self._emergency_pause(params))
+            elif remedy == "pause_until_midnight":
+                result.update(self._pause_until_midnight())
             elif remedy == "grok_custom_fix":
                 result.update(await self._grok_custom_fix(error_context))
             else:
@@ -465,6 +476,26 @@ class RemedyEngine:
             "action": "emergency_pause",
             "resume_at": resume_at.isoformat(),
             "grok_advice": grok_advice,
+        }
+
+    def _pause_until_midnight(self) -> Dict:
+        """Twitter 344: daily post limit hit. Pause post/trend loops until midnight UTC."""
+        now = datetime.utcnow()
+        midnight = (now + timedelta(days=1)).replace(hour=0, minute=5, second=0, microsecond=0)
+        for loop in ["post", "trend"]:
+            self._paused_loops[loop] = midnight
+        # Also set the flag on the agent if it has one
+        if hasattr(self._agent, '_daily_limit_hit'):
+            self._agent._daily_limit_hit = True
+        minutes_left = int((midnight - now).total_seconds() / 60)
+        logger.warning(
+            f"\U0001f6ab Daily post limit (344) — posting paused for {minutes_left}min until midnight UTC. "
+            f"Engagement and browsing continue normally."
+        )
+        return {
+            "action": "pause_until_midnight",
+            "resume_at": midnight.isoformat(),
+            "loops_paused": ["post", "trend"],
         }
 
     async def _grok_custom_fix(self, error_context: str) -> Dict:

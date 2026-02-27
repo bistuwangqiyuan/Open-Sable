@@ -154,7 +154,7 @@ class XAutonomousAgent:
         self.topics = [t.strip() for t in getattr(config, "x_topics", "geopolitics,tech,ai").split(",") if t.strip()]
         self.language = getattr(config, "x_language", "en")
         self.style = getattr(config, "x_style", "analyst")
-        self.max_daily_posts = int(getattr(config, "x_max_daily_posts", 20))
+        self.max_daily_posts = int(getattr(config, "x_max_daily_posts", 5))
         self.max_daily_engagements = int(getattr(config, "x_max_daily_engagements", 100))
         self.dry_run = getattr(config, "x_dry_run", False)
         self.custom_feeds = [f.strip() for f in getattr(config, "x_custom_feeds", "").split(",") if f.strip()]
@@ -176,6 +176,7 @@ class XAutonomousAgent:
         self._max_grok_vision_daily = int(getattr(config, "x_max_daily_vision", 15))
         self._max_grok_images_daily = int(getattr(config, "x_max_daily_images", 4))
         self._last_reset = datetime.now().date()
+        self._daily_limit_hit: bool = False  # True when X 344 daily cap is reached
         self._posted_urls: set = set()
         self._engaged_tweet_ids: set = set()
         self._followed_users: set = set()
@@ -288,6 +289,7 @@ class XAutonomousAgent:
             self._grok_vision_today = 0
             self._grok_images_today = 0
             self._last_reset = today
+            self._daily_limit_hit = False  # New day — reset cap flag
 
     def _x(self):
         """Shortcut to XSkill."""
@@ -395,7 +397,7 @@ class XAutonomousAgent:
 
         # ── Post if inspired or if it's been long enough ──
         since_post = self._seconds_since(self._last_post_at)
-        if self._posts_today < self.max_daily_posts:
+        if self._posts_today < self.max_daily_posts and not self._daily_limit_hit:
             post_overdue = since_post is None or since_post > self.post_interval
             # Inspiration boosts posting probability (0.2 base -> up to 0.6)
             post_chance = 0.20 + self._inspiration_level * 0.4
@@ -403,7 +405,7 @@ class XAutonomousAgent:
                 activities.append({"type": "post_original", "pause_key": "post"})
 
         # ── Join a trend occasionally (12%) ──
-        if random.random() < 0.12 and self._posts_today < self.max_daily_posts:
+        if random.random() < 0.12 and self._posts_today < self.max_daily_posts and not self._daily_limit_hit:
             activities.append({"type": "join_trend", "pause_key": "trend"})
 
         # ── Maybe browse more at the end (25%) ──
@@ -1655,10 +1657,15 @@ class XAutonomousAgent:
                     content["text"],
                     media_paths=media_paths,
                 )
-            # Check for 226 in result
+            # Check for error codes in result
             error_str = str(result.get("error", ""))
-            if not result.get("success") and ("226" in error_str or "automated" in error_str.lower()):
-                logger.warning("\U0001f6ab Post rejected (226) — account flagged as automated")
+            if not result.get("success"):
+                if "344" in error_str or "daily limit" in error_str.lower():
+                    self._daily_limit_hit = True
+                    self._save_state()
+                    logger.warning("\U0001f6ab X daily post limit (344) hit — posting blocked until midnight")
+                elif "226" in error_str or "automated" in error_str.lower():
+                    logger.warning("\U0001f6ab Post rejected (226) — account flagged as automated")
             return result
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -1804,6 +1811,7 @@ class XAutonomousAgent:
                 "saved_at": datetime.now().isoformat(),
                 "last_post_at": self._last_post_at.isoformat() if getattr(self, '_last_post_at', None) else None,
                 "last_engage_at": self._last_engage_at.isoformat() if getattr(self, '_last_engage_at', None) else None,
+                "daily_limit_hit": getattr(self, '_daily_limit_hit', False),
             }
             self._state_file.write_text(json.dumps(state, indent=2, default=str))
         except Exception as e:
@@ -1826,6 +1834,10 @@ class XAutonomousAgent:
             if state.get("last_reset") == str(datetime.now().date()):
                 self._posts_today = state.get("posts_today", 0)
                 self._engagements_today = state.get("engagements_today", 0)
+                self._daily_limit_hit = state.get("daily_limit_hit", False)
+
+            if self._daily_limit_hit:
+                logger.warning("\U0001f6ab Daily post limit was hit today — posting stays blocked until midnight")
 
             logger.info(
                 f"Loaded: {len(self._posted_urls)} posted, "

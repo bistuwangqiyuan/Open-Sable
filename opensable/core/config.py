@@ -70,7 +70,7 @@ class OpenSableConfig(BaseModel):
     x_post_interval: int = 1800  # seconds between posts (default 30 min)
     x_topics: str = "geopolitics,tech,ai"
     x_style: str = "analyst"  # analyst, news, meme, thread
-    x_max_daily_posts: int = 20
+    x_max_daily_posts: int = 5
     x_max_daily_engagements: int = 100
     x_dry_run: bool = False
     x_custom_feeds: str = ""  # comma-separated RSS URLs
@@ -267,7 +267,7 @@ def load_config() -> OpenSableConfig:
         "x_post_interval": int(os.getenv("X_POST_INTERVAL", "1800")),
         "x_topics": os.getenv("X_TOPICS", "geopolitics,tech,ai"),
         "x_style": os.getenv("X_STYLE", "analyst"),
-        "x_max_daily_posts": int(os.getenv("X_MAX_DAILY_POSTS", "20")),
+        "x_max_daily_posts": int(os.getenv("X_MAX_DAILY_POSTS", "5")),
         "x_max_daily_engagements": int(os.getenv("X_MAX_DAILY_ENGAGEMENTS", "100")),
         "x_dry_run": os.getenv("X_DRY_RUN", "false").lower() == "true",
         "x_custom_feeds": os.getenv("X_CUSTOM_FEEDS", ""),
