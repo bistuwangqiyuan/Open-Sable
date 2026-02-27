@@ -194,6 +194,22 @@ class GrokSkill:
             full_response = "".join(chunks)
             await asyncio.sleep(1)
 
+            # ── Detect API error responses disguised as success ──────
+            # Grok sometimes returns JSON error dicts instead of raising,
+            # e.g. {'errors': [{'message': 'Sorry, that page does not exist', 'code': 34}]}
+            resp_stripped = full_response.strip()
+            if (
+                not resp_stripped
+                or resp_stripped.startswith("{'errors'")
+                or resp_stripped.startswith('{"errors"')
+                or '"code": 34' in resp_stripped
+                or "'code': 34" in resp_stripped
+                or "page does not exist" in resp_stripped.lower()
+            ):
+                error_msg = f"Grok returned API error: {resp_stripped[:200]}"
+                logger.warning(error_msg)
+                return {"success": False, "error": error_msg}
+
             return {
                 "success": True,
                 "response": full_response,

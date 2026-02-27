@@ -255,6 +255,221 @@ def install_aggr():
         return False
 
 
+def ensure_nodejs():
+    """Check Node.js is available, return version string or None"""
+    try:
+        result = subprocess.run(["node", "--version"], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def install_nodejs_if_missing():
+    """Install Node.js via nvm if not present"""
+    if ensure_nodejs():
+        return True
+
+    print("   📥 Node.js not found — installing via nvm...")
+    os_type = platform.system()
+    try:
+        if os_type == "Linux" or os_type == "Darwin":
+            subprocess.run(
+                ["bash", "-c",
+                 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash '
+                 '&& export NVM_DIR="$HOME/.nvm" '
+                 '&& [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" '
+                 '&& nvm install --lts'],
+                check=True,
+            )
+            print("✅ Node.js installed via nvm")
+            return True
+        else:
+            print("⚠️  Please install Node.js manually: https://nodejs.org")
+            return False
+    except subprocess.CalledProcessError:
+        print("⚠️  Failed to install Node.js automatically")
+        print("   Install manually: https://nodejs.org")
+        return False
+
+
+def install_pnpm_if_missing():
+    """Install pnpm if not present"""
+    try:
+        result = subprocess.run(["pnpm", "--version"], capture_output=True, text=True)
+        if result.returncode == 0:
+            return True
+    except FileNotFoundError:
+        pass
+
+    print("   📥 pnpm not found — installing...")
+    try:
+        subprocess.run(["npm", "install", "-g", "pnpm"], check=True)
+        print("✅ pnpm installed")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        try:
+            subprocess.run(
+                ["bash", "-c", "curl -fsSL https://get.pnpm.io/install.sh | sh -"],
+                check=True,
+            )
+            print("✅ pnpm installed via standalone script")
+            return True
+        except subprocess.CalledProcessError:
+            print("⚠️  Failed to install pnpm")
+            return False
+
+
+def install_dashboard():
+    """Build the React dashboard (Vite + React SPA served by the gateway)"""
+    print("\n📊 Setting up React Dashboard...")
+
+    dashboard_dir = Path("dashboard")
+    dist_dir = dashboard_dir / "dist"
+
+    if dist_dir.exists() and (dist_dir / "index.html").exists():
+        print("✅ Dashboard already built")
+        return True
+
+    if not dashboard_dir.exists() or not (dashboard_dir / "package.json").exists():
+        print("⚠️  dashboard/ folder not found — skipping")
+        return False
+
+    node_ver = ensure_nodejs()
+    if not node_ver:
+        if not install_nodejs_if_missing():
+            print("⚠️  Node.js required for dashboard — skipping")
+            return False
+        node_ver = ensure_nodejs()
+
+    print(f"   Node.js {node_ver} detected")
+
+    try:
+        print("   📦 Installing dashboard dependencies...")
+        subprocess.run(["npm", "install"], cwd=str(dashboard_dir), check=True)
+        print("   🔨 Building dashboard...")
+        subprocess.run(["npm", "run", "build"], cwd=str(dashboard_dir), check=True)
+
+        if dist_dir.exists() and (dist_dir / "index.html").exists():
+            print("✅ Dashboard built successfully")
+            return True
+        else:
+            print("⚠️  Dashboard build completed but dist not found")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Dashboard build failed: {e}")
+        print("   You can build manually: cd dashboard && npm install && npm run build")
+        return False
+
+
+def install_marketplace():
+    """Build the Skills Marketplace (Express server + React client)"""
+    print("\n🏪 Setting up Skills Marketplace...")
+
+    server_dir = Path("marketplace/server")
+    client_dir = Path("marketplace/client")
+
+    if not server_dir.exists() or not client_dir.exists():
+        print("⚠️  marketplace/ folder not found — skipping")
+        return False
+
+    node_ver = ensure_nodejs()
+    if not node_ver:
+        if not install_nodejs_if_missing():
+            print("⚠️  Node.js required for marketplace — skipping")
+            return False
+
+    # Build server
+    if (server_dir / "package.json").exists():
+        try:
+            print("   📦 Installing marketplace server dependencies...")
+            subprocess.run(["npm", "install"], cwd=str(server_dir), check=True)
+            print("✅ Marketplace server ready")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Marketplace server setup failed: {e}")
+
+    # Build client
+    if (client_dir / "package.json").exists():
+        client_built = (client_dir / "build" / "index.html").exists()
+        if client_built:
+            print("✅ Marketplace client already built")
+        else:
+            try:
+                print("   📦 Installing marketplace client dependencies...")
+                subprocess.run(["npm", "install"], cwd=str(client_dir), check=True)
+                print("   🔨 Building marketplace client...")
+                subprocess.run(["npm", "run", "build"], cwd=str(client_dir), check=True)
+                print("✅ Marketplace client built")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠️  Marketplace client build failed: {e}")
+                print("   Build manually: cd marketplace/client && npm install && npm run build")
+
+    return True
+
+
+def install_desktop():
+    """Set up the OpenSable Desktop Agent (Electron app)"""
+    print("\n🖥️  Setting up Desktop Agent...")
+
+    desktop_dir = Path("desktop")
+
+    if not desktop_dir.exists() or not (desktop_dir / "package.json").exists():
+        print("⚠️  desktop/ folder not found — skipping")
+        return False
+
+    # Check if already built
+    dist_electron = desktop_dir / "apps" / "desktop" / "dist-electron"
+    if dist_electron.exists() and list(dist_electron.glob("main/*.js")):
+        print("✅ Desktop agent already built")
+        return True
+
+    node_ver = ensure_nodejs()
+    if not node_ver:
+        if not install_nodejs_if_missing():
+            print("⚠️  Node.js required for desktop agent — skipping")
+            return False
+
+    if not install_pnpm_if_missing():
+        print("⚠️  pnpm required for desktop agent — skipping")
+        return False
+
+    try:
+        print("   📦 Installing desktop dependencies (this may take a few minutes)...")
+        subprocess.run(
+            ["pnpm", "install", "--no-frozen-lockfile"],
+            cwd=str(desktop_dir),
+            check=True,
+            env={**subprocess.os.environ, "COREPACK_ENABLE_STRICT": "0"},
+        )
+
+        # Build web renderer
+        print("   🔨 Building web renderer...")
+        subprocess.run(
+            ["pnpm", "-F", "@opensable/web", "build"],
+            cwd=str(desktop_dir),
+            check=True,
+        )
+
+        # Build desktop (TypeScript + Vite)
+        print("   🔨 Building desktop agent...")
+        desktop_app = desktop_dir / "apps" / "desktop"
+        subprocess.run(["npx", "tsc"], cwd=str(desktop_app), check=True)
+        subprocess.run(["npx", "vite", "build"], cwd=str(desktop_app), check=True)
+
+        if dist_electron.exists():
+            print("✅ Desktop agent built successfully")
+            print("   Launch with: OPENSABLE_API_URL=ws://127.0.0.1:8789 cd desktop && pnpm dev")
+            return True
+        else:
+            print("⚠️  Desktop build completed but dist-electron not found")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Desktop agent build failed: {e}")
+        print("   Build manually: cd desktop && pnpm install && pnpm -F @opensable/web build && cd apps/desktop && npx tsc && npx vite build")
+        return False
+
+
 def install_whatsapp_bridge():
     """Install WhatsApp bridge (whatsapp-web.js) for WhatsApp integration"""
     print("\n💬 Install WhatsApp bridge? (y/n): ", end="")
@@ -570,6 +785,17 @@ def main():
 
     # Install Aggr.trade charts
     install_aggr()
+
+    # Install React Dashboard
+    install_dashboard()
+
+    # Install Skills Marketplace
+    install_marketplace()
+
+    # Install Desktop Agent (optional)
+    print("\n🖥️  Install Desktop Agent (Electron app)? (y/n): ", end="")
+    if input().strip().lower() in ("y", "yes", ""):
+        install_desktop()
 
     # Install WhatsApp bridge
     install_whatsapp_bridge()

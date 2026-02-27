@@ -18,6 +18,7 @@ export function useWebSocket() {
   const [stats, setStats] = useState({});
   const [sessions, setSessions] = useState([]);
   const [model, setModel] = useState('');
+  const [thoughts, setThoughts] = useState(null);
 
   const wsRef = useRef(null);
   const streamBuf = useRef('');
@@ -130,6 +131,9 @@ export function useWebSocket() {
       case 'monitor.snapshot':
         if (msg.model) setModel(msg.model);
         break;
+      case 'thoughts.list.result':
+        setThoughts(msg);
+        break;
       default:
         break;
     }
@@ -184,7 +188,7 @@ export function useWebSocket() {
   const clearTerminal = useCallback(() => setTerminal([]), []);
 
   return {
-    connected, streaming, messages, activity, terminal, stats, sessions, model,
-    sendMessage, clearMessages, clearActivity, clearTerminal,
+    connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts,
+    sendMessage, clearMessages, clearActivity, clearTerminal, wsRef,
   };
 }

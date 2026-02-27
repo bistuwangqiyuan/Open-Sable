@@ -339,7 +339,13 @@ class AdaptiveLLM:
                     role = m.get("role", "user")
                     plain_msgs.append({"role": role, "content": m.get("content", "")})
                 resp = await client.chat(model=self.current_model, messages=plain_msgs)
-                return {"tool_call": None, "tool_calls": [], "text": resp.get("message", {}).get("content", "")}
+                raw_text = resp.get("message", {}).get("content", "")
+                clean_text, reasoning = parse_thinking(raw_text)
+                result = {"tool_call": None, "tool_calls": [], "text": clean_text}
+                if reasoning:
+                    result["reasoning"] = reasoning
+                    logger.info(f"💭 DeepSeek reasoning captured ({len(reasoning)} chars)")
+                return result
             except Exception as e2:
                 logger.error(f"Fallback also failed: {e2}")
                 return {"tool_call": None, "tool_calls": [], "text": f"Error: {e}"}

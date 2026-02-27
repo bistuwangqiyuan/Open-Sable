@@ -12,6 +12,7 @@ import HistoryPanel from './components/assistant/HistoryPanel';
 import QRPanel from './components/agent/QRPanel';
 import AgentPanel from './components/agent/AgentPanel';
 import DevicesPanel from './components/agent/DevicesPanel';
+import ThoughtsPanel from './components/agent/ThoughtsPanel';
 import SettingsPanel from './components/settings/SettingsPanel';
 
 const panels = {
@@ -22,6 +23,7 @@ const panels = {
   trading: TradingPanel,
   tasks: TaskPanel,
   history: HistoryPanel,
+  thoughts: ThoughtsPanel,
   qr: QRPanel,
   agent: AgentPanel,
   devices: DevicesPanel,
@@ -40,6 +42,7 @@ export default function App() {
     trading:  { stats: ws.stats, messages: ws.messages, streaming: ws.streaming, sendMessage: ws.sendMessage },
     tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
     history:  { messages: ws.messages, sessions: ws.sessions },
+    thoughts: { ws: ws.wsRef, thoughts: ws.thoughts },
     qr:       {},
     agent:    {},
     devices:  {},

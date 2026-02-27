@@ -135,3 +135,12 @@ website/
 site/
 /data/benchmarks
 mobile/app.json
+
+# Desktop Electron app
+desktop/node_modules/
+desktop/dist/
+desktop/dist-electron/
+desktop/release/
+desktop/out/
+desktop/.env
+.desktop.pid

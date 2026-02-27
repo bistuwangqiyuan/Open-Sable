@@ -594,6 +594,8 @@ class Gateway:
             await self._on_monitor_subscribe(client)
         elif t == "monitor.snapshot":
             await self._on_monitor_snapshot(client)
+        elif t == "thoughts.list":
+            await self._on_thoughts_list(client, msg)
         elif t == "status":
             status = self.status()
             # Add model info from agent
@@ -716,6 +718,82 @@ class Gateway:
         if hasattr(self.agent, "get_monitor_snapshot"):
             snapshot = self.agent.get_monitor_snapshot()
             await client.send(snapshot)
+
+    # ── Thoughts / Consciousness stream ───────────────────────────────────────
+
+    async def _on_thoughts_list(self, client: _Client, msg: dict):
+        """Return the agent's consciousness stream — thoughts, emotions, decisions,
+        reflections, and all journal events.  Used by the dashboard Thoughts panel."""
+        limit = min(int(msg.get("limit", 200)), 1000)
+        filter_type = msg.get("filter")  # optional: "thought", "felt", "posted", etc.
+
+        base = Path("data/x_consciousness")
+        result: dict = {"type": "thoughts.list.result"}
+
+        # ── Journal (all events) ──
+        journal_entries: list = []
+        journal_file = base / "journal.jsonl"
+        if journal_file.exists():
+            try:
+                with open(journal_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            entry = json.loads(line)
+                            if filter_type and entry.get("type") != filter_type:
+                                continue
+                            journal_entries.append(entry)
+                        except json.JSONDecodeError:
+                            pass
+            except Exception:
+                pass
+        result["journal"] = journal_entries[-limit:]
+
+        # ── Inner monologue (deep thoughts) ──
+        thoughts: list = []
+        thoughts_file = base / "inner_monologue.jsonl"
+        if thoughts_file.exists():
+            try:
+                with open(thoughts_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            try:
+                                thoughts.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                pass
+            except Exception:
+                pass
+        result["thoughts"] = thoughts[-limit:]
+
+        # ── Reflections ──
+        reflections_file = base / "reflections.json"
+        if reflections_file.exists():
+            try:
+                with open(reflections_file) as f:
+                    result["reflections"] = json.loads(f.read())[-50:]
+            except Exception:
+                result["reflections"] = []
+        else:
+            result["reflections"] = []
+
+        # ── Current emotional state ──
+        xmind = getattr(getattr(self.agent, "tools", None), "x_autoposter", None)
+        if xmind and hasattr(xmind, "mind"):
+            mind = xmind.mind
+            result["mood"] = {
+                "current": getattr(mind, "_mood", "unknown"),
+                "intensity": getattr(mind, "_mood_intensity", 0),
+                "history": getattr(mind, "_mood_history", [])[-20:],
+            }
+            result["memory_stats"] = mind.get_memory_stats() if hasattr(mind, "get_memory_stats") else {}
+        else:
+            result["mood"] = {"current": "unknown", "intensity": 0, "history": []}
+            result["memory_stats"] = {}
+
+        await client.send(result)
 
     # ── Node system ───────────────────────────────────────────────────────────
 

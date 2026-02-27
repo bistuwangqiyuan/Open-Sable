@@ -86,6 +86,110 @@ patch_aggr_tracking() {
     echo "   \U0001f6e1  Tracking stripped + base href fixed"
 }
 
+ensure_dashboard() {
+    # Auto-build React dashboard if not built yet
+    local dashdir="$DIR/dashboard"
+    if [ -f "$dashdir/dist/index.html" ]; then
+        return 0
+    fi
+    if [ ! -f "$dashdir/package.json" ]; then
+        echo "⏭️  Dashboard skipped (folder not found)"
+        return 0
+    fi
+    if ! command -v node &>/dev/null || ! command -v npm &>/dev/null; then
+        echo "⏭️  Dashboard skipped (Node.js not found)"
+        return 0
+    fi
+    echo "📊 Building React Dashboard..."
+    (cd "$dashdir" && npm install && npm run build) || {
+        echo "⚠️  Dashboard build failed — continuing without it"
+        return 0
+    }
+    [ -f "$dashdir/dist/index.html" ] && echo "✅ Dashboard ready" || echo "⚠️  Dashboard dist not found"
+}
+
+ensure_marketplace() {
+    # Auto-install marketplace server deps if needed
+    local srvdir="$DIR/marketplace/server"
+    local clidir="$DIR/marketplace/client"
+    if [ ! -f "$srvdir/package.json" ]; then
+        return 0
+    fi
+    if ! command -v node &>/dev/null; then
+        return 0
+    fi
+    # Install server deps if node_modules missing
+    if [ ! -d "$srvdir/node_modules" ]; then
+        echo "🏪 Installing Marketplace server..."
+        (cd "$srvdir" && npm install) || echo "⚠️  Marketplace server install failed"
+    fi
+    # Build client if not built
+    if [ -f "$clidir/package.json" ] && [ ! -f "$clidir/build/index.html" ]; then
+        echo "🏪 Building Marketplace client..."
+        (cd "$clidir" && npm install && npm run build) || echo "⚠️  Marketplace client build failed"
+    fi
+}
+
+start_desktop() {
+    # Start the desktop Electron agent if DESKTOP_ENABLED=true
+    local desktop_enabled
+    desktop_enabled=$(grep -E '^DESKTOP_ENABLED=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [ "$desktop_enabled" != "true" ]; then
+        return 0
+    fi
+
+    local deskdir="$DIR/desktop"
+    if [ ! -f "$deskdir/package.json" ]; then
+        echo "⚠️  Desktop agent folder not found — set DESKTOP_ENABLED=false or run install.py"
+        return 0
+    fi
+
+    if ! command -v pnpm &>/dev/null; then
+        echo "⚠️  pnpm not found — desktop agent requires pnpm"
+        return 0
+    fi
+
+    # Auto-build if not built
+    local dist_electron="$deskdir/apps/desktop/dist-electron"
+    if [ ! -d "$dist_electron" ] || [ -z "$(ls -A "$dist_electron/main/" 2>/dev/null)" ]; then
+        echo "🖥️  Building Desktop Agent..."
+        (cd "$deskdir" && COREPACK_ENABLE_STRICT=0 pnpm install --no-frozen-lockfile && \
+         pnpm -F @opensable/web build && \
+         cd apps/desktop && npx tsc && npx vite build) || {
+            echo "⚠️  Desktop agent build failed — skipping"
+            return 0
+        }
+    fi
+
+    # Read gateway config for the desktop app
+    local api_url
+    api_url=$(grep -E '^OPENSABLE_API_URL=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    local sable_token
+    sable_token=$(grep -E '^WEBCHAT_TOKEN=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+
+    echo "🖥️  Starting Desktop Agent..."
+    OPENSABLE_API_URL="${api_url:-ws://127.0.0.1:8789}" \
+    SABLE_TOKEN="${sable_token}" \
+    nohup pnpm --dir "$deskdir" dev >> "$DIR/logs/desktop.log" 2>&1 &
+    echo $! > "$DIR/.desktop.pid"
+    echo "✅ Desktop Agent started (PID $(cat "$DIR/.desktop.pid"))"
+}
+
+stop_desktop() {
+    local pidfile="$DIR/.desktop.pid"
+    if [ -f "$pidfile" ]; then
+        local pid
+        pid=$(cat "$pidfile")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "🛑 Stopping Desktop Agent (PID $pid)..."
+            kill "$pid" 2>/dev/null
+            sleep 2
+            kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+        fi
+        rm -f "$pidfile"
+    fi
+}
+
 do_start() {
     if is_running; then
         echo "⚠️  Already running (PID $(cat "$PIDFILE"))"
@@ -95,6 +199,12 @@ do_start() {
 
     # Ensure aggr is installed
     ensure_aggr
+
+    # Ensure React dashboard is built
+    ensure_dashboard
+
+    # Ensure marketplace is ready
+    ensure_marketplace
 
     mkdir -p "$DIR/logs"
     echo "🚀 Starting Open-Sable..."
@@ -106,6 +216,9 @@ do_start() {
         echo "✅ Running (PID $(cat "$PIDFILE"))"
         echo "   Logs: ./start.sh logs"
         echo "   Stop: ./start.sh stop"
+
+        # Start desktop agent if enabled
+        start_desktop
     else
         echo "❌ Failed to start. Check: tail -50 $LOGFILE"
         rm -f "$PIDFILE"
@@ -114,6 +227,9 @@ do_start() {
 }
 
 do_stop() {
+    # Stop desktop agent first
+    stop_desktop
+
     if ! is_running; then
         echo "ℹ️  Not running"
         return

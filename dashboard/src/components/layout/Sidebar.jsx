@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   MessageSquare, Activity, Terminal, BarChart3,
   QrCode, Settings, Cpu, Smartphone,
-  TrendingUp, Sparkles, Clock,
+  TrendingUp, Sparkles, Clock, Brain,
 } from 'lucide-react';
 
 const tabs = [
@@ -13,6 +13,7 @@ const tabs = [
   { id: 'trading',  icon: TrendingUp,    label: 'Trading' },
   { id: 'tasks',    icon: Sparkles,      label: 'Tasks' },
   { id: 'history',  icon: Clock,         label: 'History' },
+  { id: 'thoughts', icon: Brain,         label: 'Thoughts' },
   { id: 'qr',       icon: QrCode,        label: 'QR Pair' },
   { id: 'agent',    icon: Cpu,           label: 'Agent' },
   { id: 'devices',  icon: Smartphone,    label: 'Devices' },
@@ -46,7 +47,7 @@ export default function Sidebar({ tab, onTabChange, streaming }) {
     <div style={sidebarStyles.sidebar}>
       {tabs.map((t, i) => (
         <div key={t.id}>
-          {(i === 4 || i === 7) && <div style={sidebarStyles.sep} />}
+          {(i === 4 || i === 8) && <div style={sidebarStyles.sep} />}
           <button
             style={{ ...sidebarStyles.btn, ...(tab === t.id ? sidebarStyles.active : {}),
               color: tab === t.id ? 'var(--accent-light)' : undefined }}

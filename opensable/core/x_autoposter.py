@@ -826,12 +826,15 @@ class XAutonomousAgent:
 
             if result and result.get("success"):
                 desc = result.get("response", "").strip()
-                if desc:
+                # Validate: reject API error strings that leaked through
+                if desc and not self._is_error_response(desc):
                     logger.info(
                         f"\U0001f441 X vision [{self._grok_vision_today}/{self._max_grok_vision_daily}]: "
                         f"analyzed {len(local_paths)} image(s) — {desc[:80]}..."
                     )
                     return desc
+                else:
+                    logger.warning(f"\U0001f441 X vision: rejected invalid description — {str(desc)[:100]}")
         except Exception as e:
             logger.debug(f"Tweet media analysis failed: {e}")
         finally:
@@ -844,6 +847,75 @@ class XAutonomousAgent:
                     pass
 
         return None
+
+    @staticmethod
+    def _is_meta_response(text: str) -> bool:
+        """Detect when the LLM echoes/summarises its system prompt instead of
+        generating actual post content. These must NEVER be posted."""
+        if not text:
+            return True
+        t = text.strip().lower()
+        # Starts with a role label (model echoing message structure)
+        if re.match(r'^(system|user|assistant|human)\s*[:;\n]', t):
+            return True
+        # Model describes its own instructions
+        meta_phrases = [
+            "the user has provided",
+            "the user provided",
+            "i have been given",
+            "i've been given",
+            "i was given",
+            "my instructions",
+            "my system prompt",
+            "the system prompt",
+            "the instructions say",
+            "i am instructed to",
+            "i'm instructed to",
+            "as per my instructions",
+            "according to my instructions",
+            "the prompt says",
+            "the prompt asks",
+            "based on the instructions",
+            "based on these instructions",
+            "based on the context provided",
+            "extensive instructions",
+            "generating posts as",
+            "autonomous entity named",
+            "soul document",
+            "core identity",
+            "engagement strategies",
+            "here is a summary",
+            "here's a summary",
+            "let me summarize",
+            "let me analyse",
+            "let me analyze",
+            "here are the key points",
+            "the following instructions",
+        ]
+        return any(phrase in t for phrase in meta_phrases)
+
+    @staticmethod
+    def _is_error_response(text: str) -> bool:
+        """Detect API error responses that leaked through as 'successful' descriptions."""
+        if not text:
+            return True
+        t = text.lower().strip()
+        error_indicators = [
+            "{'errors'",
+            '{"errors"',
+            "page does not exist",
+            "sorry, that page",
+            "'code': 34",
+            '"code": 34',
+            '"code":34',
+            "rate limit",
+            "unauthorized",
+            "forbidden",
+            "internal server error",
+            "bad gateway",
+            "service unavailable",
+        ]
+        return any(indicator in t for indicator in error_indicators)
 
     def _should_analyze_media(self, tweet_text: str, media_items: list) -> bool:
         """Decide if the agent should spend a Grok vision call on this tweet.
@@ -1295,13 +1367,23 @@ class XAutonomousAgent:
             "descriptions of images/videos, disclaimers, tone annotations, "
             "or parenthetical remarks about how you are replying. "
             "No brackets like [Visual note:...] or parentheticals like (Replying in...). "
+            "Do NOT wrap your reasoning in <think> tags. "
             "Just the raw post text, nothing else."
         )
         text = await self._ask_llm(system_prompt, user_prompt)
+        if not text:
+            text = await self._ask_grok(system_prompt, user_prompt)
+        # Defence-in-depth: strip <think> blocks from ANY LLM/Grok response
         if text:
-            return text
-        # Grok chat as emergency fallback only
-        return await self._ask_grok(system_prompt, user_prompt)
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+            text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+            text = text.strip()
+        # Reject meta-responses where the model echoes/summarises the system prompt
+        # instead of generating actual content
+        if text and self._is_meta_response(text):
+            logger.warning(f"X autoposter: rejected meta-response from LLM ({text[:100]}...)")
+            return None
+        return text or None
 
     async def _ask_grok(self, system: str, user: str) -> Optional[str]:
         try:
@@ -1562,6 +1644,12 @@ class XAutonomousAgent:
     def _clean_tweet(self, text: str) -> str:
         if not text:
             return ""
+        # ── Strip <think> blocks FIRST (content + tags) ───────────────
+        # Models emit <think>reasoning…</think> before the actual reply;
+        # we must remove the ENTIRE block, not just the XML tags.
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        # Also handle unclosed <think> (model started reasoning, never closed)
+        text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
         # ── Strip Grok/LLM artefacts ─────────────────────────────────
         # Remove <xai:...> XML tags that Grok sometimes injects (tool cards, etc.)
         text = re.sub(r"<xai:[^>]*>.*?</xai:[^>]*>", "", text, flags=re.DOTALL)
@@ -1605,6 +1693,11 @@ class XAutonomousAgent:
         text = text.replace("\u2013", "-")   # en dash → normal dash
         text = text.replace("\u2022", "-")   # bullet → dash
         text = re.sub(r"^[-*]\s+", "", text, flags=re.MULTILINE)  # leading bullets
+        # ── Strip LLM role prefixes ───────────────────────────────
+        # Models sometimes echo their role: "Assistant The link..." or "Assistant: ..."
+        text = re.sub(r"^(?:Assistant|User|System|Human|AI|Bot)\s*:?\s+", "", text, flags=re.IGNORECASE)
+        # Also strip multi-line role-label blocks: "system\nThe user has..."
+        text = re.sub(r"^(?:system|user|assistant|human)\s*\n", "", text, flags=re.IGNORECASE)
         text = text.strip().strip('"').strip("'").strip()
         # Collapse accidental double-spaces or leftover whitespace
         text = re.sub(r"\s{2,}", " ", text).strip()
