@@ -102,14 +102,15 @@ async def async_main():
         mobile_relay = None
         if getattr(config, "mobile_relay_enabled", False):
             try:
-                from opensable.core.mobile_relay import MobileRelay
+                from opensable.interfaces.mobile_relay import MobileRelay
 
-                mobile_relay = MobileRelay(config)
-                await mobile_relay.start()
+                relay_host = getattr(config, "mobile_relay_host", "0.0.0.0")
+                relay_port = getattr(config, "mobile_relay_port", 4810)
+                mobile_relay = MobileRelay(config, agent)
+                await mobile_relay.start(host=relay_host, port=relay_port)
                 logger.info(
                     f"Mobile relay started on "
-                    f"{getattr(config, 'mobile_relay_host', '127.0.0.1')}:"
-                    f"{getattr(config, 'mobile_relay_port', 7891)}"
+                    f"{relay_host}:{relay_port}"
                 )
             except Exception as e:
                 logger.warning(f"Mobile relay failed to start: {e}")

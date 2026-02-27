@@ -59,28 +59,29 @@ export default function QRPanel() {
     setLoading(true);
     setError(null);
     try {
-      // Try mobile relay endpoint
-      const base = location.origin.replace(/:\d+$/, ':8081');
+      // Mobile relay runs on port 4810
+      const relayPort = 4810;
+      const base = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+        ? `http://${location.hostname}:${relayPort}`
+        : `${location.protocol}//${location.hostname}:${relayPort}`;
       const res = await fetch(`${base}/mobile/qr`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setQrData(data);
       setTimeLeft(Math.floor((data.expires_at - Date.now() / 1000)));
     } catch (e) {
-      // Fallback: generate a local QR string
-      const token = crypto.randomUUID();
-      const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const fallback = `sablecore://pair?url=${wsProto}://${location.host}/&token=${token}&ts=${Math.floor(Date.now()/1000)}`;
-      setQrData({ qr_string: fallback, token, expires_at: Date.now()/1000 + 300 });
-      setTimeLeft(300);
-      setError(null); // Don't show error if fallback works
+      setError('Mobile relay not running. Restart the agent with MOBILE_RELAY_ENABLED=true');
+      setQrData(null);
     }
     setLoading(false);
   }, []);
 
   const fetchDevices = useCallback(async () => {
     try {
-      const base = location.origin.replace(/:\d+$/, ':8081');
+      const relayPort = 4810;
+      const base = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+        ? `http://${location.hostname}:${relayPort}`
+        : `${location.protocol}//${location.hostname}:${relayPort}`;
       const res = await fetch(`${base}/mobile/devices`);
       if (res.ok) setDevices(await res.json());
     } catch {}
@@ -126,7 +127,12 @@ export default function QRPanel() {
           </p>
         </div>
 
-        {qrData ? (
+        {error ? (
+          <div style={{ ...s.qrBox, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', textAlign: 'center', padding: '32px 20px' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 240 }}>{error}</div>
+          </div>
+        ) : qrData ? (
           <div style={s.qrBox}>
             <QRCodeSVG
               value={qrData.qr_string}

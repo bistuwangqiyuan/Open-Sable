@@ -1,7 +1,7 @@
 """
-SableCore Mobile Relay — E2E encrypted WebSocket bridge for the Expo app.
+OpenSable Mobile Relay — E2E encrypted WebSocket bridge for the Expo app.
 
-Implements SETP/1.0 (SableCore Encrypted Tunnel Protocol):
+Implements SETP/1.0 (OpenSable Encrypted Tunnel Protocol):
   - QR-based pairing with X25519 ECDH key exchange
   - XSalsa20-Poly1305 symmetric encryption for all frames
   - HKDF-SHA512 key derivation
@@ -136,18 +136,11 @@ def _derive_shared_secret(my_private: bytes, their_public: bytes) -> bytes:
         return hashlib.sha256(my_private + their_public).digest()
 
 
-def _hkdf_expand(shared_secret: bytes, info: bytes = b"setp-v1", length: int = 64) -> bytes:
-    """HKDF-SHA512 expand. Returns `length` bytes of key material."""
-    import hmac as _hmac
-    prk = _hmac.new(b"setp-salt-v1", shared_secret, hashlib.sha512).digest()
-    out = b""
-    counter = 1
-    prev = b""
-    while len(out) < length:
-        prev = _hmac.new(prk, prev + info + bytes([counter]), hashlib.sha512).digest()
-        out += prev
-        counter += 1
-    return out[:length]
+def _hkdf_expand(shared_secret: bytes, info: bytes = b"SETP/1.0", length: int = 64) -> bytes:
+    """Key expansion matching the mobile app: SHA-512(shared_secret || info).
+    Returns first `length` bytes — typically encKey (32B) + macKey (32B)."""
+    combined = shared_secret + info
+    return hashlib.sha512(combined).digest()[:length]
 
 
 def _encrypt(key: bytes, plaintext: bytes, seq: int) -> tuple[bytes, bytes]:
@@ -329,7 +322,7 @@ class MobileRelay:
             del self._qr_tokens[t]
 
         pk_b64 = base64.urlsafe_b64encode(pub).decode()
-        qr_string = f"sablecore://pair?pk={pk_b64}&url={server_url}&token={token}&ts={int(now)}"
+        qr_string = f"opensable://pair?pk={pk_b64}&url={server_url}&token={token}&ts={int(now)}"
 
         return {
             "qr_string": qr_string,
@@ -346,25 +339,29 @@ class MobileRelay:
     # ── WebSocket frame encrypt/decrypt ─────────────────────────────
 
     def _encrypt_frame(self, device: PairedDevice, payload: dict) -> str:
-        """Encrypt a payload dict → base64 frame string."""
+        """Encrypt a payload dict → JSON frame string.
+        Sends both field names for compat: {n, c, s} (app) + {ct, seq} (legacy)."""
         device.tx_seq += 1
         raw = json.dumps(payload).encode()
         nonce, ct = _encrypt(device.encryption_key, raw, device.tx_seq)
+        n_b64 = base64.b64encode(nonce).decode()
+        ct_b64 = base64.b64encode(ct).decode()
         frame = {
-            "v": 1,
+            "n": n_b64,
+            "c": ct_b64,        # app format
+            "s": device.tx_seq, # app format
+            "ct": ct_b64,       # legacy compat
             "seq": device.tx_seq,
-            "n": base64.b64encode(nonce).decode(),
-            "ct": base64.b64encode(ct).decode(),
         }
         return json.dumps(frame)
 
     def _decrypt_frame(self, device: PairedDevice, raw_frame: str) -> Optional[dict]:
-        """Decrypt a base64 frame string → payload dict."""
+        """Decrypt a JSON frame string → payload dict. Accepts both field formats."""
         try:
             frame = json.loads(raw_frame)
-            seq = frame["seq"]
+            seq = frame.get("seq", frame.get("s", 0))
             nonce = base64.b64decode(frame["n"])
-            ct = base64.b64decode(frame["ct"])
+            ct = base64.b64decode(frame.get("ct", frame.get("c", "")))
 
             # Replay protection
             if seq <= device.rx_seq:
@@ -654,7 +651,8 @@ class MobileRelay:
                         continue
 
                     # ── Pairing handshake (plaintext) ────
-                    if raw.get("type") == "PAIR_REQUEST":
+                    msg_type = raw.get("type", "")
+                    if msg_type in ("PAIR_REQUEST", "system.pair_request"):
                         device_id = await self._handle_pairing(ws, raw)
                         if device_id:
                             self._connections[device_id] = ws
@@ -662,18 +660,34 @@ class MobileRelay:
                         continue
 
                     # ── Reconnect auth (encrypted heartbeat) ──
-                    if raw.get("type") == "AUTH_RECONNECT":
+                    if msg_type in ("AUTH_RECONNECT", "system.auth_reconnect"):
                         device_id = await self._handle_reconnect(ws, raw)
                         if device_id:
                             self._connections[device_id] = ws
                             await self._flush_offline(device_id)
                         continue
 
-                    # ── Encrypted frame ──
-                    if device_id and "ct" in raw:
+                    # ── Encrypted frame (accept both {ct,seq} and {c,s} formats) ──
+                    has_encrypted = "ct" in raw or "c" in raw
+                    if has_encrypted:
+                        # Normalize app format {n,c,s} → server format {n,ct,seq}
+                        if "c" in raw and "ct" not in raw:
+                            raw["ct"] = raw.pop("c")
+                        if "s" in raw and "seq" not in raw:
+                            raw["seq"] = raw.pop("s")
+
+                        # If not yet identified, try to identify by brute-force
+                        # decryption against all paired devices (reconnect auth)
+                        if not device_id:
+                            device_id = await self._try_encrypted_auth(ws, raw)
+                            if device_id:
+                                self._connections[device_id] = ws
+                                await self._flush_offline(device_id)
+                            continue
+
                         device = self.devices.get(device_id)
                         if device:
-                            payload = self._decrypt_frame(device, msg.data)
+                            payload = self._decrypt_frame(device, json.dumps(raw))
                             if payload:
                                 await self._handle_message(device_id, payload)
                         continue
@@ -686,10 +700,38 @@ class MobileRelay:
             if device_id:
                 self._connections.pop(device_id, None)
                 self._monitor_subs.discard(device_id)
-                self._trading_subs.discard(device_id)
                 logger.info(f"📱 Device disconnected: {device_id[:8]}")
 
         return ws
+
+    async def _try_encrypted_auth(self, ws, frame: dict) -> Optional[str]:
+        """Try to decrypt an encrypted frame against all paired devices.
+        Used for reconnect auth when the app sends an encrypted heartbeat
+        without first identifying itself (SETP/1.0 tunnel reconnect)."""
+        for did, device in self.devices.items():
+            try:
+                seq = frame.get("seq", 0)
+                nonce = base64.b64decode(frame["n"])
+                ct = base64.b64decode(frame["ct"])
+                plaintext = _decrypt(device.encryption_key, nonce, ct)
+                msg = json.loads(plaintext.decode())
+
+                if msg.get("type") == "system.heartbeat":
+                    # Auth succeeded — reset sequence for new session
+                    device.rx_seq = seq
+                    logger.info(f"📱 Device reconnected via encrypted auth: {did[:8]}")
+                    # Register WS connection first so send_to_device works
+                    self._connections[did] = ws
+                    # Send HEARTBEAT_ACK so app transitions to 'connected'
+                    await self.send_to_device(did, "system.heartbeat_ack", {
+                        "ts": time.time(),
+                        "auth": True,
+                    })
+                    return did
+            except Exception:
+                continue
+        logger.warning("📱 Encrypted auth failed: no matching device key")
+        return None
 
     async def _handle_pairing(self, ws, data: dict) -> Optional[str]:
         """Handle PAIR_REQUEST from mobile app."""
@@ -703,11 +745,11 @@ class MobileRelay:
         # Validate token
         qr = self._qr_tokens.get(token)
         if not qr or qr.used:
-            await ws.send_json({"type": "PAIR_ERROR", "error": "Invalid or expired token"})
+            await ws.send_json({"type": "system.error", "message": "Invalid or expired token"})
             return None
 
         if time.time() - qr.created_at > QR_TTL_SECONDS:
-            await ws.send_json({"type": "PAIR_ERROR", "error": "QR code expired"})
+            await ws.send_json({"type": "system.error", "message": "QR code expired"})
             del self._qr_tokens[token]
             return None
 
@@ -744,9 +786,10 @@ class MobileRelay:
 
             # Send ACK
             await ws.send_json({
-                "type": "PAIR_ACK",
+                "type": "system.pair_ack",
+                "success": True,
                 "deviceId": device_id,
-                "serverName": "SableCore Agent",
+                "serverName": "OpenSable Agent",
                 "serverId": secrets.token_hex(8),
                 "features": device.features,
                 "protocol": PROTOCOL_VERSION,
@@ -757,7 +800,7 @@ class MobileRelay:
 
         except Exception as e:
             logger.error(f"Pairing error: {e}")
-            await ws.send_json({"type": "PAIR_ERROR", "error": str(e)})
+            await ws.send_json({"type": "system.error", "message": str(e)})
             return None
 
     async def _handle_reconnect(self, ws, data: dict) -> Optional[str]:
@@ -788,7 +831,7 @@ class MobileRelay:
 
         await ws.send_json({
             "type": "AUTH_ACK",
-            "serverName": "SableCore Agent",
+            "serverName": "OpenSable Agent",
             "features": device.features,
         })
 
@@ -805,6 +848,24 @@ class MobileRelay:
         app.router.add_get("/mobile/devices", self._devices_endpoint)
         app.router.add_delete("/mobile/devices/{device_id}", self._unpair_endpoint)
 
+        # CORS preflight for all /mobile/ routes
+        app.router.add_route("OPTIONS", "/mobile/{tail:.*}", self._cors_preflight)
+
+    @staticmethod
+    def _cors_headers():
+        return {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "86400",
+        }
+
+    async def _cors_preflight(self, request):
+        return web.Response(status=204, headers=self._cors_headers())
+
+    def _json_response(self, data, **kwargs):
+        return web.json_response(data, headers=self._cors_headers(), **kwargs)
+
     async def _qr_endpoint(self, request):
         """Generate QR pairing code."""
         # Determine server URL (from config or request)
@@ -813,15 +874,33 @@ class MobileRelay:
             if self.config and hasattr(self.config, "mobile_url"):
                 host = self.config.mobile_url
             else:
+                # Use the request host but replace 127.0.0.1/localhost with LAN IP
+                req_host = request.host.split(":")[0]
+                port = self._relay_port if hasattr(self, "_relay_port") else request.host.split(":")[-1]
+                if req_host in ("127.0.0.1", "localhost", "0.0.0.0"):
+                    req_host = self._get_lan_ip() or req_host
                 scheme = "wss" if request.secure else "ws"
-                host = f"{scheme}://{request.host}/mobile/ws"
+                host = f"{scheme}://{req_host}:{port}/mobile/ws"
 
         qr = self.generate_qr_payload(host)
-        return web.json_response(qr)
+        return self._json_response(qr)
+
+    @staticmethod
+    def _get_lan_ip() -> str | None:
+        """Get the LAN IP address."""
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return None
 
     async def _status_endpoint(self, request):
         """Mobile relay status."""
-        return web.json_response({
+        return self._json_response({
             "protocol": PROTOCOL_VERSION,
             "paired_devices": len(self.devices),
             "connected_devices": len(self._connections),
@@ -842,7 +921,7 @@ class MobileRelay:
                 "connected": dev.device_id in self._connections,
                 "msg_count": dev.msg_count,
             })
-        return web.json_response(devices)
+        return self._json_response(devices)
 
     async def _unpair_endpoint(self, request):
         """Unpair a device."""
@@ -853,8 +932,8 @@ class MobileRelay:
                 await ws.close()
             del self.devices[device_id]
             self._save_devices()
-            return web.json_response({"ok": True, "message": f"Device {device_id[:8]} unpaired"})
-        return web.json_response({"ok": False, "error": "Device not found"}, status=404)
+            return self._json_response({"ok": True, "message": f"Device {device_id[:8]} unpaired"})
+        return self._json_response({"ok": False, "error": "Device not found"}, status=404)
 
     # ── Monitor broadcast ───────────────────────────────────────────
 
@@ -874,6 +953,7 @@ class MobileRelay:
             logger.error("aiohttp is required for mobile relay. Install with: pip install aiohttp")
             return
 
+        self._relay_port = port
         app = web.Application()
         self._setup_routes(app)
         self._app = app
