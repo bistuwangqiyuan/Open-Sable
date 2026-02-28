@@ -551,6 +551,7 @@ class SableAgent:
         "screen_find": "🎯",
         "screen_click_on": "🖱️",
         "open_app": "🚀",
+        "open_url": "🌐",
         "window_list": "🪟",
         "window_focus": "🪟",
         # Trading
@@ -600,6 +601,7 @@ class SableAgent:
         "screen_find": "Finding element on screen",
         "screen_click_on": "Clicking element on screen",
         "open_app": "Opening application",
+        "open_url": "Opening in Chromium",
         "window_list": "Listing windows",
         "window_focus": "Focusing window",
         # Trading
@@ -864,15 +866,19 @@ class SableAgent:
             "- For general knowledge questions (not prices/markets/current events), answer directly from memory.\n"
             "- Use tools when the task requires reading files, executing code, searching the web, interacting with the system, managing social media, getting real-time market/price data, searching/installing skills from the marketplace, or interacting with the user's phone.\n"
             "\n\nDESKTOP CONTROL — you have FULL access to the user's computer desktop:"
-            "\n- open_app: open any application by name (firefox, terminal, vscode, spotify, calculator, etc.)"
+            "\n- open_url: open any website or URL in Chromium (ALWAYS use this instead of open_app for URLs)"
+            "\n- open_app: open any desktop application by name (terminal, vscode, spotify, etc.) — NEVER use for URLs or firefox"
             "\n- execute_command: run any shell command on the system"
             "\n- desktop_screenshot, desktop_click, desktop_type, desktop_hotkey: full GUI automation"
             "\n- window_list, window_focus: manage open windows"
             "\nWhen the user asks you to open, launch, or run any program → ALWAYS call open_app immediately. "
+            "When the user asks to visit a website or URL → ALWAYS call open_url immediately. "
+            "NEVER open Firefox. NEVER use open_app to open URLs. "
             "NEVER say you cannot open programs. You can and must use these tools."
             "\n\nDESKTOP TOOL RULES (CRITICAL):"
-            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('google-chrome'). WRONG: open_app('firefox the news'), open_app('open browser and search')."
-            "\n- To open a browser AND navigate to a URL: call open_app('google-chrome https://url.com'). To open a browser AND search: call open_app('google-chrome') first, THEN call browser_search separately."
+            "\n- open_url ONLY accepts a URL or domain. CORRECT: open_url('opensable.com'). WRONG: open_app('firefox opensable.com')."
+            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('spotify'). WRONG: open_app('google-chrome https://...')."
+            "\n- To open a browser AND navigate to a URL: call open_url('https://url.com'). To open and search: call open_url('https://google.com/search?q=...')."
             "\n- Never combine app name + search query in the same open_app call."
         )
 
@@ -955,7 +961,7 @@ class SableAgent:
                 url_to_open = search_remainder if search_remainder.startswith("http") else f"https://{search_remainder}"
                 logger.info(f"🌐 [FORCED] Navigate to URL: {url_to_open!r}")
                 await asyncio.sleep(1.5)
-                nav_result = await self._execute_tool("open_app", {"name": f"google-chrome {url_to_open}"}, user_id=user_id)
+                nav_result = await self._execute_tool("open_url", {"url": url_to_open}, user_id=user_id)
                 tool_results.append(nav_result)
                 search_remainder = ""  # already handled
             if search_remainder:
@@ -1141,7 +1147,7 @@ class SableAgent:
                         url = "https://" + url
                     logger.info(f"🌐 [INTENT] Navigate to URL: {url!r}")
                     result = await self._execute_tool(
-                        "open_app", {"name": f"google-chrome {url}"}, user_id=user_id
+                        "open_url", {"url": url}, user_id=user_id
                     )
                     tool_results.append(result)
 

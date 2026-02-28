@@ -119,6 +119,14 @@ class DesktopVisionToolsMixin:
             return f"🚀 {result['message']}"
         return f"❌ {result.get('error')}"
 
+    async def _open_url_tool(self, params: Dict) -> str:
+        """Open a URL directly in Chromium"""
+        url = params.get("url", "")
+        result = await self.vision.open_url(url)
+        if result.get("success"):
+            return f"🌐 Opened {result['url']} in {result['browser']} (PID {result.get('pid')})"
+        return f"❌ {result.get('error')}"
+
     async def _window_list_tool(self, params: Dict) -> str:
         """List all open windows"""
         result = await self.vision.window_list()

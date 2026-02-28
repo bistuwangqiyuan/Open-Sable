@@ -1,6 +1,6 @@
 # Open-Sable
 
-**Your personal AI that actually does things — autonomous, local, and yours forever.**
+**Your personal AI that actually does things , autonomous, local, and yours forever.**
 
 [![CI](https://github.com/IdeoaLabs/Open-Sable/actions/workflows/ci.yml/badge.svg)](https://github.com/IdeoaLabs/Open-Sable/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -16,13 +16,13 @@ Open-Sable is a fully autonomous, privacy-first agentic AI framework that runs l
 
 ### Key Features
 
-- **🧠 Agentic Loop** — Multi-step reasoning with tool calling, guardrails, and human-in-the-loop
-- **🔧 100+ Built-in Tools** — Browser, files, code execution, social media, trading, and more
-- **🔒 Privacy First** — Runs on Ollama (local LLMs) or connects to 13+ cloud providers
-- **🤝 Multi-Agent Crews** — CrewAI-style orchestration with shared blackboard and role-based agents
-- **📊 Token & Cost Tracking** — Real-time usage monitoring across all providers
-- **🔐 Encrypted Memory** — Fernet-encrypted structured memory at rest
-- **🔌 Interfaces** — Telegram, WhatsApp, REST API, CLI, Web Dashboard
+- **🧠 Agentic Loop** , Multi-step reasoning with tool calling, guardrails, and human-in-the-loop
+- **🔧 100+ Built-in Tools** , Browser, files, code execution, social media, trading, and more
+- **🔒 Privacy First** , Runs on Ollama (local LLMs) or connects to 13+ cloud providers
+- **🤝 Multi-Agent Crews** , CrewAI-style orchestration with shared blackboard and role-based agents
+- **📊 Token & Cost Tracking** , Real-time usage monitoring across all providers
+- **🔐 Encrypted Memory** , Fernet-encrypted structured memory at rest
+- **🔌 Interfaces** , Telegram, WhatsApp, REST API, CLI, Web Dashboard
 
 ### What's New in v1.1.0
 
@@ -53,7 +53,7 @@ See the [Quickstart](getting-started/quickstart.md) for a guided walkthrough or 
 ```
 opensable/
 ├── core/
-│   ├── agent.py          # SableAgent — brain of the system
+│   ├── agent.py          # SableAgent , brain of the system
 │   ├── llm.py            # AdaptiveLLM + CloudLLM with token tracking
 │   ├── tools/            # 100+ tools (modular mixin architecture)
 │   ├── memory.py         # ChromaDB vectors + encrypted JSON

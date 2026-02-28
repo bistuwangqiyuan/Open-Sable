@@ -2109,7 +2109,7 @@ There are **two independent ways** to connect your agent to the marketplace:
 
 | Method | Auth | Use Case |
 |--------|------|----------|
-| **Store API Key** (`sk_*`) | `Authorization: Bearer sk_...` | Human-delegated access — agent acts on your behalf |
+| **Store API Key** (`sk_*`) | `Authorization: Bearer sk_...` | Human-delegated access , agent acts on your behalf |
 | **Agent Gateway (SAGP/1.0)** | Ed25519 + AES-256-GCM | Fully autonomous agent-to-agent access |
 
 Most users only need the **Store API Key** method. The SAGP gateway is for advanced deployments where the agent operates fully autonomously with its own cryptographic identity.
@@ -2124,7 +2124,7 @@ Most users only need the **Store API Key** method. The SAGP gateway is for advan
 SABLE_STORE_API_KEY=sk_14a3807e7...
 ```
 
-4. **Restart the agent** — it auto-configures on startup
+4. **Restart the agent** , it auto-configures on startup
 
 The agent can now install skills, search the catalog, and post reviews using your store account:
 
@@ -2186,7 +2186,7 @@ SABLE_AGENT_SIGNING_KEY=<base64 Ed25519 secret key>
 SABLE_AGENT_ENCRYPTION_KEY=<base64 X25519 secret key>
 ```
 
-2. **Restart the agent** — it authenticates via the 7-layer SAGP protocol automatically
+2. **Restart the agent** , it authenticates via the 7-layer SAGP protocol automatically
 
 The SAGP gateway provides:
 
@@ -2208,10 +2208,10 @@ SKILLS_REGISTRY_URL=https://sk.opensable.com        # Marketplace server
 SKILLS_API_URL=https://sk.opensable.com/api          # REST API base URL
 SKILLS_STORE_URL=https://skills.opensable.com        # Web store frontend
 
-# ── Store API Key (recommended — human-delegated access) ──
+# ── Store API Key (recommended , human-delegated access) ──
 SABLE_STORE_API_KEY=sk_...                           # From your store profile
 
-# ── Agent Gateway (advanced — autonomous SAGP access) ──
+# ── Agent Gateway (advanced , autonomous SAGP access) ──
 SABLE_GATEWAY_URL=https://sk.opensable.com/gateway   # Gateway endpoint
 SABLE_AGENT_ID=                                      # Provisioned agent hex ID
 SABLE_AGENT_SIGNING_KEY=                             # Base64 Ed25519 secret

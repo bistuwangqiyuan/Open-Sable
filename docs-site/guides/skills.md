@@ -5,10 +5,10 @@ Every skill is a Python class that the agent can invoke autonomously via tool ca
 
 ```
 opensable/skills/
-├── social/        # 7 skills — social-media platforms
-├── media/         # 3 skills — image, voice, OCR
-├── data/          # 5 skills — databases, documents, files
-├── automation/    # 6 skills — code, API, browser, email
+├── social/        # 7 skills , social-media platforms
+├── media/         # 3 skills , image, voice, OCR
+├── data/          # 5 skills , databases, documents, files
+├── automation/    # 6 skills , code, API, browser, email
 ├── trading/       # multi-exchange trading engine
 └── community/     # 16 community-contributed skills
 ```
@@ -31,9 +31,9 @@ Interact with major social platforms.  All social skills require the platform's 
 
 !!! warning "Social credentials"
     All social skills are provided for **educational and testing purposes only**.
-    Add credentials in `.env` — never hard-code tokens in source files.
+    Add credentials in `.env` , never hard-code tokens in source files.
 
-### Example — Post to X
+### Example , Post to X
 
 ```python
 from opensable.skills.social.x_skill import XSkillImpl
@@ -54,7 +54,7 @@ Generate images, perform OCR, and handle voice I/O.
 | **VoiceSkill** | Text-to-Speech + Speech-to-Text | `whisper`, `piper-tts` |
 | **OCRSkill** | Extract text from images & scanned PDFs | `pytesseract` |
 
-### Example — Generate an image
+### Example , Generate an image
 
 ```python
 from opensable.skills.media.image_skill import ImageSkillImpl
@@ -78,7 +78,7 @@ Store, query, and manage structured data and documents.
 | **DocumentSkill** | Create Word, Excel, PDF, PowerPoint files | `python-docx`, `openpyxl`, `reportlab` |
 | **ClipboardSkill** | Cross-platform copy / paste / clear | `pyperclip` |
 
-### Example — Create a Word document
+### Example , Create a Word document
 
 ```python
 from opensable.skills.data.document_skill import DocumentSkillImpl
@@ -107,7 +107,7 @@ Execute code, call APIs, browse the web, send emails, and manage calendars.
 | **EmailSkill** | Send & read email (SMTP/IMAP) | `smtplib`, `imaplib` |
 | **CalendarSkill** | Local JSON-based calendar (no Google dependency) | built-in |
 
-### Example — Run Python code safely
+### Example , Run Python code safely
 
 ```python
 from opensable.skills.automation.code_executor import CodeExecutorImpl

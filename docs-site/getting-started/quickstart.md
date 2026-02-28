@@ -3,7 +3,7 @@
 Get Open-Sable running in under 5 minutes.
 
 !!! info "Requirements"
-    - **Python 3.11+** — check with `python3 --version`
+    - **Python 3.11+** , check with `python3 --version`
     - **8 GB RAM** minimum (16 GB recommended for voice/vision)
     - **Ollama** for local LLMs (or an OpenAI / Anthropic API key)
 
@@ -16,7 +16,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3          # ~4 GB download
 ```
 
-??? tip "Skip Ollama — use a cloud provider instead"
+??? tip "Skip Ollama , use a cloud provider instead"
     If you prefer OpenAI or Anthropic, skip this step and add your API key
     in `.env` later:
     ```bash
@@ -70,12 +70,12 @@ opensable --help
 You should see:
 
 ```
-🤖 Open-Sable v1.1.0 — Autonomous AI Agent
+🤖 Open-Sable v1.1.0 , Autonomous AI Agent
 Type your message or /help for commands.
 > _
 ```
 
-## 5. Optional — Connect Telegram
+## 5. Optional , Connect Telegram
 
 ```bash
 # 1. Talk to @BotFather on Telegram and create a bot
@@ -86,12 +86,12 @@ TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 python main.py --telegram
 ```
 
-## 6. Optional — Enable Trading (paper mode)
+## 6. Optional , Enable Trading (paper mode)
 
 ```bash
 # Add to .env:
 TRADING_ENABLED=true
-TRADING_PAPER_MODE=true    # simulated $10k — no real money
+TRADING_PAPER_MODE=true    # simulated $10k , no real money
 
 # Then ask Sable:
 #   "What's the price of Bitcoin?"
@@ -121,15 +121,15 @@ python -m pytest tests/ -q --ignore=tests/test_agent_real.py
 | `ollama: command not found` | Install Ollama: `curl -fsSL https://ollama.com/install.sh \| sh` |
 | Python version error | Upgrade to Python 3.11+ |
 | ChromaDB errors | `pip install --upgrade chromadb` |
-| Permission denied | Don't use `sudo pip` — use a venv instead |
+| Permission denied | Don't use `sudo pip` , use a venv instead |
 
 ---
 
 ## Next Steps
 
-- [Skills & Capabilities](../guides/skills.md) — Browse all 22 built-in skills
-- [Multi-Agent Crews](../guides/multi-agent.md) — Orchestrate teams of agents
-- [API Reference](../guides/api-reference.md) — Full SDK documentation
-- [Trading Guide](../guides/trading.md) — Set up automated trading
-- [Web Scraping](../guides/web-scraping.md) — Browser automation tools
-- [Production Deployment](../architecture/production.md) — Docker & Kubernetes
+- [Skills & Capabilities](../guides/skills.md) , Browse all 22 built-in skills
+- [Multi-Agent Crews](../guides/multi-agent.md) , Orchestrate teams of agents
+- [API Reference](../guides/api-reference.md) , Full SDK documentation
+- [Trading Guide](../guides/trading.md) , Set up automated trading
+- [Web Scraping](../guides/web-scraping.md) , Browser automation tools
+- [Production Deployment](../architecture/production.md) , Docker & Kubernetes

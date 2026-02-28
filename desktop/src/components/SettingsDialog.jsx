@@ -263,11 +263,11 @@ export default function SettingsDialog() {
             <div className="about-features">
               {[
                 ['🧠', 'Autonomous agent with persistent memory and self-reflection'],
-                ['🔒', 'Fully local — your data never leaves this machine'],
+                ['🔒', 'Fully local, your data never leaves this machine'],
                 ['🔧', `${tools?.length ?? 0} tools available via SableCore gateway`],
                 ['🎯', 'Intent-driven desktop control: screenshot, click, type, hotkeys'],
                 ['📈', 'Trading tools, market feeds, X autoposter, and web search'],
-                ['🔍', 'Codebase RAG — self-aware code assistance over your project'],
+                ['🔍', 'Codebase RAG, self-aware code assistance over your project'],
                 ['🎤', 'Voice input, file attachments, image understanding'],
               ].map(([icon, text]) => (
                 <div key={text} className="about-feature-row">

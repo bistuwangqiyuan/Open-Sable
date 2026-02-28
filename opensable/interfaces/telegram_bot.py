@@ -366,7 +366,7 @@ class TelegramInterface:
         if is_new:
             text = (
                 f"👋 **Hello, {name}!**\n\n"
-                f"I'm **{self.config.agent_name}** — your personal AI assistant.\n\n"
+                f"I'm **{self.config.agent_name}**, your personal AI assistant.\n\n"
                 f"I can browse the web, run commands, read files, check weather, "
                 f"manage your calendar, and more.\n\n"
                 f"Just chat naturally, or use /help to see commands."

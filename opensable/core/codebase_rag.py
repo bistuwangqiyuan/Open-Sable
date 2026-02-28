@@ -1,5 +1,5 @@
 """
-CodebaseRAG — Self-indexing RAG over the SableCore source code.
+CodebaseRAG, Self-indexing RAG over the SableCore source code.
 
 Exactly what GitHub Copilot does: before answering questions about the code,
 it searches the codebase with vector similarity to find the relevant files

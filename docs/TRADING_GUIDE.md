@@ -2,7 +2,7 @@
 
 ## Overview
 
-Open-Sable includes a full multi-market trading system that can trade crypto, stocks, prediction markets, memecoins, and commodities — all managed by the AI agent with built-in risk controls.
+Open-Sable includes a full multi-market trading system that can trade crypto, stocks, prediction markets, memecoins, and commodities , all managed by the AI agent with built-in risk controls.
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ Add to your `.env` file:
 
 ```bash
 TRADING_ENABLED=true
-TRADING_PAPER_MODE=true      # Default — uses simulated money
+TRADING_PAPER_MODE=true      # Default , uses simulated money
 ```
 
 That's it! The agent now has trading tools and starts with $10,000 in paper money.
@@ -25,8 +25,8 @@ Sable: 💰 BTC/USDT: $67,234.50 ...
 
 You: "Analyze Ethereum for me"
 Sable: 📊 Market Analysis: ETH/USDT
-  🟢 [momentum] LONG — conf: 72% — RSI oversold, MACD bullish crossover
-  🟢 [mean_reversion] LONG — conf: 65% — Price below lower Bollinger Band
+  🟢 [momentum] LONG , conf: 72% , RSI oversold, MACD bullish crossover
+  🟢 [mean_reversion] LONG , conf: 65% , Price below lower Bollinger Band
   Consensus: 🟢 LONG (confidence: 69%)
 
 You: "Buy 0.5 ETH"
@@ -147,7 +147,7 @@ The agent has 10 trading tools available:
 - Signals: BUY when price below lower band, SELL when above upper band
 
 ### Sentiment (sentiment)
-- **Open-Sable's unique edge** — uses the LLM to read news and social media
+- **Open-Sable's unique edge** , uses the LLM to read news and social media
 - Best for: memecoins, event-driven markets
 - Requires: LLM configured (automatically injected)
 
@@ -177,11 +177,11 @@ The agent has 10 trading tools available:
 
 ### Safety Layers
 
-1. **Paper mode by default** — no real money until explicitly enabled
-2. **Risk manager** — rejects/reduces orders that violate limits
-3. **HITL approval** — trade execution requires human approval (CRITICAL risk level)
-4. **Trading guardrails** — blocks known scam tokens, warns on live trades
-5. **Emergency halt** — automatically stops all trading if limits are breached
+1. **Paper mode by default** , no real money until explicitly enabled
+2. **Risk manager** , rejects/reduces orders that violate limits
+3. **HITL approval** , trade execution requires human approval (CRITICAL risk level)
+4. **Trading guardrails** , blocks known scam tokens, warns on live trades
+5. **Emergency halt** , automatically stops all trading if limits are breached
 
 ## Configuration Reference
 

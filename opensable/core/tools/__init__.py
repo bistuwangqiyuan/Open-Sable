@@ -405,6 +405,7 @@ class ToolRegistry(
         self.register("screen_find", self._screen_find_tool)
         self.register("screen_click_on", self._screen_click_on_tool)
         self.register("open_app", self._open_app_tool)
+        self.register("open_url", self._open_url_tool)
         self.register("window_list", self._window_list_tool)
         self.register("window_focus", self._window_focus_tool)
 
@@ -1295,19 +1296,42 @@ class ToolRegistry(
                     "description": (
                         "Open an application on the computer by name. "
                         "Pass ONLY the application name — never a search query or sentence. "
-                        "Examples: 'firefox', 'chrome', 'terminal', 'vscode', 'spotify', 'vlc', 'gimp', "
+                        "To open a URL in the browser, use open_url instead. "
+                        "Examples: 'terminal', 'vscode', 'spotify', 'vlc', 'gimp', "
                         "'libreoffice', 'calculator', 'files', 'discord', 'slack'. "
-                        "To search the web, first open_app('firefox'), then use browser_search or desktop_type."
+                        "NEVER use 'firefox' — always use open_url for web browsing."
                     ),
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "name": {
                                 "type": "string",
-                                "description": "App executable name ONLY. Valid: 'firefox', 'terminal', 'vscode'. INVALID: 'firefox the news', 'open firefox and search'.",
+                                "description": "App executable name ONLY. NEVER 'firefox'. Use open_url for websites.",
                             },
                         },
                         "required": ["name"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "open_url",
+                    "description": (
+                        "Open a URL or website in Chromium browser. "
+                        "ALWAYS use this instead of open_app when the user wants to visit a website or URL. "
+                        "Automatically prepends https:// if no scheme is given. "
+                        "Examples: 'https://opensable.com', 'google.com', 'https://youtube.com/watch?v=abc'."
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The URL or domain to open (e.g. 'opensable.com' or 'https://google.com').",
+                            },
+                        },
+                        "required": ["url"],
                     },
                 },
             },
@@ -2649,6 +2673,7 @@ class ToolRegistry(
         "screen_find": ("screen_find", lambda a: a),
         "screen_click_on": ("screen_click_on", lambda a: a),
         "open_app": ("open_app", lambda a: a),
+        "open_url": ("open_url", lambda a: a),
         "window_list": ("window_list", lambda a: a),
         "window_focus": ("window_focus", lambda a: a),
         # X (Twitter) tools

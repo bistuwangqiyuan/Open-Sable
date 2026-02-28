@@ -128,7 +128,7 @@ findings = await bb.read("findings", default=[])
 # Append to a list
 await bb.append_list("sources", "https://arxiv.org/...", author="researcher")
 
-# Snapshot (sync — for logging)
+# Snapshot (sync , for logging)
 print(bb.snapshot())
 
 # Full audit history
@@ -184,7 +184,7 @@ result = await orchestrator.route_complex_task(
 | write code, implement, debug, refactor… | `CODER` + `REVIEWER` |
 | research, investigate, analyse, compare… | `RESEARCHER` + `ANALYST` |
 | write article, draft, essay, summary… | `WRITER` + `REVIEWER` |
-| _(none matched)_ | Returns `None` — handled by single agent |
+| _(none matched)_ | Returns `None` , handled by single agent |
 
 ---
 
@@ -236,6 +236,6 @@ All agents share the same `Config` (LLM provider, model, etc.) but maintain inde
 
 ## See Also
 
-- [Skills & Capabilities](skills.md) — Tools available to each agent
-- [API Reference](api-reference.md) — Full `MultiAgentOrchestrator` API
-- [Self-Modification](self-modification.md) — Agents that improve themselves
+- [Skills & Capabilities](skills.md) , Tools available to each agent
+- [API Reference](api-reference.md) , Full `MultiAgentOrchestrator` API
+- [Self-Modification](self-modification.md) , Agents that improve themselves

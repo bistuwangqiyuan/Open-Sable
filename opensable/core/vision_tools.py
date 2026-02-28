@@ -332,10 +332,15 @@ class VisionTools:
         Examples: "firefox", "terminal", "vscode", "gnome-calculator", "spotify"
         """
         # Common app name → executable mappings
+        # NOTE: Firefox is intentionally excluded — always use Chromium/Chrome.
         _ALIASES = {
-            "browser": ["google-chrome", "chromium-browser", "chromium", "firefox"],
-            "chrome": ["google-chrome", "chromium-browser", "chromium"],
-            "firefox": ["google-chrome", "chromium-browser", "chromium", "firefox"],  # prefer chrome
+            "browser":  ["chromium-browser", "chromium", "google-chrome"],
+            "chrome":   ["chromium-browser", "chromium", "google-chrome"],
+            "chromium": ["chromium-browser", "chromium", "google-chrome"],
+            # Redirect any request for firefox → chromium instead
+            "firefox":  ["chromium-browser", "chromium", "google-chrome"],
+            "mozilla":  ["chromium-browser", "chromium", "google-chrome"],
+            "opera":    ["chromium-browser", "chromium", "google-chrome"],
             "terminal": ["gnome-terminal", "xterm", "konsole", "xfce4-terminal", "alacritty"],
             "files": ["nautilus", "thunar", "dolphin", "nemo"],
             "text editor": ["gedit", "mousepad", "kate", "xed"],
@@ -380,7 +385,13 @@ class VisionTools:
                 for a in extra_args
             ]
 
-        candidates = [app_name] + _ALIASES.get(app_name.lower(), [])
+        # For browser aliases, use the alias list only (don't try the raw name first
+        # e.g. don't try "firefox" before chromium)
+        _BROWSER_KEYS = {"browser", "chrome", "chromium", "firefox", "mozilla", "opera"}
+        if app_name.lower() in _BROWSER_KEYS:
+            candidates = _ALIASES.get(app_name.lower(), [app_name])
+        else:
+            candidates = [app_name] + _ALIASES.get(app_name.lower(), [])
 
         for cmd in candidates:
             try:
@@ -402,22 +413,62 @@ class VisionTools:
             except Exception as e:
                 logger.debug(f"open_app '{cmd}' failed: {e}")
 
-        # Last resort: xdg-open (good for URLs and file types)
-        try:
-            subprocess.Popen(
-                ["xdg-open", name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            return {"success": True, "message": f"Opened '{name}' via xdg-open"}
-        except Exception as e:
-            pass
+        # Last resort: for URLs always prefer chromium over xdg-open (avoids Firefox)
+        _is_url = name.startswith(("http://", "https://", "www.")) or (
+            "." in name and name.replace(".", "").replace("-", "").replace("/", "").isalnum()
+        )
+        if _is_url:
+            for _cmd in ("chromium-browser", "chromium", "google-chrome", "xdg-open"):
+                try:
+                    subprocess.Popen(
+                        [_cmd, name],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True,
+                    )
+                    return {"success": True, "message": f"Opened '{name}' via {_cmd}"}
+                except FileNotFoundError:
+                    continue
+        else:
+            try:
+                subprocess.Popen(
+                    ["xdg-open", name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                return {"success": True, "message": f"Opened '{name}' via xdg-open"}
+            except Exception:
+                pass
 
         return {
             "success": False,
             "error": f"Could not open '{name}'. Try installing it or use the full command.",
         }
+
+    async def open_url(self, url: str) -> Dict[str, Any]:
+        """
+        Open a URL in Chromium (always — never Firefox or other browsers).
+        Prepends https:// if no scheme is given.
+        """
+        if not url.startswith(("http://", "https://", "file://")):
+            url = "https://" + url
+        for cmd in ("chromium-browser", "chromium", "google-chrome"):
+            try:
+                proc = subprocess.Popen(
+                    [cmd, url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                await asyncio.sleep(0.4)
+                if proc.poll() is None:
+                    return {"success": True, "url": url, "browser": cmd, "pid": proc.pid}
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                logger.debug(f"open_url '{cmd}' failed: {e}")
+        return {"success": False, "error": "Chromium/Chrome not found. Install chromium-browser."}
 
     async def window_list(self) -> Dict[str, Any]:
         """
