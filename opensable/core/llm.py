@@ -37,6 +37,22 @@ def parse_thinking(text: str) -> Tuple[str, Optional[str]]:
     return clean, reasoning
 
 
+def _inject_no_think(messages: List[Dict]) -> List[Dict]:
+    """For Qwen3 models: append /no_think to the last user message to disable
+    chain-of-thought output. This is the official Qwen3 per-turn mechanism.
+    Works with any model — non-Qwen3 models simply ignore the token.
+    """
+    messages = list(messages)  # shallow copy — don't mutate caller's list
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].get("role") == "user":
+            content = messages[i].get("content", "")
+            if "/no_think" not in content:
+                messages[i] = dict(messages[i])
+                messages[i]["content"] = content + " /no_think"
+            break
+    return messages
+
+
 # ── Token & cost tracking ────────────────────────────────────────────
 
 # Approximate costs per 1M tokens (USD) — updated periodically
@@ -150,6 +166,9 @@ MODEL_CAPABILITIES = {
 
 class AdaptiveLLM:
     """LLM that can switch models based on task requirements"""
+
+    # Shared across instances — remember which models don't support native tool calling
+    _MODELS_WITHOUT_NATIVE_TOOLS: set = set()
 
     def __init__(self, config, initial_model: str):
         self.config = config
@@ -266,6 +285,90 @@ class AdaptiveLLM:
         import asyncio
         return asyncio.run(self.ainvoke(messages))
 
+    async def _invoke_with_text_tool_calling(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
+        """
+        Text-based tool calling for models that don't support native Ollama tools API.
+        Injects tool schemas into the system prompt and parses <tool_call> JSON blocks.
+        Qwen3 understands this format natively.
+        """
+        # Build compact tool schema list
+        tool_schemas = []
+        for t in tools:
+            fn = t.get("function", t)
+            schema = {
+                "name": fn.get("name", ""),
+                "description": fn.get("description", "")[:200],
+            }
+            params = fn.get("parameters", {})
+            if params.get("properties"):
+                schema["parameters"] = {k: {"type": v.get("type", "string"), "description": v.get("description", "")[:80]}
+                                         for k, v in params["properties"].items()}
+            tool_schemas.append(schema)
+
+        tools_json = json.dumps(tool_schemas, indent=2)
+        tool_instruction = (
+            "TOOL USE: To call a tool output EXACTLY this format and nothing else:\n"
+            "<tool_call>\n"
+            '{"name": "tool_name", "arguments": {"arg": "value"}}\n'
+            "</tool_call>\n\n"
+            f"Available tools:\n{tools_json}\n\n"
+            "Rules: If you need a tool, output the <tool_call> block first and stop. "
+            "Never describe what you are about to do — just output the tool call or the final answer."
+        )
+
+        # Inject tool instruction into system message
+        new_messages = []
+        system_injected = False
+        for m in messages:
+            if m.get("role") == "system" and not system_injected:
+                new_messages.append({"role": "system", "content": m["content"] + "\n\n" + tool_instruction})
+                system_injected = True
+            else:
+                new_messages.append(m)
+        if not system_injected:
+            new_messages.insert(0, {"role": "system", "content": tool_instruction})
+
+        new_messages = _inject_no_think(new_messages)
+        client = ollama.AsyncClient(host=self.base_url)
+        resp = await client.chat(model=self.current_model, messages=new_messages, think=False)
+        raw_text = resp.get("message", {}).get("content", "")
+        thinking_field = resp.get("message", {}).get("thinking", "") or ""
+        clean_text, reasoning_from_tags = parse_thinking(raw_text)
+        reasoning = (thinking_field.strip() or reasoning_from_tags) or None
+
+        # Parse <tool_call>...</tool_call> blocks
+        tool_call_re = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+        matches = tool_call_re.findall(clean_text)
+        if matches:
+            parsed_calls = []
+            for raw_call in matches:
+                try:
+                    call_data = json.loads(raw_call)
+                    name = call_data.get("name", "")
+                    args = call_data.get("arguments", call_data.get("parameters", {}))
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {}
+                    if name:
+                        parsed_calls.append({"name": name, "arguments": args})
+                except json.JSONDecodeError:
+                    continue
+            if parsed_calls:
+                logger.info(f"🔧 Text-based tool call parsed: {[c['name'] for c in parsed_calls]}")
+                return {
+                    "tool_call": parsed_calls[0],
+                    "tool_calls": parsed_calls,
+                    "text": None,
+                }
+
+        # No tool call found — plain text answer
+        result = {"tool_call": None, "tool_calls": [], "text": clean_text}
+        if reasoning:
+            result["reasoning"] = reasoning
+        return result
+
     async def invoke_with_tools(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
         """
         Call Ollama with native tool calling (structured JSON output).
@@ -279,12 +382,20 @@ class AdaptiveLLM:
               - "text": plain text response (if no tool was called)
               - "tool_call": {"name": str, "arguments": dict} if a tool was invoked
         """
+        # Fast-path: skip native API for models known not to support it
+        if tools and self.current_model in self._MODELS_WITHOUT_NATIVE_TOOLS:
+            return await self._invoke_with_text_tool_calling(messages, tools)
+
         try:
             client = ollama.AsyncClient(host=self.base_url)
+            # /no_think injected into last user message: official Qwen3 mechanism to
+            # suppress chain-of-thought output while keeping full response quality.
+            messages = _inject_no_think(messages)
             response = await client.chat(
                 model=self.current_model,
                 messages=messages,
                 tools=tools,
+                think=False,
             )
             msg = response.get("message", {})
 
@@ -320,31 +431,51 @@ class AdaptiveLLM:
                     "text": None,
                 }
 
-            # Plain text path — check for DeepSeek reasoning tags
+            # Plain text path
+            # Ollama places reasoning tokens in msg.thinking (separate from content)
+            # when the model supports thinking. Just use content directly.
             raw_text = msg.get("content", "")
-            clean_text, reasoning = parse_thinking(raw_text)
+            thinking_field = msg.get("thinking", "") or ""
+            # Also strip any <think> tags that leaked into content
+            clean_text, reasoning_from_tags = parse_thinking(raw_text)
+            reasoning = (thinking_field.strip() or reasoning_from_tags) or None
             result = {"tool_call": None, "tool_calls": [], "text": clean_text}
             if reasoning:
                 result["reasoning"] = reasoning
-                logger.info(f"💭 DeepSeek reasoning captured ({len(reasoning)} chars)")
+                logger.info(f"💭 Reasoning captured ({len(reasoning)} chars)")
             return result
 
         except Exception as e:
-            logger.warning(f"Tool calling failed ({e}), falling back to plain chat")
-            # Fallback: use ollama chat without tools
+            error_str = str(e)
+            # Detect models that don't support native tool calling (Ollama returns 400)
+            if tools and ("400" in error_str or "does not support tools" in error_str
+                          or "tool" in error_str.lower()):
+                logger.warning(f"Tool calling failed ({e}), switching to text-based tool calling")
+                AdaptiveLLM._MODELS_WITHOUT_NATIVE_TOOLS.add(self.current_model)
+                try:
+                    return await self._invoke_with_text_tool_calling(messages, tools)
+                except Exception as e2:
+                    logger.error(f"Text-based tool calling failed: {e2}")
+            else:
+                logger.warning(f"Tool calling failed ({e}), falling back to plain chat")
+
+            # Last resort: plain chat without tools
             try:
                 client = ollama.AsyncClient(host=self.base_url)
                 plain_msgs = []
                 for m in messages:
                     role = m.get("role", "user")
                     plain_msgs.append({"role": role, "content": m.get("content", "")})
-                resp = await client.chat(model=self.current_model, messages=plain_msgs)
+                plain_msgs = _inject_no_think(plain_msgs)
+                resp = await client.chat(model=self.current_model, messages=plain_msgs, think=False)
                 raw_text = resp.get("message", {}).get("content", "")
-                clean_text, reasoning = parse_thinking(raw_text)
+                thinking_field = resp.get("message", {}).get("thinking", "") or ""
+                clean_text, reasoning_from_tags = parse_thinking(raw_text)
+                reasoning = (thinking_field.strip() or reasoning_from_tags) or None
                 result = {"tool_call": None, "tool_calls": [], "text": clean_text}
                 if reasoning:
                     result["reasoning"] = reasoning
-                    logger.info(f"💭 DeepSeek reasoning captured ({len(reasoning)} chars)")
+                    logger.info(f"💭 Reasoning captured ({len(reasoning)} chars)")
                 return result
             except Exception as e2:
                 logger.error(f"Fallback also failed: {e2}")
@@ -363,10 +494,12 @@ class AdaptiveLLM:
         """
         try:
             client = ollama.AsyncClient(host=self.base_url)
+            messages = _inject_no_think(messages)
             stream = await client.chat(
                 model=self.current_model,
                 messages=messages,
                 stream=True,
+                think=False,
             )
 
             # State machine for <think> block detection

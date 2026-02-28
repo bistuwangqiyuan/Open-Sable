@@ -1,0 +1,353 @@
+import { create } from 'zustand'
+
+// ─── Unique ID helper ──────────────────────────────────────────────────────
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+// ─── Strip <think>...</think> blocks from LLM output ──────────────────────
+function stripThinkBlocks(text) {
+  if (!text) return text
+  // Remove complete <think>...</think> blocks (DeepSeek chain-of-thought)
+  let result = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  // Remove orphan closing tag if opening was stripped in a chunk
+  result = result.replace(/<\/think>/gi, '')
+  // Remove orphan opening tag
+  result = result.replace(/<think>/gi, '')
+  return result.trim()
+}
+
+// ─── Per-session think-block streaming buffer ──────────────────────────────
+// Tracks whether we're currently inside a <think> block while streaming
+const thinkState = {} // { [sessionId]: { inThink: boolean, buffer: string } }
+
+// ─── Store ─────────────────────────────────────────────────────────────────
+export const useSableStore = create((set, get) => ({
+  // Connection
+  ws: null,
+  wsStatus: 'disconnected', // 'connecting' | 'connected' | 'disconnected'
+  config: { wsUrl: 'ws://localhost:8789', token: '' },
+
+  // Sessions
+  sessions: [],
+  activeSessionId: null,
+
+  // Messages per session { [sessionId]: Message[] }
+  messages: {},
+
+  // Streaming state
+  streaming: false,
+  streamingSessionId: null,
+
+  // Settings modal
+  settingsOpen: false,
+  toast: null,
+
+  // Agent tools & live progress
+  tools: [],
+  agentProgress: null,
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+
+  setConfig: (config) => set({ config }),
+
+  // Go back to welcome screen without clearing history
+  goHome: () => set({ activeSessionId: null }),
+
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
+
+  showToast: (msg) => {
+    set({ toast: msg })
+    setTimeout(() => set({ toast: null }), 4000)
+  },
+
+  // Connect / Reconnect
+  connect: (overrideConfig) => {
+    const cfg = overrideConfig || get().config
+    const { ws } = get()
+
+    if (ws) {
+      ws.onclose = null
+      ws.onerror = null
+      ws.close()
+    }
+
+    const url = cfg.token
+      ? `${cfg.wsUrl}?token=${encodeURIComponent(cfg.token)}`
+      : cfg.wsUrl
+
+    set({ wsStatus: 'connecting', config: cfg })
+    const socket = new WebSocket(url)
+
+    socket.onopen = () => {
+      set({ wsStatus: 'connected', ws: socket })
+      // Fetch existing sessions + available tools
+      socket.send(JSON.stringify({ type: 'sessions.list' }))
+      socket.send(JSON.stringify({ type: 'tools.list' }))
+    }
+
+    socket.onclose = () => {
+      set({ wsStatus: 'disconnected', ws: null, streaming: false })
+      // Auto-reconnect after 3s
+      setTimeout(() => {
+        const { wsStatus } = get()
+        if (wsStatus === 'disconnected') get().connect()
+      }, 3000)
+    }
+
+    socket.onerror = () => {
+      set({ wsStatus: 'disconnected' })
+    }
+
+    socket.onmessage = (event) => {
+      let msg
+      try { msg = JSON.parse(event.data) } catch { return }
+      get()._handleMessage(msg)
+    }
+
+    set({ ws: socket })
+  },
+
+  disconnect: () => {
+    const { ws } = get()
+    if (ws) {
+      ws.onclose = null
+      ws.close()
+    }
+    set({ ws: null, wsStatus: 'disconnected' })
+  },
+
+  // Send a chat message
+  sendMessage: (text) => {
+    const { ws, wsStatus, activeSessionId } = get()
+    if (!ws || wsStatus !== 'connected' || !text.trim()) return
+
+    const sessionId = activeSessionId || uid()
+
+    // Ensure session exists in local state
+    get()._ensureSession(sessionId)
+    set({ activeSessionId: sessionId })
+
+    // Add user message locally
+    get()._addMessage(sessionId, { id: uid(), role: 'user', content: text, ts: Date.now() })
+
+    // Show typing indicator
+    set({ streaming: true, streamingSessionId: sessionId })
+
+    ws.send(JSON.stringify({
+      type: 'message',
+      session_id: sessionId,
+      user_id: 'desktop',
+      text,
+    }))
+  },
+
+  // New chat — go to welcome screen; session is created lazily on first sendMessage
+  newChat: () => {
+    set({ activeSessionId: null })
+  },
+
+  // Select session
+  selectSession: (sessionId) => {
+    const { ws } = get()
+    set({ activeSessionId: sessionId })
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'sessions.history', session_id: sessionId }))
+    }
+  },
+
+  // Delete session
+  deleteSession: (sessionId) => {
+    const { sessions, messages, activeSessionId } = get()
+    const newSessions = sessions.filter(s => s.id !== sessionId)
+    const newMessages = { ...messages }
+    delete newMessages[sessionId]
+    const newActive = activeSessionId === sessionId
+      ? (newSessions[0]?.id || null)
+      : activeSessionId
+    set({ sessions: newSessions, messages: newMessages, activeSessionId: newActive })
+  },
+
+  // ── Internal ──────────────────────────────────────────────────────────────
+
+  _ensureSession: (sessionId) => {
+    const { sessions } = get()
+    if (!sessions.find(s => s.id === sessionId)) {
+      set({
+        sessions: [{ id: sessionId, title: 'New chat', ts: Date.now() }, ...sessions],
+        messages: { ...get().messages, [sessionId]: [] },
+      })
+    }
+  },
+
+  _addMessage: (sessionId, message) => {
+    const { messages, sessions } = get()
+    const sessionMsgs = messages[sessionId] || []
+    const updated = { ...messages, [sessionId]: [...sessionMsgs, message] }
+    // Update session title from first user message
+    const updatedSessions = sessions.map(s => {
+      if (s.id === sessionId && s.title === 'New chat' && message.role === 'user') {
+        return { ...s, title: message.content.slice(0, 46) }
+      }
+      return s
+    })
+    set({ messages: updated, sessions: updatedSessions })
+  },
+
+  _appendChunk: (sessionId, chunk) => {
+    // ── Think-block streaming filter ──────────────────────────────────────
+    if (!thinkState[sessionId]) thinkState[sessionId] = { inThink: false, pending: '' }
+    const ts = thinkState[sessionId]
+
+    // Accumulate and filter out everything inside <think>...</think>
+    let visible = ''
+    let buf = ts.pending + chunk
+
+    while (buf.length > 0) {
+      if (ts.inThink) {
+        const endIdx = buf.indexOf('</think>')
+        if (endIdx === -1) {
+          // Still inside think block, nothing visible yet — wait for more chunks
+          ts.pending = buf
+          buf = ''
+        } else {
+          // Found end of think block — discard up to and including </think>
+          buf = buf.slice(endIdx + '</think>'.length)
+          ts.inThink = false
+          ts.pending = ''
+        }
+      } else {
+        const startIdx = buf.indexOf('<think>')
+        if (startIdx === -1) {
+          visible += buf
+          buf = ''
+        } else {
+          visible += buf.slice(0, startIdx)
+          buf = buf.slice(startIdx + '<think>'.length)
+          ts.inThink = true
+        }
+      }
+    }
+
+    if (!visible) return // entire chunk was think-block content
+
+    const { messages } = get()
+    const sessionMsgs = messages[sessionId] || []
+    const last = sessionMsgs[sessionMsgs.length - 1]
+    if (last && last.role === 'assistant' && last.streaming) {
+      const updated = [...sessionMsgs]
+      updated[updated.length - 1] = { ...last, content: last.content + visible }
+      set({ messages: { ...messages, [sessionId]: updated } })
+    } else {
+      get()._addMessage(sessionId, {
+        id: uid(), role: 'assistant', content: visible, ts: Date.now(), streaming: true,
+      })
+    }
+  },
+
+  _finalizeMessage: (sessionId, finalText) => {
+    // Clear think-block state for this session
+    delete thinkState[sessionId]
+
+    // Strip any remaining think blocks from the final text
+    const cleanText = finalText ? stripThinkBlocks(finalText) : null
+
+    const { messages } = get()
+    const sessionMsgs = messages[sessionId] || []
+    const last = sessionMsgs[sessionMsgs.length - 1]
+    if (last && last.role === 'assistant' && last.streaming) {
+      const updated = [...sessionMsgs]
+      // If server sends a complete final text, prefer that (already stripped)
+      // Otherwise keep what we accumulated via chunks
+      const finalContent = cleanText || last.content
+      updated[updated.length - 1] = {
+        ...last,
+        content: stripThinkBlocks(finalContent),
+        streaming: false,
+      }
+      set({ messages: { ...messages, [sessionId]: updated }, streaming: false, streamingSessionId: null })
+    } else {
+      if (cleanText) {
+        get()._addMessage(sessionId, {
+          id: uid(), role: 'assistant', content: cleanText, ts: Date.now(), streaming: false,
+        })
+      }
+      set({ streaming: false, streamingSessionId: null })
+    }
+  },
+
+  _handleMessage: (msg) => {
+    const { _ensureSession, _appendChunk, _finalizeMessage, sessions } = get()
+
+    switch (msg.type) {
+      case 'connected':
+        break
+
+      case 'message.start':
+        if (msg.session_id) {
+          _ensureSession(msg.session_id)
+          set({ streaming: true, streamingSessionId: msg.session_id, agentProgress: 'Thinking…' })
+        }
+        break
+
+      case 'message.chunk':
+        if (msg.session_id && msg.text) {
+          _ensureSession(msg.session_id)
+          _appendChunk(msg.session_id, msg.text)
+        }
+        break
+
+      case 'message.done':
+        if (msg.session_id) {
+          set({ agentProgress: null })
+          _finalizeMessage(msg.session_id, msg.text)
+        }
+        break
+
+      case 'progress':
+        if (msg.text) set({ agentProgress: msg.text })
+        break
+
+      case 'tools.list.result':
+        if (msg.tools) set({ tools: msg.tools })
+        break
+
+      case 'sessions.list.result': {
+        const remoteSessions = (msg.sessions || []).map(s => ({
+          id: s.session_id || s.id,
+          title: s.title || s.session_id || 'Chat',
+          ts: s.created_at ? new Date(s.created_at).getTime() : Date.now(),
+        }))
+        // Keep local sessions that have actual messages (in-progress chats not yet on server)
+        const { messages: localMsgs } = get()
+        const localOnly = get().sessions.filter(
+          ls => !remoteSessions.find(rs => rs.id === ls.id) &&
+                (localMsgs[ls.id]?.length > 0)
+        )
+        set({ sessions: [...remoteSessions, ...localOnly] })
+        break
+      }
+
+      case 'sessions.history.result': {
+        if (!msg.session_id) break
+        const msgs = (msg.messages || []).map(m => ({
+          id: uid(),
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content || m.text || '',
+          ts: m.ts || Date.now(),
+          streaming: false,
+        }))
+        set({ messages: { ...get().messages, [msg.session_id]: msgs } })
+        break
+      }
+
+      case 'error':
+        get().showToast(msg.text || 'Gateway error')
+        set({ streaming: false, agentProgress: null })
+        break
+
+      case 'heartbeat':
+      case 'pong':
+        break
+    }
+  },
+}))

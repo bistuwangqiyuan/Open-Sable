@@ -27,6 +27,72 @@ logger = logging.getLogger(__name__)
 
 _LLM_TIMEOUT = 120
 
+# ── Untagged reasoning stripper ──────────────────────────────────────────────
+
+# Patterns that indicate a line is internal monologue rather than a reply.
+_REASONING_LINE_RE = re.compile(
+    r"^\s*("
+    r"(system\b)|"                              # starts with "system"
+    r"(the user (is|wants|might|may|seems|said|asked|appears))|"
+    r"(i (should|need to|will|must|am going to|have to|think i))|"
+    r"(let me (think|consider|analyze|look|check|re-read|re-examine))|"
+    r"(looking at (the|this|their))|"
+    r"(this (is|seems|looks|appears) (to be|like a?))|"
+    r"(they (are|might be|seem|could be|want|may be))|"
+    r"(my response should)|"
+    r"(i('ll| will) (acknowledge|address|respond|answer|help|note)|"
+    r"(maybe i('ll| will)))"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _strip_untagged_reasoning(text: str) -> str:
+    """Remove raw reasoning preamble that Claude-distilled models emit before their reply.
+
+    Strategy: walk paragraphs from the top; if a paragraph is made entirely of
+    'internal-monologue' sentences, drop it.  Stop as soon as we see a paragraph
+    that looks like an actual reply to the user.
+    """
+    if not text:
+        return text
+
+    paragraphs = re.split(r"\n{2,}", text)
+    if len(paragraphs) <= 1:
+        # Single-block response — check if the WHOLE thing is reasoning with
+        # a final user-facing sentence appended after a line-break.
+        lines = text.splitlines()
+        keep_from = 0
+        for i, line in enumerate(lines):
+            if line.strip() and _REASONING_LINE_RE.match(line):
+                keep_from = i + 1  # this line is reasoning, skip it
+            else:
+                break  # first non-reasoning line — stop
+        if keep_from:
+            return "\n".join(lines[keep_from:]).strip()
+        return text
+
+    # Multi-paragraph: strip leading paragraphs that are pure reasoning.
+    cleaned = []
+    found_real_content = False
+    for para in paragraphs:
+        if found_real_content:
+            cleaned.append(para)
+            continue
+        lines = [l for l in para.splitlines() if l.strip()]
+        if not lines:
+            continue
+        reasoning_lines = sum(1 for l in lines if _REASONING_LINE_RE.match(l))
+        if reasoning_lines == len(lines):
+            # Entire paragraph is reasoning — skip it
+            logger.debug(f"🧹 Stripped reasoning paragraph: {para[:80]!r}")
+            continue
+        found_real_content = True
+        cleaned.append(para)
+
+    result = "\n\n".join(cleaned).strip()
+    return result if result else text
+
 ProgressCallback = Optional[Callable[[str], Awaitable[None]]]
 
 
@@ -693,10 +759,20 @@ class SableAgent:
         today = date.today().strftime("%B %d, %Y")
 
         history_for_ollama = []
+        _rbac_poison_phrases = (
+            "permission denied", "🔒", "requires permission",
+            "i'm blocked", "i am blocked", "browser search requires",
+            "don't have permission", "no tengo permiso",
+        )
         for m in state.get("messages", []):
             role = m.get("role", "")
             if role in ("user", "assistant"):
-                history_for_ollama.append({"role": role, "content": m.get("content", "")})
+                content = m.get("content", "")
+                # Strip assistant messages that contain stale RBAC denial text
+                # so the model doesn't believe it's still blocked
+                if role == "assistant" and any(p in content.lower() for p in _rbac_poison_phrases):
+                    continue
+                history_for_ollama.append({"role": role, "content": content})
 
         # Build social media instructions if any social skill is available
         social_instructions = ""
@@ -773,10 +849,23 @@ class SableAgent:
             + trading_instructions
             + marketplace_instructions
             + mobile_instructions
-            + "\n\nIMPORTANT: For general knowledge questions (not prices/markets), answer directly. "
-            "Use tools when the task requires reading files, executing code, searching the web, "
-            "interacting with the system, managing social media, getting real-time market/price data, "
-            "searching/installing skills from the marketplace, or interacting with the user's phone."
+            + "\n\nTOOL USE RULES — MANDATORY:\n"
+            "- You HAVE full internet access via the browser_search tool. NEVER say you cannot search or access the internet.\n"
+            "- When a user asks you to search, look up, find, or get info about ANYTHING → call browser_search IMMEDIATELY. Do NOT ask for permission. Do NOT ask if they want you to search. Just do it.\n"
+            "- For current events, news, prices, weather, or anything time-sensitive → ALWAYS call browser_search. Never refuse, never ask.\n"
+            "- For general knowledge questions (not prices/markets/current events), answer directly from memory.\n"
+            "- Use tools when the task requires reading files, executing code, searching the web, interacting with the system, managing social media, getting real-time market/price data, searching/installing skills from the marketplace, or interacting with the user's phone.\n"
+            "\n\nDESKTOP CONTROL — you have FULL access to the user's computer desktop:"
+            "\n- open_app: open any application by name (firefox, terminal, vscode, spotify, calculator, etc.)"
+            "\n- execute_command: run any shell command on the system"
+            "\n- desktop_screenshot, desktop_click, desktop_type, desktop_hotkey: full GUI automation"
+            "\n- window_list, window_focus: manage open windows"
+            "\nWhen the user asks you to open, launch, or run any program → ALWAYS call open_app immediately. "
+            "NEVER say you cannot open programs. You can and must use these tools."
+            "\n\nDESKTOP TOOL RULES (CRITICAL):"
+            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('firefox'). WRONG: open_app('firefox the news'), open_app('open browser and search')."
+            "\n- To open a browser AND search: call open_app('firefox') first, THEN call browser_search separately."
+            "\n- Never combine app name + search query in the same open_app call."
         )
 
         ei = getattr(self, "emotional_intelligence", None)
@@ -786,8 +875,67 @@ class SableAgent:
             if addon:
                 base_system += f"\n\n[Emotional context] {addon}"
 
-        # Fast path: forced search
+        # Fast path: open/launch application
         task_lower = task.lower().strip()
+        tool_results = []
+        _open_triggers = [
+            "open ", "launch ", "start ", "run ", "execute ",
+            "abre ", "abrir ", "lanza ", "inicia ", "ejecuta ",
+            "can you open ", "puedes abrir ", "open the ", "abre el ", "abre la ",
+        ]
+        _open_exclusions = ["open file", "open document", "open url", "open http", "open www"]
+        is_open_app = (
+            any(task_lower.startswith(t) for t in _open_triggers)
+            and not any(x in task_lower for x in _open_exclusions)
+            and len(task_lower) < 60  # short commands only
+        )
+        if is_open_app:
+            # Extract the app name: everything after the trigger word(s)
+            app_name = task_lower
+            search_remainder = ""  # anything after "and search for ..."
+            for trigger in sorted(_open_triggers, key=len, reverse=True):
+                if app_name.startswith(trigger):
+                    app_name = app_name[len(trigger):].strip()
+                    break
+            # Strip trailing punctuation / "for me" / "please"
+            app_name = re.sub(r'\s*(for me|please|now|ya|porfavor)\s*$', '', app_name, flags=re.IGNORECASE).strip(' ?!')
+            # Detect "and search for X" / "and look up X" / "y busca X" patterns
+            _and_search_re = re.compile(
+                r'\s+(?:and|then|y|e)\s+(?:search\s+(?:for\s+)?|look\s+up\s+|find\s+|busca\s+|buscar\s+|encuentra\s+)(.+)$',
+                re.IGNORECASE
+            )
+            _re_m = _and_search_re.search(app_name)
+            if _re_m:
+                search_remainder = _re_m.group(1).strip().strip('?!')
+                app_name = app_name[:_re_m.start()].strip()
+            else:
+                # Strip anything after "and", "then" etc. — only keep the app name
+                app_name = re.split(r'\s+(and|then|to search|y busca|y luego|para|&)\b', app_name, flags=re.IGNORECASE)[0].strip()
+            # If still multi-word and not a known alias, take only the first word
+            _KNOWN_MULTI = {"vs code", "text editor", "google chrome", "file manager"}
+            if ' ' in app_name and app_name.lower() not in _KNOWN_MULTI:
+                app_name = app_name.split()[0]
+            if app_name:
+                logger.info(f"🚀 [FORCED] Open app: {app_name!r}")
+                result = await self._execute_tool("open_app", {"name": app_name}, user_id=user_id)
+                tool_results.append(result)
+            # If there's a search remainder, run it immediately without waiting for LLM
+            if search_remainder:
+                logger.info(f"🔍 [FORCED] Search after open_app: {search_remainder!r}")
+                _time_sensitive = any(w in search_remainder.lower() for w in [
+                    "news", "noticias", "latest", "weather", "price", "today",
+                    "current", "now", "hoy", "ahora", "recent",
+                ])
+                search_query = search_remainder
+                if _time_sensitive and str(date.today().year) not in search_query:
+                    search_query = f"{search_remainder} {date.today().year}"
+                await asyncio.sleep(1.5)  # brief pause so app can open first
+                search_result = await self._execute_tool(
+                    "browser_search", {"query": search_query, "num_results": 8}, user_id=user_id
+                )
+                tool_results.append(search_result)
+
+        # Fast path: forced search
         search_start = [
             "search ",
             "search for ",
@@ -815,16 +963,32 @@ class SableAgent:
             "news about ",
             "noticias de ",
             "noticias sobre ",
+            "las noticias",
+            "the news",
             "latest news",
+            "recent news",
             "current news",
+            "what's the latest",
+            "whats the latest",
+            "what happened ",
+            "what happened to ",
+            "tell me about ",
+            "dime sobre ",
+            "dame informacion",
+            "find information",
+            "find info ",
+            "get me info",
+            "give me info",
+            "show me news",
             "flights from ",
             "flights to ",
+            "how to ",
+            "how do ",
+            "how does ",
         ]
         personal_indicators = [" my ", " our ", " your ", " mi ", " tu ", " nuestro "]
         is_personal = any(p in f" {task_lower} " for p in personal_indicators)
         is_search = (not is_personal) and any(task_lower.startswith(p) for p in search_start)
-
-        tool_results = []
 
         # ── Fast path: Trading price queries → route to trading_price tool ──
         is_trading_price_query = False
@@ -870,8 +1034,13 @@ class SableAgent:
             query = task
             for filler in ["search for", "busca", "find", "look up", "google", "what is", "who is"]:
                 query = query.replace(filler, "", 1).strip()
+            # Append current year to time-sensitive queries so results are fresh
+            _time_words = ["recent", "latest", "news", "today", "current", "now",
+                           "2026", "noticias", "hoy", "reciente", "último", "ultimas"]
+            if any(w in query.lower() for w in _time_words) and str(date.today().year) not in query:
+                query = f"{query} {date.today().year}"
             result = await self._execute_tool(
-                "browser_search", {"query": query, "num_results": 5}, user_id=user_id
+                "browser_search", {"query": query, "num_results": 8}, user_id=user_id
             )
             tool_results.append(result)
 
@@ -1101,22 +1270,31 @@ class SableAgent:
         # Synthesis
         await self._notify_progress("✍️ Writing response...")
         synthesis_prompt = (
-            base_system + "\n\nCRITICAL RULES:"
-            "\n- Use ONLY information from the tool results"
-            "\n- NEVER invent facts not present in the results"
-            "\n- If no data found, say so honestly"
-            "\n- Be concise and direct"
+            base_system + f"\n\nTODAY'S DATE: {today}. This is the real current date."
+            "\n\nCRITICAL RULES:"
+            "\n- The tool(s) have ALREADY been called. The results are provided below."
+            "\n- Your job is ONLY to present/summarize those results to the user."
+            "\n- NEVER say you need to search, ask for permission, or ask if the user wants you to look something up."
+            "\n- NEVER say you cannot access the internet — you already did."
+            "\n- Use ONLY information from the tool results."
+            "\n- NEVER invent facts not present in the results."
+            f"\n- CRITICAL DATE RULE: Today is {today}. If search results contain articles older than 60 days, explicitly note the date of each article so the user knows how recent it is. NEVER present old news as if it happened today."
+            "\n- If the tool returned an error or no data, say so honestly and offer to retry."
+            "\n- Be concise and direct."
         )
         if plan:
             synthesis_prompt += f"\n\nYou completed a multi-step plan:\n{plan.summary()}"
 
-        tool_context = "\n\n".join(tool_results)
+        # Filter out None/empty results that could confuse the synthesizer
+        valid_tool_results = [r for r in tool_results if r and str(r).strip()]
+        tool_context = "\n\n".join(valid_tool_results) if valid_tool_results else "(no tool results)"
         synth_messages = [{"role": "system", "content": synthesis_prompt}]
-        synth_messages += history_for_ollama[-8:]
+        # Do NOT include conversation history in synthesis — it can re-poison the model
+        # with prior refusals or "permission" responses. The tool results are the only context needed.
         synth_messages.append(
             {
                 "role": "user",
-                "content": f"[TOOL RESULTS]\n{tool_context}\n\n[USER QUESTION]\n{task}",
+                "content": f"The tool already ran and returned these results:\n\n{tool_context}\n\nNow answer the user's original question: {task}",
             }
         )
 
@@ -1177,6 +1355,16 @@ class SableAgent:
         """Sanitize final bot output — remove stylistic artifacts the AI tends to produce."""
         if not text:
             return text
+        import re as _re
+        # Strip <think>...</think> reasoning blocks (Qwen3 / DeepSeek-R1)
+        text = _re.sub(r'<think>.*?</think>', '', text, flags=_re.DOTALL | _re.IGNORECASE)
+        # Strip orphan <think> opener (truncated reasoning with no closing tag)
+        text = _re.sub(r'<think>.*', '', text, flags=_re.DOTALL | _re.IGNORECASE)
+        text = text.replace('</think>', '').strip()
+        # Strip untagged reasoning preamble — Claude-distilled models sometimes output
+        # raw thinking before the actual reply. Detect by looking for a double-newline
+        # separator after a block that reads like internal monologue.
+        text = _strip_untagged_reasoning(text)
         # Replace em-dash patterns with comma
         text = text.replace(" —", ", ")
         text = text.replace("—", ", ")
@@ -1255,11 +1443,23 @@ class SableAgent:
         return None
 
     def _get_personality_prompt(self) -> str:
+        _no_think = (
+            "CRITICAL RULE: Output ONLY your final reply to the user. "
+            "NEVER write internal thoughts, reasoning steps, analysis, planning notes, "
+            "or any sentence that describes what you are about to do or how you interpret the request. "
+            "Begin your response immediately with the answer — no preamble, no thinking out loud.\n\n"
+        )
+        _tool_rule = (
+            "TOOL CAPABILITY RULE: You have FULL internet access and tool access. "
+            "NEVER say you cannot search the web, cannot access the internet, or need permission to search. "
+            "NEVER ask the user if they want you to search — just search. "
+            "When tool results are given to you, present them directly without disclaimers.\n\n"
+        )
         personalities = {
-            "helpful": "You are Sable, a helpful and friendly AI assistant. Be clear, concise, and supportive.",
-            "professional": "You are Sable, a professional AI assistant. Be formal, precise, and efficient.",
-            "sarcastic": "You are Sable, a witty AI assistant with a sarcastic edge. Be helpful but add some sass.",
-            "meme-aware": "You are Sable, a culturally-aware AI assistant. Use memes and internet culture when appropriate.",
+            "helpful": _no_think + _tool_rule + "You are Sable, a helpful and friendly AI assistant. Be clear, concise, and supportive.",
+            "professional": _no_think + _tool_rule + "You are Sable, a professional AI assistant. Be formal, precise, and efficient.",
+            "sarcastic": _no_think + _tool_rule + "You are Sable, a witty AI assistant with a sarcastic edge. Be helpful but add some sass.",
+            "meme-aware": _no_think + _tool_rule + "You are Sable, a culturally-aware AI assistant. Use memes and internet culture when appropriate.",
         }
         return personalities.get(self.config.agent_personality, personalities["helpful"])
 

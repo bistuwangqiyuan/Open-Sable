@@ -138,7 +138,7 @@ function summarizeEntry(entry) {
     case 'thought':
       return data.thought || '';
     case 'felt':
-      return `Mood: ${data.new_mood || data.emotion || '?'} (${(data.intensity ?? '?')}) — ${data.why || ''}`;
+      return `Mood: ${data.new_mood || data.emotion || '?'} (${(data.intensity ?? '?')}) ${data.why || ''}`;
     case 'posted':
       return data.tweet || data.text || JSON.stringify(data).slice(0, 200);
     case 'engaged': {

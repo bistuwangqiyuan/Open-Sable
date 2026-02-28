@@ -131,7 +131,7 @@ ensure_marketplace() {
 }
 
 start_desktop() {
-    # Start the desktop Electron agent if DESKTOP_ENABLED=true
+    # Start the Sable Desktop Electron app if DESKTOP_ENABLED=true
     local desktop_enabled
     desktop_enabled=$(grep -E '^DESKTOP_ENABLED=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
     if [ "$desktop_enabled" != "true" ]; then
@@ -140,39 +140,45 @@ start_desktop() {
 
     local deskdir="$DIR/desktop"
     if [ ! -f "$deskdir/package.json" ]; then
-        echo "⚠️  Desktop agent folder not found — set DESKTOP_ENABLED=false or run install.py"
+        echo "⚠️  Desktop folder not found — set DESKTOP_ENABLED=false"
         return 0
     fi
 
-    if ! command -v pnpm &>/dev/null; then
-        echo "⚠️  pnpm not found — desktop agent requires pnpm"
+    if ! command -v npm &>/dev/null; then
+        echo "⚠️  npm not found — desktop requires Node.js"
         return 0
     fi
 
-    # Auto-build if not built
-    local dist_electron="$deskdir/apps/desktop/dist-electron"
-    if [ ! -d "$dist_electron" ] || [ -z "$(ls -A "$dist_electron/main/" 2>/dev/null)" ]; then
-        echo "🖥️  Building Desktop Agent..."
-        (cd "$deskdir" && COREPACK_ENABLE_STRICT=0 pnpm install --no-frozen-lockfile && \
-         pnpm -F @opensable/web build && \
-         cd apps/desktop && npx tsc && npx vite build) || {
-            echo "⚠️  Desktop agent build failed — skipping"
+    if ! command -v electron &>/dev/null && [ ! -f "$deskdir/node_modules/.bin/electron" ]; then
+        echo "🖥️  Installing Desktop dependencies..."
+        (cd "$deskdir" && npm install --silent) || {
+            echo "⚠️  Desktop npm install failed — skipping"
             return 0
         }
     fi
 
-    # Read gateway config for the desktop app
-    local api_url
-    api_url=$(grep -E '^OPENSABLE_API_URL=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
-    local sable_token
-    sable_token=$(grep -E '^WEBCHAT_TOKEN=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    # Auto-build renderer if not built
+    if [ ! -f "$deskdir/dist/index.html" ]; then
+        echo "🖥️  Building Desktop..."
+        (cd "$deskdir" && npm run build) || {
+            echo "⚠️  Desktop build failed — skipping"
+            return 0
+        }
+    fi
 
-    echo "🖥️  Starting Desktop Agent..."
-    OPENSABLE_API_URL="${api_url:-ws://127.0.0.1:8789}" \
-    SABLE_TOKEN="${sable_token}" \
-    nohup pnpm --dir "$deskdir" dev >> "$DIR/logs/desktop.log" 2>&1 &
+    # Read gateway config
+    local webchat_port webchat_host webchat_token
+    webchat_port=$(grep -E '^WEBCHAT_PORT=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    webchat_host=$(grep -E '^WEBCHAT_HOST=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    webchat_token=$(grep -E '^WEBCHAT_TOKEN=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+
+    echo "🖥️  Starting Desktop..."
+    WEBCHAT_PORT="${webchat_port:-8789}" \
+    WEBCHAT_HOST="${webchat_host:-localhost}" \
+    WEBCHAT_TOKEN="${webchat_token}" \
+    nohup "$deskdir/node_modules/.bin/electron" "$deskdir" >> "$DIR/logs/desktop.log" 2>&1 &
     echo $! > "$DIR/.desktop.pid"
-    echo "✅ Desktop Agent started (PID $(cat "$DIR/.desktop.pid"))"
+    echo "✅ Desktop started (PID $(cat "$DIR/.desktop.pid"))"
 }
 
 stop_desktop() {

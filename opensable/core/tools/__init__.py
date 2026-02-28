@@ -1294,15 +1294,17 @@ class ToolRegistry(
                     "name": "open_app",
                     "description": (
                         "Open an application on the computer by name. "
-                        "Works with: firefox, chrome, terminal, vscode, spotify, vlc, gimp, "
-                        "libreoffice, calculator, files, discord, slack, and any installed program."
+                        "Pass ONLY the application name — never a search query or sentence. "
+                        "Examples: 'firefox', 'chrome', 'terminal', 'vscode', 'spotify', 'vlc', 'gimp', "
+                        "'libreoffice', 'calculator', 'files', 'discord', 'slack'. "
+                        "To search the web, first open_app('firefox'), then use browser_search or desktop_type."
                     ),
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "name": {
                                 "type": "string",
-                                "description": "Application name or command, e.g. 'firefox', 'terminal', 'vscode', 'spotify'",
+                                "description": "App executable name ONLY. Valid: 'firefox', 'terminal', 'vscode'. INVALID: 'firefox the news', 'open firefox and search'.",
                             },
                         },
                         "required": ["name"],

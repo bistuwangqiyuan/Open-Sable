@@ -179,6 +179,8 @@ class XAutonomousAgent:
         self._daily_limit_hit: bool = False  # True when X 344 daily cap is reached
         self._posted_urls: set = set()
         self._engaged_tweet_ids: set = set()
+        self._mention_replies_today: int = 0
+        self._mention_queue: List[Dict] = []  # pending mention replies — persisted across restarts
         self._followed_users: set = set()
         self._history: List[Dict] = []
         self._engagement_log: List[Dict] = []
@@ -286,6 +288,7 @@ class XAutonomousAgent:
         if today != self._last_reset:
             self._posts_today = 0
             self._engagements_today = 0
+            self._mention_replies_today = 0
             self._grok_vision_today = 0
             self._grok_images_today = 0
             self._last_reset = today
@@ -325,7 +328,7 @@ class XAutonomousAgent:
 
             # ── Between sessions: "close the app" and take a break ──
             break_mins = random.uniform(10, 40)
-            logger.info(f"\U0001f4f1 Session done — closing X, break ~{break_mins:.0f}min")
+            logger.info(f"📱 Session done — break ~{break_mins:.0f}min")
 
             # Think during the break (uses LLM only, no X API calls)
             await self._consciousness_step()
@@ -340,6 +343,9 @@ class XAutonomousAgent:
         Duration: 5-25 minutes. Activities done ONE AT A TIME with pauses.
         """
         self._reset_daily_counters()
+
+        # ── Always drain the mention reply queue first ──
+        await self._process_mention_queue()
 
         session_minutes = random.uniform(5, 25)
         session_end = asyncio.get_event_loop().time() + session_minutes * 60
@@ -388,12 +394,11 @@ class XAutonomousAgent:
         """
         activities: List[Dict] = []
 
-        # ── Always start by browsing (scrolling the feed) ──
-        activities.append({"type": "browse_engage", "pause_key": "engage"})
+        # ── ALWAYS check mentions first — replies are highest priority ──
+        activities.append({"type": "check_mentions", "pause_key": "mention"})
 
-        # ── Check mentions more frequently (40% — uses notifications, not search) ──
-        if random.random() < 0.40:
-            activities.append({"type": "check_mentions", "pause_key": "mention"})
+        # ── Browse (scroll the feed) ──
+        activities.append({"type": "browse_engage", "pause_key": "engage"})
 
         # ── Post if inspired or if it's been long enough ──
         since_post = self._seconds_since(self._last_post_at)
@@ -928,16 +933,44 @@ class XAutonomousAgent:
             "key claims",
             "let me parse the",
             "let me address",
+            # ── "I should engage / respond / reply" planning openers ────
+            "i should engage",
+            "i should respond",
+            "i should reply",
+            "i should write",
+            "i should craft",
+            "i should post",
+            "i should tweet",
+            "engage with this in a way",
+            "respond to this in a way",
+            "reply to this in a way",
+            "not deferential",
+            "respectful of their expertise",
+            "adds value through my perspective",
+            "keeps it concise and tweet",
+            "tweet-formatted",
+            "the key points they",
+            "key points they're making",
+            "in a way that's:",
+            "in a way that is:",
         ]
         if any(phrase in t for phrase in meta_phrases):
             return True
         # Starts with first-person reasoning openers typical of chain-of-thought
         reasoning_starters = re.compile(
-            r'^(i need to|let me|first,?\s+let me|i\'ll craft|i will craft|'
-            r'okay,?\s+let me|alright,?\s+let me|to (craft|write|compose|create) a)',
+            r'^(i need to|i should|i want to|i\'ll respond|i will respond|'
+            r'i\'ll reply|i will reply|i\'ll engage|i should engage|'
+            r'let me|first,?\s+let me|i\'ll craft|i will craft|'
+            r'okay,?\s+let me|alright,?\s+let me|to (craft|write|compose|create) a|'
+            r'this (tweet|post|reply) (needs|should|requires)|'
+            r'the (best|right|ideal) (way|approach|response))',
             re.IGNORECASE,
         )
         if reasoning_starters.match(text.strip()):
+            return True
+        # Multi-line reasoning block: first line ends with ":" and next lines are bullets/list
+        lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+        if len(lines) >= 2 and lines[0].endswith(":") and re.match(r'^[-•*\d]|^[A-Z][a-z]', lines[1]):
             return True
         return False
 
@@ -1178,47 +1211,71 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _check_mentions(self):
-        """Check notifications for mentions and respond — uses the real notifications tab, not search."""
+        """Fetch new mentions and add them to the reply queue — does NOT reply immediately."""
         try:
-            result = await self._x().get_notifications("Mentions", count=10)
+            result = await self._x().get_notifications("Mentions", count=25)
             if not result.get("success"):
                 return
-
+            added = 0
             for notif in result.get("notifications", []):
                 tweet_id = notif.get("tweet_id")
                 if not tweet_id or tweet_id in self._engaged_tweet_ids:
                     continue
-
+                # Already in queue?
+                if any(q["tweet_id"] == tweet_id for q in self._mention_queue):
+                    continue
                 mention_text = notif.get("tweet_text", "")
                 mentioner = notif.get("username", "someone")
                 if not mention_text:
                     continue
-
-                # Pause — "reading the mention"
-                await asyncio.sleep(self._human_delay(8, 15))
-
-                reply_text = await self._generate_mention_reply(mention_text, mentioner)
-                if reply_text:
-                    await self._safe_action("mention_reply", getattr(self._x(), 'reply', None), tweet_id, reply_text)
-                    self._engaged_tweet_ids.add(tweet_id)
-                    self._engagements_today += 1
-                    # Track relationship
-                    if mentioner:
-                        self._known_users[mentioner] = self._known_users.get(mentioner, 0) + 2
-                    self.mind.remember("mentioned", {
-                        "by": mentioner,
-                        "text": mention_text[:200],
-                        "reply": reply_text[:200],
-                        "tweet_id": tweet_id,
-                    })
-                    logger.info(f"\U0001f4ac Replied to mention from @{mentioner}")
-                    await asyncio.sleep(self._human_delay(10, 20))
-
+                self._mention_queue.append({
+                    "tweet_id": tweet_id,
+                    "text": mention_text,
+                    "username": mentioner,
+                })
+                added += 1
+            if added:
+                logger.info(f"📨 {added} mention(s) queued (queue size: {len(self._mention_queue)})")
+                self._save_state()
         except Exception as e:
             logger.debug(f"Check mentions error: {e}")
 
-        except Exception as e:
-            logger.debug(f"Check mentions error: {e}")
+    async def _process_mention_queue(self):
+        """Reply to all queued mentions — called at the start of every session."""
+        if not self._mention_queue:
+            return
+        max_replies = int(getattr(self.config, "x_max_mention_replies_per_day", 50))
+        logger.info(f"📨 Processing mention queue ({len(self._mention_queue)} pending)")
+        processed = []
+        for item in list(self._mention_queue):
+            if self._mention_replies_today >= max_replies:
+                logger.info(f"📨 Mention reply cap reached ({max_replies}/day)")
+                break
+            tweet_id = item["tweet_id"]
+            mentioner = item["username"]
+            mention_text = item["text"]
+            await asyncio.sleep(self._human_delay(8, 15))
+            reply_text = await self._generate_mention_reply(mention_text, mentioner)
+            if reply_text:
+                await self._safe_action("mention_reply", getattr(self._x(), 'reply', None), tweet_id, reply_text)
+                self._engaged_tweet_ids.add(tweet_id)
+                self._engagements_today += 1
+                self._mention_replies_today += 1
+                if mentioner:
+                    self._known_users[mentioner] = self._known_users.get(mentioner, 0) + 2
+                self.mind.remember("mentioned", {
+                    "by": mentioner,
+                    "text": mention_text[:200],
+                    "reply": reply_text[:200],
+                    "tweet_id": tweet_id,
+                })
+                logger.info(f"💬 Replied to queued mention from @{mentioner}")
+            processed.append(item)
+            await asyncio.sleep(self._human_delay(10, 20))
+        # Remove processed items from queue
+        for item in processed:
+            self._mention_queue.remove(item)
+        self._save_state()
 
     # ══════════════════════════════════════════════════════════════════
     #  ACTIVITY: JOIN TREND
@@ -1481,9 +1538,12 @@ class XAutonomousAgent:
 
     async def _ask_llm(self, system: str, user: str) -> Optional[str]:
         try:
+            # Append /no_think directly to the user message so Qwen3 / reasoning
+            # models suppress their chain-of-thought output.
+            user_no_think = user.rstrip() + " /no_think"
             response = await asyncio.wait_for(
                 self.agent.llm.invoke_with_tools(
-                    [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    [{"role": "system", "content": system}, {"role": "user", "content": user_no_think}],
                     [],
                 ),
                 timeout=60,
@@ -1735,6 +1795,50 @@ class XAutonomousAgent:
         text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         # Also handle unclosed <think> (model started reasoning, never closed)
         text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+        # ── Strip untagged reasoning preamble ─────────────────────────
+        # Models (especially Qwen3) sometimes output planning text BEFORE the
+        # actual reply WITHOUT wrapping it in <think> tags, e.g.:
+        #   "I should engage with this in a way that's:\nRespectful...\n1."
+        # We strip leading paragraphs that look like reasoning until we find
+        # a paragraph that reads like an actual tweet.
+        _REASONING_LINE = re.compile(
+            r'^(i (should|need to|want to|will|must|can)|let me|first[,.]|'
+            r'okay[,.]|the (tweet|post|reply|best|right)|this (requires|needs|should)|'
+            r'considering|thinking about|my approach|to (craft|write|respond)|'
+            r'key (points|arguments|ideas)|\d+\.\s)',
+            re.IGNORECASE,
+        )
+        paras = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
+        if len(paras) > 1:
+            real_start = 0
+            for i, para in enumerate(paras):
+                first_line = para.splitlines()[0].strip()
+                if (_REASONING_LINE.match(first_line)
+                        or first_line.endswith(':')
+                        or len(para) > 500):
+                    real_start = i + 1
+                else:
+                    break
+            if real_start > 0 and real_start < len(paras):
+                text = '\n\n'.join(paras[real_start:])
+            elif real_start == 0:
+                pass  # first para looked fine, keep as-is
+        # Single-line reasoning: strip lines that start with reasoning markers
+        # until we hit a line that looks like actual content (no reasoning opener)
+        lines = text.splitlines()
+        if len(lines) > 1:
+            cleaned = []
+            found_content = False
+            for line in lines:
+                s = line.strip()
+                if not found_content and s and _REASONING_LINE.match(s):
+                    continue  # skip reasoning line
+                else:
+                    found_content = True
+                    cleaned.append(line)
+            if cleaned:
+                text = '\n'.join(cleaned)
+        text = text.strip()
         # ── Strip Grok/LLM artefacts ─────────────────────────────────
         # Remove <xai:...> XML tags that Grok sometimes injects (tool cards, etc.)
         text = re.sub(r"<xai:[^>]*>.*?</xai:[^>]*>", "", text, flags=re.DOTALL)
@@ -1857,6 +1961,7 @@ class XAutonomousAgent:
                 "last_post_at": self._last_post_at.isoformat() if getattr(self, '_last_post_at', None) else None,
                 "last_engage_at": self._last_engage_at.isoformat() if getattr(self, '_last_engage_at', None) else None,
                 "daily_limit_hit": getattr(self, '_daily_limit_hit', False),
+                "mention_queue": self._mention_queue[-100:],  # persist pending mentions
             }
             self._state_file.write_text(json.dumps(state, indent=2, default=str))
         except Exception as e:
@@ -1875,6 +1980,7 @@ class XAutonomousAgent:
             self._history = state.get("history", [])
             self._engagement_log = state.get("engagement_log", [])
             self._style_scores = state.get("style_scores", self._style_scores)
+            self._mention_queue = state.get("mention_queue", [])
 
             if state.get("last_reset") == str(datetime.now().date()):
                 self._posts_today = state.get("posts_today", 0)

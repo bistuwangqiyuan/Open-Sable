@@ -59,13 +59,93 @@ import json
 import logging
 import hmac
 import os
+import re
 import stat
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+
+# ─── LLM reasoning-trace stripper ─────────────────────────────────────────────
+
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL | re.IGNORECASE)
+_THINK_OPEN = re.compile(r'<think>.*', re.DOTALL | re.IGNORECASE)
+
+# Phrases that indicate the LLM is outputting its internal reasoning, not the reply
+_REASONING_STARTERS = re.compile(
+    r'^(system\b|i need to\b|let me\b|first,?\s+let me\b|okay,?\s+let me\b|'
+    r'alright,?\s+let me\b|i\'ll craft\b|i will craft\b|i\'m going to\b|'
+    r'the user (seems|is|wants|asked|might|may|said|appears|\'s message)\b|'
+    r'i should\b|i\'ve been\b|maybe i(\'ll| will)\b|'
+    r'so i (need|should|want|will)\b|now i\b|next,?\s+i\b|'
+    r'looking at (the|this|their)\b|this (is|seems|looks|appears) (to be|like)\b|'
+    r'they (are|might be|seem|could be|want|may be)\b|'
+    r'my response should\b|i\'ll (acknowledge|address|respond|help|note)\b|'
+    r'\(also,?\b|\(note[,:]|\(thinking|\(internal)',
+    re.IGNORECASE,
+)
+
+
+def _strip_reasoning_preamble(text: str) -> str:
+    """Remove raw untagged reasoning that Claude-distilled models emit before their reply.
+
+    Walks paragraphs from the top; if every line in a paragraph looks like
+    internal monologue (matches _REASONING_STARTERS), the paragraph is dropped.
+    Stops as soon as a real user-facing paragraph is found.
+    """
+    if not text:
+        return text
+
+    paragraphs = re.split(r"\n{2,}", text)
+    if len(paragraphs) <= 1:
+        # Single block — check for line-by-line reasoning prefix
+        lines = text.splitlines()
+        keep_from = 0
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped and _REASONING_STARTERS.match(stripped):
+                keep_from = i + 1
+            else:
+                break
+        if keep_from:
+            return "\n".join(lines[keep_from:]).strip()
+        return text
+
+    cleaned = []
+    found_real = False
+    for para in paragraphs:
+        if found_real:
+            cleaned.append(para)
+            continue
+        lines = [l.strip() for l in para.splitlines() if l.strip()]
+        if not lines:
+            continue
+        reasoning_count = sum(1 for l in lines if _REASONING_STARTERS.match(l))
+        if reasoning_count == len(lines):
+            logger.debug(f"🧹 Gateway stripped reasoning para: {para[:80]!r}")
+            continue
+        found_real = True
+        cleaned.append(para)
+
+    result = "\n\n".join(cleaned).strip()
+    return result if result else text
+
+
+def _clean_gateway_reply(text: str) -> str:
+    """Strip any leaked <think>...</think> reasoning blocks from a reply before sending to client."""
+    if not text:
+        return text
+    # Remove complete <think>...</think> blocks
+    text = _THINK_RE.sub('', text)
+    # Remove orphan <think> opener (no closing tag)
+    text = _THINK_OPEN.sub('', text)
+    text = text.replace('</think>', '').strip()
+    # Strip untagged reasoning preamble (Claude-distilled / Qwen3 plain-text thinking)
+    text = _strip_reasoning_preamble(text)
+    return text
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -596,6 +676,8 @@ class Gateway:
             await self._on_monitor_snapshot(client)
         elif t == "thoughts.list":
             await self._on_thoughts_list(client, msg)
+        elif t == "tools.list":
+            await self._on_tools_list(client)
         elif t == "status":
             status = self.status()
             # Add model info from agent
@@ -609,8 +691,20 @@ class Gateway:
 
     # ── Handlers ──────────────────────────────────────────────────────────────
 
+    async def _on_tools_list(self, client: _Client):
+        """Return the list of all registered tool names from the agent."""
+        tool_names: list = []
+        try:
+            if hasattr(self.agent, "tools") and self.agent.tools:
+                tool_names = self.agent.tools.list_tools()
+        except Exception as e:
+            logger.debug(f"[Gateway] tools.list error: {e}")
+        await client.send({"type": "tools.list.result", "tools": tool_names})
+
     async def _on_message(self, client: _Client, msg: dict):
         """Process user message through the full agent pipeline (with tools)."""
+        from opensable.core.session_manager import SessionManager
+
         sid = msg.get("session_id", "webchat_default")
         text = msg.get("text", "").strip()
         user_id = msg.get("user_id", "webchat_user")
@@ -628,9 +722,40 @@ class Gateway:
                 pass
 
         try:
+            # ── Load conversation history from disk ──────────────────────────────
+            sm = SessionManager()
+            session = sm.get_session(sid)
+            if not session:
+                session = sm.create_session(
+                    channel="webchat",
+                    user_id=user_id,
+                    session_id=sid,
+                )
+            # Build history list (last 30 messages for context)
+            history = [
+                {"role": m.role, "content": m.content}
+                for m in session.get_messages()[-30:]
+            ]
+
             # Use the full agent pipeline which includes tool calling, trading
             # tools, guardrails, HITL gates, memory, and everything else.
-            reply = await self.agent.process_message(user_id, text, progress_callback=_progress)
+            reply = await self.agent.process_message(
+                user_id, text, history=history, progress_callback=_progress
+            )
+            reply = _clean_gateway_reply(reply or "")
+
+            # ── Persist to disk ─────────────────────────────────────────────────
+            try:
+                # Set title from first user message
+                if not session.metadata.get("title"):
+                    session.metadata["title"] = text[:60]
+                    session.updated_at = datetime.now(timezone.utc).isoformat()
+                session.add_message("user", text)
+                session.add_message("assistant", reply)
+                sm._save_session(session)
+            except Exception as _se:
+                logger.debug(f"[Gateway] session persist error: {_se}")
+
             await client.send({"type": "message.done", "session_id": sid, "text": reply})
         except Exception as e:
             logger.warning(f"[Gateway] Agent processing failed: {e}")
@@ -663,13 +788,22 @@ class Gateway:
         sessions = [
             {
                 "id": s.id,
+                "session_id": s.id,
                 "channel": s.channel,
                 "user_id": s.user_id,
+                "title": s.metadata.get("title") or (
+                    # Fallback: first user message text
+                    next((m.content[:60] for m in s.messages if m.role == "user"), None)
+                ) or s.id[:12],
                 "messages": len(s.messages),
+                "created_at": s.created_at,
                 "updated_at": s.updated_at,
             }
-            for s in sm.list_sessions()
+            for s in sm.list_sessions(channel="webchat")
+            if len(s.messages) > 0  # skip empty sessions
         ]
+        # Sort by most recent first
+        sessions.sort(key=lambda x: x["updated_at"], reverse=True)
         await client.send({"type": "sessions.list.result", "sessions": sessions})
 
     async def _on_sessions_history(self, client: _Client, msg: dict):

@@ -349,12 +349,35 @@ class VisionTools:
             "libreoffice": ["libreoffice", "soffice"],
         }
 
-        candidates = [name] + _ALIASES.get(name.lower(), [])
+        # Separate app name from any accidental extra words / URLs the model may pass.
+        # e.g. "firefox the news" → app="firefox", extra_args=["the", "news"]
+        # e.g. "firefox https://example.com" → app="firefox", extra_args=["https://.."]
+        # Multi-word known aliases ("vs code", "text editor") are kept intact.
+        name_lower = name.lower().strip()
+        alias_hits = _ALIASES.get(name_lower, [])
+        if alias_hits or name_lower in _ALIASES:
+            # Known multi-word alias → use as-is
+            app_name = name
+            extra_args: list = []
+        else:
+            # Split on first space: first token = executable, rest = optional args
+            tokens = name.split(None, 1)
+            app_name = tokens[0]
+            extra_args = tokens[1].split() if len(tokens) > 1 else []
+            # Reject non-URL extra_args (user probably meant a search query, not launch args)
+            # Only keep args that look like URLs, file paths, or flags
+            _looks_like_arg = lambda s: s.startswith(("-", "/", "http", "file:"))
+            if extra_args and not any(_looks_like_arg(a) for a in extra_args):
+                logger.debug(f"open_app: ignoring non-arg text '{' '.join(extra_args)}' — open '{app_name}' only")
+                extra_args = []
+
+        candidates = [app_name] + _ALIASES.get(app_name.lower(), [])
 
         for cmd in candidates:
             try:
+                argv = [cmd] + extra_args if extra_args else cmd.split()
                 proc = subprocess.Popen(
-                    cmd.split(),
+                    argv,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
@@ -363,7 +386,7 @@ class VisionTools:
                 if proc.poll() is None:
                     return {
                         "success": True,
-                        "message": f"Opened '{name}' (PID {proc.pid})",
+                        "message": f"Opened '{app_name}' (PID {proc.pid})",
                     }
             except FileNotFoundError:
                 continue
