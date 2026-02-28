@@ -683,6 +683,12 @@ class Gateway:
             # Add model info from agent
             if hasattr(self.agent, "llm") and hasattr(self.agent.llm, "current_model"):
                 status["model"] = self.agent.llm.current_model
+            # Add agent version
+            try:
+                from opensable import __version__ as _ver
+                status["version"] = _ver
+            except Exception:
+                pass
             await client.send({"type": "status", **status})
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
@@ -914,9 +920,10 @@ class Gateway:
             result["reflections"] = []
 
         # ── Current emotional state ──
-        xmind = getattr(getattr(self.agent, "tools", None), "x_autoposter", None)
-        if xmind and hasattr(xmind, "mind"):
-            mind = xmind.mind
+        # x_autoposter is attached to agent in __main__.py when enabled
+        xauto = getattr(self.agent, "x_autoposter", None)
+        if xauto and hasattr(xauto, "mind"):
+            mind = xauto.mind
             result["mood"] = {
                 "current": getattr(mind, "_mood", "unknown"),
                 "intensity": getattr(mind, "_mood_intensity", 0),
@@ -924,7 +931,20 @@ class Gateway:
             }
             result["memory_stats"] = mind.get_memory_stats() if hasattr(mind, "get_memory_stats") else {}
         else:
-            result["mood"] = {"current": "unknown", "intensity": 0, "history": []}
+            # Fallback: derive current mood from the most recent "felt" journal entry
+            last_felt = next(
+                (e for e in reversed(journal_entries) if e.get("type") == "felt"),
+                None,
+            )
+            if last_felt and isinstance(last_felt.get("data"), dict):
+                d = last_felt["data"]
+                result["mood"] = {
+                    "current": d.get("emotion", "unknown"),
+                    "intensity": d.get("intensity", 0),
+                    "history": [],
+                }
+            else:
+                result["mood"] = {"current": "unknown", "intensity": 0, "history": []}
             result["memory_stats"] = {}
 
         await client.send(result)

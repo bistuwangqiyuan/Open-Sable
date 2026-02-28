@@ -22,6 +22,8 @@ from .guardrails import GuardrailsEngine, GuardrailAction, ValidationResult
 from .hitl import ApprovalGate, RiskLevel, ApprovalDecision, HumanApprovalRequired
 from .checkpointing import Checkpoint, CheckpointStore
 from .structured_output import StructuredOutputParser
+from .intent_classifier import IntentClassifier
+from .codebase_rag import CodebaseRAG
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +186,10 @@ class SableAgent:
         self.world_model = None
         self.tracer = None
 
+        # Intent classification + codebase RAG (self-awareness)
+        self.intent_classifier = IntentClassifier()
+        self.codebase_rag = CodebaseRAG()
+
     async def initialize(self):
         """Initialize agent components"""
         logger.info("Initializing Open-Sable agent...")
@@ -194,6 +200,8 @@ class SableAgent:
         await self.tools.initialize()
         await self._initialize_agi_systems()
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        # Index the codebase in the background so the agent can search its own source
+        asyncio.create_task(self.codebase_rag.ensure_indexed())
         logger.info("Agent initialized successfully")
 
     async def _initialize_agi_systems(self):
@@ -863,8 +871,8 @@ class SableAgent:
             "\nWhen the user asks you to open, launch, or run any program → ALWAYS call open_app immediately. "
             "NEVER say you cannot open programs. You can and must use these tools."
             "\n\nDESKTOP TOOL RULES (CRITICAL):"
-            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('firefox'). WRONG: open_app('firefox the news'), open_app('open browser and search')."
-            "\n- To open a browser AND search: call open_app('firefox') first, THEN call browser_search separately."
+            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('google-chrome'). WRONG: open_app('firefox the news'), open_app('open browser and search')."
+            "\n- To open a browser AND navigate to a URL: call open_app('google-chrome https://url.com'). To open a browser AND search: call open_app('google-chrome') first, THEN call browser_search separately."
             "\n- Never combine app name + search query in the same open_app call."
         )
 
@@ -874,6 +882,27 @@ class SableAgent:
             addon = adaptation.get("system_prompt_addon", "")
             if addon:
                 base_system += f"\n\n[Emotional context] {addon}"
+
+        # ── Intent classification + Codebase RAG injection ─────────────────
+        # Exactly what GitHub Copilot does: classify intent, search codebase,
+        # inject relevant source snippets into the system prompt before the LLM sees the task.
+        _intent = self.intent_classifier.classify(task)
+        logger.info(f"🧠 Intent: {_intent}")
+        if _intent.needs_code_context and self.codebase_rag:
+            try:
+                _code_results = await asyncio.wait_for(
+                    self.codebase_rag.search(task, top_k=5),
+                    timeout=8.0,
+                )
+                if _code_results:
+                    _ctx_block = self.codebase_rag.format_context(_code_results)
+                    base_system += f"\n\n{_ctx_block}"
+                    logger.info(f"📁 Injected {len(_code_results)} codebase chunks into context")
+            except asyncio.TimeoutError:
+                logger.debug("CodebaseRAG search timed out — skipping context injection")
+            except Exception as _e:
+                logger.debug(f"CodebaseRAG search error: {_e}")
+        # ── End intent + RAG ─────────────────────────────────────────────────
 
         # Fast path: open/launch application
         task_lower = task.lower().strip()
@@ -901,10 +930,11 @@ class SableAgent:
             app_name = re.sub(r'\s*(for me|please|now|ya|porfavor)\s*$', '', app_name, flags=re.IGNORECASE).strip(' ?!')
             # Detect "and search for X" / "and look up X" / "y busca X" patterns
             _and_search_re = re.compile(
-                r'\s+(?:and|then|y|e)\s+(?:search\s+(?:for\s+)?|look\s+up\s+|find\s+|busca\s+|buscar\s+|encuentra\s+)(.+)$',
+                r'\s+(?:and|then|y|e)\s+(?:search\s+(?:for\s+)?|look\s+up\s+|find\s+|busca\s+|buscar\s+|encuentra\s+|go\s+to\s+|navigate\s+to\s+|open\s+|ir\s+a\s+|abre\s+|ve\s+a\s+)(.+)$',
                 re.IGNORECASE
             )
             _re_m = _and_search_re.search(app_name)
+            _URL_RE = re.compile(r'^(https?://|www\.|[\w-]+\.[a-z]{2,})', re.IGNORECASE)
             if _re_m:
                 search_remainder = _re_m.group(1).strip().strip('?!')
                 app_name = app_name[:_re_m.start()].strip()
@@ -920,6 +950,14 @@ class SableAgent:
                 result = await self._execute_tool("open_app", {"name": app_name}, user_id=user_id)
                 tool_results.append(result)
             # If there's a search remainder, run it immediately without waiting for LLM
+            if search_remainder and _URL_RE.match(search_remainder):
+                # It's a URL — open it directly in the browser instead of doing a text search
+                url_to_open = search_remainder if search_remainder.startswith("http") else f"https://{search_remainder}"
+                logger.info(f"🌐 [FORCED] Navigate to URL: {url_to_open!r}")
+                await asyncio.sleep(1.5)
+                nav_result = await self._execute_tool("open_app", {"name": f"google-chrome {url_to_open}"}, user_id=user_id)
+                tool_results.append(nav_result)
+                search_remainder = ""  # already handled
             if search_remainder:
                 logger.info(f"🔍 [FORCED] Search after open_app: {search_remainder!r}")
                 _time_sensitive = any(w in search_remainder.lower() for w in [
@@ -1043,6 +1081,96 @@ class SableAgent:
                 "browser_search", {"query": query, "num_results": 8}, user_id=user_id
             )
             tool_results.append(result)
+
+        # ── Intent-driven fast execution ──────────────────────────────────────
+        # Use the _intent classified earlier to dispatch desktop/system actions
+        # DIRECTLY without routing through the LLM — zero interpretation lag.
+        if not tool_results and _intent.intent not in ("general_chat", "web_search",
+                                                         "trading", "social_media",
+                                                         "code_question", "self_modify"):
+            _ent = _intent.entities
+
+            if _intent.intent == "desktop_screenshot":
+                logger.info("📸 [INTENT] Screenshot")
+                result = await self._execute_tool("desktop_screenshot", {}, user_id=user_id)
+                tool_results.append(result)
+
+            elif _intent.intent == "desktop_type":
+                text = _ent.get("text", "")
+                if text:
+                    logger.info(f"⌨️  [INTENT] Type: {text!r}")
+                    result = await self._execute_tool("desktop_type", {"text": text}, user_id=user_id)
+                    tool_results.append(result)
+
+            elif _intent.intent == "desktop_click":
+                target = _ent.get("target", "")
+                if target:
+                    logger.info(f"🖱️  [INTENT] Click on: {target!r}")
+                    result = await self._execute_tool(
+                        "screen_click_on", {"description": target}, user_id=user_id
+                    )
+                    tool_results.append(result)
+
+            elif _intent.intent == "desktop_hotkey":
+                keys = _ent.get("keys", "")
+                if keys:
+                    logger.info(f"⌨️  [INTENT] Hotkey: {keys!r}")
+                    result = await self._execute_tool(
+                        "desktop_hotkey", {"keys": keys}, user_id=user_id
+                    )
+                    tool_results.append(result)
+
+            elif _intent.intent == "window_list":
+                logger.info("🪟 [INTENT] List windows")
+                result = await self._execute_tool("window_list", {}, user_id=user_id)
+                tool_results.append(result)
+
+            elif _intent.intent == "window_focus":
+                window = _ent.get("window", "")
+                if window:
+                    logger.info(f"🪟 [INTENT] Focus window: {window!r}")
+                    result = await self._execute_tool(
+                        "window_focus", {"title": window}, user_id=user_id
+                    )
+                    tool_results.append(result)
+
+            elif _intent.intent == "navigate_url" and not is_open_app:
+                url = _ent.get("url", "")
+                if url:
+                    if not url.startswith("http"):
+                        url = "https://" + url
+                    logger.info(f"🌐 [INTENT] Navigate to URL: {url!r}")
+                    result = await self._execute_tool(
+                        "open_app", {"name": f"google-chrome {url}"}, user_id=user_id
+                    )
+                    tool_results.append(result)
+
+            elif _intent.intent == "system_command":
+                cmd = _ent.get("command", "")
+                if cmd:
+                    logger.info(f"💻 [INTENT] Execute command: {cmd!r}")
+                    result = await self._execute_tool(
+                        "execute_command", {"command": cmd}, user_id=user_id
+                    )
+                    tool_results.append(result)
+
+            elif _intent.intent == "file_operation":
+                subtype = _ent.get("subtype", "list")
+                path = _ent.get("path", ".")
+                if subtype in ("list", "listar"):
+                    logger.info(f"📂 [INTENT] List files: {path!r}")
+                    result = await self._execute_tool(
+                        "file_list", {"path": path or "."}, user_id=user_id
+                    )
+                    tool_results.append(result)
+                elif subtype in ("read", "leer"):
+                    logger.info(f"📄 [INTENT] Read file: {path!r}")
+                    result = await self._execute_tool(
+                        "file_read", {"path": path}, user_id=user_id
+                    )
+                    tool_results.append(result)
+                # write/create/delete go to LLM (need more confirmation)
+        # ── End intent-driven fast execution ─────────────────────────────────
 
         # Planning
         plan = None

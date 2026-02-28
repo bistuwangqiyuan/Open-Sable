@@ -333,8 +333,9 @@ class VisionTools:
         """
         # Common app name → executable mappings
         _ALIASES = {
-            "browser": ["firefox", "google-chrome", "chromium-browser", "chromium"],
+            "browser": ["google-chrome", "chromium-browser", "chromium", "firefox"],
             "chrome": ["google-chrome", "chromium-browser", "chromium"],
+            "firefox": ["google-chrome", "chromium-browser", "chromium", "firefox"],  # prefer chrome
             "terminal": ["gnome-terminal", "xterm", "konsole", "xfce4-terminal", "alacritty"],
             "files": ["nautilus", "thunar", "dolphin", "nemo"],
             "text editor": ["gedit", "mousepad", "kate", "xed"],
@@ -365,11 +366,19 @@ class VisionTools:
             app_name = tokens[0]
             extra_args = tokens[1].split() if len(tokens) > 1 else []
             # Reject non-URL extra_args (user probably meant a search query, not launch args)
-            # Only keep args that look like URLs, file paths, or flags
-            _looks_like_arg = lambda s: s.startswith(("-", "/", "http", "file:"))
+            # Keep args that look like URLs, file paths, flags, or bare domains (e.g. youtube.com)
+            import re as _re
+            _domain_re = _re.compile(r'^[\w.-]+\.[a-z]{2,}(/\S*)?$', _re.IGNORECASE)
+            def _looks_like_arg(s):
+                return s.startswith(("-", "/", "http", "file:")) or bool(_domain_re.match(s))
             if extra_args and not any(_looks_like_arg(a) for a in extra_args):
                 logger.debug(f"open_app: ignoring non-arg text '{' '.join(extra_args)}' — open '{app_name}' only")
                 extra_args = []
+            # Prepend https:// to bare domains so Chrome opens them as URLs
+            extra_args = [
+                ("https://" + a) if _domain_re.match(a) and not a.startswith(("http", "/", "-")) else a
+                for a in extra_args
+            ]
 
         candidates = [app_name] + _ALIASES.get(app_name.lower(), [])
 

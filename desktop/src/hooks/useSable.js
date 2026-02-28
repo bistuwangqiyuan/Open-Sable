@@ -25,6 +25,8 @@ export const useSableStore = create((set, get) => ({
   ws: null,
   wsStatus: 'disconnected', // 'connecting' | 'connected' | 'disconnected'
   config: { wsUrl: 'ws://localhost:8789', token: '' },
+  agentModel: '',
+  agentVersion: '',
 
   // Sessions
   sessions: [],
@@ -80,9 +82,10 @@ export const useSableStore = create((set, get) => ({
 
     socket.onopen = () => {
       set({ wsStatus: 'connected', ws: socket })
-      // Fetch existing sessions + available tools
+      // Fetch existing sessions, available tools, and agent status (model info)
       socket.send(JSON.stringify({ type: 'sessions.list' }))
       socket.send(JSON.stringify({ type: 'tools.list' }))
+      socket.send(JSON.stringify({ type: 'status' }))
     }
 
     socket.onclose = () => {
@@ -348,6 +351,11 @@ export const useSableStore = create((set, get) => ({
       case 'heartbeat':
       case 'pong':
         break
+      case 'status': {
+        if (msg.model) set({ agentModel: msg.model })
+        if (msg.version) set({ agentVersion: msg.version })
+        break
+      }
     }
   },
 }))

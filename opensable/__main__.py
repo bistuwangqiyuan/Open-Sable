@@ -139,6 +139,7 @@ async def async_main():
                 from opensable.core.x_autoposter import XAutoposter
 
                 x_autoposter = XAutoposter(agent, config)
+                agent.x_autoposter = x_autoposter  # expose to gateway for mood reporting
 
                 async def _run_autoposter():
                     try:

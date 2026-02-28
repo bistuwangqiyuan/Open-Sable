@@ -25,13 +25,15 @@ function createWindow() {
     minHeight: 560,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0f1117',
+    transparent: true,
+    backgroundColor: '#00000000',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      webviewTag: true,
     },
     icon: path.join(__dirname, '../public/icon.png'),
   });

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSableStore } from '../hooks/useSable.js'
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed = false }) {
   const sessions = useSableStore(s => s.sessions)
   const activeSessionId = useSableStore(s => s.activeSessionId)
   const wsStatus = useSableStore(s => s.wsStatus)
@@ -12,7 +12,7 @@ export default function Sidebar() {
   const goHome = useSableStore(s => s.goHome)
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo" onClick={goHome} title="Home" style={{ cursor: 'pointer' }}>
           <img src="./logo.png" alt="Sable" />

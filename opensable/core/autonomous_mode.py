@@ -60,6 +60,7 @@ class AutonomousMode:
                 from .x_autoposter import XAutoposter
 
                 self.x_autoposter = XAutoposter(self.agent, self.config)
+                self.agent.x_autoposter = self.x_autoposter  # expose to gateway
 
                 async def _run_ap():
                     try:
