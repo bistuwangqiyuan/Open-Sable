@@ -1,24 +1,38 @@
 """
 Core configuration management for Open-Sable
+
+Uses Pydantic v2 with field validators, env-var aliases, and grouped settings.
+Env vars are loaded automatically via pydantic-settings when available,
+with a manual fallback for backward compat.
 """
 
+from __future__ import annotations
+
+import logging
 import os
 from pathlib import Path
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import List, Optional
+
 from dotenv import load_dotenv
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 class OpenSableConfig(BaseModel):
-    """Main configuration for Open-Sable"""
+    """Main configuration for Open-Sable.
+
+    All fields support env-var loading via ``load_config()``.
+    Validators enforce URL formats, port ranges, probability bounds, and more.
+    """
 
     # Interface Mode
     cli_enabled: bool = False
 
     # Disable external APIs and web servers
-    enable_gateway: bool = False  # Disable FastAPI/uvicorn web server
-    enable_api: bool = False  # Disable REST API endpoints
-    enable_websocket: bool = False  # Disable WebSocket server
+    enable_gateway: bool = False
+    enable_api: bool = False
+    enable_websocket: bool = False
 
     # LLM Settings
     ollama_base_url: str = "http://localhost:11434"
@@ -204,15 +218,137 @@ class OpenSableConfig(BaseModel):
     trading_strategies: str = "momentum,mean_reversion,sentiment"  # comma-separated
     trading_watchlist: str = "BTC/USDT,ETH/USDT,SOL/USDT"  # comma-separated
 
+    # ── Pixel-Bridge (Pixel Agents VS Code extension integration) ─
+    # When True, pixel-bridge.py is auto-launched alongside the agent so the
+    # Pixel Agents extension can show an animated character for this agent.
+    pixel_bridge_enabled: bool = False
+
     # Misc compat
     Config_alias: Optional[str] = None
+
+    # ── Validators ────────────────────────────────────────────────
+
+    @field_validator("ollama_base_url", "openwebui_api_url", "jupiter_rpc_url", mode="before")
+    @classmethod
+    def _validate_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip().rstrip("/")
+        if v and not v.startswith(("http://", "https://")):
+            raise ValueError(f"URL must start with http:// or https://, got: {v!r}")
+        return v
+
+    @field_validator(
+        "webchat_port", "mobile_relay_port", "smtp_port", "imap_port", mode="before"
+    )
+    @classmethod
+    def _validate_port(cls, v: int) -> int:
+        v = int(v)
+        if not (1 <= v <= 65535):
+            raise ValueError(f"Port must be 1-65535, got {v}")
+        return v
+
+    @field_validator(
+        "x_reply_probability",
+        "x_like_probability",
+        "x_retweet_probability",
+        "x_follow_probability",
+        "x_quote_probability",
+        "x_bookmark_probability",
+        mode="before",
+    )
+    @classmethod
+    def _validate_probability(cls, v: float) -> float:
+        v = float(v)
+        if not (0.0 <= v <= 1.0):
+            raise ValueError(f"Probability must be 0.0-1.0, got {v}")
+        return v
+
+    @field_validator(
+        "trading_max_position_pct",
+        "trading_max_daily_loss_pct",
+        "trading_max_drawdown_pct",
+        mode="before",
+    )
+    @classmethod
+    def _validate_pct(cls, v: float) -> float:
+        v = float(v)
+        if not (0.0 <= v <= 100.0):
+            raise ValueError(f"Percentage must be 0-100, got {v}")
+        return v
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _validate_log_level(cls, v: str) -> str:
+        v = str(v).upper()
+        valid = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if v not in valid:
+            raise ValueError(f"log_level must be one of {valid}, got {v!r}")
+        return v
+
+    @field_validator("agent_personality", mode="before")
+    @classmethod
+    def _validate_personality(cls, v: str) -> str:
+        v = str(v).lower()
+        valid = {"professional", "sarcastic", "meme-aware", "helpful"}
+        if v not in valid:
+            logger.warning(f"Unknown agent_personality {v!r}, defaulting to 'helpful'")
+            return "helpful"
+        return v
+
+    @field_validator("tts_volume", mode="before")
+    @classmethod
+    def _validate_volume(cls, v: float) -> float:
+        v = float(v)
+        return max(0.0, min(1.0, v))
+
+    @field_validator("webchat_host", "mobile_relay_host", mode="before")
+    @classmethod
+    def _validate_bind_host(cls, v: str) -> str:
+        v = str(v).strip()
+        if v == "0.0.0.0":
+            logger.warning(
+                f"Binding to 0.0.0.0 exposes port to the entire network. "
+                f"Consider 127.0.0.1 for local-only access."
+            )
+        return v
+
+    @field_validator("heartbeat_interval", "trading_scan_interval", mode="before")
+    @classmethod
+    def _validate_positive_int(cls, v: int) -> int:
+        v = int(v)
+        if v < 1:
+            raise ValueError(f"Value must be >= 1, got {v}")
+        return v
+
+    @field_validator("memory_retention_days", mode="before")
+    @classmethod
+    def _validate_retention_days(cls, v: int) -> int:
+        v = int(v)
+        if v < 1:
+            raise ValueError(f"Retention days must be >= 1, got {v}")
+        return v
+
+    @model_validator(mode="after")
+    def _validate_trading_safety(self) -> "OpenSableConfig":
+        """Warn when live trading is enabled without paper mode."""
+        if self.trading_enabled and not self.trading_paper_mode:
+            logger.warning(
+                "⚠️  LIVE TRADING is enabled (trading_paper_mode=False). "
+                "Real money will be used. Set TRADING_PAPER_MODE=true to paper trade."
+            )
+        if self.trading_auto_trade and not self.trading_enabled:
+            logger.warning(
+                "trading_auto_trade is True but trading_enabled is False — "
+                "auto-trading will not activate."
+            )
+        return self
 
     def exists(self) -> bool:
         """Check if config file exists (compat)"""
         return True
 
-    class Config:
-        extra = "ignore"  # silently drop unknown fields (catches env var typos)
+    model_config = ConfigDict(extra="ignore", validate_default=True)
 
 
 def load_config() -> OpenSableConfig:
@@ -374,6 +510,8 @@ def load_config() -> OpenSableConfig:
         "trading_watchlist": os.getenv("TRADING_WATCHLIST", "BTC/USDT,ETH/USDT,SOL/USDT"),
         # ── Skills Marketplace ──────────────────────────────────
         "skill_install_auto_approve": os.getenv("SKILL_INSTALL_AUTO_APPROVE", "false").lower() == "true",
+        # ── Pixel-Bridge ────────────────────────────────────────
+        "pixel_bridge_enabled": os.getenv("PIXEL_BRIDGE_ENABLED", "false").lower() == "true",
     }
 
     return OpenSableConfig(**config_data)

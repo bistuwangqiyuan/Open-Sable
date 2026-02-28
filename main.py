@@ -4,6 +4,8 @@ Open-Sable Main Entry Point
 
 import asyncio
 import logging
+import sys
+from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -66,6 +68,27 @@ async def main():
         )
     except Exception as e:
         logger.warning(f"Gateway failed to start: {e}")
+
+    # ── Pixel-Bridge (Pixel Agents VS Code extension) ─────────────────────
+    _bridge_proc = None
+    if getattr(config, "pixel_bridge_enabled", False):
+        try:
+            import uuid as _uuid
+            _bridge_script = Path(__file__).resolve().parent / "scripts" / "pixel-bridge.py"
+            if _bridge_script.exists():
+                _sid = f"sable-{_uuid.uuid4().hex[:8]}"
+                _ws_url = f"ws://127.0.0.1:{getattr(config, 'webchat_port', 8789)}"
+                _bridge_proc = await asyncio.create_subprocess_exec(
+                    sys.executable, str(_bridge_script),
+                    "--session-id", _sid,
+                    "--gateway-url", _ws_url,
+                )
+                logger.info(f"Pixel-Bridge started (session: {_sid}, pid: {_bridge_proc.pid})")
+                console.print(f"[bold magenta]🎮 Pixel-Bridge running (session: {_sid})[/bold magenta]")
+            else:
+                logger.warning(f"Pixel-Bridge script not found at {_bridge_script}")
+        except Exception as e:
+            logger.warning(f"Pixel-Bridge failed to start: {e}")
 
     # Check if autonomous mode is enabled
     autonomous_enabled = getattr(config, "autonomous_mode", False)
@@ -174,6 +197,8 @@ async def main():
             await asyncio.Event().wait()
     except KeyboardInterrupt:
         console.print("\n[yellow]Shutting down gracefully...[/yellow]")
+        if _bridge_proc and _bridge_proc.returncode is None:
+            _bridge_proc.terminate()
         for interface in interfaces:
             await interface.stop()
         if gateway:

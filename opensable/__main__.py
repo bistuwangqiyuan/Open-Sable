@@ -6,6 +6,7 @@ Entry point for running via: python -m opensable
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -97,6 +98,27 @@ async def async_main():
                     logger.info("Local node started (system.run, fs.*, system.info)")
             except Exception as e:
                 logger.warning(f"Gateway failed to start: {e}")
+
+        # ── Pixel-Bridge (Pixel Agents VS Code extension) ─────────────────────
+        _bridge_proc = None
+        if getattr(config, "pixel_bridge_enabled", False):
+            try:
+                import uuid as _uuid
+                _bridge_script = Path(__file__).resolve().parent.parent / "scripts" / "pixel-bridge.py"
+                if _bridge_script.exists():
+                    _sid = f"sable-{_uuid.uuid4().hex[:8]}"
+                    _ws_url = f"ws://127.0.0.1:{getattr(config, 'webchat_port', 8789)}"
+                    _bridge_proc = await asyncio.create_subprocess_exec(
+                        sys.executable, str(_bridge_script),
+                        "--session-id", _sid,
+                        "--gateway-url", _ws_url,
+                    )
+                    logger.info(f"Pixel-Bridge started (session: {_sid}, pid: {_bridge_proc.pid})")
+                    console.print(f"[bold magenta]🎮 Pixel-Bridge running (session: {_sid})[/bold magenta]")
+                else:
+                    logger.warning(f"Pixel-Bridge script not found at {_bridge_script}")
+            except Exception as e:
+                logger.warning(f"Pixel-Bridge failed to start: {e}")
 
         # ── Mobile Relay (optional — needs Tailscale or Tor for remote access) ─
         mobile_relay = None
@@ -219,6 +241,8 @@ async def async_main():
             try:
                 await asyncio.Event().wait()
             finally:
+                if _bridge_proc and _bridge_proc.returncode is None:
+                    _bridge_proc.terminate()
                 if gateway:
                     await gateway.stop()
             return
@@ -234,6 +258,8 @@ async def async_main():
         try:
             await asyncio.gather(*[interface.start() for interface in interfaces])
         finally:
+            if _bridge_proc and _bridge_proc.returncode is None:
+                _bridge_proc.terminate()
             if x_autoposter:
                 await x_autoposter.stop()
             if mobile_relay:
