@@ -6,15 +6,49 @@ Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
           Qwen (DashScope), OpenRouter — all with full tool calling.
 """
 
+import asyncio
+import fcntl
 import logging
 import json
+import os
 import re
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, AsyncIterator, Optional, Tuple
 import ollama
 
 logger = logging.getLogger(__name__)
+
+
+# ── Inter-process Ollama queue ───────────────────────────────────────
+# When multiple agents share the same Ollama instance, concurrent requests
+# force the model to context-switch or double-load, causing slowdowns and
+# potential OOM.  This file lock serialises access so only one agent
+# generates at a time.  The lock is acquired asynchronously (via executor)
+# so the event loop stays responsive while waiting.
+
+_OLLAMA_LOCK_PATH = os.environ.get("SABLE_OLLAMA_LOCK", "/tmp/sable-ollama.lock")
+
+
+@asynccontextmanager
+async def _ollama_lock():
+    """Async context-manager that acquires an inter-process file lock.
+
+    Uses fcntl.flock (blocking) run in a thread so the event loop isn't
+    blocked while another agent holds the lock.
+    """
+    loop = asyncio.get_running_loop()
+    fd = os.open(_OLLAMA_LOCK_PATH, os.O_CREAT | os.O_RDWR, 0o666)
+    try:
+        # Blocking flock — offloaded to thread so the event loop stays alive
+        await loop.run_in_executor(None, fcntl.flock, fd, fcntl.LOCK_EX)
+        logger.debug("Ollama lock acquired")
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+        logger.debug("Ollama lock released")
 
 
 # ── DeepSeek <think> tag support ─────────────────────────────────────
@@ -276,7 +310,8 @@ class AdaptiveLLM:
             elif role == "ai":
                 role = "assistant"
             plain_msgs.append({"role": role, "content": content})
-        resp = await client.chat(model=self.current_model, messages=plain_msgs)
+        async with _ollama_lock():
+            resp = await client.chat(model=self.current_model, messages=plain_msgs)
         from types import SimpleNamespace
         return SimpleNamespace(content=resp.get("message", {}).get("content", ""))
 
@@ -330,7 +365,8 @@ class AdaptiveLLM:
 
         new_messages = _inject_no_think(new_messages)
         client = ollama.AsyncClient(host=self.base_url)
-        resp = await client.chat(model=self.current_model, messages=new_messages, think=False)
+        async with _ollama_lock():
+            resp = await client.chat(model=self.current_model, messages=new_messages, think=False)
         raw_text = resp.get("message", {}).get("content", "")
         thinking_field = resp.get("message", {}).get("thinking", "") or ""
         clean_text, reasoning_from_tags = parse_thinking(raw_text)
@@ -391,12 +427,13 @@ class AdaptiveLLM:
             # /no_think injected into last user message: official Qwen3 mechanism to
             # suppress chain-of-thought output while keeping full response quality.
             messages = _inject_no_think(messages)
-            response = await client.chat(
-                model=self.current_model,
-                messages=messages,
-                tools=tools,
-                think=False,
-            )
+            async with _ollama_lock():
+                response = await client.chat(
+                    model=self.current_model,
+                    messages=messages,
+                    tools=tools,
+                    think=False,
+                )
             msg = response.get("message", {})
 
             # Track tokens (Ollama provides prompt_eval_count / eval_count)
@@ -467,7 +504,8 @@ class AdaptiveLLM:
                     role = m.get("role", "user")
                     plain_msgs.append({"role": role, "content": m.get("content", "")})
                 plain_msgs = _inject_no_think(plain_msgs)
-                resp = await client.chat(model=self.current_model, messages=plain_msgs, think=False)
+                async with _ollama_lock():
+                    resp = await client.chat(model=self.current_model, messages=plain_msgs, think=False)
                 raw_text = resp.get("message", {}).get("content", "")
                 thinking_field = resp.get("message", {}).get("thinking", "") or ""
                 clean_text, reasoning_from_tags = parse_thinking(raw_text)
@@ -495,12 +533,19 @@ class AdaptiveLLM:
         try:
             client = ollama.AsyncClient(host=self.base_url)
             messages = _inject_no_think(messages)
-            stream = await client.chat(
-                model=self.current_model,
-                messages=messages,
-                stream=True,
-                think=False,
-            )
+            # Acquire Ollama lock for the entire streaming duration
+            self._stream_lock_cm = _ollama_lock()
+            await self._stream_lock_cm.__aenter__()
+            try:
+                stream = await client.chat(
+                    model=self.current_model,
+                    messages=messages,
+                    stream=True,
+                    think=False,
+                )
+            except Exception:
+                await self._stream_lock_cm.__aexit__(None, None, None)
+                raise
 
             # State machine for <think> block detection
             _buf = ""        # accumulates partial tag matches
@@ -563,7 +608,16 @@ class AdaptiveLLM:
                     logger.info(f"💭 DeepSeek reasoning streamed ({len(reasoning_text)} chars)")
                     yield f"\n\n---\n💭 **Reasoning** ({len(reasoning_text)} chars captured)\n"
 
+            # Release Ollama lock after streaming completes
+            await self._stream_lock_cm.__aexit__(None, None, None)
+
         except Exception as e:
+            # Release lock on error too
+            if hasattr(self, '_stream_lock_cm'):
+                try:
+                    await self._stream_lock_cm.__aexit__(None, None, None)
+                except Exception:
+                    pass
             logger.error(f"Streaming failed: {e}")
             yield f"Error: {e}"
 
