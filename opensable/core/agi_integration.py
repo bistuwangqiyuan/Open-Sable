@@ -12,6 +12,7 @@ Integrates:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 
@@ -52,7 +53,7 @@ class AGIAgent:
             action_executor: Function to execute actions
             storage_dir: Directory for persistent storage
         """
-        storage_dir = storage_dir or Path("./data/agi")
+        storage_dir = storage_dir or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "agi"
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize all subsystems

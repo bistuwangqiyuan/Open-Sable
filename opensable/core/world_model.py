@@ -12,6 +12,7 @@ Features:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -473,7 +474,7 @@ class WorldModel:
         self.reasoner = CausalReasoner(self.tracker)
         self.predictor = StatePredictor(self.tracker, self.reasoner)
 
-        self.storage_path = storage_path or Path("./data/world_model.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "world_model.json"
         self._load_model()
 
     async def initialize(self):

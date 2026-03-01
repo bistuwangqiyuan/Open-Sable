@@ -24,6 +24,8 @@ from datetime import datetime
 import asyncio
 import aiofiles
 
+from opensable.core.paths import opensable_home
+
 
 @dataclass
 class FileInfo:
@@ -111,7 +113,7 @@ class FileManager:
             storage_dir: Base directory for file storage
         """
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "files"
+            Path(storage_dir) if storage_dir else opensable_home() / "files"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

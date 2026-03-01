@@ -14,6 +14,7 @@ import asyncio
 import logging
 import json
 import hashlib
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Callable
 from dataclasses import dataclass, field
@@ -322,7 +323,7 @@ class MultiDeviceSync:
         """
         self.device_id = device_id or str(uuid.uuid4())
         self.device_name = device_name or f"Device-{self.device_id[:8]}"
-        self.storage_dir = storage_dir or Path("./data/sync")
+        self.storage_dir = storage_dir or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "sync"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         self.conflict_resolver = ConflictResolver(conflict_strategy)

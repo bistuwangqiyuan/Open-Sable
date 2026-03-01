@@ -134,7 +134,7 @@ class OpenSableConfig(BaseModel):
 
     # Memory
     memory_retention_days: int = 90
-    vector_db_path: Path = Path("./data/vectordb")
+    vector_db_path: Path = Path(os.getenv("_SABLE_DATA_DIR", "data")) / "vectordb"
 
     # Logging
     log_level: str = "INFO"
@@ -455,7 +455,7 @@ def load_config() -> OpenSableConfig:
         "heartbeat_interval": int(os.getenv("HEARTBEAT_INTERVAL", "300")),
         "max_retries": int(os.getenv("MAX_RETRIES", "3")),
         "memory_retention_days": int(os.getenv("MEMORY_RETENTION_DAYS", "90")),
-        "vector_db_path": Path(os.getenv("VECTOR_DB_PATH", "./data/vectordb")),
+        "vector_db_path": Path(os.getenv("VECTOR_DB_PATH") or os.path.join(os.getenv("_SABLE_DATA_DIR", "data"), "vectordb")),
         "cli_enabled": os.getenv("CLI_ENABLED", "false").lower() == "true",
         "log_level": os.getenv("LOG_LEVEL", "INFO"),
         "log_file": Path(os.getenv("LOG_FILE", "./logs/opensable.log")),

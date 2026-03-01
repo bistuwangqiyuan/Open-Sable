@@ -12,6 +12,7 @@ Features:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -732,7 +733,7 @@ class ToolSynthesizer:
         self.validator = ToolValidator()
 
         self.tools: Dict[str, SynthesizedTool] = {}
-        self.storage_path = storage_path or Path("./data/synthesized_tools.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "synthesized_tools.json"
         self._load_tools()
 
     async def synthesize_tool(

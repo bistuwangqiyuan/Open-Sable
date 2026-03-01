@@ -4,6 +4,7 @@ Calendar skill for Open-Sable — local JSON-based calendar (no Google API depen
 
 import json
 import logging
+import os
 import uuid
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
@@ -11,7 +12,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_CALENDAR_FILE = Path("./data/calendar.json")
+_CALENDAR_FILE = Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "calendar.json"
 
 
 class CalendarSkill:

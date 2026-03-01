@@ -52,11 +52,9 @@ def install_ollama():
         elif os_type == "Linux":
             print("   Installing via official script...")
             subprocess.run(
-                ["curl", "-fsSL", "https://ollama.com/install.sh"],
-                stdout=subprocess.PIPE,
+                ["bash", "-c", "curl -fsSL https://ollama.com/install.sh | sh"],
                 check=True,
             )
-            subprocess.run(["sh"], stdin=subprocess.PIPE, check=True)
         elif os_type == "Windows":
             print("❌ Cannot auto-install on Windows")
             print("   Please download from: https://ollama.com/download")
@@ -125,8 +123,9 @@ def install_playwright():
     """Install Playwright browsers"""
     print("\n🌐 Installing Playwright browsers...")
 
+    venv_python = get_venv_python()
     try:
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        subprocess.run([str(venv_python), "-m", "playwright", "install", "chromium"], check=True)
         print("✅ Playwright browsers installed")
         return True
     except subprocess.CalledProcessError:
@@ -419,8 +418,8 @@ def install_desktop():
         return False
 
     # Check if already built
-    dist_electron = desktop_dir / "apps" / "desktop" / "dist-electron"
-    if dist_electron.exists() and list(dist_electron.glob("main/*.js")):
+    dist_dir = desktop_dir / "dist"
+    if dist_dir.exists() and (dist_dir / "index.html").exists():
         print("✅ Desktop agent already built")
         return True
 
@@ -430,43 +429,32 @@ def install_desktop():
             print("⚠️  Node.js required for desktop agent — skipping")
             return False
 
-    if not install_pnpm_if_missing():
-        print("⚠️  pnpm required for desktop agent — skipping")
-        return False
-
     try:
-        print("   📦 Installing desktop dependencies (this may take a few minutes)...")
+        print("   📦 Installing desktop dependencies...")
         subprocess.run(
-            ["pnpm", "install", "--no-frozen-lockfile"],
-            cwd=str(desktop_dir),
-            check=True,
-            env={**subprocess.os.environ, "COREPACK_ENABLE_STRICT": "0"},
-        )
-
-        # Build web renderer
-        print("   🔨 Building web renderer...")
-        subprocess.run(
-            ["pnpm", "-F", "@opensable/web", "build"],
+            ["npm", "install"],
             cwd=str(desktop_dir),
             check=True,
         )
 
-        # Build desktop (TypeScript + Vite)
+        # Build web renderer (Vite)
         print("   🔨 Building desktop agent...")
-        desktop_app = desktop_dir / "apps" / "desktop"
-        subprocess.run(["npx", "tsc"], cwd=str(desktop_app), check=True)
-        subprocess.run(["npx", "vite", "build"], cwd=str(desktop_app), check=True)
+        subprocess.run(
+            ["npm", "run", "build"],
+            cwd=str(desktop_dir),
+            check=True,
+        )
 
-        if dist_electron.exists():
+        if dist_dir.exists():
             print("✅ Desktop agent built successfully")
-            print("   Launch with: OPENSABLE_API_URL=ws://127.0.0.1:8789 cd desktop && pnpm dev")
+            print("   Launch with: cd desktop && npm run dev")
             return True
         else:
-            print("⚠️  Desktop build completed but dist-electron not found")
+            print("⚠️  Desktop build completed but dist/ not found")
             return False
     except subprocess.CalledProcessError as e:
         print(f"⚠️  Desktop agent build failed: {e}")
-        print("   Build manually: cd desktop && pnpm install && pnpm -F @opensable/web build && cd apps/desktop && npx tsc && npx vite build")
+        print("   Build manually: cd desktop && npm install && npm run build")
         return False
 
 
@@ -700,15 +688,22 @@ def print_next_steps():
    - Get token from @BotFather on Telegram
    - Set: TELEGRAM_BOT_TOKEN=your_token_here
 
-3. Start Open-Sable:
+3. Start Open-Sable (recommended — runs in background with logging):
+   ./start.sh start
+
+   Or run directly in the foreground:
    {run_cmd}
 
-4. Send /start to your bot on Telegram!
+   Useful commands:
+   ./start.sh status    — Check if agent is running
+   ./start.sh logs      — Follow live logs
+   ./start.sh stop      — Stop the agent
+   ./start.sh restart   — Restart the agent
 
 📚 Documentation:
-   - README.md - Feature overview
+   - README.md - Feature overview & architecture
    - INSTALL.md - Detailed installation guide
-   - SECURITY.md - Security features
+   - docs/ - API reference, guides, security
 
 🐛 Issues? https://github.com/IdeoaLabs/Open-Sable/issues
 

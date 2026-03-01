@@ -16,6 +16,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from opensable.core.paths import opensable_home
+
 from .base import (
     Balance,
     ExchangeConnector,
@@ -120,7 +122,7 @@ class PortfolioManager:
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or str(
-            Path.home() / ".opensable" / "trading" / "portfolio.db"
+            opensable_home() / "trading" / "portfolio.db"
         )
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 

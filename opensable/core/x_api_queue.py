@@ -15,6 +15,7 @@ Guarantees:
 import asyncio
 import json
 import logging
+import os
 import random
 import time
 from collections import deque
@@ -63,7 +64,9 @@ DEFAULT_COOLDOWNS = {
 # Absolute limits
 MIN_COOLDOWN = 1.5      # Never go below 1.5s
 MAX_COOLDOWN = 120.0     # Never exceed 2min between calls
-PERSISTENCE_PATH = Path.home() / ".opensable" / "x_queue_timings.json"
+_profile = os.environ.get("_SABLE_PROFILE", "")
+_timings_name = f"x_queue_timings_{_profile}.json" if _profile else "x_queue_timings.json"
+PERSISTENCE_PATH = Path.home() / ".opensable" / _timings_name
 
 
 # ═══════════════════════════════════════════════════════════════════

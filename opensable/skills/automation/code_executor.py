@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 
+from opensable.core.paths import opensable_home
+
 try:
     from RestrictedPython import compile_restricted, safe_globals
     from RestrictedPython.Guards import guarded_iter_unpack_sequence, safer_getattr
@@ -96,7 +98,7 @@ class CodeExecutor:
             cache_dir: Directory for caching execution results
         """
         self.use_docker = use_docker
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".opensable" / "code_cache"
+        self.cache_dir = Path(cache_dir) if cache_dir else opensable_home() / "code_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Check Docker availability

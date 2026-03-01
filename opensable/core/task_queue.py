@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import uuid
 
 from opensable.core.config import Config
+from opensable.core.paths import opensable_home
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class TaskQueue:
 
     def __init__(self, config: Config):
         self.config = config
-        self.storage_dir = Path.home() / ".opensable" / "queue"
+        self.storage_dir = opensable_home() / "queue"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # Task storage

@@ -21,6 +21,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +51,7 @@ class SlackPairingStore:
 
     def __init__(self, config):
         self.config = config
-        self._path = Path.home() / ".opensable" / "slack_pairing.json"
+        self._path = opensable_home() / "slack_pairing.json"
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self.allowlist: dict = {}
         self.pending: dict = {}

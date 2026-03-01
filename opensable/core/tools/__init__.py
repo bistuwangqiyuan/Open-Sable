@@ -25,6 +25,7 @@ from ..computer_tools import ComputerTools
 from ..vision_tools import VisionTools
 from ..browser import BrowserEngine
 from ..skill_creator import SkillCreator
+from ..paths import opensable_home
 
 try:
     from ...skills.trading.trading_skill import TradingSkill
@@ -107,7 +108,7 @@ class ToolRegistry(
             logger.debug(f"Permission manager not available: {e}")
 
         # Calendar storage
-        self.calendar_file = Path.home() / ".opensable" / "calendar.json"
+        self.calendar_file = opensable_home() / "calendar.json"
         self.calendar_file.parent.mkdir(parents=True, exist_ok=True)
         if not self.calendar_file.exists():
             self.calendar_file.write_text(json.dumps([], indent=2))

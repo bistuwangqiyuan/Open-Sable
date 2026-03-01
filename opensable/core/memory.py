@@ -33,7 +33,7 @@ class MemoryManager:
         self.config = config
         self.vector_db = None
         self.collection = None
-        self.structured_memory_path = Path("./data/memory.json")
+        self.structured_memory_path = Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "memory.json"
         self.structured_memory = {}
 
         # Encryption setup — Fernet is an optional dependency

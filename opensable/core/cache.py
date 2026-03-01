@@ -15,6 +15,7 @@ from collections import OrderedDict
 import time
 
 from opensable.core.config import Config
+from opensable.core.paths import opensable_home
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +213,7 @@ class MultiLayerCache:
         self.memory_cache = MemoryCache(max_size=getattr(config, "cache_memory_size", 1000))
 
         # Disk cache (L2)
-        cache_dir = Path.home() / ".opensable" / "cache"
+        cache_dir = opensable_home() / "cache"
         self.disk_cache = DiskCache(cache_dir)
 
         # Configuration

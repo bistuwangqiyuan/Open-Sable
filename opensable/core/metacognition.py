@@ -12,6 +12,7 @@ Features:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -687,7 +688,7 @@ class MetacognitiveEngine:
         self.calibrator = ConfidenceCalibrator()
         self.recovery = ErrorRecovery()
 
-        self.storage_path = storage_path or Path("./data/metacognition.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "metacognition.json"
         self._load_state()
 
     def start_monitoring_task(self, task: str) -> str:

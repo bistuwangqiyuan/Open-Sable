@@ -18,6 +18,8 @@ from pathlib import Path
 from enum import Enum
 import hashlib
 
+from opensable.core.paths import opensable_home
+
 
 class WorkflowStatus(Enum):
     """Workflow execution status."""
@@ -177,7 +179,7 @@ class WorkflowEngine:
             checkpoint_interval: Checkpoint every N steps
         """
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "workflows"
+            Path(storage_dir) if storage_dir else opensable_home() / "workflows"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
@@ -482,7 +484,7 @@ class WorkflowLibrary:
     def __init__(self, storage_dir: Optional[str] = None):
         """Initialize workflow library."""
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "workflow_templates"
+            Path(storage_dir) if storage_dir else opensable_home() / "workflow_templates"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

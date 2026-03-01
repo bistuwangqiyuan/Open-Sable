@@ -24,6 +24,7 @@ except ImportError:
     JSONResponse = None
 
 from opensable.core.config import Config
+from opensable.core.paths import opensable_home
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class WebhookManager:
         self.max_deliveries_history = 100
 
         # Storage
-        self.storage_dir = Path.home() / ".opensable" / "webhooks"
+        self.storage_dir = opensable_home() / "webhooks"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # HTTP client

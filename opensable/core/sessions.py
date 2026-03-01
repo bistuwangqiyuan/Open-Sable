@@ -19,6 +19,8 @@ from pathlib import Path
 from dataclasses import dataclass, asdict, field
 import hashlib
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -202,7 +204,7 @@ class SessionManager:
     def __init__(self, config=None):
         self.config = config
         self.active: Dict[str, Session] = {}
-        self.sessions_dir = Path.home() / ".opensable" / "sessions"
+        self.sessions_dir = opensable_home() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
         self.session_timeout = timedelta(hours=48)
         self.total_sessions = 0

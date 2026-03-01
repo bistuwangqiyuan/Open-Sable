@@ -94,12 +94,14 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 RELAY_VERSION = "2.0.0"
 WS_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-QR_PATH = Path.home() / ".opensable" / "mobile_qr.png"
-SECRET_PATH = Path.home() / ".opensable" / "mobile_secret.txt"
+QR_PATH = opensable_home() / "mobile_qr.png"
+SECRET_PATH = opensable_home() / "mobile_secret.txt"
 TOKEN_TTL = 300  # HMAC tokens are valid for 5 minutes (rolling window)
 
 

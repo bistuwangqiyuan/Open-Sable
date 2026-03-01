@@ -12,6 +12,7 @@ Features:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -102,7 +103,7 @@ class PerformanceTracker:
 
     def __init__(self, storage_path: Optional[Path] = None):
         self.records: List[PerformanceRecord] = []
-        self.storage_path = storage_path or Path("./data/performance.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "performance.json"
         self._load_records()
 
     def record_performance(
@@ -281,7 +282,7 @@ class StrategyLibrary:
 
     def __init__(self, storage_path: Optional[Path] = None):
         self.strategies: Dict[str, LearningStrategy] = {}
-        self.storage_path = storage_path or Path("./data/strategies.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "strategies.json"
         self._load_strategies()
 
     def add_strategy(
@@ -568,7 +569,7 @@ class MetaLearningSystem:
     """
 
     def __init__(self, storage_dir: Optional[Path] = None, llm_function: Optional[Callable] = None):
-        storage_dir = storage_dir or Path("./data/meta_learning")
+        storage_dir = storage_dir or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "meta_learning"
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         self.tracker = PerformanceTracker(storage_dir / "performance.json")

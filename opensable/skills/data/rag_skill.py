@@ -18,6 +18,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from opensable.core.paths import opensable_home
+
 try:
     import chromadb
     from chromadb.config import Settings
@@ -281,7 +283,7 @@ class VectorStore:
 
         # Setup persistence directory
         if persist_directory is None:
-            persist_directory = str(Path.home() / ".opensable" / "chromadb")
+            persist_directory = str(opensable_home() / "chromadb")
 
         Path(persist_directory).mkdir(parents=True, exist_ok=True)
 

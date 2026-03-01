@@ -132,6 +132,13 @@ def _clean_gateway_reply(text: str) -> str:
     text = _THINK_RE.sub("", text)
     text = _THINK_OPEN.sub("", text)
     text = text.replace("</think>", "").strip()
+    # Strip leaked role prefixes (llama/mistral chat template bleed)
+    text = re.sub(
+        r'^(?:assistant|asistente|user|sistema|system)\s*[:\n]+\s*',
+        '', text, flags=re.IGNORECASE,
+    )
+    # Strip garbled BPE tokens after role prefix (e.g. "ungal\n\n")
+    text = re.sub(r'^[a-z]{2,8}\n\n\s*', '', text, flags=re.IGNORECASE)
     text = _strip_reasoning_preamble(text)
     return text
 
@@ -1084,7 +1091,15 @@ class Gateway:
             reply = await self.agent.process_message(
                 user_id, text, history=history, progress_callback=_progress
             )
+            raw_reply = reply
             reply = _clean_gateway_reply(reply or "")
+
+            if not reply:
+                logger.warning(
+                    f"[Gateway] Empty reply after cleaning (raw length={len(raw_reply or '')}). "
+                    f"Falling back to raw or default."
+                )
+                reply = (raw_reply or "").strip() or "I processed your request but couldn't generate a response. Please try again."
 
             try:
                 if not session.metadata.get("title"):

@@ -15,6 +15,8 @@ from typing import Dict, Any, List, Optional
 import json
 from pathlib import Path
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +30,7 @@ class HeartbeatManager:
         self.config = config
         self.running = False
         self.interval = getattr(config, "heartbeat_interval", 1800)  # 30 min default
-        self.heartbeat_file = Path.home() / ".opensable" / "HEARTBEAT.md"
+        self.heartbeat_file = opensable_home() / "HEARTBEAT.md"
         self.last_check = datetime.now()
 
         # Heartbeat checklist
@@ -173,7 +175,7 @@ async def check_system_health() -> Dict[str, Any]:
 async def check_pending_tasks() -> Dict[str, Any]:
     """Check for pending goals nearing their deadline"""
     try:
-        state_file = Path.home() / ".opensable" / "goals.json"
+        state_file = opensable_home() / "goals.json"
         if not state_file.exists():
             return {"alert": False}
         data = json.loads(state_file.read_text())
@@ -204,7 +206,7 @@ async def check_pending_tasks() -> Dict[str, Any]:
 async def check_idle_time() -> Dict[str, Any]:
     """Check if no user interaction for a long time"""
     try:
-        session_dir = Path.home() / ".opensable" / "sessions"
+        session_dir = opensable_home() / "sessions"
         if not session_dir.exists():
             return {"alert": False}
         latest = None

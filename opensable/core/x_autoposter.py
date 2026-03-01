@@ -41,6 +41,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import random
 import re
 from datetime import datetime, timedelta
@@ -184,7 +185,8 @@ class XAutonomousAgent:
         self._followed_users: set = set()
         self._history: List[Dict] = []
         self._engagement_log: List[Dict] = []
-        self._state_file = Path("data/x_agent_state.json")
+        _data = os.environ.get("_SABLE_DATA_DIR", "data")
+        self._state_file = Path(_data) / "x_agent_state.json"
         self._state_file.parent.mkdir(parents=True, exist_ok=True)
         self._style_scores: Dict[str, List[float]] = {}
         self._consciousness_cycle = 0

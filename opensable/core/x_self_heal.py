@@ -256,7 +256,8 @@ class RemedyEngine:
         self._agent = agent_ref
         self._applied: Dict[str, datetime] = {}  # remedy_name -> last applied
         self._heal_log: List[Dict] = []
-        self._log_file = Path("data/x_consciousness/heal_log.jsonl")
+        _data = os.environ.get("_SABLE_DATA_DIR", "data")
+        self._log_file = Path(_data) / "x_consciousness" / "heal_log.jsonl"
         self._log_file.parent.mkdir(parents=True, exist_ok=True)
         # Track original values for restoration
         self._original_values: Dict[str, Any] = {}
@@ -408,7 +409,9 @@ class RemedyEngine:
         if not x_skill:
             return {"action": "refresh_auth", "success": False}
 
-        cookies_path = Path.home() / ".opensable" / "x_cookies.json"
+        _profile = os.environ.get("_SABLE_PROFILE", "")
+        _cookie_name = f"x_cookies_{_profile}.json" if _profile else "x_cookies.json"
+        cookies_path = Path.home() / ".opensable" / _cookie_name
         if cookies_path.exists():
             try:
                 impl = getattr(x_skill, '_impl', x_skill)

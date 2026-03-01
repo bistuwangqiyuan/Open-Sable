@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 
+from opensable.core.paths import opensable_home
+
 try:
     import jwt
 
@@ -315,7 +317,7 @@ class MultiTenancy:
     def __init__(self, storage_dir: Optional[str] = None):
         """Initialize multi-tenancy."""
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "tenants"
+            Path(storage_dir) if storage_dir else opensable_home() / "tenants"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
@@ -404,7 +406,7 @@ class AuditLogger:
     def __init__(self, storage_dir: Optional[str] = None):
         """Initialize audit logger."""
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "audit"
+            Path(storage_dir) if storage_dir else opensable_home() / "audit"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

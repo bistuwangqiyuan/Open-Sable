@@ -56,7 +56,9 @@ class XSkill:
     def __init__(self, config):
         self.config = config
         self._client: Optional[Any] = None
-        self._cookies_path = Path.home() / ".opensable" / "x_cookies.json"
+        _profile = os.environ.get("_SABLE_PROFILE", "")
+        _cookie_name = f"x_cookies_{_profile}.json" if _profile else "x_cookies.json"
+        self._cookies_path = Path.home() / ".opensable" / _cookie_name
         self._cookies_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialized = False
         # Default delay between actions (seconds) to avoid rate limits

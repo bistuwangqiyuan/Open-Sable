@@ -14,6 +14,7 @@ from pathlib import Path
 import json
 
 from opensable.core.config import Config
+from opensable.core.paths import opensable_home
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ class PluginManager:
 
     def __init__(self, config: Config):
         self.config = config
-        self.plugins_dir = Path.home() / ".opensable" / "plugins"
+        self.plugins_dir = opensable_home() / "plugins"
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
 
         # Loaded plugins

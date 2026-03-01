@@ -22,6 +22,8 @@ from enum import Enum
 import hashlib
 from pathlib import Path
 
+from opensable.core.paths import opensable_home
+
 try:
     import httpx
 
@@ -86,7 +88,7 @@ class CacheConfig:
 
     def __post_init__(self):
         if self.cache_dir is None:
-            self.cache_dir = str(Path.home() / ".opensable" / "api_cache")
+            self.cache_dir = str(opensable_home() / "api_cache")
 
 
 @dataclass

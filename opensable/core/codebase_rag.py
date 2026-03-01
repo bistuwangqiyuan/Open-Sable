@@ -73,7 +73,8 @@ class CodeSearchResult:
 
 # ─────────────────────────────────────────────────────────────────────────────
 _ROOT = Path(__file__).parent.parent.parent          # /home/.../SableCore_
-_STATE_FILE = _ROOT / "data" / "checkpoints" / "codebase_rag_state.json"
+_DATA_DIR = Path(os.environ.get("_SABLE_DATA_DIR", "data"))
+_STATE_FILE = _DATA_DIR / "checkpoints" / "codebase_rag_state.json"
 
 _INDEX_DIRS = [
     "opensable",          # all Python
@@ -253,7 +254,7 @@ class CodebaseRAG:
 
         if _CHROMA_OK:
             try:
-                persist = str(_ROOT / "data" / "vectordb")
+                persist = str(_DATA_DIR / "vectordb")
                 client = chromadb.PersistentClient(path=persist)
                 self._collection = client.get_or_create_collection(
                     name=_COLLECTION,

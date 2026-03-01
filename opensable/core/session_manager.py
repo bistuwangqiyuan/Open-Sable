@@ -10,6 +10,8 @@ from datetime import datetime
 from dataclasses import dataclass, asdict, field
 import uuid
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -144,7 +146,7 @@ class SessionManager:
     """Manages all sessions"""
 
     def __init__(self, storage_dir: Optional[Path] = None):
-        self.storage_dir = storage_dir or (Path.home() / ".opensable" / "sessions")
+        self.storage_dir = storage_dir or (opensable_home() / "sessions")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.sessions: Dict[str, Session] = {}
         self._load_sessions()

@@ -14,6 +14,8 @@ import json
 import ast
 import re
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ class SkillCreator:
 
     def __init__(self, config):
         self.config = config
-        self.skills_dir = Path.home() / ".opensable" / "dynamic_skills"
+        self.skills_dir = opensable_home() / "dynamic_skills"
         self.skills_dir.mkdir(parents=True, exist_ok=True)
 
         # Skill registry

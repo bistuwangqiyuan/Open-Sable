@@ -14,6 +14,7 @@ Features:
 
 import hashlib
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -117,7 +118,8 @@ class RAGEngine:
 
         if CHROMADB_AVAILABLE:
             try:
-                persist_dir = str(Path(__file__).parent.parent.parent / "data" / "vectordb")
+                _data = os.environ.get("_SABLE_DATA_DIR", "data")
+                persist_dir = str(Path(_data) / "vectordb")
                 self._client = chromadb.PersistentClient(path=persist_dir)
                 self._collection = self._client.get_or_create_collection(
                     name=collection_name,

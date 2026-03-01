@@ -13,6 +13,7 @@ Features:
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -682,7 +683,7 @@ class AdvancedMemorySystem:
         self.working = WorkingMemory(capacity=working_capacity)
         self.consolidator = MemoryConsolidator(self.episodic, self.semantic)
 
-        self.storage_path = storage_path or Path("./data/advanced_memory.json")
+        self.storage_path = storage_path or Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "advanced_memory.json"
         self._load_memory()
 
         # Background consolidation task

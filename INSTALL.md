@@ -8,12 +8,23 @@ cd Open-Sable
 ./quickstart.sh
 ```
 
+## Automated Install (Any OS)
+
+```bash
+git clone https://github.com/IdeoaLabs/Open-Sable.git
+cd Open-Sable
+python3 install.py
+```
+
+The installer handles venv creation, dependencies, Ollama install, model download, dashboard build, marketplace build, and optional desktop/WhatsApp setup.
+
 ## Manual Install
 
 ### Prerequisites
 
 - **Python 3.11+**
-- **Ollama** (for local LLM): https://ollama.ai
+- **Ollama** (for local LLM): https://ollama.com
+- **Node.js 18+** (optional — for dashboard, marketplace, desktop app)
 
 ### Steps
 
@@ -27,18 +38,24 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 3. Install dependencies
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
-pip install -e .
+pip install -e ".[core]"
 
 # 4. Set up environment
 cp .env.example .env
-# Edit .env with your API keys / tokens
+# Edit .env — at minimum set TELEGRAM_BOT_TOKEN if using Telegram
 
 # 5. Create required directories
 mkdir -p data logs config
 
-# 6. Run
-python -m opensable
+# 6. Install Ollama and pull a model
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3.1:8b
+
+# 7. Run
+./start.sh start          # Background (recommended)
+# or: python -m opensable  # Foreground
 ```
 
 ### Optional Extras
@@ -46,22 +63,60 @@ python -m opensable
 Install additional features as needed:
 
 ```bash
-pip install -e ".[telegram]"     # Telegram bot + userbot
-pip install -e ".[discord]"      # Discord bot
-pip install -e ".[slack]"        # Slack integration
-pip install -e ".[web]"          # Web dashboard (FastAPI)
+pip install -e ".[core]"         # Telegram + browser automation (recommended)
 pip install -e ".[voice]"        # Voice input/output
-pip install -e ".[vision]"       # Image analysis
-pip install -e ".[automation]"   # Browser automation
-pip install -e ".[database]"     # Database connectors
+pip install -e ".[vision]"       # Image analysis + OCR
+pip install -e ".[automation]"   # Browser automation (Playwright)
 pip install -e ".[monitoring]"   # Prometheus metrics
 pip install -e ".[dev]"          # Development tools (pytest, black, ruff)
 ```
 
-Or install the `core` bundle for the most common extras:
+### Dashboard & Marketplace (Node.js)
 
 ```bash
-pip install -e ".[core]"         # Telegram + browser automation
+# React Dashboard (served at /dashboard on the gateway)
+cd dashboard && npm install && npm run build && cd ..
+
+# Skills Marketplace
+cd marketplace/server && npm install && cd ../..
+cd marketplace/client && npm install && npm run build && cd ../..
+```
+
+### Desktop App (Electron)
+
+```bash
+cd desktop && npm install && npm run dev
+```
+
+See [desktop/README.md](desktop/README.md) for details.
+
+### Mobile App
+
+See [mobile/README.md](mobile/README.md) for the SETP protocol and pairing flow.
+
+## Running with `start.sh`
+
+The recommended way to run in production:
+
+```bash
+./start.sh start                    # Start default agent (sable)
+./start.sh start --profile analyst  # Start a different profile
+./start.sh status                   # Check if running
+./start.sh logs                     # Follow live logs
+./start.sh stop                     # Stop the agent
+./start.sh restart                  # Restart
+./start.sh profiles                 # List all configured agents
+```
+
+## Multi-Agent Profiles
+
+Each agent profile lives in `agents/<name>/` with its own `soul.md`, `profile.env`, `tools.json`, and `data/` directory. See the README.md Multi-Agent Profiles section for full details.
+
+```bash
+# Create a new agent
+cp -r agents/_template agents/my_agent
+# Edit agents/my_agent/soul.md, profile.env, tools.json
+./start.sh start --profile my_agent
 ```
 
 ## Docker Install
@@ -75,7 +130,11 @@ See the [Dockerfile](Dockerfile) and [docker-compose.yml](docker-compose.yml) fo
 ## Verify Installation
 
 ```bash
+# Check the CLI works
 python -m opensable --help
+
+# Check agent status
+./start.sh status
 ```
 
 ## Troubleshooting
@@ -84,7 +143,10 @@ python -m opensable --help
 |---------|----------|
 | `ModuleNotFoundError` | Activate your venv: `source venv/bin/activate` |
 | Python version error | Upgrade to Python 3.11+ |
-| Ollama not found | Install from https://ollama.ai |
+| Ollama not found | Install from https://ollama.com |
 | ChromaDB errors | `pip install --upgrade chromadb` |
+| Empty responses | Check `logs/sable-sable.log` for errors |
+| Desktop app no response | Ensure gateway is running on port 8789 |
+| Model not found | Run `ollama pull llama3.1:8b` |
 
 For more help, open an [issue](https://github.com/IdeoaLabs/Open-Sable/issues).

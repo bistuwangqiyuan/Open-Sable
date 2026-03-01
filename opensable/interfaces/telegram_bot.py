@@ -23,6 +23,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
+from opensable.core.paths import opensable_home
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -71,7 +73,7 @@ class PairingStore:
 
     def __init__(self, config):
         self.config = config
-        self._path = Path.home() / ".opensable" / "pairing.json"
+        self._path = opensable_home() / "pairing.json"
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
         # {user_id: {"username": str, "approved_at": iso}}

@@ -21,6 +21,8 @@ from pathlib import Path
 from enum import Enum
 import traceback
 
+from opensable.core.paths import opensable_home
+
 
 class SpanKind(Enum):
     """OpenTelemetry span kinds."""
@@ -336,7 +338,7 @@ class LogAggregator:
             storage_dir: Directory for log storage
             buffer_size: Buffer size before flushing
         """
-        self.storage_dir = Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "logs"
+        self.storage_dir = Path(storage_dir) if storage_dir else opensable_home() / "logs"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         self.buffer_size = buffer_size

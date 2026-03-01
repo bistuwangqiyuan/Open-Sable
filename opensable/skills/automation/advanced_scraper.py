@@ -20,6 +20,8 @@ from pathlib import Path
 import json
 import re
 
+from opensable.core.paths import opensable_home
+
 try:
     from playwright.async_api import async_playwright, Page, Browser, BrowserContext
     from bs4 import BeautifulSoup
@@ -81,7 +83,7 @@ class AdvancedScraper:
             )
 
         self.config = config or {}
-        self.recipes_dir = Path.home() / ".opensable" / "scraping_recipes"
+        self.recipes_dir = opensable_home() / "scraping_recipes"
         self.recipes_dir.mkdir(parents=True, exist_ok=True)
 
         self.user_agent = UserAgent()

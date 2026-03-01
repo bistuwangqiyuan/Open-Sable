@@ -249,9 +249,9 @@ class XConsciousness:
             if _profile:
                 self._base_dir = _profile.data_dir / "x_consciousness"
             else:
-                self._base_dir = Path("data/x_consciousness")
+                self._base_dir = Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "x_consciousness"
         except Exception:
-            self._base_dir = Path("data/x_consciousness")
+            self._base_dir = Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "x_consciousness"
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._journal_file = self._base_dir / "journal.jsonl"
         self._reflections_file = self._base_dir / "reflections.json"

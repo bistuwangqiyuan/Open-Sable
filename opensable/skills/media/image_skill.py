@@ -18,6 +18,8 @@ from pathlib import Path
 import io
 import hashlib
 
+from opensable.core.paths import opensable_home
+
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
@@ -132,7 +134,7 @@ class ImageGenerator:
         self.model = model
         self.api_key = api_key
 
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".opensable" / "images"
+        self.cache_dir = Path(cache_dir) if cache_dir else opensable_home() / "images"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     async def generate(

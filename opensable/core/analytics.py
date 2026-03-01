@@ -15,6 +15,7 @@ from collections import defaultdict, Counter
 import time
 
 from opensable.core.config import Config
+from opensable.core.paths import opensable_home
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class Analytics:
 
     def __init__(self, config: Config):
         self.config = config
-        self.storage_dir = Path.home() / ".opensable" / "analytics"
+        self.storage_dir = opensable_home() / "analytics"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # Event storage

@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 
+from opensable.core.paths import opensable_home
+
 
 class PromptType(Enum):
     """Types of prompts."""
@@ -157,7 +159,7 @@ class PromptLibrary:
             storage_dir: Directory for storing templates
         """
         self.storage_dir = (
-            Path(storage_dir) if storage_dir else Path.home() / ".opensable" / "prompts"
+            Path(storage_dir) if storage_dir else opensable_home() / "prompts"
         )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

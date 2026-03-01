@@ -29,6 +29,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from opensable.core.paths import opensable_home
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -57,7 +59,7 @@ class InstagramSkill:
         self._client: Optional[Any] = None
         self._initialized = False
         self._action_delay = getattr(config, "instagram_action_delay", 2.0)
-        self._session_path = Path.home() / ".opensable" / "ig_session.json"
+        self._session_path = opensable_home() / "ig_session.json"
         self._session_path.parent.mkdir(parents=True, exist_ok=True)
 
     async def initialize(self) -> bool:

@@ -71,7 +71,8 @@ def _strip_untagged_reasoning(text: str) -> str:
             else:
                 break  # first non-reasoning line — stop
         if keep_from:
-            return "\n".join(lines[keep_from:]).strip()
+            result = "\n".join(lines[keep_from:]).strip()
+            return result if result else text  # never return empty
         return text
 
     # Multi-paragraph: strip leading paragraphs that are pure reasoning.
@@ -1123,15 +1124,37 @@ class SableAgent:
             query = task
             for filler in ["search for", "busca", "find", "look up", "google", "what is", "who is"]:
                 query = query.replace(filler, "", 1).strip()
+
             # Append current year to time-sensitive queries so results are fresh
             _time_words = ["recent", "latest", "news", "today", "current", "now",
                            "2026", "noticias", "hoy", "reciente", "último", "ultimas"]
             if any(w in query.lower() for w in _time_words) and str(date.today().year) not in query:
                 query = f"{query} {date.today().year}"
+            # Primary: always search the web via Brave
             result = await self._execute_tool(
                 "browser_search", {"query": query, "num_results": 8}, user_id=user_id
             )
             tool_results.append(result)
+
+            # ── News queries → ALSO scrape news.zunvra.com as extra source ──
+            _news_words = ["news", "noticias", "headlines", "recent events",
+                           "current events", "what happened", "latest"]
+            _is_news_query = any(w in query.lower() for w in _news_words)
+            if _is_news_query:
+                logger.info("📰 [NEWS] Additionally scraping news.zunvra.com")
+                try:
+                    news_result = await self._execute_tool(
+                        "browser_scrape",
+                        {"url": "https://news.zunvra.com", "max_length": 6000},
+                        user_id=user_id,
+                    )
+                    if news_result and "error" not in str(news_result).lower():
+                        tool_results.append(
+                            f"[ADDITIONAL SOURCE — news.zunvra.com / Zunvra News Global Intelligence]\n{news_result}"
+                        )
+                        logger.info("📰 [NEWS] Zunvra News scraped OK")
+                except Exception as _ne:
+                    logger.warning(f"📰 [NEWS] Zunvra scrape failed: {_ne}")
 
         # ── Intent-driven fast execution ──────────────────────────────────────
         # Use the _intent classified earlier to dispatch desktop/system actions
@@ -1535,11 +1558,25 @@ class SableAgent:
         if not text:
             return text
         import re as _re
+        original = text
         # Strip <think>...</think> reasoning blocks (Qwen3 / DeepSeek-R1)
         text = _re.sub(r'<think>.*?</think>', '', text, flags=_re.DOTALL | _re.IGNORECASE)
         # Strip orphan <think> opener (truncated reasoning with no closing tag)
         text = _re.sub(r'<think>.*', '', text, flags=_re.DOTALL | _re.IGNORECASE)
         text = text.replace('</think>', '').strip()
+        # If think-block stripping ate the entire content, fall back to original
+        if not text:
+            logger.warning(f"[clean_output] Think-block stripping produced empty text (original {len(original)} chars)")
+            text = original.replace('<think>', '').replace('</think>', '').strip()
+        # Strip leaked role prefixes — llama/mistral models sometimes output
+        # "Assistant\n..." or "assistant:" at the start of their reply.
+        text = _re.sub(
+            r'^(?:assistant|asistente|user|sistema|system)\s*[:\n]+\s*',
+            '', text, flags=_re.IGNORECASE,
+        )
+        # Strip garbled tokens that appear right after a role prefix leak
+        # (e.g. "ungal\n\n" — leftover BPE gibberish from chat template bleed)
+        text = _re.sub(r'^[a-z]{2,8}\n\n\s*', '', text, flags=_re.IGNORECASE)
         # Strip untagged reasoning preamble — Claude-distilled models sometimes output
         # raw thinking before the actual reply. Detect by looking for a double-newline
         # separator after a block that reads like internal monologue.
