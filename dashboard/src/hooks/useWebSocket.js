@@ -9,7 +9,7 @@ function getWSUrl() {
     : `${proto}://${location.host}/`;
 }
 
-export function useWebSocket() {
+export function useWebSocket(onExternalMessage) {
   const [connected, setConnected] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -72,6 +72,9 @@ export function useWebSocket() {
   }, [addActivity, addTerminal]);
 
   const handleMessage = useCallback((msg) => {
+    // Let external handler (multi-agent) process first
+    if (onExternalMessage && onExternalMessage(msg)) return;
+
     switch (msg.type) {
       case 'connected':
         break;
@@ -137,7 +140,7 @@ export function useWebSocket() {
       default:
         break;
     }
-  }, [addActivity, addTerminal, handleMonitorEvent]);
+  }, [addActivity, addTerminal, handleMonitorEvent, onExternalMessage]);
 
   const connect = useCallback(() => {
     const ws = new WebSocket(getWSUrl());

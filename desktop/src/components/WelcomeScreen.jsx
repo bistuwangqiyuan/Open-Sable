@@ -49,8 +49,11 @@ const SUGGESTIONS = [
 export default function WelcomeScreen({ wsStatus }) {
   const sendMessage = useSableStore(s => s.sendMessage)
   const tools      = useSableStore(s => s.tools)
+  const activeAgent = useSableStore(s => s.activeAgent)
   const [input, setInput] = useState('')
   const textareaRef = useRef(null)
+
+  const agentLabel = activeAgent ? activeAgent.charAt(0).toUpperCase() + activeAgent.slice(1) : 'Sable'
 
   return (
     <div className="welcome-screen">
@@ -64,7 +67,7 @@ export default function WelcomeScreen({ wsStatus }) {
             <span className={`status-badge ${wsStatus}`}>
               <span style={{ fontSize: 8 }}>●</span>
               {wsStatus === 'connected'
-                ? `SableCore · ${tools.length} tools ready`
+                ? `${agentLabel} · ${tools.length} tools ready`
                 : wsStatus === 'connecting'
                 ? 'Connecting…'
                 : 'Disconnected — check gateway'}

@@ -10,6 +10,9 @@ export default function Sidebar({ collapsed = false }) {
   const deleteSession = useSableStore(s => s.deleteSession)
   const openSettings = useSableStore(s => s.openSettings)
   const goHome = useSableStore(s => s.goHome)
+  const agents = useSableStore(s => s.agents)
+  const activeAgent = useSableStore(s => s.activeAgent)
+  const selectAgent = useSableStore(s => s.selectAgent)
 
   return (
     <div className={`sidebar${collapsed ? ' collapsed' : ''}`}>
@@ -22,6 +25,25 @@ export default function Sidebar({ collapsed = false }) {
           New chat
         </button>
       </div>
+
+      {agents.length > 1 && (
+        <>
+          <div className="sidebar-section-label">Agent</div>
+          <div className="agent-selector">
+            {agents.map(agent => (
+              <button
+                key={agent.name}
+                className={`agent-btn${activeAgent === agent.name ? ' active' : ''}${!agent.running ? ' offline' : ''}`}
+                onClick={() => selectAgent(agent.name)}
+                title={agent.running ? agent.name : `${agent.name} (offline)`}
+              >
+                <span className={`agent-dot${agent.running ? ' online' : ''}`} />
+                <span className="agent-name">{agent.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {sessions.length > 0 && (
         <div className="sidebar-section-label">Recent</div>

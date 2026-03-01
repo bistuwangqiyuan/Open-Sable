@@ -1,4 +1,5 @@
 import { fmtUptime } from '../../lib/utils';
+import AgentTabs from './AgentTabs';
 
 const styles = {
   bar: {
@@ -27,7 +28,7 @@ const styles = {
   right: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 },
 };
 
-export default function Topbar({ connected, model, stats }) {
+export default function Topbar({ connected, model, stats, agents, currentAgent, onAgentSelect }) {
   return (
     <div style={styles.bar}>
       <div style={styles.brand}>
@@ -41,6 +42,12 @@ export default function Topbar({ connected, model, stats }) {
       </div>
 
       {model && <div style={styles.pill}>🧠 {model}</div>}
+
+      <AgentTabs
+        agents={agents}
+        currentAgent={currentAgent}
+        onSelect={onAgentSelect}
+      />
 
       <div style={styles.right}>
         <div style={styles.pill}>⏱ {fmtUptime(stats.uptime_sec)}</div>

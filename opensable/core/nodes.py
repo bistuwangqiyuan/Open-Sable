@@ -58,7 +58,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-SOCKET_PATH = Path("/tmp/sable.sock")
+SOCKET_PATH = Path(os.environ.get("_SABLE_SOCKET_PATH", "/tmp/sable-sable.sock"))
 MAX_FILE_READ = 1024 * 512  # 512 KB safety limit for fs.read
 
 

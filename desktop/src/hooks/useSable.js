@@ -47,6 +47,10 @@ export const useSableStore = create((set, get) => ({
   tools: [],
   agentProgress: null,
 
+  // Multi-agent
+  agents: [],          // [{ name, running, is_current }]
+  activeAgent: '',     // which agent is selected ('' = local/default)
+
   // Code execution results: { [request_id]: { stdout, stderr, exit_code, running } }
   codeResults: {},
 
@@ -89,6 +93,7 @@ export const useSableStore = create((set, get) => ({
       socket.send(JSON.stringify({ type: 'sessions.list' }))
       socket.send(JSON.stringify({ type: 'tools.list' }))
       socket.send(JSON.stringify({ type: 'status' }))
+      socket.send(JSON.stringify({ type: 'agents.list' }))
     }
 
     socket.onclose = () => {
@@ -124,7 +129,7 @@ export const useSableStore = create((set, get) => ({
 
   // Send a chat message
   sendMessage: (text) => {
-    const { ws, wsStatus, activeSessionId } = get()
+    const { ws, wsStatus, activeSessionId, activeAgent, agents } = get()
     if (!ws || wsStatus !== 'connected' || !text.trim()) return
 
     const sessionId = activeSessionId || uid()
@@ -139,12 +144,35 @@ export const useSableStore = create((set, get) => ({
     // Show typing indicator
     set({ streaming: true, streamingSessionId: sessionId })
 
-    ws.send(JSON.stringify({
-      type: 'message',
-      session_id: sessionId,
-      user_id: 'desktop',
-      text,
-    }))
+    // If chatting with a remote agent, use agents.chat proxy
+    const isRemote = activeAgent && !agents.find(a => a.is_current && a.name === activeAgent)
+    if (isRemote) {
+      ws.send(JSON.stringify({
+        type: 'agents.chat',
+        profile: activeAgent,
+        session_id: sessionId,
+        user_id: 'desktop',
+        text,
+      }))
+    } else {
+      ws.send(JSON.stringify({
+        type: 'message',
+        session_id: sessionId,
+        user_id: 'desktop',
+        text,
+      }))
+    }
+  },
+
+  // Select agent
+  selectAgent: (name) => {
+    set({ activeAgent: name, activeSessionId: null })
+    // Request sessions list from the selected agent if remote
+    const { ws, agents } = get()
+    const isRemote = name && !agents.find(a => a.is_current && a.name === name)
+    if (!isRemote && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'sessions.list' }))
+    }
   },
 
   // New chat — go to welcome screen; session is created lazily on first sendMessage
@@ -390,6 +418,17 @@ export const useSableStore = create((set, get) => ({
       case 'status': {
         if (msg.model) set({ agentModel: msg.model })
         if (msg.version) set({ agentVersion: msg.version })
+        break
+      }
+
+      case 'agents.list.result': {
+        const agentsList = msg.agents || []
+        set({ agents: agentsList })
+        // Auto-select current agent if none selected
+        const { activeAgent } = get()
+        if (!activeAgent && msg.current) {
+          set({ activeAgent: msg.current })
+        }
         break
       }
     }

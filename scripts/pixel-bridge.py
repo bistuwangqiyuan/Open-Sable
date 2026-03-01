@@ -235,6 +235,12 @@ async def run_gateway_bridge(session_id: str, gateway_url: str) -> None:
     # Normalize gateway URL: http(s) base → ws(s) for WS connection
     ws_url = re.sub(r"^http", "ws", gateway_url.rstrip("/")) + "/"
 
+    # Append auth token if available
+    _token = os.environ.get("WEBCHAT_TOKEN", "") or os.environ.get("webchat_token", "")
+    if _token:
+        _sep = "&" if "?" in ws_url else "?"
+        ws_url += f"{_sep}token={_token}"
+
     print(f"\n🟢 Pixel-Bridge (gateway mode) started")
     print(f"   Session : {session_id}")
     print(f"   JSONL   : {jsonl_path}")

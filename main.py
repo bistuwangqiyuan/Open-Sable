@@ -97,10 +97,18 @@ async def main():
             if _bridge_script.exists():
                 _sid = f"sable-{_uuid.uuid4().hex[:8]}"
                 _ws_url = f"ws://127.0.0.1:{getattr(config, 'webchat_port', 8789)}"
-                _bridge_proc = await asyncio.create_subprocess_exec(
+                _ws_token = getattr(config, 'webchat_token', '') or ''
+                _bridge_args = [
                     sys.executable, str(_bridge_script),
                     "--session-id", _sid,
                     "--gateway-url", _ws_url,
+                ]
+                _bridge_env = {**os.environ}
+                if _ws_token:
+                    _bridge_env["WEBCHAT_TOKEN"] = _ws_token
+                _bridge_proc = await asyncio.create_subprocess_exec(
+                    *_bridge_args,
+                    env=_bridge_env,
                 )
                 logger.info(f"Pixel-Bridge started (session: {_sid}, pid: {_bridge_proc.pid})")
                 console.print(f"[bold magenta]🎮 Pixel-Bridge running (session: {_sid})[/bold magenta]")

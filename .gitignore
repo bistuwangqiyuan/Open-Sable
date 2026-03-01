@@ -148,3 +148,6 @@ agents/nexus_erebus/
 /agents/sable/data
 # All agent profile.env files contain credentials — only EXAMPLE files go to repo
 agents/*/profile.env
+.sable-analyst.pid
+.sable-nexus_erebus.pid
+.sable-sable.pid

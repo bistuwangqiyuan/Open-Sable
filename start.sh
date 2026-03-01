@@ -238,11 +238,43 @@ stop_desktop() {
     fi
 }
 
+# Kill orphaned opensable/bridge processes for the current PROFILE
+_kill_orphans() {
+    local session_name
+    # Determine session name from profile.env or default
+    session_name=$(grep -m1 '^WHATSAPP_SESSION_NAME=' "$PROFILE_DIR/profile.env" 2>/dev/null | cut -d= -f2)
+    session_name="${session_name:-opensable}"
+
+    # Kill orphan opensable processes for this profile
+    pgrep -f "opensable.*--profile $PROFILE" 2>/dev/null | while read -r opid; do
+        # Don't kill ourselves
+        [[ -f "$PIDFILE" ]] && [[ "$opid" == "$(cat "$PIDFILE" 2>/dev/null)" ]] && continue
+        echo "   🧹 Killing orphan opensable (PID $opid)"
+        kill "$opid" 2>/dev/null
+        sleep 1
+        kill -9 "$opid" 2>/dev/null
+    done
+
+    # Kill orphan bridge.js + chromium for this profile's session
+    if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
+        pgrep -f "bridge\.js.*--session $session_name" 2>/dev/null | while read -r bpid; do
+            echo "   🧹 Killing orphan bridge.js (PID $bpid)"
+            kill "$bpid" 2>/dev/null
+        done
+        pkill -f "puppeteer.*session-${session_name}" 2>/dev/null
+    fi
+}
+
 do_start() {
+    # Clean stale PID file if process is dead
+    if [ -f "$PIDFILE" ] && ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        rm -f "$PIDFILE"
+    fi
+
     if is_running; then
         echo "⚠️  Already running [$PROFILE] (PID $(cat "$PIDFILE"))"
         echo "   Use: ./start.sh stop --profile $PROFILE   or   ./start.sh restart --profile $PROFILE"
-        exit 1
+        return 1
     fi
 
     # Validate profile directory exists
@@ -252,7 +284,7 @@ do_start() {
         ls -1 "$DIR/agents/" 2>/dev/null | grep -v '^_' | grep -v '^\.' | sed 's/^/     /'
         echo ""
         echo "   Create one: cp -r agents/_template agents/$PROFILE"
-        exit 1
+        return 1
     fi
 
     echo "👤 Profile: $PROFILE"
@@ -266,7 +298,7 @@ do_start() {
 
     mkdir -p "$DIR/logs"
     echo "🚀 Starting Open-Sable [profile: $PROFILE]..."
-    SABLE_PROFILE="$PROFILE" nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
+    SABLE_PROFILE="$PROFILE" setsid nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
     echo $! > "$PIDFILE"
     sleep 1
 
@@ -282,7 +314,7 @@ do_start() {
     else
         echo "❌ Failed to start. Check: tail -50 $LOGFILE"
         rm -f "$PIDFILE"
-        exit 1
+        return 1
     fi
 }
 
@@ -293,12 +325,22 @@ do_stop() {
     fi
 
     if ! is_running; then
+        # Check for orphan processes even without PID file
+        _kill_orphans
         echo "ℹ️  Not running [$PROFILE]"
         return
     fi
     pid=$(cat "$PIDFILE")
     echo "🛑 Stopping [$PROFILE] (PID $pid)..."
-    kill "$pid" 2>/dev/null
+
+    # Kill the entire process group (catches children: bridge.js, chromium, etc.)
+    pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
+    if [[ -n "$pgid" && "$pgid" != "0" ]]; then
+        kill -- -"$pgid" 2>/dev/null
+    else
+        kill "$pid" 2>/dev/null
+    fi
+
     # Wait up to 10s for graceful shutdown
     for i in $(seq 1 10); do
         if ! kill -0 "$pid" 2>/dev/null; then
@@ -309,9 +351,15 @@ do_stop() {
     # Force kill if still alive
     if kill -0 "$pid" 2>/dev/null; then
         echo "   Force killing..."
+        if [[ -n "$pgid" && "$pgid" != "0" ]]; then
+            kill -9 -- -"$pgid" 2>/dev/null
+        fi
         kill -9 "$pid" 2>/dev/null
     fi
     rm -f "$PIDFILE"
+
+    # Clean any orphaned child processes
+    _kill_orphans
     echo "✅ Stopped"
 }
 
@@ -379,6 +427,15 @@ case "$ACTION" in
     start)
         if [[ "$ALL_PROFILES" == "1" ]]; then
             echo "🚀 Starting ALL agents..."
+            # Stop any existing agents first to avoid port conflicts
+            for p in $(get_all_profiles); do
+                run_for_profile "$p"
+                if is_running; then
+                    echo "── stopping stale $p ──"
+                    do_stop
+                fi
+            done
+            sleep 1
             for p in $(get_all_profiles); do
                 run_for_profile "$p"
                 echo "── $p ──"

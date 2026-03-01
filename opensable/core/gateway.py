@@ -62,6 +62,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+import aiohttp
 from aiohttp import web, WSMsgType
 
 # ─── LLM reasoning-trace stripper ─────────────────────────────────────────────
@@ -140,6 +141,7 @@ def _clean_gateway_reply(text: str) -> str:
 # Socket path is profile-aware: /tmp/sable-<profile>.sock for all profiles.
 _profile_name = os.environ.get("_SABLE_PROFILE", "sable")
 SOCKET_PATH = Path(os.environ.get("_SABLE_SOCKET_PATH", "/tmp/sable-sable.sock"))
+_data_dir = Path(os.environ.get("_SABLE_DATA_DIR", "data"))
 GATEWAY_VER = "2.1.0"
 HEARTBEAT_INT = 30  # seconds between heartbeat frames
 
@@ -162,6 +164,7 @@ class _Client:
         self.ws = ws
         self.cid = cid or f"c{id(self):x}"
         self.node_id: Optional[str] = None
+        self._proxy_tasks: Dict[str, asyncio.Task] = {}  # profile → proxy task
 
     async def send(self, payload: dict) -> None:
         try:
@@ -258,6 +261,15 @@ class Gateway:
         if not self._webchat_token:
             return await handler(request)
 
+        # Unix socket connections are trusted (filesystem ACL controls access)
+        transport = getattr(request, "transport", None) or (
+            request._payload._transport if hasattr(request, "_payload") else None
+        )
+        if transport:
+            sockname = transport.get_extra_info("sockname")
+            if isinstance(sockname, str):  # Unix socket path → trusted
+                return await handler(request)
+
         path = request.path.lower()
 
         # Asset extensions and specific prefixes skip auth
@@ -351,6 +363,7 @@ class Gateway:
 
         safe = Path(rel_path).as_posix().replace("..", "")
         target = base_dir / safe
+        is_fallback = False
 
         if not target.exists() or not target.is_file():
             for sub in ("aggr", "dashboard", "assets"):
@@ -361,13 +374,20 @@ class Gateway:
 
         if not target.exists() or not target.is_file():
             target = base_dir / "index.html"
+            is_fallback = True
 
         if target.exists() and target.is_file():
             ct = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
+            # index.html must never be cached so builds take effect immediately;
+            # hashed asset files (js/css) can be cached long-term.
+            if is_fallback or target.name == "index.html":
+                cc = "no-cache, no-store, must-revalidate"
+            else:
+                cc = "public, max-age=31536000, immutable"
             return web.Response(
                 body=target.read_bytes(),
                 content_type=ct,
-                headers={"Cache-Control": "public, max-age=3600"},
+                headers={"Cache-Control": cc},
             )
         return web.Response(status=404, text="404 Not Found")
 
@@ -398,6 +418,11 @@ class Gateway:
         except Exception as exc:
             logger.debug(f"[Gateway] {client.cid} error: {exc}")
         finally:
+            # Cancel any proxy tasks for this client
+            for task in client._proxy_tasks.values():
+                task.cancel()
+            client._proxy_tasks.clear()
+
             self._clients.discard(client)
             self._monitor_clients.discard(client)
             if client.node_id and client.node_id in self._nodes:
@@ -539,6 +564,16 @@ class Gateway:
             await self._on_code_run(client, msg)
         elif t == "code.autofix":
             await self._on_code_autofix(client, msg)
+        elif t == "agents.list":
+            await self._on_agents_list(client)
+        elif t == "agents.status":
+            await self._on_agents_status(client, msg)
+        elif t == "agents.subscribe":
+            await self._on_agents_subscribe(client, msg)
+        elif t == "agents.unsubscribe":
+            await self._on_agents_unsubscribe(client, msg)
+        elif t == "agents.chat":
+            await self._on_agents_chat(client, msg)
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
@@ -768,6 +803,253 @@ class Gateway:
             except Exception:
                 pass
 
+    # ── Multi-Agent handlers ──────────────────────────────────────────────────
+
+    async def _on_agents_list(self, client: _Client):
+        """Return list of all agent profiles and their running status."""
+        try:
+            from opensable.core.profile import list_profiles
+        except ImportError:
+            await client.send({"type": "agents.list.result", "agents": [], "current": _profile_name})
+            return
+
+        agents = []
+        for name in list_profiles():
+            sock = Path(f"/tmp/sable-{name}.sock")
+            agents.append({
+                "name": name,
+                "running": sock.exists(),
+                "is_current": name == _profile_name,
+            })
+
+        await client.send({
+            "type": "agents.list.result",
+            "agents": agents,
+            "current": _profile_name,
+        })
+
+    async def _on_agents_status(self, client: _Client, msg: dict):
+        """Get status from a specific agent, proxied via Unix socket."""
+        profile = msg.get("profile", "")
+        if not profile:
+            await client.send({"type": "error", "text": "agents.status requires 'profile'"})
+            return
+
+        if profile == _profile_name:
+            # Current agent – return local status
+            status = self.status()
+            if hasattr(self.agent, "llm") and hasattr(self.agent.llm, "current_model"):
+                status["model"] = self.agent.llm.current_model
+            try:
+                from opensable import __version__ as _ver
+                status["version"] = _ver
+            except Exception:
+                pass
+            await client.send({"type": "agents.status.result", "profile": profile, **status})
+            return
+
+        # Proxy to peer agent via Unix socket
+        socket_path = f"/tmp/sable-{profile}.sock"
+        if not Path(socket_path).exists():
+            await client.send({
+                "type": "agents.status.result",
+                "profile": profile,
+                "running": False,
+            })
+            return
+
+        try:
+            conn = aiohttp.UnixConnector(path=socket_path)
+            async with aiohttp.ClientSession(connector=conn) as session:
+                async with session.ws_connect("http://localhost/") as ws:
+                    await ws.send_json({"type": "status"})
+                    resp = await asyncio.wait_for(ws.receive_json(), timeout=5)
+                    await client.send({
+                        "type": "agents.status.result",
+                        "profile": profile,
+                        **resp,
+                    })
+        except Exception as exc:
+            logger.debug(f"[Gateway] agents.status proxy to {profile} failed: {exc}")
+            await client.send({
+                "type": "agents.status.result",
+                "profile": profile,
+                "running": False,
+                "error": str(exc),
+            })
+
+    async def _on_agents_subscribe(self, client: _Client, msg: dict):
+        """Subscribe to real-time events from another agent via Unix socket proxy."""
+        profile = msg.get("profile", "")
+        if not profile:
+            await client.send({"type": "error", "text": "agents.subscribe requires 'profile'"})
+            return
+
+        if profile == _profile_name:
+            # Already connected to this agent
+            await client.send({
+                "type": "agents.subscribed",
+                "profile": profile,
+                "status": "already_connected",
+            })
+            return
+
+        # Cancel existing proxy for this profile if any
+        if profile in client._proxy_tasks:
+            client._proxy_tasks[profile].cancel()
+            del client._proxy_tasks[profile]
+
+        socket_path = f"/tmp/sable-{profile}.sock"
+        if not Path(socket_path).exists():
+            await client.send({
+                "type": "agents.subscribed",
+                "profile": profile,
+                "status": "offline",
+            })
+            return
+
+        # Start a background task to proxy events from the peer agent
+        task = asyncio.create_task(self._proxy_agent_events(client, profile, socket_path))
+        client._proxy_tasks[profile] = task
+
+    async def _on_agents_unsubscribe(self, client: _Client, msg: dict):
+        """Unsubscribe from a remote agent's events."""
+        profile = msg.get("profile", "")
+        if profile in client._proxy_tasks:
+            client._proxy_tasks[profile].cancel()
+            del client._proxy_tasks[profile]
+        await client.send({"type": "agents.unsubscribed", "profile": profile})
+
+    async def _proxy_agent_events(self, client: _Client, profile: str, socket_path: str):
+        """Forward all events from a remote agent to this dashboard client."""
+        try:
+            conn = aiohttp.UnixConnector(path=socket_path)
+            async with aiohttp.ClientSession(connector=conn) as session:
+                async with session.ws_connect("http://localhost/") as ws:
+                    await client.send({
+                        "type": "agents.subscribed",
+                        "profile": profile,
+                        "status": "connected",
+                    })
+
+                    # Request initial state
+                    await ws.send_json({"type": "status"})
+                    await ws.send_json({"type": "sessions.list"})
+                    await ws.send_json({"type": "monitor.subscribe"})
+                    await ws.send_json({"type": "thoughts.list", "limit": 500})
+
+                    # Periodically request status updates
+                    last_status = time.time()
+
+                    async for msg in ws:
+                        if client.closed:
+                            break
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            try:
+                                data = json.loads(msg.data)
+                            except json.JSONDecodeError:
+                                continue
+                            # Tag every message with the source profile
+                            data["_profile"] = profile
+                            await client.send(data)
+                        elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.ERROR):
+                            break
+
+                        # Request periodic status
+                        now = time.time()
+                        if now - last_status >= 5:
+                            try:
+                                await ws.send_json({"type": "status"})
+                            except Exception:
+                                pass
+                            last_status = now
+
+        except asyncio.CancelledError:
+            logger.debug(f"[Gateway] Agent proxy to {profile} cancelled")
+        except Exception as exc:
+            logger.debug(f"[Gateway] Agent proxy to {profile} ended: {exc}")
+        finally:
+            # Notify the dashboard client that the proxy disconnected
+            try:
+                await client.send({
+                    "type": "agents.disconnected",
+                    "profile": profile,
+                })
+            except Exception:
+                pass
+
+    async def _on_agents_chat(self, client: _Client, msg: dict):
+        """Proxy a chat message to a remote agent via Unix socket and stream the response back."""
+        profile = msg.get("profile", "")
+        text = msg.get("text", "").strip()
+        session_id = msg.get("session_id", "webchat_default")
+        user_id = msg.get("user_id", "dashboard_user")
+
+        if not profile or not text:
+            await client.send({"type": "error", "text": "agents.chat requires 'profile' and 'text'"})
+            return
+
+        # If targeting the current agent, just handle locally
+        if profile == _profile_name:
+            await self._on_message(client, msg)
+            return
+
+        socket_path = f"/tmp/sable-{profile}.sock"
+        if not Path(socket_path).exists():
+            await client.send({"type": "error", "text": f"Agent '{profile}' is not running"})
+            return
+
+        try:
+            conn = aiohttp.UnixConnector(path=socket_path)
+            async with aiohttp.ClientSession(connector=conn) as session:
+                async with session.ws_connect("http://localhost/") as ws:
+                    # Send the chat message to the remote agent
+                    await ws.send_json({
+                        "type": "message",
+                        "text": text,
+                        "session_id": session_id,
+                        "user_id": user_id,
+                    })
+
+                    # Stream back all response frames until message.done
+                    done = False
+                    async for frame in ws:
+                        if client.closed:
+                            break
+                        if frame.type == aiohttp.WSMsgType.TEXT:
+                            try:
+                                data = json.loads(frame.data)
+                            except json.JSONDecodeError:
+                                continue
+                            ftype = data.get("type", "")
+                            # Tag with source profile
+                            data["_profile"] = profile
+                            # Forward relevant message types
+                            if ftype in ("message.start", "message.chunk", "message.done",
+                                         "progress", "error"):
+                                await client.send(data)
+                            if ftype == "message.done":
+                                done = True
+                                break
+                        elif frame.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.ERROR):
+                            break
+
+                    if not done:
+                        await client.send({
+                            "type": "message.done",
+                            "_profile": profile,
+                            "session_id": session_id,
+                            "text": "",
+                        })
+
+        except Exception as exc:
+            logger.warning(f"[Gateway] agents.chat proxy to {profile} failed: {exc}")
+            await client.send({
+                "type": "error",
+                "_profile": profile,
+                "text": f"Failed to chat with agent '{profile}': {exc}",
+            })
+
     async def _on_message(self, client: _Client, msg: dict):
         """Process user message through the full agent pipeline."""
         from opensable.core.session_manager import SessionManager
@@ -910,7 +1192,7 @@ class Gateway:
         limit = min(int(msg.get("limit", 200)), 1000)
         filter_type = msg.get("filter")
 
-        base = Path("data/x_consciousness")
+        base = _data_dir / "x_consciousness"
         result: dict = {"type": "thoughts.list.result"}
 
         # Journal

@@ -69,6 +69,8 @@ class OpenSableConfig(BaseModel):
     discord_bot_token: Optional[str] = None
     discord_guild_id: Optional[str] = None
     whatsapp_enabled: bool = False
+    whatsapp_callback_port: int = 3334
+    whatsapp_bridge_port: int = 3333
 
     # X (Twitter) / Grok
     x_username: Optional[str] = None
@@ -390,6 +392,8 @@ def load_config() -> OpenSableConfig:
         "discord_bot_token": os.getenv("DISCORD_BOT_TOKEN"),
         "discord_guild_id": os.getenv("DISCORD_GUILD_ID"),
         "whatsapp_enabled": os.getenv("WHATSAPP_ENABLED", "false").lower() == "true",
+        "whatsapp_callback_port": int(os.getenv("WHATSAPP_CALLBACK_PORT", "3334")),
+        "whatsapp_bridge_port": int(os.getenv("WHATSAPP_BRIDGE_PORT", "3333")),
         # X (Twitter) / Grok
         "x_username": os.getenv("X_USERNAME"),
         "x_email": os.getenv("X_EMAIL"),
