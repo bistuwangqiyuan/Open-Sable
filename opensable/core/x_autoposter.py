@@ -191,6 +191,10 @@ class XAutonomousAgent:
         self._known_users: Dict[str, int] = {}  # username -> engagement count (relationship memory)
         self._inspiration_level: float = 0.5  # 0.0-1.0, rises with interesting encounters
 
+        # ── Active hours (16h window by default — human-like awake schedule) ──
+        self._active_hours_start = int(getattr(config, "x_active_hours_start", 8))   # 8 AM
+        self._active_hours_end = int(getattr(config, "x_active_hours_end", 0))       # midnight (0 = 24)
+
         # ── Self-healing (see own console, fix errors with Grok) ──
         self._log_buffer = install_log_buffer()
         self._healer = SelfHealMonitor(self, self._log_buffer)
@@ -219,16 +223,21 @@ class XAutonomousAgent:
             f"last_post={self._last_post_at or 'never'}"
         )
 
-        # Internal thought — summarize what we remember
+        # Internal thought — summarize what we remember + scheduling plan
         since_post = self._seconds_since(self._last_post_at)
         since_engage = self._seconds_since(self._last_engage_at)
+        posts_remaining = self.max_daily_posts - self._posts_today
+        hours_left = self._remaining_active_hours()
+        next_interval = self._optimal_post_interval()
         await self.mind.think(
             f"Booting up. I have {mem_stats.get('total_memories', 0)} memories, "
             f"{mem_stats.get('reflections', 0)} reflections, "
             f"{mem_stats.get('evolutions', 0)} evolutions. "
             f"Last post was {self._fmt_ago(since_post)}. "
             f"Last engagement was {self._fmt_ago(since_engage)}. "
-            f"Posts today so far: {self._posts_today}/{self.max_daily_posts}. "
+            f"Posts today so far: {self._posts_today}/{self.max_daily_posts} "
+            f"({posts_remaining} remaining, {hours_left:.1f}h active time left → "
+            f"~1 post every {next_interval / 60:.0f}min). "
             f"Running in sequential mode — one action at a time, like a real human."
         )
 
@@ -294,6 +303,80 @@ class XAutonomousAgent:
             self._last_reset = today
             self._daily_limit_hit = False  # New day — reset cap flag
 
+    # ── Smart post scheduling ─────────────────────────────────────
+    def _remaining_active_hours(self) -> float:
+        """Hours remaining in today's active window."""
+        now = datetime.now()
+        end_h = self._active_hours_end if self._active_hours_end != 0 else 24
+        end_today = now.replace(hour=0, minute=0, second=0) + timedelta(hours=end_h)
+        remaining = (end_today - now).total_seconds() / 3600.0
+        return max(0.5, remaining)  # minimum 30min to avoid division issues
+
+    def _optimal_post_interval(self) -> float:
+        """
+        Dynamically calculate the ideal seconds between posts so that the
+        daily limit is spread evenly across the remaining active hours.
+
+        Example: 20 max posts, 5 posted so far, 10 hours left
+                 → 15 remaining posts / 10 hours = 1 post per 40 minutes = 2400 seconds
+        Adds ±20% jitter so it doesn't look robotic.
+        """
+        posts_remaining = self.max_daily_posts - self._posts_today
+        if posts_remaining <= 0:
+            return float('inf')  # no more posts allowed
+
+        hours_left = self._remaining_active_hours()
+        # Seconds per post slot
+        ideal_interval = (hours_left * 3600) / posts_remaining
+
+        # Never go below the configured minimum interval (safety floor)
+        ideal_interval = max(ideal_interval, self.post_interval)
+
+        # Add ±20% jitter for human realism
+        jitter = random.uniform(0.8, 1.2)
+        result = ideal_interval * jitter
+
+        logger.debug(
+            f"📊 Post schedule: {posts_remaining} remaining / {hours_left:.1f}h left "
+            f"→ ideal {ideal_interval:.0f}s, with jitter {result:.0f}s "
+            f"(min floor: {self.post_interval}s)"
+        )
+        return result
+
+    def _should_post_now(self) -> bool:
+        """
+        Decide if it's time to post based on smart scheduling.
+        Uses the dynamic interval and current inspiration level.
+        """
+        if self._posts_today >= self.max_daily_posts or self._daily_limit_hit:
+            return False
+
+        since_post = self._seconds_since(self._last_post_at)
+        optimal = self._optimal_post_interval()
+
+        if since_post is None:
+            # Never posted today — go ahead
+            return True
+
+        if since_post < self.post_interval:
+            # Below the hard minimum — never post this fast
+            return False
+
+        if since_post >= optimal:
+            # Past the optimal interval — post with high probability
+            # The longer overdue, the higher the chance
+            overdue_ratio = since_post / optimal
+            post_chance = min(0.9, 0.5 + (overdue_ratio - 1) * 0.3)
+            post_chance += self._inspiration_level * 0.1
+            return random.random() < post_chance
+
+        # Between minimum and optimal — post only if very inspired
+        if self._inspiration_level > 0.7:
+            early_chance = 0.15 + (self._inspiration_level - 0.7) * 0.5
+            return random.random() < early_chance
+
+        return False
+
     def _x(self):
         """Shortcut to XSkill."""
         return self.agent.tools.x_skill
@@ -352,10 +435,12 @@ class XAutonomousAgent:
 
         activities = self._plan_session()
         activity_names = [a["type"] for a in activities]
+        posts_left = self.max_daily_posts - self._posts_today
+        hours_left = self._remaining_active_hours()
         logger.info(
             f"\U0001f4f1 Opening X — session ~{session_minutes:.0f}min | "
             f"plan: {activity_names} | "
-            f"posts={self._posts_today}/{self.max_daily_posts} "
+            f"posts={self._posts_today}/{self.max_daily_posts} ({posts_left} left in {hours_left:.1f}h) "
             f"engagements={self._engagements_today}/{self.max_daily_engagements}"
         )
 
@@ -391,6 +476,10 @@ class XAutonomousAgent:
         """
         Decide what to do this session — like a human opening X with intent.
         Returns a short list of sequential activities.
+
+        Post scheduling uses smart distribution: posts are spread evenly
+        across the remaining active hours so the daily limit is fully used
+        without burning through them too early.
         """
         activities: List[Dict] = []
 
@@ -400,17 +489,12 @@ class XAutonomousAgent:
         # ── Browse (scroll the feed) ──
         activities.append({"type": "browse_engage", "pause_key": "engage"})
 
-        # ── Post if inspired or if it's been long enough ──
-        since_post = self._seconds_since(self._last_post_at)
-        if self._posts_today < self.max_daily_posts and not self._daily_limit_hit:
-            post_overdue = since_post is None or since_post > self.post_interval
-            # Inspiration boosts posting probability (0.2 base -> up to 0.6)
-            post_chance = 0.20 + self._inspiration_level * 0.4
-            if post_overdue and random.random() < post_chance:
-                activities.append({"type": "post_original", "pause_key": "post"})
+        # ── Post if the smart scheduler says it's time ──
+        if self._should_post_now():
+            activities.append({"type": "post_original", "pause_key": "post"})
 
-        # ── Join a trend occasionally (12%) ──
-        if random.random() < 0.12 and self._posts_today < self.max_daily_posts and not self._daily_limit_hit:
+        # ── Join a trend occasionally (12%) — also respects scheduling ──
+        if random.random() < 0.12 and self._should_post_now():
             activities.append({"type": "join_trend", "pause_key": "trend"})
 
         # ── Maybe browse more at the end (25%) ──
@@ -443,9 +527,14 @@ class XAutonomousAgent:
             heal_stats = self._healer.get_status()
             log_stats = heal_stats.get("log_stats", {})
             heal_info = heal_stats.get("heal_stats", {})
+            posts_remaining = self.max_daily_posts - self._posts_today
+            hours_left = self._remaining_active_hours()
+            next_post_interval = self._optimal_post_interval()
             situation = (
                 f"Session #{self._consciousness_cycle} ended. "
-                f"Posts today: {self._posts_today}/{self.max_daily_posts}. "
+                f"Posts today: {self._posts_today}/{self.max_daily_posts} "
+                f"({posts_remaining} remaining, ~{hours_left:.1f}h left → "
+                f"next post in ~{next_post_interval / 60:.0f}min). "
                 f"Engagements today: {self._engagements_today}/{self.max_daily_engagements}. "
                 f"Total memories: {stats.get('total_memories', 0)}. "
                 f"Current mood: {self.mind._mood} (intensity {self.mind._mood_intensity:.1f}). "
@@ -2001,13 +2090,20 @@ class XAutonomousAgent:
             logger.debug(f"Load state failed: {e}")
 
     def get_status(self) -> Dict[str, Any]:
+        posts_remaining = self.max_daily_posts - self._posts_today
+        hours_left = self._remaining_active_hours()
+        next_interval = self._optimal_post_interval() if posts_remaining > 0 else 0
         return {
             "running": self.running,
             "posts_today": self._posts_today,
+            "posts_remaining": posts_remaining,
             "engagements_today": self._engagements_today,
             "max_daily_posts": self.max_daily_posts,
             "max_daily_engagements": self.max_daily_engagements,
-            "post_interval": self.post_interval,
+            "post_interval_min": self.post_interval,
+            "post_interval_dynamic": round(next_interval),
+            "active_hours_remaining": round(hours_left, 1),
+            "next_post_in_minutes": round(next_interval / 60) if posts_remaining > 0 else None,
             "engage_interval": self.engage_interval,
             "style": self.style,
             "topics": self.topics,

@@ -394,6 +394,28 @@ class ToolRegistry(
             except Exception as e:
                 logger.warning(f"Trading skill initialization failed: {e}")
 
+        # ── Profile tool filtering ─────────────────────────────────────────
+        try:
+            from .profile import get_active_profile
+            profile = get_active_profile()
+            if profile and profile.tools.mode != "all":
+                before = len(self.tools)
+                self.tools = {
+                    name: func
+                    for name, func in self.tools.items()
+                    if profile.tools.is_allowed(name)
+                }
+                after = len(self.tools)
+                if before != after:
+                    logger.info(
+                        f"[Profile:{profile.name}] tool filter ({profile.tools.mode}): "
+                        f"{before} → {after} tools"
+                    )
+        except ImportError:
+            pass  # profile module not available
+        except Exception as exc:
+            logger.debug(f"Profile tool filter error: {exc}")
+
         logger.info(f"Initialized {len(self.tools)} tools")
 
     # ── Tool registry API ─────────────────────────────────────────────────────

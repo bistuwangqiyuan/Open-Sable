@@ -47,6 +47,9 @@ export const useSableStore = create((set, get) => ({
   tools: [],
   agentProgress: null,
 
+  // Code execution results: { [request_id]: { stdout, stderr, exit_code, running } }
+  codeResults: {},
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
   setConfig: (config) => set({ config }),
@@ -147,6 +150,26 @@ export const useSableStore = create((set, get) => ({
   // New chat — go to welcome screen; session is created lazily on first sendMessage
   newChat: () => {
     set({ activeSessionId: null })
+  },
+
+  // Run a code snippet via gateway and store the result by request_id
+  runCode: (code, language, requestId, stdin = null) => {
+    const { ws, wsStatus } = get()
+    if (!ws || wsStatus !== 'connected') return
+    set(prev => ({
+      codeResults: { ...prev.codeResults, [requestId]: { running: true, stdout: '', stderr: '', exit_code: null } }
+    }))
+    ws.send(JSON.stringify({ type: 'code.run', request_id: requestId, code, language, stdin }))
+  },
+
+  // Attempt an automatic fix for interactive snippets (replace input() with argv consumption)
+  autoFixCode: (code, language, requestId) => {
+    const { ws, wsStatus } = get()
+    if (!ws || wsStatus !== 'connected') return
+    set(prev => ({
+      codeResults: { ...prev.codeResults, [requestId]: { running: true, stdout: '', stderr: '', exit_code: null } }
+    }))
+    ws.send(JSON.stringify({ type: 'code.autofix', request_id: requestId, code, language }))
   },
 
   // Select session
@@ -347,6 +370,19 @@ export const useSableStore = create((set, get) => ({
         get().showToast(msg.text || 'Gateway error')
         set({ streaming: false, agentProgress: null })
         break
+
+      case 'code.result': {
+        const rid = msg.request_id
+        if (rid) {
+          set(prev => ({
+            codeResults: {
+              ...prev.codeResults,
+              [rid]: { running: false, stdout: msg.stdout || '', stderr: msg.stderr || '', exit_code: msg.exit_code ?? 0 }
+            }
+          }))
+        }
+        break
+      }
 
       case 'heartbeat':
       case 'pong':

@@ -596,6 +596,142 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
   font-size: 12.5px;
 }
 
+/* ── Code block with Run button ──────────────────────────────────────────── */
+.code-block-wrap {
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: #181a24;
+  border-bottom: 1px solid var(--border);
+  min-height: 30px;
+}
+
+.code-lang {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  text-transform: lowercase;
+  letter-spacing: 0.5px;
+}
+
+.code-block-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.code-run-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #22c55e18;
+  border: 1px solid #22c55e55;
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 9px;
+  border-radius: var(--radius-xs);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.code-run-btn:hover:not(:disabled) {
+  background: #22c55e33;
+  color: #86efac;
+}
+.code-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.code-run-btn.running {
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.code-copy-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-mid);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  transition: color 0.15s;
+}
+.code-copy-btn:hover { color: var(--text); }
+
+.code-block-pre {
+  background: #0d0f16;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.code-output {
+  border-top: 1px solid var(--border);
+  background: #0a0c12;
+}
+.code-output.error { border-top-color: #ef444455; }
+
+.code-output-label {
+  display: block;
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #4ade80;
+  background: #0d0f16;
+  border-bottom: 1px solid var(--border);
+}
+.code-output.error .code-output-label { color: #f87171; }
+
+.code-output-pre {
+  margin: 0;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Stdin modal */
+.stdin-modal-backdrop {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.stdin-modal {
+  width: 680px; max-width: 92%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+.stdin-modal-header { font-weight: 700; margin-bottom: 8px; }
+.stdin-modal-textarea {
+  width: 100%; height: 160px; resize: vertical; padding: 10px; font-family: var(--font-mono);
+  background: #071018; color: #e6eef6; border: 1px solid var(--border); border-radius: 6px;
+}
+.stdin-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px }
+.stdin-modal-btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-mid); }
+.stdin-modal-btn.cancel { background: transparent; color: var(--text-dim); }
+.stdin-modal-btn.confirm { background: #22c55e22; color: #4ade80; font-weight: 700; border-color: #22c55e55 }
+
 .message-bubble p { margin: 6px 0; }
 .message-bubble p:first-child { margin-top: 0; }
 .message-bubble p:last-child { margin-bottom: 0; }

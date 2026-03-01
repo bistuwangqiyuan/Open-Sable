@@ -144,3 +144,7 @@ desktop/release/
 desktop/out/
 desktop/.env
 .desktop.pid
+agents/nexus_erebus/
+/agents/sable/data
+# All agent profile.env files contain credentials — only EXAMPLE files go to repo
+agents/*/profile.env

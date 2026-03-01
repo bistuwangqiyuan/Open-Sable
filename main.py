@@ -4,6 +4,7 @@ Open-Sable Main Entry Point
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -28,6 +29,24 @@ def setup_logging(log_level: str = "INFO"):
 
 async def main():
     """Main entry point for Open-Sable"""
+
+    # ── Profile support ───────────────────────────────────────────────
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Open-Sable Autonomous AI Agent")
+    parser.add_argument(
+        "--profile", "-p",
+        default=None,
+        help="Agent profile name (from agents/ directory).",
+    )
+    args, _unknown = parser.parse_known_args()
+
+    from opensable.core.profile import load_profile, DEFAULT_PROFILE
+    profile_name = args.profile or os.environ.get("SABLE_PROFILE") or DEFAULT_PROFILE
+    profile = load_profile(profile_name)
+    profile.apply_env()
+    console.print(f"[bold magenta]👤 Profile: {profile_name}[/bold magenta]")
+
     console.print("[bold cyan]🚀 Starting Open-Sable...[/bold cyan]")
 
     # Load configuration

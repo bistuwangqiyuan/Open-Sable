@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useSableStore } from '../hooks/useSable.js'
+import StdinModal from './StdinModal.jsx'
 
 // ── Video embed helpers ────────────────────────────────────────────────────
 
@@ -78,6 +80,95 @@ function CustomLink({ href, children }) {
   return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
 }
 
+// Languages that can be run
+const RUNNABLE = new Set(['python', 'python3', 'javascript', 'js', 'bash', 'sh'])
+
+// Code block with optional Run button
+function CodeBlock({ code, language }) {
+  const runCode     = useSableStore(s => s.runCode)
+  const codeResults = useSableStore(s => s.codeResults)
+  const [reqId, setReqId]   = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [stdinModalOpen, setStdinModalOpen] = useState(false)
+  const stdinPromiseRef = useRef(null)
+
+  const result   = reqId ? codeResults[reqId] : null
+  const running  = result?.running === true
+  const canRun   = RUNNABLE.has((language || '').toLowerCase())
+
+  const handleRun = useCallback(() => {
+    (async () => {
+      const id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      setReqId(id)
+      let stdin = null
+      try {
+        // If code uses input(), open the multiline modal and await the user's stdin
+        if ((code || '').includes('input(')) {
+          const p = new Promise(resolve => { stdinPromiseRef.current = resolve; setStdinModalOpen(true) })
+          const s = await p
+          if (s !== null && s !== undefined) stdin = s
+        }
+      } catch {}
+      runCode(code, language || 'python', id, stdin)
+    })()
+  }, [code, language, runCode])
+
+  const handleModalConfirm = useCallback((val) => {
+    setStdinModalOpen(false)
+    if (stdinPromiseRef.current) {
+      stdinPromiseRef.current(val)
+      stdinPromiseRef.current = null
+    }
+  }, [])
+
+  const handleModalCancel = useCallback(() => {
+    setStdinModalOpen(false)
+    if (stdinPromiseRef.current) {
+      stdinPromiseRef.current(null)
+      stdinPromiseRef.current = null
+    }
+  }, [])
+
+  const handleCopyCode = useCallback(async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {}
+  }, [code])
+
+  return (
+    <div className="code-block-wrap">
+      <div className="code-block-header">
+        {language && <span className="code-lang">{language}</span>}
+        <div className="code-block-actions">
+          {canRun && (
+            <button
+              className={`code-run-btn${running ? ' running' : ''}`}
+              onClick={handleRun}
+              disabled={running}
+              title={`Run ${language}`}
+            >
+              {running ? '⏳' : '▶ Run'}
+            </button>
+          )}
+          <button className="code-copy-btn" onClick={handleCopyCode} title="Copy code">
+            {copied ? '✓' : '⎘'}
+          </button>
+        </div>
+      </div>
+      <pre className="code-block-pre"><code>{code}</code></pre>
+      <StdinModal open={stdinModalOpen} defaultValue={''} onConfirm={handleModalConfirm} onCancel={handleModalCancel} />
+      {result && !result.running && (
+        <div className={`code-output${result.exit_code !== 0 ? ' error' : ''}`}>
+          <span className="code-output-label">
+            {result.exit_code === 0 ? '▸ Output' : `▸ Error (exit ${result.exit_code})`}
+          </span>
+          <pre className="code-output-pre">
+            {(result.stdout || result.stderr || '(no output)').trimEnd()}
+          </pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MessageBubble({ message }) {
   const [copied, setCopied] = useState(false)
 
@@ -111,7 +202,18 @@ export default function MessageBubble({ message }) {
           <>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              components={{ a: CustomLink }}
+              components={{
+                a: CustomLink,
+                // Override <pre> to capture fenced code blocks with language
+                pre({ children }) {
+                  const child = React.Children.toArray(children)[0]
+                  const className = child?.props?.className || ''
+                  const match = /language-(\w+)/.exec(className)
+                  const lang = match ? match[1] : ''
+                  const codeText = String(child?.props?.children ?? '').replace(/\n$/, '')
+                  return <CodeBlock code={codeText} language={lang} />
+                },
+              }}
             >
               {message.content}
             </ReactMarkdown>

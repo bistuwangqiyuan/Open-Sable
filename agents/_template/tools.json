@@ -1,0 +1,5 @@
+{
+  "mode": "all",
+  "tools": [],
+  "_comment": "mode: 'all' = every tool available. 'allowlist' = only listed tools. 'denylist' = everything except listed tools."
+}

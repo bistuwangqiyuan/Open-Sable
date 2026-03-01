@@ -137,7 +137,9 @@ def _clean_gateway_reply(text: str) -> str:
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
-SOCKET_PATH = Path("/tmp/sable.sock")
+# Socket path is profile-aware: /tmp/sable-<profile>.sock for all profiles.
+_profile_name = os.environ.get("_SABLE_PROFILE", "sable")
+SOCKET_PATH = Path(os.environ.get("_SABLE_SOCKET_PATH", "/tmp/sable-sable.sock"))
 GATEWAY_VER = "2.1.0"
 HEARTBEAT_INT = 30  # seconds between heartbeat frames
 
@@ -533,6 +535,10 @@ class Gateway:
             except Exception:
                 pass
             await client.send({"type": "status", **status})
+        elif t == "code.run":
+            await self._on_code_run(client, msg)
+        elif t == "code.autofix":
+            await self._on_code_autofix(client, msg)
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
@@ -548,6 +554,219 @@ class Gateway:
         except Exception as exc:
             logger.debug(f"[Gateway] tools.list error: {exc}")
         await client.send({"type": "tools.list.result", "tools": tool_names})
+
+    async def _on_code_run(self, client: _Client, msg: dict):
+        """Execute a code snippet sent from the desktop chat Run button."""
+        import tempfile, os as _os
+
+        request_id: str = msg.get("request_id", "")
+        code: str = msg.get("code", "")
+        stdin: str | None = msg.get("stdin")
+        language: str = (msg.get("language") or "python").lower()
+
+        _LANG_RUNNERS: dict[str, list[str]] = {
+            "python":     ["python3", "-u"],
+            "python3":    ["python3", "-u"],
+            "javascript": ["node"],
+            "js":         ["node"],
+            "bash":       ["bash"],
+            "sh":         ["sh"],
+        }
+
+        runner = _LANG_RUNNERS.get(language)
+        if not runner:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": f"Language '{language}' is not supported for execution.",
+                "exit_code": 1,
+            })
+            return
+
+        # Write code to a temp file so multi-line scripts work cleanly
+        suffix_map = {
+            "python": ".py", "python3": ".py",
+            "javascript": ".js", "js": ".js",
+            "bash": ".sh", "sh": ".sh",
+        }
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=suffix_map.get(language, ".tmp"),
+                delete=False, encoding="utf-8"
+            ) as tf:
+                tf.write(code)
+                tmp_path = tf.name
+
+            cmd = " ".join(runner + [tmp_path])
+            # If stdin was provided, prefer direct subprocess so we can feed input.
+            if stdin is not None:
+                proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                _out, _err = await asyncio.wait_for(
+                    proc.communicate(input=stdin.encode('utf-8')),
+                    timeout=30,
+                )
+                stdout = _out.decode(errors='replace') if _out else ""
+                stderr = _err.decode(errors='replace') if _err else ""
+                exit_code = getattr(proc, 'returncode', 0) or 0
+            else:
+                if hasattr(self.agent, "tools") and self.agent.tools:
+                    # Tools.execute returns the command output as a string; cannot provide stdin
+                    raw = await self.agent.tools.execute(
+                        "execute_command",
+                        {"command": cmd, "timeout": 30},
+                    )
+                    stdout = str(raw) if raw else ""
+                    stderr = ""
+                    exit_code = 0
+                else:
+                    # Fallback: run directly via asyncio subprocess without stdin
+                    proc = await asyncio.create_subprocess_shell(
+                        cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _out, _err = await asyncio.wait_for(proc.communicate(), timeout=30)
+                    stdout = _out.decode(errors='replace') if _out else ""
+                    stderr = _err.decode(errors='replace') if _err else ""
+                    exit_code = getattr(proc, 'returncode', 0) or 0
+
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": stdout,
+                "stderr": stderr,
+                "exit_code": exit_code,
+            })
+        except asyncio.TimeoutError:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": "Execution timed out (30s limit).",
+                "exit_code": 124,
+            })
+        except Exception as exc:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": str(exc),
+                "exit_code": 1,
+            })
+        finally:
+            try:
+                if tmp_path:
+                    _os.unlink(tmp_path)
+            except Exception:
+                pass
+
+    async def _on_code_autofix(self, client: _Client, msg: dict):
+        """Attempt a simple automatic fix for interactive Python snippets that raise EOF.
+
+        Strategy (conservative): when code contains `input(`, wrap it so inputs
+        are consumed from `sys.argv[1:]`. Return the patched code and run it.
+        """
+        import tempfile, os as _os
+
+        request_id: str = msg.get("request_id", "")
+        code: str = msg.get("code", "")
+        language: str = (msg.get("language") or "python").lower()
+
+        if language not in ("python", "python3"):
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": f"Autofix not supported for language: {language}",
+                "exit_code": 1,
+            })
+            return
+
+        if "input(" not in code:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": "No interactive `input()` calls detected; autofix skipped.",
+                "exit_code": 1,
+            })
+            return
+
+        # Build patched code that replaces input() calls with a helper that
+        # consumes values from sys.argv[1:]
+        header = (
+            "import sys\n"
+            "_stdin_values = list(sys.argv[1:])\n"
+            "def _get_input(prompt=None):\n"
+            "    if _stdin_values:\n"
+            "        return _stdin_values.pop(0)\n"
+            "    raise EOFError('No simulated stdin provided')\n\n"
+        )
+
+        patched = code.replace("input(", "_get_input(")
+        patched_code = header + patched
+
+        # Write and run patched code
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as tf:
+                tf.write(patched_code)
+                tmp_path = tf.name
+
+            cmd = "python3 -u " + tmp_path
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _out, _err = await asyncio.wait_for(proc.communicate(), timeout=30)
+            stdout = _out.decode(errors="replace") if _out else ""
+            stderr = _err.decode(errors="replace") if _err else ""
+            exit_code = getattr(proc, 'returncode', 0) or 0
+
+            # Return both the patched code (so UI can show it) and the run result
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": stdout,
+                "stderr": stderr,
+                "exit_code": exit_code,
+                "autofix": True,
+                "patched_code": patched_code,
+            })
+        except asyncio.TimeoutError:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": "Execution timed out (30s).",
+                "exit_code": 124,
+                "autofix": True,
+                "patched_code": patched_code,
+            })
+        except Exception as exc:
+            await client.send({
+                "type": "code.result",
+                "request_id": request_id,
+                "stdout": "",
+                "stderr": str(exc),
+                "exit_code": 1,
+                "autofix": True,
+                "patched_code": patched_code,
+            })
+        finally:
+            try:
+                if tmp_path:
+                    _os.unlink(tmp_path)
+            except Exception:
+                pass
 
     async def _on_message(self, client: _Client, msg: dict):
         """Process user message through the full agent pipeline."""

@@ -160,7 +160,19 @@ class SableAgent:
         # Production primitives
         self.guardrails = GuardrailsEngine.default()
         self.approval_gate = ApprovalGate(auto_approve_below=RiskLevel.HIGH)
-        self.checkpoint_store = CheckpointStore("data/checkpoints")
+
+        # Profile-aware data directory
+        _data_dir = "data"
+        try:
+            from .profile import get_active_profile
+            _profile = get_active_profile()
+            if _profile:
+                _data_dir = str(_profile.data_dir)
+        except Exception:
+            pass
+        self._data_dir = _data_dir
+
+        self.checkpoint_store = CheckpointStore(f"{_data_dir}/checkpoints")
         self.handoff_router = None  # lazily initialised in _init_handoffs
 
         # Skills Marketplace: auto-approve mode lowers install risk to MEDIUM
@@ -479,14 +491,35 @@ class SableAgent:
     # Advanced memory retrieval
     # ------------------------------------------------------------------
 
+    # Phrases that indicate a stored memory is a stale security/refusal response
+    # that must NOT be re-injected into the system prompt, or the LLM will parrot
+    # the refusal for unrelated requests (e.g., asking for Python code).
+    _MEMORY_POISON_PHRASES: tuple[str, ...] = (
+        "directory traversal",
+        "security protocol",
+        "security-sensitive",
+        "security sensitive",
+        "i'll politely decline",
+        "i will politely decline",
+        "voy a rechazar",
+        "potentially unsafe way",
+        "cannot directly control",
+        "can't directly control",
+    )
+
     async def _get_memory_context(self, user_id: str, task: str) -> str:
         parts = []
 
         # Basic ChromaDB
         memories = await self.memory.recall(user_id, task)
         if memories:
-            basic = "\n".join([m["content"] for m in memories[:3]])
-            parts.append(f"[Recent context]\n{basic}")
+            clean = [
+                m["content"] for m in memories[:3]
+                if not any(p in m["content"].lower() for p in self._MEMORY_POISON_PHRASES)
+            ]
+            if clean:
+                basic = "\n".join(clean)
+                parts.append(f"[Recent context]\n{basic}")
 
         # Advanced memory
         if self.advanced_memory:
@@ -497,15 +530,23 @@ class SableAgent:
                     query=task, memory_type=MemoryType.EPISODIC, limit=3
                 )
                 if episodic:
-                    ep_text = "\n".join(f"- {getattr(m, 'content', str(m))}" for m in episodic[:3])
-                    parts.append(f"[Past experiences]\n{ep_text}")
+                    ep_text = "\n".join(
+                        f"- {getattr(m, 'content', str(m))}" for m in episodic[:3]
+                        if not any(p in getattr(m, 'content', str(m)).lower() for p in self._MEMORY_POISON_PHRASES)
+                    )
+                    if ep_text:
+                        parts.append(f"[Past experiences]\n{ep_text}")
 
                 semantic = await self.advanced_memory.retrieve_memories(
                     query=task, memory_type=MemoryType.SEMANTIC, limit=3
                 )
                 if semantic:
-                    sem_text = "\n".join(f"- {getattr(m, 'content', str(m))}" for m in semantic[:3])
-                    parts.append(f"[Known facts]\n{sem_text}")
+                    sem_text = "\n".join(
+                        f"- {getattr(m, 'content', str(m))}" for m in semantic[:3]
+                        if not any(p in getattr(m, 'content', str(m)).lower() for p in self._MEMORY_POISON_PHRASES)
+                    )
+                    if sem_text:
+                        parts.append(f"[Known facts]\n{sem_text}")
             except Exception as e:
                 logger.debug(f"Advanced memory retrieval failed: {e}")
 
@@ -781,6 +822,10 @@ class SableAgent:
                 # Strip assistant messages that contain stale RBAC denial text
                 # so the model doesn't believe it's still blocked
                 if role == "assistant" and any(p in content.lower() for p in _rbac_poison_phrases):
+                    continue
+                # Strip assistant messages that contain stale security-refusal text
+                # so the model doesn't parrot fake safety responses for unrelated requests
+                if role == "assistant" and any(p in content.lower() for p in self._MEMORY_POISON_PHRASES):
                     continue
                 history_for_ollama.append({"role": role, "content": content})
 

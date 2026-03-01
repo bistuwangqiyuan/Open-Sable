@@ -242,8 +242,16 @@ class XConsciousness:
         self.agent = agent
         self.config = config
 
-        # Storage
-        self._base_dir = Path("data/x_consciousness")
+        # Storage — use active profile's data dir
+        try:
+            from .profile import get_active_profile
+            _profile = get_active_profile()
+            if _profile:
+                self._base_dir = _profile.data_dir / "x_consciousness"
+            else:
+                self._base_dir = Path("data/x_consciousness")
+        except Exception:
+            self._base_dir = Path("data/x_consciousness")
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._journal_file = self._base_dir / "journal.jsonl"
         self._reflections_file = self._base_dir / "reflections.json"
@@ -642,8 +650,25 @@ class XConsciousness:
     # ══════════════════════════════════════════════════════════════════
 
     def _load_soul(self) -> str:
-        """Load soul.md — the immutable foundation of the agent's character."""
-        # Search in project root, then config/, then data/
+        """Load soul.md — the immutable foundation of the agent's character.
+
+        If an agent profile is active, its soul takes priority.
+        """
+        # If a profile is active and has a soul, use it
+        try:
+            from .profile import get_active_profile
+            profile = get_active_profile()
+            if profile and profile.soul:
+                logger.info(
+                    f"🫀 Soul loaded from profile '{profile.name}' ({len(profile.soul)} chars)"
+                )
+                return profile.soul
+        except ImportError:
+            pass
+        except Exception as exc:
+            logger.debug(f"Profile soul load error: {exc}")
+
+        # Fallback: search in project root, then config/, then data/
         candidates = [
             Path("soul.md"),
             Path("config/soul.md"),

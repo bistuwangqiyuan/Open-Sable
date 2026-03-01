@@ -1,0 +1,33 @@
+{
+  "mode": "allowlist",
+  "tools": [
+    "web_search",
+    "execute_command",
+    "read_file",
+    "write_file",
+    "list_directory",
+    "search_files",
+    "system_info",
+    "browser",
+    "web_action",
+    "weather",
+    "x_post_tweet",
+    "x_post_thread",
+    "x_search",
+    "x_get_trends",
+    "x_like",
+    "x_retweet",
+    "x_reply",
+    "x_get_user",
+    "x_get_user_tweets",
+    "x_follow",
+    "x_delete_tweet",
+    "grok_chat",
+    "grok_analyze_image",
+    "vector_search",
+    "api_request",
+    "create_document",
+    "create_pdf"
+  ],
+  "_comment": "Analyst has X + Grok + research tools only. No trading, no desktop control, no email, no social media spam."
+}

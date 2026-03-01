@@ -1,15 +1,57 @@
 #!/bin/bash
-# Open-Sable — start / stop / status
+# Open-Sable — start / stop / status (all agents live in agents/)
 # Usage:
-#   ./start.sh          → start agent
-#   ./start.sh stop     → stop agent
-#   ./start.sh restart  → restart agent
-#   ./start.sh status   → check if running
-#   ./start.sh logs     → tail live logs
+#   ./start.sh                         → start default agent (sable)
+#   ./start.sh stop                    → stop default agent (sable)
+#   ./start.sh restart                 → restart default agent
+#   ./start.sh status                  → check if running
+#   ./start.sh logs                    → tail live logs
+#   ./start.sh start --profile NAME    → start a named profile agent
+#   ./start.sh stop --profile NAME     → stop a named profile agent
+#   ./start.sh restart --profile NAME  → restart a named profile agent
+#   ./start.sh status --profile NAME   → check if profile is running
+#   ./start.sh logs --profile NAME     → tail profile logs
+#   ./start.sh profiles               → list available profiles
+#   ./start.sh restart --all           → restart ALL agent profiles
+#   ./start.sh stop --all              → stop ALL agent profiles
+#   ./start.sh start --all             → start ALL agent profiles
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-PIDFILE="$DIR/.sable.pid"
-LOGFILE="$DIR/logs/sable.log"
+
+# Default profile — all agents live in agents/
+DEFAULT_PROFILE="sable"
+
+# Parse --profile and --all flags from any position
+PROFILE=""
+ACTION=""
+ALL_PROFILES=0
+for arg in "$@"; do
+    if [[ "$arg" == "--profile" ]]; then
+        NEXT_IS_PROFILE=1
+        continue
+    fi
+    if [[ "$NEXT_IS_PROFILE" == "1" ]]; then
+        PROFILE="$arg"
+        NEXT_IS_PROFILE=0
+        continue
+    fi
+    if [[ "$arg" == "--all" ]]; then
+        ALL_PROFILES=1
+        continue
+    fi
+    if [[ -z "$ACTION" ]]; then
+        ACTION="$arg"
+    fi
+done
+ACTION="${ACTION:-start}"
+
+# If no profile specified, use default
+PROFILE="${PROFILE:-$DEFAULT_PROFILE}"
+
+# Set file paths based on profile
+PIDFILE="$DIR/.sable-${PROFILE}.pid"
+LOGFILE="$DIR/logs/sable-${PROFILE}.log"
+PROFILE_DIR="$DIR/agents/$PROFILE"
 
 cd "$DIR"
 
@@ -198,33 +240,45 @@ stop_desktop() {
 
 do_start() {
     if is_running; then
-        echo "⚠️  Already running (PID $(cat "$PIDFILE"))"
-        echo "   Use: ./start.sh stop   or   ./start.sh restart"
+        echo "⚠️  Already running [$PROFILE] (PID $(cat "$PIDFILE"))"
+        echo "   Use: ./start.sh stop --profile $PROFILE   or   ./start.sh restart --profile $PROFILE"
         exit 1
     fi
 
-    # Ensure aggr is installed
-    ensure_aggr
+    # Validate profile directory exists
+    if [[ ! -d "$PROFILE_DIR" ]]; then
+        echo "❌ Profile '$PROFILE' not found at $PROFILE_DIR"
+        echo "   Available profiles:"
+        ls -1 "$DIR/agents/" 2>/dev/null | grep -v '^_' | grep -v '^\.' | sed 's/^/     /'
+        echo ""
+        echo "   Create one: cp -r agents/_template agents/$PROFILE"
+        exit 1
+    fi
 
-    # Ensure React dashboard is built
-    ensure_dashboard
+    echo "👤 Profile: $PROFILE"
 
-    # Ensure marketplace is ready
-    ensure_marketplace
+    # Ensure aggr/dashboard/marketplace are installed (only for primary agent)
+    if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
+        ensure_aggr
+        ensure_dashboard
+        ensure_marketplace
+    fi
 
     mkdir -p "$DIR/logs"
-    echo "🚀 Starting Open-Sable..."
-    nohup python -m opensable >> "$LOGFILE" 2>&1 &
+    echo "🚀 Starting Open-Sable [profile: $PROFILE]..."
+    SABLE_PROFILE="$PROFILE" nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
     echo $! > "$PIDFILE"
     sleep 1
 
     if is_running; then
         echo "✅ Running (PID $(cat "$PIDFILE"))"
-        echo "   Logs: ./start.sh logs"
-        echo "   Stop: ./start.sh stop"
+        echo "   Logs: ./start.sh logs --profile $PROFILE"
+        echo "   Stop: ./start.sh stop --profile $PROFILE"
 
-        # Start desktop agent if enabled
-        start_desktop
+        # Start desktop agent if enabled (only for primary agent)
+        if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
+            start_desktop
+        fi
     else
         echo "❌ Failed to start. Check: tail -50 $LOGFILE"
         rm -f "$PIDFILE"
@@ -233,15 +287,17 @@ do_start() {
 }
 
 do_stop() {
-    # Stop desktop agent first
-    stop_desktop
+    # Stop desktop agent (only for primary agent)
+    if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
+        stop_desktop
+    fi
 
     if ! is_running; then
-        echo "ℹ️  Not running"
+        echo "ℹ️  Not running [$PROFILE]"
         return
     fi
     pid=$(cat "$PIDFILE")
-    echo "🛑 Stopping (PID $pid)..."
+    echo "🛑 Stopping [$PROFILE] (PID $pid)..."
     kill "$pid" 2>/dev/null
     # Wait up to 10s for graceful shutdown
     for i in $(seq 1 10); do
@@ -264,35 +320,139 @@ do_status() {
         pid=$(cat "$PIDFILE")
         uptime=$(ps -p "$pid" -o etime= 2>/dev/null | xargs)
         mem=$(ps -p "$pid" -o rss= 2>/dev/null | awk '{printf "%.0f", $1/1024}')
-        echo "✅ Running (PID $pid, uptime: $uptime, mem: ${mem}MB)"
+        echo "✅ Running [$PROFILE] (PID $pid, uptime: $uptime, mem: ${mem}MB)"
     else
-        echo "⏹️  Not running"
+        echo "⏹️  Not running [$PROFILE]"
     fi
 }
 
-case "${1:-start}" in
+do_list_profiles() {
+    echo "📂 Agent profiles (agents/):"
+    echo ""
+    if [ -d "$DIR/agents" ]; then
+        for d in "$DIR/agents"/*/; do
+            name=$(basename "$d")
+            [[ "$name" == _* ]] && continue
+            [[ "$name" == .* ]] && continue
+            soul="❌"
+            [[ -f "$d/soul.md" ]] && soul="✅"
+            env_count=$(grep -c '^[A-Z]' "$d/profile.env" 2>/dev/null || echo "0")
+            tools_mode=$(python3 -c "import json; d=json.load(open('$d/tools.json')); print(d.get('mode','all'))" 2>/dev/null || echo "all")
+            # Check if running
+            pid_file="$DIR/.sable-${name}.pid"
+            status="⏹️"
+            if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+                status="🟢"
+            fi
+            default_tag=""
+            [[ "$name" == "$DEFAULT_PROFILE" ]] && default_tag=" (default)"
+            echo "  $status $name$default_tag  — soul: $soul, env: ${env_count} vars, tools: $tools_mode"
+        done
+    else
+        echo "  (none — create with: cp -r agents/_template agents/my_agent)"
+    fi
+    echo ""
+}
+
+# Helper: get list of all profile names (excluding _template)
+get_all_profiles() {
+    local profiles_dir="$DIR/agents"
+    if [ -d "$profiles_dir" ]; then
+        for d in "$profiles_dir"/*/; do
+            local name=$(basename "$d")
+            [[ "$name" == _* ]] && continue
+            echo "$name"
+        done
+    fi
+}
+
+# Helper: run action for a single profile
+run_for_profile() {
+    local prof="$1"
+    PROFILE="$prof"
+    PIDFILE="$DIR/.sable-${PROFILE}.pid"
+    LOGFILE="$DIR/logs/sable-${PROFILE}.log"
+    PROFILE_DIR="$DIR/agents/$PROFILE"
+}
+
+case "$ACTION" in
     start)
-        do_start
+        if [[ "$ALL_PROFILES" == "1" ]]; then
+            echo "🚀 Starting ALL agents..."
+            for p in $(get_all_profiles); do
+                run_for_profile "$p"
+                echo "── $p ──"
+                do_start
+            done
+        else
+            do_start
+        fi
         ;;
     stop)
-        do_stop
+        if [[ "$ALL_PROFILES" == "1" ]]; then
+            echo "⏹️  Stopping ALL agents..."
+            for p in $(get_all_profiles); do
+                run_for_profile "$p"
+                echo "── $p ──"
+                do_stop
+            done
+        else
+            do_stop
+        fi
         ;;
     restart)
-        do_stop
-        sleep 2
-        do_start
+        if [[ "$ALL_PROFILES" == "1" ]]; then
+            echo "🔄 Restarting ALL agents..."
+            for p in $(get_all_profiles); do
+                run_for_profile "$p"
+                echo "── stopping $p ──"
+                do_stop
+            done
+            sleep 2
+            for p in $(get_all_profiles); do
+                run_for_profile "$p"
+                echo "── starting $p ──"
+                do_start
+            done
+        else
+            do_stop
+            sleep 2
+            do_start
+        fi
         ;;
     status)
         do_status
+        ;;
+    profiles|list)
+        do_list_profiles
         ;;
     logs)
         if [ -f "$LOGFILE" ]; then
             tail -f "$LOGFILE"
         else
-            echo "No log file yet"
+            echo "No log file yet for profile $PROFILE"
         fi
         ;;
     *)
-        echo "Usage: ./start.sh [start|stop|restart|status|logs]"
+        echo "Usage: ./start.sh [start|stop|restart|status|logs|profiles] [--profile NAME] [--all]"
+        echo ""
+        echo "Commands:"
+        echo "  start              Start the agent (default: $DEFAULT_PROFILE)"
+        echo "  stop               Stop the agent"
+        echo "  restart            Restart the agent"
+        echo "  status             Check if the agent is running"
+        echo "  logs               Tail live logs"
+        echo "  profiles           List all agent profiles"
+        echo ""
+        echo "Options:"
+        echo "  --profile NAME     Target a specific agent profile (from agents/)"
+        echo "  --all              Apply command to ALL agent profiles"
+        echo ""
+        echo "Examples:"
+        echo "  ./start.sh restart --all          Restart every agent"
+        echo "  ./start.sh stop --all             Stop every agent"
+        echo "  ./start.sh start --profile analyst  Start just the analyst"
+        echo ""
+        echo "All agents live in agents/<name>/ with their own soul.md, profile.env, tools.json, and data/"
         ;;
 esac

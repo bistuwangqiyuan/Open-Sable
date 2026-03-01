@@ -5,6 +5,7 @@ Entry point for running via: python -m opensable
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -26,18 +27,34 @@ def setup_logging(log_level: str = "INFO"):
 
 async def async_main():
     """Main async entry point"""
-    # Kill any existing bot instances first (only 1 agent per PC)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Open-Sable Autonomous AI Agent")
+    parser.add_argument(
+        "--profile", "-p",
+        default=None,
+        help="Agent profile name (from agents/ directory). Each profile has its own soul, config, tools, and data.",
+    )
+    args, _unknown = parser.parse_known_args()
+
+    # ── Load agent profile (before anything else) ─────────────────────────
+    from opensable.core.profile import load_profile, DEFAULT_PROFILE
+    profile_name = args.profile or os.environ.get("SABLE_PROFILE") or DEFAULT_PROFILE
+    profile = load_profile(profile_name)
+    profile.apply_env()  # merge profile.env into os.environ before load_config()
+    console.print(f"[bold magenta]👤 Profile: {profile_name}[/bold magenta]")
+
+    # Kill any existing bot instances of the SAME profile (not other profiles)
     import subprocess
-    import os
 
     # Get current process PID to exclude it
     current_pid = os.getpid()
 
-    # Check and kill OLD opensable processes (not this one)
+    # Kill old instance of the SAME profile only (never touch other profiles)
+    _pgrep_pattern = f"--profile {profile_name}"
     try:
-        # Get all opensable process PIDs
         result = subprocess.run(
-            ["pgrep", "-f", "python -m opensable"], capture_output=True, text=True
+            ["pgrep", "-f", _pgrep_pattern], capture_output=True, text=True
         )
         if result.stdout.strip():
             pids = result.stdout.strip().split("\n")
@@ -47,7 +64,7 @@ async def async_main():
                         ["kill", "-9", pid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                     )
         await asyncio.sleep(1)
-    except:
+    except Exception:
         pass
 
     console.print("[bold cyan]🚀 Starting Open-Sable...[/bold cyan]")

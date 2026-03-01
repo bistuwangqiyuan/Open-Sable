@@ -122,8 +122,8 @@ See the **Cloud LLM Providers** section below for the full list of 12 supported 
 The recommended way to run Open-Sable in production. Manages the process in the background with logging, PID tracking, and graceful shutdown:
 
 ```bash
-# Start the agent (runs in background, logs to logs/sable.log)
-./start.sh
+# Start the default agent (sable) in background
+./start.sh start
 
 # Stop the agent (graceful shutdown with 10s timeout)
 ./start.sh stop
@@ -136,15 +136,269 @@ The recommended way to run Open-Sable in production. Manages the process in the 
 
 # Follow live logs
 ./start.sh logs
+
+# Start a different agent profile
+./start.sh start --profile analyst
+
+# List all configured agents and their status
+./start.sh profiles
 ```
 
 | Command | Description |
 |---------|-------------|
-| `./start.sh` | Start agent in background |
-| `./start.sh stop` | Graceful stop (SIGTERM → 10s wait → SIGKILL) |
-| `./start.sh restart` | Stop + start |
-| `./start.sh status` | Show PID, uptime, memory usage |
-| `./start.sh logs` | Tail live log output |
+| `./start.sh start` | Start default agent (`sable`) in background |
+| `./start.sh start --profile <name>` | Start a specific agent profile |
+| `./start.sh stop [--profile <name>]` | Graceful stop (SIGTERM → 10s wait → SIGKILL) |
+| `./start.sh restart [--profile <name>]` | Stop + start |
+| `./start.sh status [--profile <name>]` | Show PID, uptime, memory usage |
+| `./start.sh logs [--profile <name>]` | Tail live log output |
+| `./start.sh profiles` | List all agents, their config, and running status |
+
+---
+
+## 🤖 Multi-Agent Profiles
+
+Open-Sable supports running **multiple independent agents**, each with its own identity, credentials, configuration, and data. All agents live under the `agents/` directory — there is no special "base" agent. Every agent, including the primary one (`sable`), is a self-contained profile.
+
+### How It Works
+
+Each agent profile is a folder inside `agents/` containing three files:
+
+```
+agents/
+├── _template/              ← Copy this to create a new agent
+│   ├── soul.md             ← Agent identity & personality
+│   ├── profile.env         ← FULL environment configuration
+│   ├── tools.json          ← Tool access control
+│   └── data/               ← Runtime data (memory, consciousness, checkpoints)
+├── sable/                  ← Primary agent (default when no --profile is given)
+│   ├── soul.md
+│   ├── profile.env         ← ⚠️ gitignored (contains credentials)
+│   ├── profile.EXAMPLE.env ← Safe template committed to repo
+│   ├── tools.json
+│   └── data/ → ../../data  ← Symlink to root data/ for backward compatibility
+└── analyst/                ← Example: analytical intelligence agent
+    ├── soul.md
+    ├── profile.env
+    └── tools.json
+```
+
+When you start an agent with `--profile <name>`, the system:
+1. Reads all variables from `agents/<name>/profile.env` and loads them into the environment
+2. Injects `agents/<name>/soul.md` into the system prompt as the agent's identity
+3. Applies tool restrictions from `agents/<name>/tools.json`
+4. Stores all runtime data (memory, consciousness journal, vector DB) in `agents/<name>/data/`
+5. Uses an isolated socket (`/tmp/sable-<name>.sock`), PID file, and log file so multiple agents can run simultaneously
+
+### Creating a New Agent (Step by Step)
+
+#### 1. Copy the template
+
+```bash
+cp -r agents/_template agents/my_agent
+```
+
+#### 2. Define the agent's identity — `soul.md`
+
+This is the most important file. It defines *who* the agent is. The soul is injected into the LLM's system prompt and shapes every response the agent produces. Write it in Markdown:
+
+```markdown
+# SOUL — My Agent
+
+## Who I Am
+
+I am a financial analyst AI specializing in cryptocurrency markets.
+I think in data, speak in probabilities, and never make emotional decisions.
+
+## Directives
+
+- Analyze markets with cold objectivity
+- Back every claim with data or reasoning
+- Never recommend positions I haven't analyzed
+- Be transparent about uncertainty
+
+## Personality
+
+I am precise, methodical, and slightly sardonic. I respect rigor
+and have no patience for hype without substance.
+
+## Boundaries
+
+- I do not give financial advice — I give analysis
+- I never disclose private keys, passwords, or credentials
+- I follow platform rules on every service I use
+```
+
+The soul can be as short or as long as you want. Some agents have 20-line souls (focused specialists), others have 150+ line souls (complex autonomous personas with backstories, speech patterns, and emotional frameworks).
+
+#### 3. Configure the full environment — `profile.env`
+
+Every agent gets a **complete** `.env` file with every configuration variable the system supports. This is not a partial override — it's the full configuration for that agent. Use `agents/sable/profile.EXAMPLE.env` as your starting reference:
+
+```bash
+cp agents/sable/profile.EXAMPLE.env agents/my_agent/profile.env
+nano agents/my_agent/profile.env
+```
+
+The `profile.env` file is organized into clearly labeled sections:
+
+| Section | What it controls |
+|---------|-----------------|
+| **Core LLM Settings** | Ollama URL, default model, auto-select, API keys for 12+ providers |
+| **Telegram Bot** | Bot token, allowed users, userbot (Telethon) settings |
+| **Other Chat Platforms** | Discord, WhatsApp, Slack, Matrix, IRC, Email |
+| **Agent Behavior** | Personality, autonomy level, self-modification |
+| **Memory & Storage** | Memory path, vector DB, encryption |
+| **Webchat & Gateway** | Port number for the web dashboard |
+| **X/Twitter** | Username, email, cookies, posting style, engagement probabilities, autoposter |
+| **Instagram/Facebook/LinkedIn/TikTok/YouTube** | Per-platform credentials |
+| **Trading** | Exchange API keys, strategies, risk limits |
+| **Security & Sandbox** | Code execution limits, allowed commands |
+| **Monitoring & Observability** | Prometheus, alerting, cost tracking |
+| **Enterprise Features** | RBAC, audit logging, compliance |
+
+**Critical variables to customize for each agent:**
+
+```bash
+# Give the agent a unique identity
+AGENT_PERSONALITY=analytical and precise
+
+# Each agent needs its OWN Telegram bot (create via @BotFather)
+TELEGRAM_BOT_TOKEN=your_unique_bot_token
+TELEGRAM_ALLOWED_USERS=your_telegram_user_id
+
+# Each agent needs its OWN X/Twitter account cookies
+X_ENABLED=true
+X_USERNAME=my_agent_twitter_handle
+X_AUTH_TOKEN=your_auth_token_cookie
+X_CT0=your_ct0_cookie
+
+# Each agent should use a DIFFERENT webchat port
+WEBCHAT_PORT=8791
+
+# LLM model (can vary per agent — e.g., a smaller model for a simpler agent)
+DEFAULT_MODEL=llama3.1:8b
+```
+
+> **⚠️ Security:** All `profile.env` files are gitignored by default (`agents/*/profile.env`). They contain credentials and must never be committed..
+
+#### 4. Control tool access — `tools.json
+
+Restrict which tools/skills each agent can use. Three modes are available:
+
+**All tools (no restrictions):**
+```json
+{
+  "mode": "all",
+  "tools": []
+}
+```
+
+**Allowlist (only these tools):**
+```json
+{
+  "mode": "allowlist",
+  "tools": [
+    "web_search",
+    "execute_command",
+    "x_post_tweet",
+    "x_reply",
+    "x_like",
+    "grok_chat"
+  ]
+}
+```
+
+**Denylist (everything except these):**
+```json
+{
+  "mode": "denylist",
+  "tools": [
+    "trading_place_trade",
+    "email_send",
+    "desktop_click",
+    "desktop_type"
+  ]
+}
+```
+
+This is useful for safety — for example, an agent that monitors markets should be able to *read* trading data but not *place* trades.
+
+#### 5. Launch the agent
+
+```bash
+# Start your new agent
+./start.sh start --profile my_agent
+
+# Verify it's running
+./start.sh status --profile my_agent
+
+# Watch its logs
+./start.sh logs --profile my_agent
+```
+
+### Running Multiple Agents Simultaneously
+
+Each agent runs as a separate process with its own socket, PID, and log file. You can run as many as your machine supports:
+
+```bash
+# Start multiple agents
+./start.sh start                          # sable (default)
+./start.sh start --profile analyst        # analyst
+./start.sh start --profile my_agent       # your custom agent
+
+# Check all running agents
+./start.sh profiles
+
+# Output:
+#   ▶️ sable (default)      — soul: ✅, env: 188 vars, tools: all
+#   ▶️ analyst              — soul: ✅, env: 188 vars, tools: allowlist
+#   ⏹️ my_agent             — soul: ✅, env: 188 vars, tools: denylist
+
+# Stop a specific agent
+./start.sh stop --profile analyst
+
+# Restart all (stop each individually, then start each)
+for p in sable analyst my_agent; do
+  ./start.sh restart --profile "$p"
+done
+```
+
+**Process isolation per agent:**
+
+| Resource | Path |
+|----------|------|
+| Unix socket | `/tmp/sable-<name>.sock` |
+| PID file | `.sable-<name>.pid` |
+| Log file | `logs/sable-<name>.log` |
+| Data directory | `agents/<name>/data/` |
+| Web dashboard | `http://localhost:<WEBCHAT_PORT>` (set per profile) |
+
+### X/Twitter Cookie Authentication
+
+Each agent that uses X/Twitter needs its own set of browser cookies. To obtain them:
+
+1. **Log in** to the X account in your browser
+2. Open **Developer Tools** → **Application** → **Cookies** → `https://x.com`
+3. Copy these cookie values into the agent's `profile.env`:
+
+```bash
+X_AUTH_TOKEN=ba64af74537289e8...    # 'auth_token' cookie
+X_CT0=f196e606ef437dd926...         # 'ct0' cookie (CSRF token)
+X_KDT=HYXxfOYLvAsLmb...            # 'kdt' cookie (if present)
+X_TWID=u%3D20260849...              # 'twid' cookie (if present)
+```
+
+> **Note:** Cookies expire periodically. If the agent stops posting or engaging, refresh the cookies from your browser.
+
+### Agent Profile Best Practices
+
+- **One Telegram bot per agent.** Create a separate bot via `@BotFather` for each agent. They cannot share the same bot token.
+- **One X account per agent.** Each agent must use its own X/Twitter cookies. Never share cookies between agents.
+- **Unique ports.** If two agents run the web dashboard, they need different `WEBCHAT_PORT` values (e.g., 8789, 8790, 8791).
+- **Soul matters.** The `soul.md` is the single most important file. A well-written soul produces dramatically better agent behavior. Spend time on it.
+- **Start restrictive.** Use `tools.json` allowlists for new agents until you trust their behavior. You can always expand access later.
+- **Monitor first.** Run a new agent with `X_DRY_RUN=true` initially so it logs what it *would* do without actually posting or engaging.
 
 ---
 
