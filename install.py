@@ -458,6 +458,59 @@ def install_desktop():
         return False
 
 
+def install_dev_studio():
+    """Set up Sable Dev Studio — AI-powered app builder (like Lovable)"""
+    print("\n🛠️  Setting up Dev Studio...")
+
+    dev_dir = Path("sable_dev")
+
+    if not dev_dir.exists() or not (dev_dir / "package.json").exists():
+        print("⚠️  sable_dev/ folder not found — skipping")
+        return False
+
+    node_ver = ensure_nodejs()
+    if not node_ver:
+        if not install_nodejs_if_missing():
+            print("⚠️  Node.js required for Dev Studio — skipping")
+            return False
+
+    # Check if deps already installed
+    if (dev_dir / "node_modules" / ".bin" / "next").exists():
+        print("✅ Dev Studio already installed")
+        return True
+
+    try:
+        print("   📦 Installing Dev Studio dependencies...")
+        subprocess.run(
+            ["npm", "install"],
+            cwd=str(dev_dir),
+            check=True,
+        )
+
+        if (dev_dir / "node_modules" / ".bin" / "next").exists():
+            print("✅ Dev Studio installed successfully")
+            print("   Uses local sandbox (no API keys needed for sandboxes)")
+            print("   Configure AI providers in sable_dev/.env.local")
+            print("   Start with: cd sable_dev && npm run dev")
+
+            # Enable in .env if not already set
+            env_path = Path(".env")
+            if env_path.exists():
+                env_content = env_path.read_text()
+                if "DEV_STUDIO_ENABLED" not in env_content:
+                    with open(env_path, "a") as f:
+                        f.write("\n# Dev Studio (AI app builder)\nDEV_STUDIO_ENABLED=true\n")
+                    print("   Added DEV_STUDIO_ENABLED=true to .env")
+            return True
+        else:
+            print("⚠️  Dev Studio install completed but next binary not found")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Dev Studio install failed: {e}")
+        print("   Install manually: cd sable_dev && npm install")
+        return False
+
+
 def install_whatsapp_bridge():
     """Install WhatsApp bridge (whatsapp-web.js) for WhatsApp integration"""
     print("\n💬 Install WhatsApp bridge? (y/n): ", end="")
@@ -791,6 +844,11 @@ def main():
     print("\n🖥️  Install Desktop Agent (Electron app)? (y/n): ", end="")
     if input().strip().lower() in ("y", "yes", ""):
         install_desktop()
+
+    # Install Dev Studio (optional)
+    print("\n🛠️  Install Dev Studio (AI app builder)? (y/n): ", end="")
+    if input().strip().lower() in ("y", "yes", ""):
+        install_dev_studio()
 
     # Install WhatsApp bridge
     install_whatsapp_bridge()

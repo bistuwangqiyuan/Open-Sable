@@ -24,6 +24,7 @@ import Sidebar from './components/Sidebar.jsx'
 import ChatArea from './components/ChatArea.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
 import DashboardPanel from './components/DashboardPanel.jsx'
+import DevStudioPanel from './components/DevStudioPanel.jsx'
 
 // ─── Window control helpers ────────────────────────────────────────────────
 const api = typeof window !== 'undefined' && window.sable ? window.sable : null
@@ -44,6 +45,7 @@ export default function App() {
     () => localStorage.getItem('sable-sidebar') === 'collapsed'
   )
   const [dashboardOpen, setDashboardOpen] = useState(false)
+  const [devStudioOpen, setDevStudioOpen] = useState(false)
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(v => {
@@ -90,9 +92,18 @@ export default function App() {
       e.preventDefault()
       toggleSidebar()
     }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+    // Ctrl+Shift+D → Dev Studio (check first — more specific)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault()
+      setDevStudioOpen(v => !v)
+      setDashboardOpen(false)
+      return
+    }
+    // Ctrl+D → Dashboard
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'd') {
       e.preventDefault()
       setDashboardOpen(v => !v)
+      setDevStudioOpen(false)
     }
   }, [newChat, toggleSidebar])
 
@@ -150,9 +161,19 @@ export default function App() {
 
         <div className="titlebar-actions" style={{ WebkitAppRegion: 'no-drag' }}>
           <button
+            className={`titlebar-btn ${devStudioOpen ? 'active' : ''}`}
+            title="Dev Studio (Ctrl+Shift+D)"
+            onClick={() => { setDevStudioOpen(v => !v); setDashboardOpen(false) }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="13" height="13">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+          </button>
+          <button
             className={`titlebar-btn ${dashboardOpen ? 'active' : ''}`}
             title="Agent Dashboard (Ctrl+D)"
-            onClick={() => setDashboardOpen(v => !v)}
+            onClick={() => { setDashboardOpen(v => !v); setDevStudioOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -167,10 +188,12 @@ export default function App() {
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="main">
-        <Sidebar collapsed={sidebarCollapsed} />
-        {dashboardOpen
-          ? <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />
-          : <ChatArea />
+        <Sidebar collapsed={sidebarCollapsed} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false) }} />
+        {devStudioOpen
+          ? <DevStudioPanel onClose={() => setDevStudioOpen(false)} />
+          : dashboardOpen
+            ? <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />
+            : <ChatArea />
         }
       </div>
 
