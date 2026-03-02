@@ -31,4 +31,3 @@ export async function POST() {
   global.lastViteError = null;
   return NextResponse.json({ success: true, cleared: true });
 }
-}

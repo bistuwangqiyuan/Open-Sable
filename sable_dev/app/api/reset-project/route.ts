@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server';
 import { clearSession } from '@/lib/persistence';
 
-declare global {
-  var activeSandboxProvider: any;
-  var sandboxData: { sandboxId: string; url: string } | null;
-  var existingFiles: Set<string>;
-  var conversationState: any;
-  var activeAgents: any[];
-  var activeTemplateId: string | null;
-  var sandboxState: any;
-  var activeSandbox: any;
-}
+/* globals declared in other route files */
+const g = globalThis as any;
 
 /**
  * POST /api/reset-project
@@ -22,35 +14,35 @@ export async function POST() {
     console.log('[reset-project] Starting full project reset...');
 
     // 1. Kill the sandbox process
-    if (global.activeSandboxProvider) {
+    if (g.activeSandboxProvider) {
       try {
-        await global.activeSandboxProvider.terminate();
+        await g.activeSandboxProvider.terminate();
         console.log('[reset-project] Sandbox terminated');
       } catch (e) {
         console.error('[reset-project] Error terminating sandbox:', e);
       }
-      global.activeSandboxProvider = null;
+      g.activeSandboxProvider = null;
     }
-    global.sandboxData = null;
-    global.activeSandbox = null;
+    g.sandboxData = null;
+    g.activeSandbox = null;
 
     // 2. Clear file tracking
-    if (global.existingFiles) {
-      global.existingFiles.clear();
+    if (g.existingFiles) {
+      g.existingFiles.clear();
     }
 
     // 3. Clear conversation state
-    global.conversationState = null;
+    g.conversationState = null;
 
     // 4. Clear agents
-    global.activeAgents = [];
+    g.activeAgents = [];
 
     // 5. Clear template
-    global.activeTemplateId = null;
+    g.activeTemplateId = null;
 
     // 6. Clear sandbox file cache
-    if (global.sandboxState) {
-      global.sandboxState = null;
+    if (g.sandboxState) {
+      g.sandboxState = null;
     }
 
     // 7. Clear persistence on disk

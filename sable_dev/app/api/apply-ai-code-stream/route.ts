@@ -31,6 +31,17 @@ function parseAIResponse(response: string): ParsedResponse {
     template: ''
   };
 
+  // Map of commonly hallucinated package names → correct npm package names
+  const PACKAGE_CORRECTIONS: Record<string, string> = {
+    'hero-icons-react': '@heroicons/react',
+    'heroicons-react': '@heroicons/react',
+    'heroicons': '@heroicons/react',
+    '@react-native-particles/particle-generator': '', // doesn't exist
+    'react-native-particles': '', // doesn't exist in web
+    'lucide': 'lucide-react',
+    '@lucide/react': 'lucide-react',
+  };
+
   // Function to extract packages from import statements
   function extractPackagesFromCode(content: string): string[] {
     const packages: string[] = [];
@@ -49,12 +60,20 @@ function parseAIResponse(response: string): ParsedResponse {
           ? importPath.split('/').slice(0, 2).join('/')
           : importPath.split('/')[0];
 
-        if (!packages.includes(packageName)) {
-          packages.push(packageName);
+        // Apply package name corrections for commonly hallucinated names
+        const correctedName = PACKAGE_CORRECTIONS[packageName] ?? packageName;
+        // Skip packages that map to empty string (they don't exist)
+        if (correctedName === '') {
+          console.log(`[apply-ai-code-stream] Skipping non-existent package: ${packageName}`);
+        } else if (!packages.includes(correctedName)) {
+          if (correctedName !== packageName) {
+            console.log(`[apply-ai-code-stream] Corrected package name: ${packageName} → ${correctedName}`);
+          }
+          packages.push(correctedName);
 
           // Log important packages for debugging
-          if (packageName === 'react-router-dom' || packageName.includes('router') || packageName.includes('icon')) {
-            console.log(`[apply-ai-code-stream] Detected package from imports: ${packageName}`);
+          if (correctedName === 'react-router-dom' || correctedName.includes('router') || correctedName.includes('icon')) {
+            console.log(`[apply-ai-code-stream] Detected package from imports: ${correctedName}`);
           }
         }
       }

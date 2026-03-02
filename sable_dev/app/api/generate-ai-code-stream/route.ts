@@ -105,10 +105,16 @@ declare global {
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false, isErrorFix = false } = await request.json();
+    const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false, isErrorFix = false, template } = await request.json();
+    
+    // Store the active template from the frontend
+    if (template) {
+      global.activeTemplateId = template;
+    }
     
     console.log('[generate-ai-code-stream] Received request:');
     console.log('[generate-ai-code-stream] - prompt:', prompt);
+    console.log('[generate-ai-code-stream] - template:', template || 'default');
     console.log('[generate-ai-code-stream] - isEdit:', isEdit);
     console.log('[generate-ai-code-stream] - isErrorFix:', isErrorFix);
     console.log('[generate-ai-code-stream] - context.sandboxId:', context?.sandboxId);
@@ -603,18 +609,64 @@ ${activeTemplate.fileFormatInstructions}
         const hasScrapedContent = context?.conversationContext?.scrapedWebsites?.length > 0;
         const isCreationMode = !hasScrapedContent && !isEdit;
         
-        const creationModeInstructions = isCreationMode ? `
-CREATION MODE ACTIVE - You are CUSTOMIZING an existing template app.
+        // Template-aware creation mode instructions
+        let creationModeInstructions = '';
+        if (isCreationMode) {
+          if (activeTemplate.id === 'react-spa') {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - You are CUSTOMIZING an existing React SPA template.
 - The sandbox ALREADY has working components: Header, Hero, Features, Footer, App.jsx
 - DO NOT create these from scratch. MODIFY the existing files to match the user's request.
 - Change the content, colors, and text to match what the user wants.
-- If the user says "make a candy shop website", change Hero text, Feature content, colors — all within the EXISTING files.
 - Output ONLY the files you changed. If Header doesn't need changes, don't output it.
 - Use real, relevant content that matches the user's request (not lorem ipsum).
 - Focus on modern design, smooth animations, and excellent UX.
 - You may add NEW component files if the user's request needs sections beyond Header/Hero/Features/Footer.
 - If adding a new component, also output the modified App.jsx with the new import.
-` : '';
+`;
+          } else if (activeTemplate.id === 'static-site') {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - You are building a STATIC website with vanilla HTML, CSS, and JavaScript.
+- NO React. NO JSX. NO frameworks. Pure HTML, CSS, and JS.
+- The sandbox already has index.html, styles/main.css, and js/main.js.
+- MODIFY these existing files to match the user's request.
+- The entry point is index.html — put ALL your HTML structure there.
+- Put ALL styles in styles/main.css using modern CSS (flexbox, grid, custom properties, animations).
+- Put interactivity in js/main.js using vanilla ES6+ JavaScript.
+- Use <file path="index.html">, <file path="styles/main.css">, <file path="js/main.js">.
+- You may add additional CSS/JS files if needed, but keep it simple.
+- NEVER output .jsx files. NEVER import React.
+`;
+          } else if (activeTemplate.id === 'fullstack') {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - You are building a FULL-STACK app with React frontend and Express.js backend.
+- Frontend in src/ with Vite + React + Tailwind CSS.
+- Backend in server/index.js with Express.js.
+- Modify existing files to match the user's request.
+`;
+          } else if (activeTemplate.id === 'node-api') {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - You are building a backend-only REST API with Express.js.
+- NO frontend. NO React. NO HTML pages.
+- Main entry: index.js with Express.js routes.
+- Output only .js files for the API.
+`;
+          } else if (activeTemplate.id === 'nextjs') {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - You are building a Next.js app with App Router.
+- Use app/ directory for routes.
+- app/layout.js is the root layout (REQUIRED).
+- app/page.js is the home page.
+- Use Tailwind CSS for styling.
+`;
+          } else {
+            creationModeInstructions = `
+CREATION MODE ACTIVE - Build the application using the template context above.
+- Use real, relevant content (not lorem ipsum).
+- Focus on modern design and excellent UX.
+`;
+          }
+        }
         
         let systemPrompt = `You are a code generator. You ONLY output code in <file> XML tags. You NEVER output explanations, greetings, or conversational text.
 
@@ -662,6 +714,15 @@ PACKAGE USAGE RULES:
 - For simple nav links in a single-page app, use scroll-to-section or href="#"
 - Only add routing if building a multi-page application
 - Common packages are auto-installed from your imports
+- ONLY import packages that ACTUALLY EXIST on npm. If unsure, use inline code instead.
+- For icons: use @heroicons/react (NOT hero-icons-react, NOT heroicons-react, NOT heroicons)
+  Example: import { HeartIcon } from '@heroicons/react/24/solid'
+  Alternative: use lucide-react — import { Heart } from 'lucide-react'
+  Alternative: use react-icons — import { FaHeart } from 'react-icons/fa'
+- For animations: use framer-motion (NOT @react-native-particles or other non-existent packages)
+- NEVER import packages with "react-native" in the name — this is a web project
+- If you need particles/confetti: use canvas-confetti or tsparticles
+- When in doubt, use inline SVGs or CSS animations instead of importing an icon/animation library
 
 WEBSITE CLONING REQUIREMENTS:
 When recreating/cloning a website, you MUST include:
@@ -691,28 +752,61 @@ If the user message contains a build/compile error (SyntaxError, plugin:vite, Mi
 4. Fix the syntax while preserving ALL existing functionality
 5. Common fixes: escape apostrophes in JSX, fix unclosed tags, fix invalid SVG paths, remove TS syntax from .jsx
 6. For broken SVG paths: use a simple valid path or remove the icon` : ''}
-
+${activeTemplate.id === 'static-site' ? `
+STYLING: Use custom CSS in styles/main.css. Use modern CSS features (flexbox, grid, custom properties, animations, transitions).
+NO Tailwind. NO CSS frameworks. Pure handwritten CSS.
+Responsive design with @media queries.` : activeTemplate.id === 'node-api' ? `
+STYLING: Not applicable — this is a backend-only API project.` : `
 STYLING: Use only Tailwind CSS classes. No inline styles, no CSS-in-JS, no component CSS files.
 Only create src/index.css with @tailwind base/components/utilities directives.
 Use standard Tailwind: bg-white, text-gray-900, border-gray-200 (NOT bg-background, text-foreground, border-border).
 Escape apostrophes in strings. Use straight quotes only.
-Responsive design: use sm:, md:, lg: breakpoints.
+Responsive design: use sm:, md:, lg: breakpoints.`}
 
 CODE QUALITY (MUST FOLLOW):
-- Files are .jsx NOT .tsx — NEVER use TypeScript syntax (no type annotations, no !, no as, no interface, no : type)
+${activeTemplate.id === 'static-site' ? `- Files are .html, .css, .js — NO React, NO JSX, NO frameworks
+- Use semantic HTML5 elements
+- Use modern CSS (flexbox, grid, custom properties, keyframes)
+- Use vanilla ES6+ JavaScript` : activeTemplate.id === 'node-api' ? `- Files are .js — backend Node.js/Express code
+- No frontend files, no HTML, no CSS` : `- Files are .jsx NOT .tsx — NEVER use TypeScript syntax (no type annotations, no !, no as, no interface, no : type)
 - NEVER use document.getElementById('x')!.innerText — use useRef or useState instead
 - Escape all apostrophes in JSX text: use &apos; or {"'"}
 - SVG paths must be valid — if copying a complex icon path, use Heroicons or Lucide imports instead
-- Every JSX component must have matching opening/closing tags
+- Every JSX component must have matching opening/closing tags`}
 - Every function must have matching { }
 - ALWAYS test mentally: would this file parse without errors?
 
+CRITICAL — NEVER TRUNCATE:
+- You MUST finish every <file> tag you open with a complete </file> closing tag.
+- If you run low on output space, close the current file properly, then STOP. Do NOT start a new file you cannot finish.
+- NEVER leave code mid-line, mid-function, or mid-component.
+- Complete EVERY file fully — all imports, all functions, all closing braces, all closing tags.
+
 WHEN GENERATING CODE:
-1. The sandbox ALREADY has Header.jsx, Hero.jsx, Features.jsx, Footer.jsx, App.jsx, index.css
+${activeTemplate.id === 'react-spa' ? `1. The sandbox ALREADY has Header.jsx, Hero.jsx, Features.jsx, Footer.jsx, App.jsx, index.css
 2. Output ONLY files you are MODIFYING — skip unchanged files
-3. If you need a new section, create it as src/components/NewSection.jsx and update App.jsx
+3. If you need a new section, create it as src/components/NewSection.jsx and update App.jsx` : activeTemplate.id === 'static-site' ? `1. The sandbox already has index.html, styles/main.css, and js/main.js
+2. Output ONLY the files you need to modify
+3. For additional pages, create new .html files` : activeTemplate.id === 'fullstack' ? `1. Frontend files go in src/ (React + Vite)
+2. Backend files go in server/ (Express.js)
+3. Output ONLY the files you need` : activeTemplate.id === 'node-api' ? `1. Main API entry is index.js
+2. Add routes in routes/ directory
+3. Output ONLY backend .js files` : activeTemplate.id === 'nextjs' ? `1. Pages go in app/ directory (App Router)
+2. app/layout.js is required
+3. Output ONLY files you need` : `1. Follow the template structure above
+2. Output ONLY the files you need`}
 4. NEVER say "I'll continue" - generate ALL changed files in one response
-5. Complete every file - no truncation`;
+5. Complete every file - no truncation
+
+DEPLOYMENT HELP:
+When the user asks to deploy, publish, or host their app, provide step-by-step instructions for their chosen platform. Common options:
+- **Vercel**: Run \`npm i -g vercel && vercel\` in the project directory. Follow the prompts.
+- **Netlify**: Run \`npm run build\`, then drag the dist/ folder to netlify.com/drop
+- **GitHub Pages**: Push to GitHub, enable Pages in repo settings, set source to gh-pages branch
+- **Railway/Render**: Connect GitHub repo, set build command to \`npm run build\`, publish dir to \`dist\`
+- **VPS/Server**: Run \`npm run build\`, serve the dist/ folder with nginx or any static file server
+- **Docker**: Create a Dockerfile with nginx serving the dist/ folder
+Always ask what platform they prefer if not specified. Provide the exact commands they need to run.`;
 
         // ERROR FIX OVERRIDE: when isErrorFix is true, replace the system prompt with a laser-focused one
         if (isErrorFix) {
@@ -730,7 +824,8 @@ WHEN GENERATING CODE:
             ];
             for (const p of possiblePaths) {
               if (global.sandboxState.fileCache.files[p]) {
-                brokenFileContent = global.sandboxState.fileCache.files[p];
+                const cached = global.sandboxState.fileCache.files[p];
+                brokenFileContent = typeof cached === 'string' ? cached : cached.content || '';
                 break;
               }
             }
@@ -1080,7 +1175,7 @@ Common fixes:
         // AI SDK v5: default provider() uses Responses API (/v1/responses)
         // Ollama/OpenWebUI only support Chat Completions API, so use .chat()
         const modelInstance = (isOllama || isOpenWebUI)
-          ? modelProvider.chat(actualModel)
+          ? (modelProvider as any).chat(actualModel)
           : modelProvider(actualModel);
         
         const streamOptions: any = {

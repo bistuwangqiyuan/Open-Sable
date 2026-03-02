@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { appConfig } from '@/config/app.config';
@@ -26,6 +26,14 @@ import {
 } from '@/lib/icons';
 import { motion } from 'framer-motion';
 import CodeApplicationProgress, { type CodeApplicationState } from '@/components/CodeApplicationProgress';
+// New feature components
+import CodeEditor from '@/components/CodeEditor';
+import DevicePreviewToolbar, { type DeviceMode, getDeviceWidth } from '@/components/DevicePreviewToolbar';
+import ConsolePanel from '@/components/ConsolePanel';
+import VersionTimeline from '@/components/VersionTimeline';
+import ImageUpload, { type ImageData } from '@/components/ImageUpload';
+import ImportProjectModal from '@/components/ImportProjectModal';
+import { useSnapshots } from '@/hooks/useSnapshots';
 
 interface SandboxData {
   sandboxId: string;
@@ -148,6 +156,26 @@ function AISandboxPage() {
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const codeDisplayRef = useRef<HTMLDivElement>(null);
   
+  // New feature state
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<ImageData[]>([]);
+  const [splitView, setSplitView] = useState(false);
+  
+  // Snapshot/undo-redo system
+  const {
+    snapshots,
+    currentIndex: snapshotIndex,
+    takeSnapshot,
+    undo,
+    redo,
+    restoreTo,
+    canUndo,
+    canRedo,
+  } = useSnapshots({ maxHistory: 50 });
+  
   const [codeApplicationState, setCodeApplicationState] = useState<CodeApplicationState>({
     stage: null
   });
@@ -229,6 +257,9 @@ function AISandboxPage() {
   }, [searchParams]);
 
   // Clear old conversation data on component mount and create/restore sandbox
+  // Keyboard shortcut: Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo (project-level)
+  // NOTE: moved to after handleUndo/handleRedo declarations below
+
   useEffect(() => {
     let isMounted = true;
     let sandboxCreated = false; // Track if sandbox was created in this effect
@@ -249,7 +280,11 @@ function AISandboxPage() {
           setChatMessages(prev => {
             // Only restore if we still have the default welcome message
             if (prev.length === 1 && prev[0].type === 'system') {
-              return [...prev, ...restored];
+              // Filter out any duplicate welcome messages from restored data
+              const filtered = restored.filter((m: any) =>
+                !(m.type === 'system' && typeof m.content === 'string' && m.content.startsWith('Welcome! I can help'))
+              );
+              return [...prev, ...filtered];
             }
             return prev;
           });
@@ -404,11 +439,11 @@ function AISandboxPage() {
         if (sandboxIdParam) {
           console.log('[home] Attempting to restore sandbox:', sandboxIdParam);
           sandboxCreated = true;
-          await createSandbox(true);
+          await createSandbox(true, storedTemplate);
         } else {
           console.log('[home] No sandbox in URL, creating new sandbox automatically...');
           sandboxCreated = true;
-          await createSandbox(true);
+          await createSandbox(true, storedTemplate);
         }
         
         // DIRECT TRIGGER: If creation mode, send the prompt directly after sandbox is ready
@@ -576,16 +611,22 @@ function AISandboxPage() {
     setResponseArea(prev => [...prev, `[${type}] ${message}`]);
   };
 
-  const addChatMessage = (content: string, type: ChatMessage['type'], metadata?: ChatMessage['metadata']) => {
+  const addChatMessage = (content: string | unknown, type: ChatMessage['type'], metadata?: ChatMessage['metadata']) => {
+    // Defensive: ensure content is always a string
+    const safeContent = typeof content === 'string' ? content : String(content ?? '');
+    if (!safeContent || safeContent === '[object Object]') {
+      console.warn('[addChatMessage] Skipping invalid content:', content);
+      return;
+    }
     setChatMessages(prev => {
       // Skip duplicate consecutive system messages
       if (type === 'system' && prev.length > 0) {
         const lastMessage = prev[prev.length - 1];
-        if (lastMessage.type === 'system' && lastMessage.content === content) {
+        if (lastMessage.type === 'system' && lastMessage.content === safeContent) {
           return prev; // Skip duplicate
         }
       }
-      return [...prev, { content, type, timestamp: new Date(), metadata }];
+      return [...prev, { content: safeContent, type, timestamp: new Date(), metadata }];
     });
   };
 
@@ -640,6 +681,17 @@ function AISandboxPage() {
       await fetch('/api/reset-project', { method: 'POST' });
     } catch (e) {
       console.error('[resetProject] Failed to reset server:', e);
+    }
+
+    // Clear persisted chat history on disk so it won't be reloaded
+    try {
+      await fetch('/api/persistence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' }),
+      });
+    } catch (e) {
+      console.error('[resetProject] Failed to clear persisted chat:', e);
     }
 
     // Reset all client state
@@ -834,7 +886,7 @@ function AISandboxPage() {
 
   const sandboxCreationRef = useRef<boolean>(false);
   
-  const createSandbox = async (fromHomeScreen = false) => {
+  const createSandbox = async (fromHomeScreen = false, templateOverride?: string) => {
     // Prevent duplicate sandbox creation
     if (sandboxCreationRef.current) {
       console.log('[createSandbox] Sandbox creation already in progress, skipping...');
@@ -842,7 +894,8 @@ function AISandboxPage() {
     }
     
     sandboxCreationRef.current = true;
-    console.log('[createSandbox] Starting sandbox creation...');
+    const templateToUse = templateOverride || selectedTemplate;
+    console.log('[createSandbox] Starting sandbox creation with template:', templateToUse);
     setLoading(true);
     setShowLoadingBackground(true);
     updateStatus('Creating sandbox...', false);
@@ -853,7 +906,7 @@ function AISandboxPage() {
       const response = await fetch('/api/create-ai-sandbox-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template: selectedTemplate })
+        body: JSON.stringify({ template: templateToUse })
       });
       
       const data = await response.json();
@@ -936,6 +989,11 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     log('Applying AI-generated code...');
     
     try {
+      // Take snapshot before applying (for undo)
+      if (Object.keys(sandboxFiles).length > 0) {
+        takeSnapshot(sandboxFiles, isEdit ? 'Before edit' : 'Before generation', aiChatInput?.slice(0, 80) || undefined);
+      }
+      
       // Show progress component instead of individual messages
       setCodeApplicationState({ stage: 'analyzing' });
       
@@ -1191,6 +1249,16 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         }
         
         log('Code applied successfully!');
+        
+        // Take snapshot after successful application (for redo/history)
+        const allAppliedFiles = [...(results.filesCreated || []), ...(results.filesUpdated || [])];
+        // Fetch updated files to create accurate snapshot
+        fetchSandboxFiles().then(() => {
+          // sandboxFiles will be updated by fetchSandboxFiles
+          setTimeout(() => {
+            takeSnapshot(sandboxFiles, `Applied ${allAppliedFiles.length} files`);
+          }, 500);
+        }).catch(() => {});
         console.log('[applyGeneratedCode] Response data:', data);
         console.log('[applyGeneratedCode] Debug info:', data.debug);
         console.log('[applyGeneratedCode] Current sandboxData:', sandboxData);
@@ -1642,46 +1710,28 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide" ref={codeDisplayRef}>
                 {/* Show selected file if one is selected */}
                 {selectedFile ? (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="bg-black border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                      <div className="px-4 py-2 bg-[#36322F] text-white flex items-center justify-between">
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300 h-full">
+                    <div className="bg-black border border-[#2a2a4a] rounded-lg overflow-hidden shadow-sm h-full flex flex-col">
+                      <div className="px-4 py-2 bg-[#12122a] text-white flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center gap-2">
                           {getFileIcon(selectedFile)}
                           <span className="font-mono text-sm">{selectedFile}</span>
                         </div>
                         <button
                           onClick={() => setSelectedFile(null)}
-                          className="hover:bg-black/20 p-1 rounded transition-colors"
+                          className="hover:bg-[#2a2a4a] p-1 rounded transition-colors"
                         >
                           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       </div>
-                      <div className="bg-gray-900 border border-gray-700 rounded">
-                        <SyntaxHighlighter
-                          language={(() => {
-                            const ext = selectedFile.split('.').pop()?.toLowerCase();
-                            if (ext === 'css') return 'css';
-                            if (ext === 'json') return 'json';
-                            if (ext === 'html') return 'html';
-                            return 'jsx';
-                          })()}
-                          style={vscDarkPlus}
-                          customStyle={{
-                            margin: 0,
-                            padding: '1rem',
-                            fontSize: '0.875rem',
-                            background: 'transparent',
-                          }}
-                          showLineNumbers={true}
-                        >
-                          {(() => {
-                            // Find the file content from generated files
-                            const file = generationProgress.files.find(f => f.path === selectedFile);
-                            return file?.content || '// File content will appear here';
-                          })()}
-                        </SyntaxHighlighter>
+                      <div className="flex-1 min-h-0">
+                        <CodeEditor
+                          content={getFileContent(selectedFile)}
+                          filePath={selectedFile}
+                          onSave={(path, content) => handleFileSave(path, content)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1872,51 +1922,31 @@ Tip: I automatically detect and install npm packages from your code imports (lik
             {/* Empty state when no generation content but sandbox exists */}
             {!hasGenContent && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 rounded-lg p-6 flex flex-col min-h-0 overflow-hidden">
-                  <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
+                <div className="flex-1 rounded-lg flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex-1 min-h-0">
                     {selectedFile ? (
-                      <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="bg-black border border-[#2a2a4a] rounded-lg overflow-hidden shadow-sm">
-                          <div className="px-4 py-2 bg-[#36322F] text-white flex items-center justify-between">
+                      <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="bg-black border border-[#2a2a4a] rounded-lg overflow-hidden shadow-sm h-full flex flex-col">
+                          <div className="px-4 py-2 bg-[#12122a] text-white flex items-center justify-between flex-shrink-0">
                             <div className="flex items-center gap-2">
                               {getFileIcon(selectedFile)}
                               <span className="font-mono text-sm">{selectedFile}</span>
                             </div>
                             <button
                               onClick={() => setSelectedFile(null)}
-                              className="hover:bg-black/20 p-1 rounded transition-colors"
+                              className="hover:bg-[#2a2a4a] p-1 rounded transition-colors"
                             >
                               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
                           </div>
-                          <div className="bg-gray-900 border border-gray-700 rounded">
-                            <SyntaxHighlighter
-                              language={(() => {
-                                const ext = selectedFile.split('.').pop()?.toLowerCase();
-                                if (ext === 'css') return 'css';
-                                if (ext === 'json') return 'json';
-                                if (ext === 'html') return 'html';
-                                return 'jsx';
-                              })()}
-                              style={vscDarkPlus}
-                              customStyle={{
-                                margin: 0,
-                                padding: '1rem',
-                                fontSize: '0.875rem',
-                                background: 'transparent',
-                              }}
-                              showLineNumbers={true}
-                            >
-                              {/* Try generation files first, then sandbox files */}
-                              {(() => {
-                                const genFile = generationProgress.files.find(f => f.path === selectedFile);
-                                if (genFile?.content) return genFile.content;
-                                // Try raw path and ./path variants in sandboxFiles
-                                return sandboxFiles[selectedFile] || sandboxFiles['./' + selectedFile] || sandboxFiles['/' + selectedFile] || '// File content not loaded';
-                              })()}
-                            </SyntaxHighlighter>
+                          <div className="flex-1 min-h-0">
+                            <CodeEditor
+                              content={getFileContent(selectedFile)}
+                              filePath={selectedFile}
+                              onSave={(path, content) => handleFileSave(path, content)}
+                            />
                           </div>
                         </div>
                       </div>
@@ -2188,7 +2218,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
   }, []);
 
   const sendChatMessage = async (overrideMessage?: string) => {
-    const message = String(overrideMessage || aiChatInput || '').trim();
+    // Guard against receiving non-string args (e.g. React FormEvent from onSubmit)
+    const rawOverride = (typeof overrideMessage === 'string') ? overrideMessage : undefined;
+    const message = (rawOverride || aiChatInput || '').trim();
     if (!message) return;
     
     if (!aiEnabled) {
@@ -2218,12 +2250,12 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     }
     
     // Detect if the user is pasting a Vite/babel/build error and auto-wrap it as a fix request
-    const isViteError = /\[plugin:vite|SyntaxError|Unexpected token|Missing semicolon|Identifier directly after|Cannot find module|Failed to resolve import|TypeError:|ReferenceError:/i.test(message);
+    const isViteError = /\[plugin:vite|SyntaxError|Unexpected token|Missing semicolon|Identifier directly after|Cannot find module|Failed to resolve import|TypeError:|ReferenceError:|parse5 error|Unable to parse HTML|missing-whitespace/i.test(message);
     let processedMessage = message;
     
     if (isViteError && conversationContext.appliedCode.length > 0) {
       // Extract the file path from the error message
-      const fileMatch = message.match(/\/([^\s:]+\.(jsx|tsx|js|ts|css))/);
+      const fileMatch = message.match(/\/([^\s:]+\.(jsx|tsx|js|ts|css|html))/);
       const fileName = fileMatch ? fileMatch[1].split('/').pop() : null;
       
       // Wrap the error in a focused fix instruction
@@ -2299,7 +2331,8 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           model: aiModel,
           context: fullContext,
           isEdit: conversationContext.appliedCode.length > 0,
-          isErrorFix: isErrorFix
+          isErrorFix: isErrorFix,
+          template: selectedTemplate
         })
       });
       
@@ -2616,9 +2649,71 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               const errRes = await fetch('/api/check-vite-errors');
               const errData = await errRes.json();
               if (errData.hasError && errData.error) {
-                autoFixRetryRef.current += 1;
+                const errorText = errData.error as string;
                 const brokenFile = errData.file || 'unknown';
-                const fixPrompt = `FIX THIS ERROR - Output ONLY the broken file "${brokenFile}", nothing else:\n\n${errData.error}\n\nONLY fix and output the file: ${brokenFile}. Do NOT regenerate any other files.`;
+
+                // Check if error is a missing package import (npm 404 / not installed)
+                const missingImportMatch = errorText.match(/Failed to resolve import "([^"]+)"/i)
+                  || errorText.match(/Module not found.*['"]([^'"]+)['"]/i);
+
+                if (missingImportMatch) {
+                  const rawPkg = missingImportMatch[1];
+                  // Extract base package name
+                  const pkg = rawPkg.startsWith('@')
+                    ? rawPkg.split('/').slice(0, 2).join('/')
+                    : rawPkg.split('/')[0];
+
+                  // Correct commonly hallucinated package names
+                  const PACKAGE_CORRECTIONS: Record<string, string> = {
+                    'hero-icons-react': '@heroicons/react',
+                    'heroicons-react': '@heroicons/react',
+                    'heroicons': '@heroicons/react',
+                    '@react-native-particles/particle-generator': '', // doesn't exist, remove
+                    'react-icons/hi': 'react-icons',
+                    'react-icons/fa': 'react-icons',
+                    'react-icons/fi': 'react-icons',
+                    'react-icons/ai': 'react-icons',
+                    'lucide': 'lucide-react',
+                    '@lucide/react': 'lucide-react',
+                  };
+
+                  const correctedPkg = PACKAGE_CORRECTIONS[pkg] ?? pkg;
+
+                  if (!correctedPkg) {
+                    // Package doesn't exist at all — ask AI to remove the import
+                    autoFixRetryRef.current += 1;
+                    addChatMessage(`Package "${pkg}" does not exist on npm. Asking AI to remove the import (attempt ${autoFixRetryRef.current}/${MAX_AUTO_FIX_RETRIES})...`, 'system');
+                    await fetch('/api/check-vite-errors', { method: 'POST' });
+                    const fixPrompt = `FIX THIS ERROR - The package "${pkg}" does NOT exist on npm. REMOVE the import and replace the functionality with inline code or a valid alternative. Output ONLY the file "${brokenFile}":\n\n${errorText}\n\nDo NOT use the package "${pkg}". Use inline SVGs, emoji, or plain HTML instead.`;
+                    setTimeout(() => {
+                      if (sendChatMessageRef.current) sendChatMessageRef.current(fixPrompt);
+                    }, 500);
+                    return;
+                  }
+
+                  // Try installing the (possibly corrected) package first
+                  addChatMessage(`Missing package detected: "${pkg}"${correctedPkg !== pkg ? ` → corrected to "${correctedPkg}"` : ''}. Installing...`, 'system');
+                  await fetch('/api/check-vite-errors', { method: 'POST' });
+                  try {
+                    await installPackages([correctedPkg]);
+                    // Don't count this as a fix attempt — it was a package install
+                    // Vite will auto-reload; skip to next iteration
+                    return;
+                  } catch {
+                    // Install failed — ask AI to remove the import
+                    autoFixRetryRef.current += 1;
+                    addChatMessage(`Failed to install "${correctedPkg}". Asking AI to remove the import...`, 'system');
+                    const fixPrompt = `FIX THIS ERROR - The package "${pkg}" failed to install. REMOVE the import and replace icons/components with inline SVGs or plain HTML/CSS. Output ONLY the file "${brokenFile}":\n\n${errorText}`;
+                    setTimeout(() => {
+                      if (sendChatMessageRef.current) sendChatMessageRef.current(fixPrompt);
+                    }, 500);
+                    return;
+                  }
+                }
+
+                // Regular compile error — ask AI to fix
+                autoFixRetryRef.current += 1;
+                const fixPrompt = `FIX THIS ERROR - Output ONLY the broken file "${brokenFile}", nothing else:\n\n${errorText}\n\nONLY fix and output the file: ${brokenFile}. Do NOT regenerate any other files.`;
                 addChatMessage(`Auto-detected compile error in ${brokenFile} (attempt ${autoFixRetryRef.current}/${MAX_AUTO_FIX_RETRIES}). Fixing...`, 'system');
                 // Clear the error so we detect fresh ones
                 await fetch('/api/check-vite-errors', { method: 'POST' });
@@ -2641,27 +2736,42 @@ Tip: I automatically detect and install npm packages from your code imports (lik
             addChatMessage('Auto-fix reached max retries. Check the preview for remaining errors.', 'system');
           }
 
-          // ── AUTO-CONTINUE: check if first generation was incomplete ──
-          if (!isEdit && generatedCode) {
-            const outputFileNames = new Set<string>();
-            const fRegex = /<file path="([^"]+)">/g;
-            let fm;
-            while ((fm = fRegex.exec(generatedCode)) !== null) {
-              outputFileNames.add(fm[1].split('/').pop() || '');
-            }
-            // The react-spa template expects at least these component files to be customized
-            const expectedComponents = ['Header.jsx', 'Hero.jsx', 'Features.jsx', 'Footer.jsx', 'App.jsx'];
-            const missingComponents = expectedComponents.filter(c => !outputFileNames.has(c));
-            if (missingComponents.length > 0 && missingComponents.length < expectedComponents.length) {
-              // AI outputted some files but not all — auto-continue with the rest
-              addChatMessage(`Continuing generation — still need to customize: ${missingComponents.join(', ')}...`, 'system');
-              const continuePrompt = `Continue customizing the remaining component files to match the user request. Output ONLY these files: ${missingComponents.join(', ')}. Keep the same theme, colors, and content style as the files you already generated.`;
+          // ── AUTO-CONTINUE: detect truncated/incomplete output ──
+          if (generatedCode) {
+            // Check if any file tag was left unclosed (AI cut off mid-file)
+            const openTags = (generatedCode.match(/<file path="/g) || []).length;
+            const closeTags = (generatedCode.match(/<\/file>/g) || []).length;
+            if (openTags > closeTags) {
+              addChatMessage(`Generation was cut off mid-file. Auto-continuing...`, 'system');
+              const continuePrompt = `Your previous output was TRUNCATED (cut off mid-file). Continue EXACTLY where you left off. Output the remaining <file> tags to complete the generation. Do NOT repeat files you already output.`;
               setTimeout(() => {
                 if (sendChatMessageRef.current) {
                   sendChatMessageRef.current(continuePrompt);
                 }
               }, 500);
-              return; // exit early — continuation handles completion
+              return;
+            }
+
+            // For react-spa template: check if expected components are missing
+            if (!isEdit && selectedTemplate === 'react-spa') {
+              const outputFileNames = new Set<string>();
+              const fRegex = /<file path="([^"]+)">/g;
+              let fm;
+              while ((fm = fRegex.exec(generatedCode)) !== null) {
+                outputFileNames.add(fm[1].split('/').pop() || '');
+              }
+              const expectedComponents = ['Header.jsx', 'Hero.jsx', 'Features.jsx', 'Footer.jsx', 'App.jsx'];
+              const missingComponents = expectedComponents.filter(c => !outputFileNames.has(c));
+              if (missingComponents.length > 0 && missingComponents.length < expectedComponents.length) {
+                addChatMessage(`Continuing generation — still need: ${missingComponents.join(', ')}...`, 'system');
+                const continuePrompt = `Continue customizing the remaining component files to match the user request. Output ONLY these files: ${missingComponents.join(', ')}. Keep the same theme, colors, and content style as the files you already generated.`;
+                setTimeout(() => {
+                  if (sendChatMessageRef.current) {
+                    sendChatMessageRef.current(continuePrompt);
+                  }
+                }, 500);
+                return;
+              }
             }
           }
         }
@@ -2813,8 +2923,108 @@ Tip: I automatically detect and install npm packages from your code imports (lik
 
   const handleFileClick = async (filePath: string) => {
     setSelectedFile(filePath);
-    // TODO: Add file content fetching logic here
+    // Switch to code tab and ensure split view shows editor
+    if (activeTab === 'preview' && !splitView) {
+      setActiveTab('generation');
+    }
   };
+
+  // Save file from Monaco editor
+  const handleFileSave = useCallback(async (filePath: string, content: string) => {
+    // Update local state
+    setSandboxFiles(prev => ({ ...prev, [filePath]: content }));
+    // Also update generation files state for display
+    setGenerationProgress(prev => ({
+      ...prev,
+      files: prev.files.map(f => f.path === filePath ? { ...f, content, edited: true } : f)
+    }));
+    // Save to sandbox
+    try {
+      await fetch('/api/save-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath, content }),
+      });
+      // Refresh preview
+      if (iframeRef.current) {
+        iframeRef.current.src = iframeRef.current.src;
+      }
+    } catch (e) {
+      console.error('Failed to save file:', e);
+    }
+  }, []);
+
+  // Undo handler
+  const handleUndo = useCallback(() => {
+    const snapshot = undo();
+    if (snapshot) {
+      setSandboxFiles(snapshot.files);
+      // Refresh preview
+      setTimeout(() => {
+        if (iframeRef.current) iframeRef.current.src = iframeRef.current.src;
+      }, 300);
+    }
+  }, [undo]);
+
+  // Redo handler
+  const handleRedo = useCallback(() => {
+    const snapshot = redo();
+    if (snapshot) {
+      setSandboxFiles(snapshot.files);
+      setTimeout(() => {
+        if (iframeRef.current) iframeRef.current.src = iframeRef.current.src;
+      }, 300);
+    }
+  }, [redo]);
+
+  // Keyboard shortcut: Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo (project-level)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.monaco-editor')) return;
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
+
+  // Restore version from timeline
+  const handleRestoreVersion = useCallback((id: string) => {
+    const snapshot = restoreTo(id);
+    if (snapshot) {
+      setSandboxFiles(snapshot.files);
+      setShowVersionHistory(false);
+      setTimeout(() => {
+        if (iframeRef.current) iframeRef.current.src = iframeRef.current.src;
+      }, 300);
+    }
+  }, [restoreTo]);
+
+  // Import project handler
+  const handleImportProject = useCallback((files: Record<string, string>) => {
+    setSandboxFiles(files);
+    setShowImportModal(false);
+    // Refresh preview
+    setTimeout(() => {
+      if (iframeRef.current) iframeRef.current.src = iframeRef.current.src;
+    }, 500);
+  }, []);
+
+  // Get content for a file path
+  const getFileContent = useCallback((filePath: string): string => {
+    // Try generation files first
+    const genFile = generationProgress.files.find(f => f.path === filePath);
+    if (genFile?.content) return genFile.content;
+    // Then sandbox files with various path formats
+    return sandboxFiles[filePath] || sandboxFiles['./' + filePath] || sandboxFiles['/' + filePath] || '';
+  }, [generationProgress.files, sandboxFiles]);
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -3601,6 +3811,7 @@ Focus on the key sections and content, making it clean and modern.`;
           body: JSON.stringify({ 
             prompt,
             model: aiModel,
+            template: selectedTemplate,
             context: {
               sandboxId: sandboxData?.sandboxId,
               structure: structureContent,
@@ -3946,6 +4157,67 @@ Focus on the key sections and content, making it clean and modern.`;
           >
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+            </svg>
+          </button>
+          {/* Import Project */}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="p-8 rounded-lg transition-colors bg-[#12122a] border border-[#2a2a4a] text-gray-300 hover:bg-[#1e1e3a]"
+            title="Import project (ZIP or GitHub)"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-[#2a2a4a]" />
+
+          {/* Undo */}
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="p-8 rounded-lg transition-colors bg-[#12122a] border border-[#2a2a4a] text-gray-300 hover:bg-[#1e1e3a] disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Undo (Ctrl+Z)"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4 4M3 10l4-4" />
+            </svg>
+          </button>
+          {/* Redo */}
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="p-8 rounded-lg transition-colors bg-[#12122a] border border-[#2a2a4a] text-gray-300 hover:bg-[#1e1e3a] disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Redo (Ctrl+Y)"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2M21 10l-4 4M21 10l-4-4" />
+            </svg>
+          </button>
+          {/* Version History */}
+          <button
+            onClick={() => setShowVersionHistory(true)}
+            disabled={snapshots.length === 0}
+            className="p-8 rounded-lg transition-colors bg-[#12122a] border border-[#2a2a4a] text-gray-300 hover:bg-[#1e1e3a] disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Version history"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          {/* Split View Toggle */}
+          <button
+            onClick={() => setSplitView(v => !v)}
+            className={`p-8 rounded-lg transition-colors border ${
+              splitView
+                ? 'bg-purple-600/20 border-purple-500/40 text-purple-300'
+                : 'bg-[#12122a] border-[#2a2a4a] text-gray-300 hover:bg-[#1e1e3a]'
+            }`}
+            title={splitView ? 'Exit split view' : 'Split view (Code + Preview)'}
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
             </svg>
           </button>
 
@@ -4618,94 +4890,111 @@ Focus on the key sections and content, making it clean and modern.`;
           </div>
 
           <div className="p-4 border-t border-border bg-background-base">
-            <HeroInput
-              value={aiChatInput}
-              onChange={setAiChatInput}
-              onSubmit={sendChatMessage}
-              placeholder="Describe what you want to build..."
-              showSearchFeatures={false}
-            />
+            <div className="flex items-center gap-2">
+              <ImageUpload
+                onImageSelect={(imgs) => setAttachedImages(prev => [...prev, ...imgs])}
+                disabled={loading || generationProgress.isGenerating}
+              />
+              <div className="flex-1">
+                <HeroInput
+                  value={aiChatInput}
+                  onChange={setAiChatInput}
+                  onSubmit={sendChatMessage}
+                  placeholder="Describe what you want to build..."
+                  showSearchFeatures={false}
+                />
+              </div>
+            </div>
+            {/* Show attached images */}
+            {attachedImages.length > 0 && (
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`data:${img.mimeType};base64,${img.base64}`} alt={img.name} className="w-12 h-12 rounded-lg object-cover border border-[#2a2a4a]" />
+                    <button
+                      onClick={() => setAttachedImages(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right Panel - Preview or Generation (2/3 of remaining width) */}
+        {/* Right Panel - Split View or Single Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-3 pt-4 pb-4 bg-[#0a0a1a] border-b border-[#2a2a4a] flex justify-between items-center">
+          {/* Content toolbar with tabs and device controls */}
+          <div className="px-3 pt-3 pb-3 bg-[#0a0a1a] border-b border-[#2a2a4a] flex justify-between items-center">
             <div className="flex items-center gap-2">
               {/* Toggle-style Code/View switcher */}
-              <div className="inline-flex bg-[#12122a] border border-[#2a2a4a] rounded-md p-0.5">
-                <button
-                  onClick={() => {
-                    setActiveTab('generation');
-                    // Auto-fetch sandbox files when switching to Code tab
-                    if (sandboxData && Object.keys(sandboxFiles).length === 0) {
-                      fetchSandboxFiles();
-                    }
-                  }}
-                  className={`px-3 py-1 rounded transition-all text-xs font-medium ${
-                    activeTab === 'generation' 
-                      ? 'bg-[#2a2a4a] text-gray-100 shadow-sm' 
-                      : 'bg-transparent text-gray-400 hover:text-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                    <span>Code</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('preview')}
-                  className={`px-3 py-1 rounded transition-all text-xs font-medium ${
-                    activeTab === 'preview' 
-                      ? 'bg-[#2a2a4a] text-gray-100 shadow-sm' 
-                      : 'bg-transparent text-gray-400 hover:text-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span>View</span>
-                  </div>
-                </button>
-              </div>
+              {!splitView && (
+                <div className="inline-flex bg-[#12122a] border border-[#2a2a4a] rounded-md p-0.5">
+                  <button
+                    onClick={() => {
+                      setActiveTab('generation');
+                      if (sandboxData && Object.keys(sandboxFiles).length === 0) fetchSandboxFiles();
+                    }}
+                    className={`px-3 py-1 rounded transition-all text-xs font-medium ${
+                      activeTab === 'generation' ? 'bg-[#2a2a4a] text-gray-100 shadow-sm' : 'bg-transparent text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      <span>Code</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('preview')}
+                    className={`px-3 py-1 rounded transition-all text-xs font-medium ${
+                      activeTab === 'preview' ? 'bg-[#2a2a4a] text-gray-100 shadow-sm' : 'bg-transparent text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>View</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+              {splitView && <span className="text-xs text-gray-400 font-medium">Split View</span>}
+              {/* Device preview controls in preview or split mode */}
+              {(activeTab === 'preview' || splitView) && (
+                <DevicePreviewToolbar
+                  deviceMode={deviceMode}
+                  onDeviceChange={setDeviceMode}
+                  sandboxUrl={sandboxData?.url ? resolveSandboxUrl(sandboxData.url) : undefined}
+                  onRefresh={() => { if (iframeRef.current) iframeRef.current.src = iframeRef.current.src; }}
+                />
+              )}
             </div>
             <div className="flex gap-2 items-center">
-              {/* Files generated count */}
               {activeTab === 'generation' && !generationProgress.isEdit && generationProgress.files.length > 0 && (
-                <div className="text-gray-500 text-xs font-medium">
-                  {generationProgress.files.length} files generated
-                </div>
+                <div className="text-gray-500 text-xs font-medium">{generationProgress.files.length} files</div>
               )}
-              
-              {/* Live Code Generation Status */}
-              {activeTab === 'generation' && generationProgress.isGenerating && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-700">
+              {generationProgress.isGenerating && (
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#1e1e3a] border border-[#2a2a4a] rounded text-xs font-medium text-green-400">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  {generationProgress.isEdit ? 'Editing code' : 'Live generation'}
+                  {generationProgress.isEdit ? 'Editing' : 'Generating'}
                 </div>
               )}
-              
-              {/* Sandbox Status Indicator */}
               {sandboxData && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-700">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#1e1e3a] border border-[#2a2a4a] rounded text-xs font-medium text-gray-400">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                  Sandbox active
+                  Active
                 </div>
               )}
-              
-              {/* Open in new tab button */}
               {sandboxData && (
-                <a 
-                  href={sandboxData.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  title="Open in new tab"
-                  className="p-1.5 rounded-md transition-all text-gray-400 hover:text-gray-100 hover:bg-gray-100"
-                >
+                <a href={resolveSandboxUrl(sandboxData.url)} target="_blank" rel="noopener noreferrer" title="Open in new tab"
+                  className="p-1 rounded hover:bg-[#2a2a4a] text-gray-400 hover:text-gray-200 transition-colors">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
@@ -4713,12 +5002,102 @@ Focus on the key sections and content, making it clean and modern.`;
               )}
             </div>
           </div>
-          <div className="flex-1 relative overflow-hidden">
-            {renderMainContent()}
+          
+          {/* Main content area */}
+          <div className="flex-1 relative overflow-hidden flex">
+            {splitView ? (
+              <>
+                {/* Split: Code on left */}
+                <div className="w-1/2 flex flex-col overflow-hidden border-r border-[#2a2a4a]">
+                  <div className="flex-1 overflow-hidden flex">
+                    {!generationProgress.isEdit && renderFileExplorer()}
+                    <div className="flex-1 flex flex-col min-h-0">
+                      {selectedFile ? (
+                        <div className="flex-1 flex flex-col min-h-0">
+                          <div className="px-3 py-1.5 bg-[#12122a] border-b border-[#2a2a4a] flex items-center gap-2 flex-shrink-0">
+                            {getFileIcon(selectedFile)}
+                            <span className="font-mono text-xs text-gray-300">{selectedFile}</span>
+                          </div>
+                          <div className="flex-1 min-h-0">
+                            <CodeEditor
+                              content={getFileContent(selectedFile)}
+                              filePath={selectedFile}
+                              onSave={(path, content) => handleFileSave(path, content)}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-gray-500">
+                          <div className="text-center">
+                            <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mx-auto mb-2 opacity-30">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                            </svg>
+                            <p className="text-xs">Select a file to edit</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Split: Preview on right */}
+                <div className="w-1/2 flex flex-col overflow-hidden">
+                  <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#0a0a0a]">
+                    <div style={{ width: getDeviceWidth(deviceMode), maxWidth: '100%', height: '100%' }}
+                      className="transition-all duration-300">
+                      {sandboxData?.url ? (
+                        <iframe
+                          ref={iframeRef}
+                          src={resolveSandboxUrl(sandboxData.url)}
+                          className="w-full h-full border-0 bg-white"
+                          title="Preview"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                          Preview will appear here
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <ConsolePanel isOpen={consoleOpen} onToggle={() => setConsoleOpen(v => !v)} iframeRef={iframeRef} />
+                </div>
+              </>
+            ) : (
+              /* Single panel mode */
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {activeTab === 'preview' ? (
+                  <>
+                    <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#0a0a0a]">
+                      <div style={{ width: getDeviceWidth(deviceMode), maxWidth: '100%', height: '100%' }}
+                        className="transition-all duration-300">
+                        {renderMainContent()}
+                      </div>
+                    </div>
+                    <ConsolePanel isOpen={consoleOpen} onToggle={() => setConsoleOpen(v => !v)} iframeRef={iframeRef} />
+                  </>
+                ) : (
+                  <div className="flex-1 relative overflow-hidden">
+                    {renderMainContent()}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Modals */}
+      <VersionTimeline
+        isOpen={showVersionHistory}
+        onClose={() => setShowVersionHistory(false)}
+        snapshots={snapshots}
+        currentIndex={snapshotIndex}
+        onRestore={handleRestoreVersion}
+      />
+      <ImportProjectModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImportProject}
+      />
 
     </div>
     </HeaderProvider>
