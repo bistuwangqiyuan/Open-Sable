@@ -656,17 +656,17 @@ class XAutonomousAgent:
         recent_engagements = self.mind.recall("engaged", limit=5)
 
         thoughts_text = "\n".join(
-            f"- {t['data'].get('thought', '')[:150]}"
+            f"- {str(t['data'].get('thought', ''))[:150]}"
             for t in recent_thoughts
         ) or "(no recent reflections)"
 
         recent_posts_text = "\n".join(
-            f"- {p['data'].get('tweet', '')[:120]}"
+            f"- {str(p['data'].get('tweet', ''))[:120]}"
             for p in recent_posts
         ) or "(no recent posts)"
 
         engaged_topics = "\n".join(
-            f"- @{e['data'].get('user', '?')}: {e['data'].get('text', '')[:100]}"
+            f"- @{e['data'].get('user', '?')}: {str(e['data'].get('text', ''))[:100]}"
             for e in recent_engagements
         ) or "(no recent engagements)"
 
