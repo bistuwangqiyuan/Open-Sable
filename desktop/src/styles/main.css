@@ -479,6 +479,18 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
 
 .settings-btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--border-mid); }
 
+.dev-studio-btn {
+  margin-bottom: 6px;
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--text-muted);
+}
+.dev-studio-btn:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #818cf8;
+}
+
 /* ─── Chat area ─────────────────────────────────────────────────────────── */
 .chat-area {
   flex: 1;

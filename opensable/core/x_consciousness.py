@@ -812,7 +812,7 @@ class XConsciousness:
         """
         recent_thoughts = self.recall("thought", limit=5)
         thoughts_text = "\n".join(
-            f"- [{t['ts'][:16]}] {t['data'].get('thought', '')[:150]}"
+            f"- [{t['ts'][:16]}] {str(t['data'].get('thought', ''))[:150]}"
             for t in recent_thoughts
         )
 
@@ -910,7 +910,7 @@ class XConsciousness:
             for p in posts:
                 d = p.get("data", {})
                 post_lines.append(
-                    f"  [{p['ts'][:16]}] {d.get('tweet', '')[:120]} "
+                    f"  [{p['ts'][:16]}] {str(d.get('tweet', ''))[:120]} "
                     f"| style={d.get('style', '?')} "
                     f"| id={d.get('tweet_id', '?')}"
                 )
@@ -924,25 +924,25 @@ class XConsciousness:
                 d = e.get("data", {})
                 eng_lines.append(
                     f"  [{e['ts'][:16]}] @{d.get('user', '?')} → "
-                    f"{d.get('actions', [])} | {d.get('text', '')[:80]}"
+                    f"{d.get('actions', [])} | {str(d.get('text', ''))[:80]}"
                 )
             parts.append(f"\n=== RECENT ENGAGEMENTS ({len(engagements)}) ===\n" + "\n".join(eng_lines))
 
         # Recent thoughts
         thoughts = self.recall("thought", limit=5)
         if thoughts:
-            thought_lines = [f"  [{t['ts'][:16]}] {t['data'].get('thought', '')[:150]}" for t in thoughts]
+            thought_lines = [f"  [{t['ts'][:16]}] {str(t['data'].get('thought', ''))[:150]}" for t in thoughts]
             parts.append(f"\n=== RECENT THOUGHTS ===\n" + "\n".join(thought_lines))
 
         # Past reflections (last 3)
         if self._reflections:
-            ref_lines = [f"  [{r['ts'][:16]}] {r['analysis'][:200]}" for r in self._reflections[-3:]]
+            ref_lines = [f"  [{r['ts'][:16]}] {str(r.get('analysis', ''))[:200]}" for r in self._reflections[-3:]]
             parts.append(f"\n=== PAST REFLECTIONS ===\n" + "\n".join(ref_lines))
 
         # Past evolutions
         if self._evolution_log:
             evo_lines = [
-                f"  [{e['ts'][:16]}] {e.get('reasoning', '')[:150]}"
+                f"  [{e['ts'][:16]}] {str(e.get('reasoning', ''))[:150]}"
                 for e in self._evolution_log[-5:]
             ]
             parts.append(f"\n=== PAST EVOLUTIONS ===\n" + "\n".join(evo_lines))
@@ -1049,7 +1049,7 @@ class XConsciousness:
             evo_record = {
                 "ts": datetime.now().isoformat(),
                 "changes": changes,
-                "reasoning": changes.get("reasoning", ""),
+                "reasoning": str(changes.get("reasoning", ""))[:500],
                 "pre_config": current_config,
             }
             self._evolution_log.append(evo_record)
@@ -1061,19 +1061,19 @@ class XConsciousness:
             if len(self._identity.get("learned_insights", [])) > 20:
                 self._identity["learned_insights"] = self._identity["learned_insights"][-20:]
             self._identity.setdefault("learned_insights", []).append(
-                f"[Evo #{self._identity['evolution_count']}] {changes.get('reasoning', '')[:200]}"
+                f"[Evo #{self._identity['evolution_count']}] {str(changes.get('reasoning', ''))[:200]}"
             )
             self._save_identity()
 
             self.remember("evolution", {
                 "changes": {k: v for k, v in changes.items() if k != "reasoning"},
-                "reasoning": changes.get("reasoning", "")[:300],
+                "reasoning": str(changes.get("reasoning", ""))[:300],
                 "evolution_number": self._identity["evolution_count"],
             })
 
             logger.info(
                 f"🧬 Evolution #{self._identity['evolution_count']}: "
-                f"{changes.get('reasoning', '')[:100]}"
+                f"{str(changes.get('reasoning', ''))[:100]}"
             )
 
         return changes if applied else None

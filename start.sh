@@ -238,6 +238,67 @@ stop_desktop() {
     fi
 }
 
+start_dev_studio() {
+    # Start Sable Dev Studio (Next.js app builder) if DEV_STUDIO_ENABLED=true
+    local dev_enabled
+    dev_enabled=$(grep -E '^DEV_STUDIO_ENABLED=' "$DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [ "$dev_enabled" != "true" ]; then
+        return 0
+    fi
+
+    local devdir="$DIR/sable_dev"
+    if [ ! -f "$devdir/package.json" ]; then
+        echo "⚠️  sable_dev folder not found — set DEV_STUDIO_ENABLED=false"
+        return 0
+    fi
+
+    if ! command -v npm &>/dev/null; then
+        echo "⚠️  npm not found — Dev Studio requires Node.js"
+        return 0
+    fi
+
+    # Install deps if needed
+    if [ ! -f "$devdir/node_modules/.bin/next" ]; then
+        echo "🛠️  Installing Dev Studio dependencies..."
+        (cd "$devdir" && npm install --silent) || {
+            echo "⚠️  Dev Studio npm install failed — skipping"
+            return 0
+        }
+    fi
+
+    # Check if already running
+    local pidfile="$DIR/.dev-studio.pid"
+    if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+        echo "ℹ️  Dev Studio already running (PID $(cat "$pidfile"))"
+        return 0
+    fi
+
+    echo "🛠️  Starting Dev Studio..."
+    (cd "$devdir" && nohup npx next dev --turbopack -p 5700 -H 0.0.0.0 >> "$DIR/logs/dev-studio.log" 2>&1 &
+    echo $! > "$pidfile")
+    sleep 1
+    if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+        echo "✅ Dev Studio started (PID $(cat "$pidfile")) → http://localhost:5700"
+    else
+        echo "⚠️  Dev Studio failed to start. Check: tail -20 $DIR/logs/dev-studio.log"
+    fi
+}
+
+stop_dev_studio() {
+    local pidfile="$DIR/.dev-studio.pid"
+    if [ -f "$pidfile" ]; then
+        local pid
+        pid=$(cat "$pidfile")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "🛑 Stopping Dev Studio (PID $pid)..."
+            kill "$pid" 2>/dev/null
+            sleep 2
+            kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+        fi
+        rm -f "$pidfile"
+    fi
+}
+
 # Kill orphaned opensable/bridge processes for the current PROFILE
 _kill_orphans() {
     local session_name
@@ -310,6 +371,7 @@ do_start() {
         # Start desktop agent if enabled (only for primary agent)
         if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
             start_desktop
+            start_dev_studio
         fi
     else
         echo "❌ Failed to start. Check: tail -50 $LOGFILE"
@@ -319,9 +381,10 @@ do_start() {
 }
 
 do_stop() {
-    # Stop desktop agent (only for primary agent)
+    # Stop desktop agent and dev studio (only for primary agent)
     if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
         stop_desktop
+        stop_dev_studio
     fi
 
     if ! is_running; then

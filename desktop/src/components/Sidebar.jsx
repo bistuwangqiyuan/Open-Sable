@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSableStore } from '../hooks/useSable.js'
 
-export default function Sidebar({ collapsed = false }) {
+export default function Sidebar({ collapsed = false, onOpenDevStudio }) {
   const sessions = useSableStore(s => s.sessions)
   const activeSessionId = useSableStore(s => s.activeSessionId)
   const wsStatus = useSableStore(s => s.wsStatus)
@@ -76,6 +76,15 @@ export default function Sidebar({ collapsed = false }) {
             {wsStatus === 'connected' ? 'Connected' : wsStatus === 'connecting' ? 'Connecting…' : 'Disconnected'}
           </span>
         </div>
+        <button className="settings-btn dev-studio-btn" onClick={onOpenDevStudio} title="Dev Studio (Ctrl+Shift+D)">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+          </span>
+          Dev Studio
+        </button>
         <button className="settings-btn" onClick={openSettings}>
           <span>⚙</span>
           Settings
