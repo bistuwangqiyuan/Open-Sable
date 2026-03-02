@@ -459,7 +459,7 @@ def install_desktop():
 
 
 def install_dev_studio():
-    """Set up Sable Dev Studio — AI-powered app builder (like Lovable)"""
+    """Set up Sable Dev Studio — AI-powered app builder (like IDE)"""
     print("\n🛠️  Setting up Dev Studio...")
 
     dev_dir = Path("sable_dev")

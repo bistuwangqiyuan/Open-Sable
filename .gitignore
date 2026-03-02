@@ -151,5 +151,4 @@ agents/*/profile.env
 .sable-analyst.pid
 .sable-nexus_erebus.pid
 .sable-sable.pid
-/sable_dev
 .dev-studio.pid
