@@ -96,9 +96,15 @@ fi
 echo ""
 echo "🔍 Detecting system specifications..."
 
-# Get RAM in GB and CPU cores
-RAM_GB=$(free -g | awk '/^Mem:/{print $2}')
-CPU_CORES=$(nproc)
+# Get RAM in GB and CPU cores (cross-platform)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    RAM_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+    RAM_GB=$((RAM_BYTES / 1073741824))
+    CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
+else
+    RAM_GB=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}' || echo 0)
+    CPU_CORES=$(nproc 2>/dev/null || echo 1)
+fi
 echo "   RAM: ${RAM_GB}GB | CPU Cores: $CPU_CORES"
 
 # Detect GPU
@@ -143,7 +149,11 @@ fi
 
 # Update .env with selected model
 if [ -f .env ]; then
-    sed -i "s/DEFAULT_MODEL=.*/DEFAULT_MODEL=$MODEL/" .env
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/DEFAULT_MODEL=.*/DEFAULT_MODEL=$MODEL/" .env
+    else
+        sed -i "s/DEFAULT_MODEL=.*/DEFAULT_MODEL=$MODEL/" .env
+    fi
     echo "✅ Updated .env with model: $MODEL"
 fi
 

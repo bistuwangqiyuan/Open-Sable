@@ -529,6 +529,72 @@ class XSkill:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    async def get_tweet_replies(self, tweet_id: str, count: int = 20) -> Dict[str, Any]:
+        """
+        Get replies to a specific tweet using get_tweet_by_id.
+        twikit returns reply threads as part of the tweet detail response.
+
+        Args:
+            tweet_id: The tweet ID to fetch replies for.
+            count: Max replies to return.
+
+        Returns:
+            Dict with success flag and list of reply dicts.
+        """
+        self._ensure_initialized()
+        try:
+            tweet = await self._client.get_tweet_by_id(tweet_id)
+            if tweet is None:
+                return {"success": False, "error": "Tweet not found"}
+
+            # The tweet detail response groups replies into conversation threads.
+            # Each thread has a root reply with optional .replies sub-list.
+            # We flatten them into a single list.
+            results = []
+            # Direct replies appear as the tweet object's thread entries
+            # twikit stores them via the entries parsing in get_tweet_by_id
+            if hasattr(tweet, 'replies') and tweet.replies:
+                for r in tweet.replies:
+                    if len(results) >= count:
+                        break
+                    results.append({
+                        "id": getattr(r, "id", None),
+                        "text": getattr(r, "text", str(r)),
+                        "username": getattr(getattr(r, "user", None), "screen_name", ""),
+                        "user_name": getattr(getattr(r, "user", None), "name", ""),
+                        "created_at": str(getattr(r, "created_at", "")),
+                        "likes": getattr(r, "favorite_count", 0),
+                        "reply_count": getattr(r, "reply_count", 0),
+                    })
+                    # Also check nested replies within this thread
+                    if hasattr(r, 'replies') and r.replies:
+                        for sub in r.replies:
+                            if len(results) >= count:
+                                break
+                            results.append({
+                                "id": getattr(sub, "id", None),
+                                "text": getattr(sub, "text", str(sub)),
+                                "username": getattr(getattr(sub, "user", None), "screen_name", ""),
+                                "user_name": getattr(getattr(sub, "user", None), "name", ""),
+                                "created_at": str(getattr(sub, "created_at", "")),
+                                "likes": getattr(sub, "favorite_count", 0),
+                                "reply_count": getattr(sub, "reply_count", 0),
+                            })
+
+            await asyncio.sleep(self._action_delay)
+
+            return {
+                "success": True,
+                "tweet_id": tweet_id,
+                "original_text": getattr(tweet, "text", ""),
+                "count": len(results),
+                "replies": results,
+            }
+
+        except Exception as e:
+            logger.error(f"X get_tweet_replies error: {e}")
+            return {"success": False, "error": str(e)}
+
     # ──────────────────────────────────────────────────────────────────────
     # Users
     # ──────────────────────────────────────────────────────────────────────

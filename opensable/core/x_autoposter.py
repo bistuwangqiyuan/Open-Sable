@@ -193,6 +193,15 @@ class XAutonomousAgent:
         self._known_users: Dict[str, int] = {}  # username -> engagement count (relationship memory)
         self._inspiration_level: float = 0.5  # 0.0-1.0, rises with interesting encounters
 
+        # ── Reply chain engagement (continue conversations when people reply) ──
+        # {my_reply_id: {original_tweet_id, username, depth, last_checked, topic, interest}}
+        self._reply_chains: Dict[str, Dict] = {}
+        self._reply_chain_replies_today: int = 0
+        self._max_reply_chain_daily = int(getattr(config, "x_max_reply_chain_daily", 8))
+        self._max_reply_chain_per_session = int(getattr(config, "x_max_reply_chain_per_session", 3))
+        self._max_chain_depth = int(getattr(config, "x_max_chain_depth", 4))
+        self._chain_cooldown_hours = float(getattr(config, "x_chain_cooldown_hours", 2.0))
+
         # ── Active hours (16h window by default — human-like awake schedule) ──
         self._active_hours_start = int(getattr(config, "x_active_hours_start", 8))   # 8 AM
         self._active_hours_end = int(getattr(config, "x_active_hours_end", 0))       # midnight (0 = 24)
@@ -300,6 +309,7 @@ class XAutonomousAgent:
             self._posts_today = 0
             self._engagements_today = 0
             self._mention_replies_today = 0
+            self._reply_chain_replies_today = 0
             self._grok_vision_today = 0
             self._grok_images_today = 0
             self._last_reset = today
@@ -488,6 +498,10 @@ class XAutonomousAgent:
         # ── ALWAYS check mentions first — replies are highest priority ──
         activities.append({"type": "check_mentions", "pause_key": "mention"})
 
+        # ── Check reply chains — continue conversations people started with us ──
+        if self._reply_chains and self._reply_chain_replies_today < self._max_reply_chain_daily:
+            activities.append({"type": "check_reply_chains", "pause_key": "engage"})
+
         # ── Browse (scroll the feed) ──
         activities.append({"type": "browse_engage", "pause_key": "engage"})
 
@@ -516,6 +530,8 @@ class XAutonomousAgent:
             await self._check_mentions()
         elif t == "join_trend":
             await self._join_trend()
+        elif t == "check_reply_chains":
+            await self._check_reply_chains()
 
     # ══════════════════════════════════════════════════════════════════
     #  CONSCIOUSNESS (think, reflect, evolve — called between sessions)
@@ -777,7 +793,7 @@ class XAutonomousAgent:
                 continue
 
             await self._engage_with_tweet(tweet)
-            self._engaged_tweet_ids.add(tweet_id)
+            # _engaged_tweet_ids.add is now inside _engage_with_tweet (before API calls)
 
             # Human-like pause between tweets (reading the next one)
             await asyncio.sleep(self._human_delay(10, 30))
@@ -1044,6 +1060,27 @@ class XAutonomousAgent:
             "key points they're making",
             "in a way that's:",
             "in a way that is:",
+            # ── Reply chain / conversation continuation leaks ──────────
+            "i decided to continue",
+            "i chose to continue",
+            "continuing this conversation",
+            "continuing the conversation",
+            "based on our conversation history",
+            "based on our past interactions",
+            "our previous interactions",
+            "my interest score",
+            "interest level",
+            "deliberation",
+            "according to my memory",
+            "my memory indicates",
+            "from my memory",
+            "the chain context",
+            "reply chain",
+            "conversation chain",
+            "thread depth",
+            "depth penalty",
+            "engagement system",
+            "interest evaluation",
         ]
         if any(phrase in t for phrase in meta_phrases):
             return True
@@ -1144,6 +1181,10 @@ class XAutonomousAgent:
         if not tweet_id or not tweet_text:
             return
 
+        # Mark as engaged IMMEDIATELY to prevent duplicate replies
+        # (e.g. same tweet found via mentions AND browse in the same session)
+        self._engaged_tweet_ids.add(tweet_id)
+
         # Is this tweet relevant/interesting to our persona?
         if not self._is_relevant(tweet_text):
             return  # Scroll past — real users don't engage with everything
@@ -1197,6 +1238,10 @@ class XAutonomousAgent:
                 if result:
                     actions_taken.append("replied")
                     self._engagements_today += 1
+                    # Track our reply tweet_id for reply chain engagement
+                    my_reply_id = result.get("tweet_id")
+                    if my_reply_id:
+                        self._track_reply_chain(my_reply_id, tweet_id, username, tweet_text)
 
         # ── QUOTE TWEET (boosted when feeling strongly) ───────────────
         elif len(tweet_text) > 50:
@@ -1258,6 +1303,24 @@ class XAutonomousAgent:
                 f"\U0001f91d [{self.mind.get_mood_summary()}] @{username}: {', '.join(actions_taken)} "
                 f"[{self._engagements_today}/{self.max_daily_engagements}]"
             )
+
+    def _track_reply_chain(self, my_reply_id: str, original_tweet_id: str, username: str, tweet_text: str):
+        """Register a reply we made so we can check for follow-up replies later."""
+        self._reply_chains[my_reply_id] = {
+            "original_tweet_id": original_tweet_id,
+            "username": username,
+            "depth": 1,
+            "last_checked": datetime.now().isoformat(),
+            "topic": tweet_text[:120],
+            "interest": 0.5,
+            "created_at": datetime.now().isoformat(),
+        }
+        # Prune old chains to keep memory bounded (max 50 active)
+        if len(self._reply_chains) > 50:
+            # Remove oldest chains by created_at
+            sorted_chains = sorted(self._reply_chains.items(), key=lambda x: x[1].get("created_at", ""))
+            for key, _ in sorted_chains[:len(self._reply_chains) - 50]:
+                del self._reply_chains[key]
 
     def _is_relevant(self, text: str) -> bool:
         """Quick check if a tweet is relevant to our topics/interests."""
@@ -1343,15 +1406,24 @@ class XAutonomousAgent:
                 logger.info(f"📨 Mention reply cap reached ({max_replies}/day)")
                 break
             tweet_id = item["tweet_id"]
+            # Skip if already engaged (e.g. replied via browse_engage in a previous session)
+            if tweet_id in self._engaged_tweet_ids:
+                processed.append(item)
+                continue
             mentioner = item["username"]
             mention_text = item["text"]
             await asyncio.sleep(self._human_delay(8, 15))
             reply_text = await self._generate_mention_reply(mention_text, mentioner)
             if reply_text:
-                await self._safe_action("mention_reply", getattr(self._x(), 'reply', None), tweet_id, reply_text)
+                result = await self._safe_action("mention_reply", getattr(self._x(), 'reply', None), tweet_id, reply_text)
                 self._engaged_tweet_ids.add(tweet_id)
                 self._engagements_today += 1
                 self._mention_replies_today += 1
+                # Track reply chain for conversation continuation
+                if result:
+                    my_reply_id = result.get("tweet_id")
+                    if my_reply_id:
+                        self._track_reply_chain(my_reply_id, tweet_id, mentioner, mention_text)
                 if mentioner:
                     self._known_users[mentioner] = self._known_users.get(mentioner, 0) + 2
                 self.mind.remember("mentioned", {
@@ -1367,6 +1439,476 @@ class XAutonomousAgent:
         for item in processed:
             self._mention_queue.remove(item)
         self._save_state()
+
+    # ══════════════════════════════════════════════════════════════════
+    #  ACTIVITY: CHECK REPLY CHAINS (continue conversations)
+    # ══════════════════════════════════════════════════════════════════
+
+    async def _check_reply_chains(self):
+        """
+        Check our recent replies for new follow-up replies from other users.
+        If someone replied to our reply, evaluate interest and maybe continue
+        the conversation — like a human checking their notifications.
+
+        Rate limits:
+        - Max _max_reply_chain_per_session per session (default 3)
+        - Max _max_reply_chain_daily per day (default 8)
+        - Cooldown: don't re-check same thread for _chain_cooldown_hours
+        - Max depth: _max_chain_depth levels deep (default 4)
+        """
+        if not self._reply_chains:
+            return
+        if self._reply_chain_replies_today >= self._max_reply_chain_daily:
+            return
+
+        now = datetime.now()
+        chains_replied = 0
+        chains_to_remove = []
+
+        # Shuffle to avoid always checking in the same order
+        chain_items = list(self._reply_chains.items())
+        random.shuffle(chain_items)
+
+        for my_reply_id, chain_info in chain_items:
+            if chains_replied >= self._max_reply_chain_per_session:
+                break
+            if self._reply_chain_replies_today >= self._max_reply_chain_daily:
+                break
+            if not self.running:
+                break
+
+            # ── Skip if on cooldown ──
+            last_checked = chain_info.get("last_checked")
+            if last_checked:
+                try:
+                    last_dt = datetime.fromisoformat(last_checked)
+                    hours_since = (now - last_dt).total_seconds() / 3600
+                    if hours_since < self._chain_cooldown_hours:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            # ── Skip if max depth reached ──
+            depth = chain_info.get("depth", 1)
+            if depth >= self._max_chain_depth:
+                chains_to_remove.append(my_reply_id)
+                continue
+
+            # ── Human-like pause before checking (scrolling to notifications) ──
+            await asyncio.sleep(self._human_delay(8, 15))
+
+            try:
+                # Fetch replies to our reply
+                result = await self._x().get_tweet_replies(my_reply_id, count=10)
+                if not result.get("success"):
+                    # Tweet might be deleted or unavailable
+                    chain_info["last_checked"] = now.isoformat()
+                    continue
+
+                replies = result.get("replies", [])
+                if not replies:
+                    chain_info["last_checked"] = now.isoformat()
+                    continue
+
+                # Find new replies we haven't engaged with yet
+                new_replies = [
+                    r for r in replies
+                    if r.get("id") and r["id"] not in self._engaged_tweet_ids
+                    and r.get("username", "").lower() != self._get_own_username().lower()
+                ]
+
+                if not new_replies:
+                    chain_info["last_checked"] = now.isoformat()
+                    continue
+
+                # ── Fast pre-filter: skip obviously hollow replies without LLM ──
+                viable_replies = []
+                for reply in new_replies:
+                    if not self._is_hollow_reply(reply):
+                        viable_replies.append(reply)
+                    else:
+                        # Mark as seen so we don't re-check
+                        self._engaged_tweet_ids.add(reply["id"])
+
+                if not viable_replies:
+                    chain_info["last_checked"] = now.isoformat()
+                    continue
+
+                # ── Deep evaluation: feel + think — let consciousness decide ──
+                best_reply = None
+                best_score = -1.0
+                best_reasoning = ""
+
+                for reply in viable_replies[:3]:  # Limit LLM calls per chain
+                    score, reasoning = await self._evaluate_reply_interest_deep(reply, chain_info)
+                    if score > best_score:
+                        best_score = score
+                        best_reply = reply
+                        best_reasoning = reasoning
+
+                if best_reply and best_score > 0.3:
+                    # ── Generate and post reply ──
+                    reply_username = best_reply.get("username", "someone")
+                    reply_text_content = best_reply.get("text", "")
+
+                    # "Thinking about what to say" — human delay
+                    await asyncio.sleep(self._human_delay(12, 30))
+
+                    chain_reply = await self._generate_chain_reply(
+                        reply_text_content,
+                        reply_username,
+                        chain_info.get("topic", ""),
+                        depth,
+                    )
+
+                    if chain_reply:
+                        result = await self._safe_action(
+                            "reply",
+                            getattr(self._x(), 'reply', None),
+                            best_reply["id"],
+                            chain_reply,
+                        )
+                        if result:
+                            # Mark as engaged
+                            self._engaged_tweet_ids.add(best_reply["id"])
+                            self._reply_chain_replies_today += 1
+                            self._engagements_today += 1
+                            chains_replied += 1
+
+                            # Update chain tracker — now tracking our NEW reply
+                            new_reply_id = result.get("tweet_id")
+                            if new_reply_id:
+                                self._reply_chains[new_reply_id] = {
+                                    "original_tweet_id": chain_info.get("original_tweet_id"),
+                                    "username": reply_username,
+                                    "depth": depth + 1,
+                                    "last_checked": now.isoformat(),
+                                    "topic": reply_text_content[:120],
+                                    "interest": best_score,
+                                    "created_at": now.isoformat(),
+                                }
+
+                            # Remove old chain entry (we're now tracking the new reply)
+                            chains_to_remove.append(my_reply_id)
+
+                            # Deepen relationship
+                            if reply_username:
+                                self._known_users[reply_username] = self._known_users.get(reply_username, 0) + 1
+
+                            self.mind.remember("chain_reply", {
+                                "to_user": reply_username,
+                                "their_text": reply_text_content[:200],
+                                "our_reply": chain_reply[:200],
+                                "depth": depth + 1,
+                                "interest_score": round(best_score, 2),
+                            })
+
+                            logger.info(
+                                f"🔗 Reply chain [{depth + 1}/{self._max_chain_depth}] "
+                                f"→ @{reply_username} (interest={best_score:.2f}) "
+                                f"[{self._reply_chain_replies_today}/{self._max_reply_chain_daily}]"
+                            )
+                else:
+                    # Not interested enough — let the conversation die naturally
+                    if best_score <= 0.0:
+                        chains_to_remove.append(my_reply_id)
+                    logger.debug(
+                        f"🔗 Chain skip — interest too low ({best_score:.2f}) for reply from "
+                        f"@{best_reply.get('username', '?') if best_reply else '?'}"
+                    )
+
+                chain_info["last_checked"] = now.isoformat()
+
+            except Exception as e:
+                logger.debug(f"Reply chain check error for {my_reply_id}: {e}")
+                chain_info["last_checked"] = now.isoformat()
+
+        # Clean up exhausted/dead chains
+        for rid in chains_to_remove:
+            self._reply_chains.pop(rid, None)
+
+        if chains_replied > 0:
+            self._save_state()
+
+    def _is_hollow_reply(self, reply: Dict) -> bool:
+        """
+        Fast pre-filter: detect obviously empty/hollow replies that aren't
+        worth an LLM call. No AI here — pure pattern matching.
+        Returns True if the reply is hollow (skip it).
+        """
+        reply_text = reply.get("text", "").strip()
+
+        # Too short to be meaningful
+        if len(reply_text) < 5:
+            return True
+
+        # Known hollow patterns (single-word or 2-word throwaway responses)
+        hollow_patterns = {
+            "ok", "okay", "thanks", "thx", "ty", "lol", "lmao", "haha", "hahaha",
+            "true", "facts", "agreed", "yep", "yes", "no", "nah", "idk",
+            "same", "fr", "bet", "nice", "cool", "wow", "damn", "rip",
+            "based", "w", "l", "ratio", "cap", "no cap", "ong", "real",
+            "exactly", "this", "right", "word", "yea", "yeah", "nope",
+            "100", "💯", "🔥", "😂", "💀", "👏", "🙏",
+        }
+        text_lower = reply_text.lower().strip().rstrip(".!,?")
+        if text_lower in hollow_patterns:
+            return True
+
+        # Very short non-question (1-2 words and no question mark)
+        if len(text_lower.split()) <= 2 and "?" not in reply_text:
+            return True
+
+        return False
+
+    async def _evaluate_reply_interest_deep(self, reply: Dict, chain_info: Dict) -> tuple:
+        """
+        AGI-like interest evaluation using consciousness.
+
+        Instead of hardcoded weights, this:
+        1. Feels the reply emotionally (mind.feel)
+        2. Recalls past interactions with this user (memory)
+        3. Asks the AI to deliberate: "Do I want to continue?" (mind-level decision)
+
+        Returns (score: float 0.0-1.0, reasoning: str).
+        """
+        reply_text = reply.get("text", "")
+        reply_username = reply.get("username", "")
+        depth = chain_info.get("depth", 1)
+        topic = chain_info.get("topic", "")
+
+        # ── Step 1: FEEL the reply — let emotions react naturally ──
+        emotion_result = await self.mind.feel(reply_text)
+        mood = self.mind._mood
+        intensity = self.mind._mood_intensity
+        valence, arousal = EMOTION_SPECTRUM.get(mood, (0.0, 0.2))
+
+        # ── Step 2: RECALL past interactions with this user ──
+        past_interactions = []
+        for mem in self.mind.recall(limit=100):
+            mem_data = mem.get("data", {})
+            mem_user = mem_data.get("user", "") or mem_data.get("by", "") or mem_data.get("to_user", "")
+            if mem_user and mem_user.lower() == reply_username.lower():
+                past_interactions.append(mem)
+        past_interactions = past_interactions[-5:]  # Last 5 interactions with this user
+
+        # Also recall past chain replies for conversation quality assessment
+        past_chains = self.mind.recall("chain_reply", limit=10)
+
+        # ── Step 3: Build context for the AI deliberation ──
+        relationship_desc = "unknown person"
+        rel_count = self._known_users.get(reply_username, 0)
+        if rel_count > 5:
+            relationship_desc = f"regular — we've interacted {rel_count} times"
+        elif rel_count > 0:
+            relationship_desc = f"acquaintance — {rel_count} past interaction(s)"
+
+        past_context = ""
+        if past_interactions:
+            snippets = []
+            for m in past_interactions[-3:]:
+                mtype = m.get("type", "?")
+                mdata = m.get("data", {})
+                snippet = mdata.get("text", mdata.get("their_text", mdata.get("tweet", "")))[:80]
+                snippets.append(f"  - [{mtype}] {snippet}")
+            past_context = f"\nPast interactions with @{reply_username}:\n" + "\n".join(snippets)
+
+        chain_context = ""
+        if past_chains:
+            avg_depth = sum(c.get("data", {}).get("depth", 1) for c in past_chains) / len(past_chains)
+            chain_context = f"\nYour average reply chain depth is {avg_depth:.1f} replies."
+
+        # ── Step 4: ASK the consciousness — deliberate ──
+        system = (
+            "You are the decision-making layer of an autonomous X agent. "
+            "You must decide if you want to CONTINUE a conversation or LET IT DIE. "
+            "Return ONLY a JSON object with two keys:\n"
+            '  "interest": a float between 0.0 and 1.0\n'
+            '  "reasoning": a brief 1-sentence reason\n\n'
+            "Guidelines:\n"
+            "- 0.0-0.3 = not interested, let it die\n"
+            "- 0.3-0.6 = mildly interesting, could go either way\n"
+            "- 0.6-1.0 = genuinely want to continue\n\n"
+            "Consider: Is this conversation going somewhere? Do I have something real to add? "
+            "Am I emotionally engaged? Is this person worth building a relationship with? "
+            "Am I going too deep into this thread (diminishing returns)?"
+        )
+
+        user_prompt = (
+            f"CONVERSATION CONTEXT:\n"
+            f"- Original topic: \"{topic[:150]}\"\n"
+            f"- Current depth: reply #{depth} (max {self._max_chain_depth})\n"
+            f"- @{reply_username}: {relationship_desc}\n"
+            f"{past_context}\n"
+            f"{chain_context}\n\n"
+            f"THEIR REPLY TO YOU:\n"
+            f"\"{reply_text[:400]}\"\n\n"
+            f"YOUR CURRENT EMOTIONAL STATE:\n"
+            f"- Mood: {mood} (intensity: {intensity:.2f})\n"
+            f"- Valence: {valence:.1f} | Arousal: {arousal:.1f}\n\n"
+            f"SOCIAL SIGNALS:\n"
+            f"- Their reply has {reply.get('likes', 0)} likes\n"
+            f"- Reply length: {len(reply_text)} chars\n"
+            f"- Contains question: {'yes' if '?' in reply_text else 'no'}\n\n"
+            f"Do you want to continue this conversation?"
+        )
+
+        try:
+            # Use raw LLM call — NOT _ask_ai which injects "output only tweet text"
+            # and runs _is_meta_response (which would reject valid JSON deliberations)
+            response = await self._ask_llm(system, user_prompt)
+            if not response:
+                response = await self._ask_grok(system, user_prompt)
+            if response:
+                # Strip <think> blocks if present
+                response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
+                response = re.sub(r"<think>.*", "", response, flags=re.DOTALL)
+                response = response.strip()
+                # Parse the JSON response
+                data = None
+                try:
+                    data = json.loads(response)
+                except json.JSONDecodeError:
+                    # Try extracting JSON from text
+                    match = re.search(r'\{[^{}]+\}', response)
+                    if match:
+                        try:
+                            data = json.loads(match.group(0))
+                        except json.JSONDecodeError:
+                            pass
+
+                if data and "interest" in data:
+                    score = float(data["interest"])
+                    score = max(0.0, min(1.0, score))
+                    reasoning = data.get("reasoning", "")
+
+                    # Apply a hard depth penalty even the AI can't override —
+                    # prevents infinite conversations
+                    depth_penalty = max(0, (depth - 2) * 0.1)
+                    score = max(0.0, score - depth_penalty)
+
+                    self.mind.remember("chain_deliberation", {
+                        "user": reply_username,
+                        "reply_preview": reply_text[:100],
+                        "interest": round(score, 2),
+                        "reasoning": reasoning[:200],
+                        "depth": depth,
+                        "mood": mood,
+                    })
+
+                    return (score, reasoning)
+
+        except Exception as e:
+            logger.debug(f"Deep interest eval failed: {e}")
+
+        # Fallback: use emotional state as a rough proxy
+        # High arousal + any valence → interested, low arousal → bored
+        fallback_score = 0.3 + (arousal * 0.4) + (abs(valence) * 0.2)
+        fallback_score -= (depth - 1) * 0.15
+        fallback_score = max(0.0, min(1.0, fallback_score))
+        return (fallback_score, f"fallback: mood={mood}, arousal={arousal:.1f}")
+
+    async def _generate_chain_reply(
+        self, their_text: str, username: str, conversation_topic: str, depth: int
+    ) -> Optional[str]:
+        """
+        Generate a reply to continue a conversation thread.
+        Uses memory, emotional state, and relationship context for authenticity.
+        """
+        # Feel the reply — emotional reaction shapes the response
+        await self.mind.feel(their_text)
+
+        # ── Pull relationship memory — what do we know about this person? ──
+        past_with_user = []
+        for mem in self.mind.recall(limit=100):
+            mem_data = mem.get("data", {})
+            mem_user = mem_data.get("user", "") or mem_data.get("by", "") or mem_data.get("to_user", "")
+            if mem_user and mem_user.lower() == username.lower():
+                past_with_user.append(mem)
+        past_with_user = past_with_user[-5:]
+
+        relationship_context = ""
+        if past_with_user:
+            snippets = []
+            for m in past_with_user[-3:]:
+                mtype = m.get("type", "?")
+                mdata = m.get("data", {})
+                text_preview = mdata.get("text", mdata.get("their_text", mdata.get("tweet", "")))[:60]
+                our_reply = mdata.get("our_reply", mdata.get("reply", ""))[:60]
+                if our_reply:
+                    snippets.append(f"  [{mtype}] them: \"{text_preview}\" → you: \"{our_reply}\"")
+                else:
+                    snippets.append(f"  [{mtype}] \"{text_preview}\"")
+            relationship_context = (
+                f"\n\nYour conversation history with @{username}:\n" + "\n".join(snippets) +
+                f"\n(You've interacted {self._known_users.get(username, 0)} times total)"
+            )
+
+        # ── Adjust tone based on depth ──
+        if depth >= 3:
+            length_hint = "Keep it very short and casual (1-2 sentences, like a quick DM)."
+        elif depth >= 2:
+            length_hint = "Keep it conversational and concise (2-3 sentences max)."
+        else:
+            length_hint = "Write a natural reply (max 280 chars)."
+
+        # ── Get the AI's recent deliberation reasoning ──
+        deliberation_hint = ""
+        recent_deliberations = self.mind.recall("chain_deliberation", limit=3)
+        for d in reversed(recent_deliberations):
+            if d.get("data", {}).get("user", "").lower() == username.lower():
+                reason = d.get("data", {}).get("reasoning", "")
+                if reason:
+                    deliberation_hint = f"\n\nYou decided to continue because: {reason}"
+                break
+
+        system_prompt = (
+            f"{self.mind.get_voice_prompt()}\n\n"
+            f"You're in an ongoing conversation (reply #{depth + 1} deep). "
+            f"The conversation started about: \"{conversation_topic[:100]}\"\n\n"
+            f"{length_hint}\n"
+            f"Sound natural — don't force the conversation. If you don't have "
+            f"much to add, a short acknowledgment or question is fine. "
+            f"NEVER explain that you're an AI or that you're replying to continue engagement."
+            f"{relationship_context}"
+            f"{deliberation_hint}"
+        )
+        if self.language != "en":
+            system_prompt += f" Write in {self.language}."
+
+        user_prompt = f"@{username} replied to you:\n\"{their_text[:500]}\"\n\nYour reply:"
+        text = await self._ask_ai(system_prompt, user_prompt)
+        if not text:
+            return None
+        text = self._clean_tweet(text)
+        if not text:
+            return None
+
+        # ── Extra safety: catch chain-specific prompt leaks ──
+        # These patterns should NEVER appear in a real tweet
+        chain_leak_patterns = [
+            r"(?:based on|from|according to)\s+(?:our|my)\s+(?:conversation|interaction|chain)",
+            r"(?:i decided|i chose) to (?:continue|reply|respond|engage)",
+            r"\binterest (?:score|level|evaluation)\b",
+            r"\breply chain\b",
+            r"\bdeliberation\b",
+            r"\bthread depth\b",
+            r"(?:my |the )memory (?:indicates|shows|says)",
+            r"\bconversation history\b",
+            r"you(?:'ve| have) interacted \d+ times",
+        ]
+        text_lower = text.lower()
+        for pattern in chain_leak_patterns:
+            if re.search(pattern, text_lower):
+                logger.warning(f"🔗 Chain reply rejected — prompt leak detected: {text[:80]}...")
+                return None
+
+        return text
+
+    def _get_own_username(self) -> str:
+        """Get the bot's own X username to filter out self-replies."""
+        # Try to get from config, fallback to empty (safe — won't filter anything)
+        return str(getattr(self.config, "x_username", "") or "")
 
     # ══════════════════════════════════════════════════════════════════
     #  ACTIVITY: JOIN TREND
@@ -2053,6 +2595,8 @@ class XAutonomousAgent:
                 "last_engage_at": self._last_engage_at.isoformat() if getattr(self, '_last_engage_at', None) else None,
                 "daily_limit_hit": getattr(self, '_daily_limit_hit', False),
                 "mention_queue": self._mention_queue[-100:],  # persist pending mentions
+                "reply_chains": dict(list(self._reply_chains.items())[-50:]),  # active reply chains
+                "reply_chain_replies_today": self._reply_chain_replies_today,
             }
             self._state_file.write_text(json.dumps(state, indent=2, default=str))
         except Exception as e:
@@ -2072,11 +2616,13 @@ class XAutonomousAgent:
             self._engagement_log = state.get("engagement_log", [])
             self._style_scores = state.get("style_scores", self._style_scores)
             self._mention_queue = state.get("mention_queue", [])
+            self._reply_chains = state.get("reply_chains", {})
 
             if state.get("last_reset") == str(datetime.now().date()):
                 self._posts_today = state.get("posts_today", 0)
                 self._engagements_today = state.get("engagements_today", 0)
                 self._daily_limit_hit = state.get("daily_limit_hit", False)
+                self._reply_chain_replies_today = state.get("reply_chain_replies_today", 0)
 
             if self._daily_limit_hit:
                 logger.warning("\U0001f6ab Daily post limit was hit today — posting stays blocked until midnight")
@@ -2121,6 +2667,9 @@ class XAutonomousAgent:
             "self_heal": self._healer.get_status(),
             "mode": "sequential",
             "consciousness_cycles": self._consciousness_cycle,
+            "reply_chains_active": len(self._reply_chains),
+            "reply_chain_replies_today": self._reply_chain_replies_today,
+            "max_reply_chain_daily": self._max_reply_chain_daily,
         }
 
 
