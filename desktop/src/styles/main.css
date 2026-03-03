@@ -136,6 +136,60 @@ html, body, #root {
 .titlebar-btn:hover { background: var(--bg-hover); color: var(--text); }
 .titlebar-btn.close:hover { background: #c0392b; color: #fff; }
 
+/* ─── macOS traffic light controls ───────────────────────────────── */
+.mac-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.mac-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: filter 0.15s;
+  position: relative;
+}
+
+.mac-btn svg {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  position: absolute;
+}
+
+.mac-btn svg line,
+.mac-btn svg polyline {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.mac-controls:hover .mac-btn svg { opacity: 1; }
+
+.mac-close    { background: #ff5f57; }
+.mac-minimize { background: #febc2e; }
+.mac-maximize { background: #28c840; }
+
+.mac-close:hover    { background: #ff4136; }
+.mac-minimize:hover { background: #f5a623; }
+.mac-maximize:hover { background: #1db954; }
+
+.mac-btn:active { filter: brightness(0.8); }
+
+/* Unfocused: gray out traffic lights */
+.app:not(:focus-within) .mac-btn { background: var(--bg-hover); }
+.app:not(:focus-within) .mac-btn svg { opacity: 0; }
+
 /* ─── Day / Night toggle button ──────────────────────────────────── */
 .theme-toggle input[type="checkbox"] { display: none; }
 .theme-toggle { -webkit-app-region: no-drag; }
@@ -298,6 +352,33 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.sidebar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  transform: translateX(-2px);
 }
 
 .sidebar-logo {

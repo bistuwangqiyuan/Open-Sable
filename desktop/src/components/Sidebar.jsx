@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSableStore } from '../hooks/useSable.js'
 
-export default function Sidebar({ collapsed = false, onOpenDevStudio }) {
+export default function Sidebar({ collapsed = false, onOpenDevStudio, onToggle }) {
   const sessions = useSableStore(s => s.sessions)
   const activeSessionId = useSableStore(s => s.activeSessionId)
   const wsStatus = useSableStore(s => s.wsStatus)
@@ -17,8 +17,15 @@ export default function Sidebar({ collapsed = false, onOpenDevStudio }) {
   return (
     <div className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-header">
-        <div className="sidebar-logo" onClick={goHome} title="Home" style={{ cursor: 'pointer' }}>
-          <img src="./logo.png" alt="Sable" />
+        <div className="sidebar-header-row">
+          <div className="sidebar-logo" onClick={goHome} title="Home" style={{ cursor: 'pointer' }}>
+            <img src="./logo.png" alt="Sable" />
+          </div>
+          <button className="sidebar-close-btn" onClick={onToggle} title="Close sidebar (Ctrl+B)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         </div>
         <button className="new-chat-btn" onClick={newChat}>
           <span>＋</span>

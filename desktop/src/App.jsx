@@ -47,6 +47,10 @@ export default function App() {
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [devStudioOpen, setDevStudioOpen] = useState(false)
 
+  // ── Platform detection (macOS puts controls on the left) ──────────────
+  const platform = api?.platform || 'linux'
+  const isMac = platform === 'darwin'
+
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(v => {
       const next = !v
@@ -112,24 +116,46 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // ── Auto-hide sidebar when Dev Studio opens (not part of webview) ─────
+  useEffect(() => {
+    if (devStudioOpen) {
+      setSidebarCollapsed(true)
+      localStorage.setItem('sable-sidebar', 'collapsed')
+    }
+  }, [devStudioOpen])
+
   return (
-    <div className="app">
+    <div className="app" data-platform={platform}>
       {/* ── Titlebar ─────────────────────────────────────────────────────── */}
       <div className="titlebar">
         <div className="titlebar-left">
-          <button
-            className="sidebar-toggle-btn"
-            onClick={toggleSidebar}
-            title={sidebarCollapsed ? 'Show sidebar (Ctrl+B)' : 'Hide sidebar (Ctrl+B)'}
-            style={{ WebkitAppRegion: 'no-drag' }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
-              {sidebarCollapsed
-                ? <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>
-                : <><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></>
-              }
-            </svg>
-          </button>
+          {/* macOS traffic lights (close / minimize / maximize on the LEFT) */}
+          {isMac && (
+            <div className="mac-controls" style={{ WebkitAppRegion: 'no-drag' }}>
+              <button className="mac-btn mac-close" onClick={() => api?.close()} title="Close">
+                <svg viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9"/><line x1="9" y1="3" x2="3" y2="9"/></svg>
+              </button>
+              <button className="mac-btn mac-minimize" onClick={() => api?.minimize()} title="Minimize">
+                <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+              </button>
+              <button className="mac-btn mac-maximize" onClick={() => api?.maximize()} title="Maximize">
+                <svg viewBox="0 0 12 12"><polyline points="4 2 10 2 10 8"/><polyline points="8 10 2 10 2 4"/></svg>
+              </button>
+            </div>
+          )}
+          {/* Only show hamburger in titlebar when sidebar is collapsed */}
+          {sidebarCollapsed && (
+            <button
+              className="sidebar-toggle-btn"
+              onClick={toggleSidebar}
+              title="Show sidebar (Ctrl+B)"
+              style={{ WebkitAppRegion: 'no-drag' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          )}
           <div className="titlebar-status">
             <div className="titlebar-status-dot" />
             SableCore
@@ -180,15 +206,20 @@ export default function App() {
               <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
             </svg>
           </button>
-          <button className="titlebar-btn" title="Minimize" onClick={() => api?.minimize()}>—</button>
-          <button className="titlebar-btn" title="Maximize" onClick={() => api?.maximize()}>□</button>
-          <button className="titlebar-btn close" title="Close" onClick={() => api?.close()}>✕</button>
+          {/* Windows / Linux window controls on the RIGHT */}
+          {!isMac && (
+            <>
+              <button className="titlebar-btn" title="Minimize" onClick={() => api?.minimize()}>—</button>
+              <button className="titlebar-btn" title="Maximize" onClick={() => api?.maximize()}>□</button>
+              <button className="titlebar-btn close" title="Close" onClick={() => api?.close()}>✕</button>
+            </>
+          )}
         </div>
       </div>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="main">
-        <Sidebar collapsed={sidebarCollapsed} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false) }} />
+        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false) }} />
         {devStudioOpen
           ? <DevStudioPanel onClose={() => setDevStudioOpen(false)} />
           : dashboardOpen
