@@ -37,26 +37,20 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 
 ### Automated Install (Recommended)
 
-**Linux/Mac:**
-```bash
-git clone https://github.com/IdeoaLabs/Open-Sable.git
-cd Open-Sable
-./quickstart.sh
-```
-
-**Any OS (with Python):**
 ```bash
 git clone https://github.com/IdeoaLabs/Open-Sable.git
 cd Open-Sable
 python3 install.py
 ```
 
-The installer will:
-- ✅ Create virtual environment
-- ✅ Install all dependencies
-- ✅ Set up configuration
-- ✅ Install Ollama (optional)
-- ✅ Pull LLM model
+The installer handles **everything** automatically — Python venv, pip dependencies, Node.js sub-projects (Dev Studio, Dashboard, Desktop, Aggr Charts), Playwright browsers, Ollama + optimal LLM model, and `.env` setup. Works on Linux, macOS, and Windows.
+
+```bash
+python3 install.py --full      # Install everything, no prompts
+python3 install.py --core      # Python core only (minimal)
+python3 install.py --status    # Show what's installed / missing
+python3 install.py --fix       # Auto-fix broken installs
+```
 
 ### Manual Install
 

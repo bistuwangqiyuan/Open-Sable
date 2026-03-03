@@ -1,14 +1,6 @@
 # Installing Open-Sable
 
-## Quick Install (Linux / macOS)
-
-```bash
-git clone https://github.com/IdeoaLabs/Open-Sable.git
-cd Open-Sable
-./quickstart.sh
-```
-
-## Automated Install (Any OS)
+## Automated Install (Recommended — Any OS)
 
 ```bash
 git clone https://github.com/IdeoaLabs/Open-Sable.git
@@ -16,7 +8,23 @@ cd Open-Sable
 python3 install.py
 ```
 
-The installer handles venv creation, dependencies, Ollama install, model download, dashboard build, marketplace build, and optional desktop/WhatsApp setup.
+The installer handles **everything** automatically:
+- Python 3.11+ check
+- Virtual environment creation
+- All pip dependencies (requirements.txt + opensable package)
+- Node.js check/install
+- npm sub-projects (Dev Studio, Dashboard, Desktop App, Aggr Charts)
+- Playwright browsers (for web scraping)
+- Ollama install + optimal LLM model selection
+- `.env` configuration from template
+- Directory structure setup
+
+```bash
+python3 install.py --full      # Install everything, no prompts
+python3 install.py --core      # Python core only (minimal, no JS sub-projects)
+python3 install.py --status    # Show what's installed / missing
+python3 install.py --fix       # Auto-detect and repair broken installs
+```
 
 ## Manual Install
 
@@ -71,15 +79,19 @@ pip install -e ".[monitoring]"   # Prometheus metrics
 pip install -e ".[dev]"          # Development tools (pytest, black, ruff)
 ```
 
-### Dashboard & Marketplace (Node.js)
+### Dashboard & Sub-projects (Node.js)
+
+These are installed automatically by `python3 install.py`. To install manually:
 
 ```bash
 # React Dashboard (served at /dashboard on the gateway)
 cd dashboard && npm install && npm run build && cd ..
 
-# Skills Marketplace
-cd marketplace/server && npm install && cd ../..
-cd marketplace/client && npm install && npm run build && cd ../..
+# Dev Studio (AI app builder)
+cd sable_dev && npm install && cd ..
+
+# Aggr Charts (crypto market visualization)
+cd aggr && npm install && npx vite build --base /aggr/ && cd ..
 ```
 
 ### Desktop App (Electron)

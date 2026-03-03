@@ -1,189 +1,127 @@
 #!/bin/bash
-set -e  # Exit on error
+# ============================================================
+#  Open-Sable — 1-Click Setup (Linux / macOS)
+#  This script ensures Python 3.11+ exists, then delegates
+#  everything to install.py which handles the full setup.
+# ============================================================
+set -e
 
-echo "🚀 Open-Sable Quick Setup for Linux/Mac"
-echo "========================================"
-echo ""
+BOLD="\033[1m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+RED="\033[31m"
+CYAN="\033[36m"
+RESET="\033[0m"
 
-# Check Python
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 not found. Please install Python 3.11+"
-    exit 1
-fi
+header() { echo -e "\n${BOLD}${CYAN}$1${RESET}"; }
+ok()     { echo -e "  ${GREEN}✓${RESET} $1"; }
+warn()   { echo -e "  ${YELLOW}!${RESET} $1"; }
+fail()   { echo -e "  ${RED}✗${RESET} $1"; }
 
-# Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+echo -e "${BOLD}${CYAN}"
+echo "╔═══════════════════════════════════════════╗"
+echo "║     Open-Sable  —  1-Click Setup          ║"
+echo "╚═══════════════════════════════════════════╝"
+echo -e "${RESET}"
 
-if [ "$MAJOR" -lt 3 ] || ([ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 11 ]); then
-    echo "❌ Python 3.11+ required. Current: $PYTHON_VERSION"
-    exit 1
-fi
+# ------------------------------------------------------------------
+#  1. Ensure Python 3.11+ is available
+# ------------------------------------------------------------------
+header "Checking Python..."
 
-echo "✅ Python $PYTHON_VERSION detected"
+need_python=false
 
-# Create venv
-if [ ! -d "venv" ]; then
-    echo ""
-    echo "🔨 Creating virtual environment..."
-    python3 -m venv venv
-    echo "✅ Virtual environment created"
-else
-    echo "✅ Virtual environment already exists"
-fi
-
-# Activate venv
-echo ""
-echo "🔄 Activating virtual environment..."
-source venv/bin/activate
-
-# Upgrade pip
-echo ""
-echo "📦 Upgrading pip..."
-pip install --upgrade pip setuptools wheel > /dev/null 2>&1
-
-# Install core
-echo ""
-echo "📦 Installing Open-Sable (this may take a few minutes)..."
-pip install -r requirements.txt
-pip install -e ".[core]"
-
-# Create directories
-echo ""
-echo "📁 Setting up directories..."
-mkdir -p data logs config
-echo "✅ Directories created"
-
-# Setup .env
-echo ""
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        echo "⚙️  Setting up configuration..."
-        cp .env.example .env
-        echo "✅ Created .env file"
+if command -v python3 &>/dev/null; then
+    PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+    if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 11 ]; then
+        ok "Python $PY_VER found"
     else
-        echo "⚠️  .env.example not found - skipping .env creation"
+        warn "Python $PY_VER found but 3.11+ is required"
+        need_python=true
     fi
 else
-    echo "✅ .env file already exists"
+    warn "Python 3 not found"
+    need_python=true
 fi
 
-# Install Ollama automatically if not present
-echo ""
-if ! command -v ollama &> /dev/null; then
-    echo "📥 Ollama not found - installing automatically..."
-    
+if [ "$need_python" = true ]; then
+    header "Installing Python 3..."
+
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        if command -v brew &> /dev/null; then
-            brew install ollama
+        # macOS — try Homebrew first, then Xcode Command Line Tools
+        if command -v brew &>/dev/null; then
+            echo "  Installing via Homebrew..."
+            brew install python@3.12
+            ok "Python installed via Homebrew"
         else
-            echo "❌ Homebrew not found - installing Ollama manually..."
-            curl -fsSL https://ollama.com/install.sh | sh
+            echo "  Installing Homebrew first..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Add brew to path for current session
+            if [ -f /opt/homebrew/bin/brew ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [ -f /usr/local/bin/brew ]; then
+                eval "$(/usr/local/bin/brew shellenv)"
+            fi
+            brew install python@3.12
+            ok "Homebrew + Python installed"
         fi
     else
-        # Linux
-        curl -fsSL https://ollama.com/install.sh | sh
+        # Linux — try package manager
+        if command -v apt-get &>/dev/null; then
+            echo "  Installing via apt (may ask for sudo password)..."
+            sudo apt-get update -qq
+            sudo apt-get install -y python3.12 python3.12-venv python3.12-dev python3-pip 2>/dev/null \
+                || sudo apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip 2>/dev/null \
+                || sudo apt-get install -y python3 python3-venv python3-dev python3-pip
+            ok "Python installed via apt"
+        elif command -v dnf &>/dev/null; then
+            echo "  Installing via dnf (may ask for sudo password)..."
+            sudo dnf install -y python3.12 python3.12-devel 2>/dev/null \
+                || sudo dnf install -y python3.11 python3.11-devel 2>/dev/null \
+                || sudo dnf install -y python3 python3-devel python3-pip
+            ok "Python installed via dnf"
+        elif command -v pacman &>/dev/null; then
+            echo "  Installing via pacman (may ask for sudo password)..."
+            sudo pacman -Sy --noconfirm python python-pip
+            ok "Python installed via pacman"
+        elif command -v zypper &>/dev/null; then
+            echo "  Installing via zypper (may ask for sudo password)..."
+            sudo zypper install -y python312 python312-pip 2>/dev/null \
+                || sudo zypper install -y python311 python311-pip 2>/dev/null \
+                || sudo zypper install -y python3 python3-pip
+            ok "Python installed via zypper"
+        else
+            fail "No supported package manager found (apt, dnf, pacman, zypper)"
+            echo ""
+            echo "  Please install Python 3.11+ manually:"
+            echo "    https://www.python.org/downloads/"
+            echo ""
+            echo "  Then re-run:  ./quickstart.sh"
+            exit 1
+        fi
     fi
-    
-    echo "✅ Ollama installed"
-else
-    echo "✅ Ollama is already installed"
-fi
 
-# Pull model automatically based on system specs
-echo ""
-echo "🔍 Detecting system specifications..."
-
-# Get RAM in GB and CPU cores (cross-platform)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    RAM_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
-    RAM_GB=$((RAM_BYTES / 1073741824))
-    CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
-else
-    RAM_GB=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}' || echo 0)
-    CPU_CORES=$(nproc 2>/dev/null || echo 1)
-fi
-echo "   RAM: ${RAM_GB}GB | CPU Cores: $CPU_CORES"
-
-# Detect GPU
-if command -v nvidia-smi &> /dev/null; then
-    GPU_MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
-    GPU_MEM_GB=$((GPU_MEM / 1024))
-    echo "   GPU: NVIDIA with ${GPU_MEM_GB}GB VRAM"
-    HAS_GPU=true
-else
-    echo "   GPU: None detected (CPU only)"
-    HAS_GPU=false
-fi
-
-# Auto-select optimal model based on hardware
-if [ "$HAS_GPU" = true ] && [ "$GPU_MEM_GB" -ge 20 ]; then
-    MODEL="llama3.1:70b"
-    echo "   🚀 Auto-selected: $MODEL (Best quality for your GPU)"
-elif [ "$HAS_GPU" = true ] && [ "$GPU_MEM_GB" -ge 8 ]; then
-    MODEL="llama3.1:8b"
-    echo "   🚀 Auto-selected: $MODEL (Balanced GPU performance)"
-elif [ "$RAM_GB" -ge 32 ]; then
-    MODEL="llama3.1:8b"
-    echo "   🚀 Auto-selected: $MODEL (Balanced performance)"
-elif [ "$RAM_GB" -ge 8 ]; then
-    MODEL="llama3.2:3b"
-    echo "   🚀 Auto-selected: $MODEL (Efficient)"
-else
-    MODEL="llama3.2:1b"
-    echo "   🚀 Auto-selected: $MODEL (Ultra efficient)"
-fi
-
-echo "   📦 Agent will auto-download additional models as needed during runtime"
-
-echo ""
-if ollama list 2>/dev/null | grep -q "$MODEL"; then
-    echo "✅ $MODEL already installed"
-else
-    echo "📥 Downloading $MODEL (this may take a while)..."
-    ollama pull "$MODEL"
-    echo "✅ Model downloaded"
-fi
-
-# Update .env with selected model
-if [ -f .env ]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/DEFAULT_MODEL=.*/DEFAULT_MODEL=$MODEL/" .env
-    else
-        sed -i "s/DEFAULT_MODEL=.*/DEFAULT_MODEL=$MODEL/" .env
+    # Verify installation worked
+    if ! command -v python3 &>/dev/null; then
+        fail "Python installation failed. Please install Python 3.11+ manually."
+        exit 1
     fi
-    echo "✅ Updated .env with model: $MODEL"
+
+    PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    ok "Python $PY_VER ready"
 fi
 
+# ------------------------------------------------------------------
+#  2. Delegate to install.py (it handles everything else)
+# ------------------------------------------------------------------
+header "Launching installer..."
 echo ""
-echo "╔═══════════════════════════════════════════╗"
-echo "║                                           ║"
-echo "║   ✅ Installation Complete!               ║"
-echo "║                                           ║"
-echo "╚═══════════════════════════════════════════╝"
-echo ""
-echo "📝 Next Steps:"
-echo ""
-echo "1. Activate the virtual environment:"
-echo "   source venv/bin/activate"
-echo ""
-echo "2. Edit .env with your bot token:"
-echo "   - Get from @BotFather on Telegram"
-echo "   - Set: TELEGRAM_BOT_TOKEN=your_token_here"
-echo ""
-echo "3. Start Open-Sable (recommended — runs in background with logging):"
-echo "   ./start.sh start"
-echo ""
-echo "   Or run directly in the foreground:"
-echo "   python -m opensable"
-echo ""
-echo "   Useful commands:"
-echo "   ./start.sh status    — Check if agent is running"
-echo "   ./start.sh logs      — Follow live logs"
-echo "   ./start.sh stop      — Stop the agent"
-echo "   ./start.sh restart   — Restart the agent"
-echo ""
-echo "📚 More info: README.md | INSTALL.md"
-echo ""
+
+# Pass through any arguments, default to --full
+if [ $# -eq 0 ]; then
+    python3 install.py --full
+else
+    python3 install.py "$@"
+fi
