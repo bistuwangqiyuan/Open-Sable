@@ -1,0 +1,81 @@
+{
+  "price": {
+    "enabled": true,
+    "name": "Price",
+    "script": "var ohlc = options.useHeikinAshi ? \n    avg_heikinashi(bar) : \n    options.useGaps ? \n    avg_ohlc_with_gaps(bar) : \n    avg_ohlc(bar)\n\nplotcandlestick(ohlc)",
+    "options": {
+      "priceScaleId": "right",
+      "priceFormat": {
+        "auto": true,
+        "precision": 1
+      },
+      "priceLineVisible": true,
+      "lastValueVisible": true,
+      "borderVisible": true,
+      "upColor": "rgb(59,202,109)",
+      "downColor": "rgb(214,40,40)",
+      "borderUpColor": "rgb(59,202,109)",
+      "borderDownColor": "rgb(239,67,82)",
+      "wickUpColor": "rgb(223,211,144)",
+      "wickDownColor": "rgb(239,67,82)",
+      "useGaps": false,
+      "useHeikinAshi": false
+    }
+  },
+  "volume": {
+    "enabled": true,
+    "name": "Volume",
+    "description": "Volume + delta",
+    "script": "if (upColor === 0) {\n  if (options.showDelta) {\n    upColor = options.upBgColor\n    downColor = options.downBgColor\n  } else {\n    upColor = options.upColor\n    downColor = options.downColor\n  }\n}\n\nif (options.showDelta) {\n  histogram({ time: time, value: Math.abs(vbuy-vsell), color: vbuy - vsell > 0 ? options.upColor : options.downColor})\n}\n\nhistogram({ time: time, value: vbuy + vsell, color: vbuy > vsell ? upColor : downColor })",
+    "options": {
+      "priceFormat": {
+        "type": "volume"
+      },
+      "upColor": "rgb(59,202,109)",
+      "downColor": "rgb(235,30,47)",
+      "priceScaleId": "volume",
+      "scaleMargins": {
+        "top": 0.84,
+        "bottom": 0
+      },
+      "showDelta": true,
+      "upBgColor": "rgba(59,202,109,0.5)",
+      "downBgColor": "rgba(235,30,47,0.5)"
+    }
+  },
+  "liquidations": {
+    "enabled": true,
+    "name": "Liquidations",
+    "description": "Liquidations by side",
+    "script": "histogram(lbuy, color=options.upColor)\nhistogram(-lsell, color=options.downColor)",
+    "options": {
+      "priceFormat": {
+        "type": "volume"
+      },
+      "priceScaleId": "volume_liquidations",
+      "upColor": "rgb(255,76,243)",
+      "downColor": "rgb(255,183,77)",
+      "scaleMargins": {
+        "top": 0.75,
+        "bottom": 0.17
+      }
+    }
+  },
+  "cvd": {
+    "enabled": true,
+    "name": "CVD",
+    "description": "Cumulative Volume Delta",
+    "script": "line(cum(vbuy - vsell))",
+    "options": {
+      "priceScaleId": "cvd",
+      "priceFormat": {
+        "type": "volume"
+      },
+      "color": "#3BCA6D",
+      "scaleMargins": {
+        "top": 0.84,
+        "bottom": 0.00
+      }
+    }
+  }
+}

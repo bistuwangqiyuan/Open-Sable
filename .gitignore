@@ -123,7 +123,7 @@ config/permissions.json
 trading_backtest_results/
 *.trading.db
 *.portfolio.db
-aggr/
+
 
 # Dashboard (React app — keep dist/ for gateway, ignore node_modules)
 dashboard/node_modules/
