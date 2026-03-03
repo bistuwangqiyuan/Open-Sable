@@ -327,4 +327,4 @@ Include:
 ---
 
 **Last Updated**: 2026-02-17
-**Security Contact**: security@opensable.dev
+
