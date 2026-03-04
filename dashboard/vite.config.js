@@ -18,6 +18,11 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/mobile': 'http://localhost:8081',
+      '/api/polymarket': {
+        target: 'https://gamma-api.polymarket.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/polymarket/, ''),
+      },
       '/api': 'http://localhost:4800',
     },
   },

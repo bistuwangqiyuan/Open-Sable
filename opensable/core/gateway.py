@@ -249,6 +249,9 @@ class Gateway:
         app.router.add_get("/aggr/{path:.*}", self._aggr_handler)
         app.router.add_get("/aggr", self._aggr_handler)
 
+        # Polymarket public API proxy
+        app.router.add_get("/api/polymarket/{endpoint:.*}", self._polymarket_proxy)
+
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
         app.router.add_get("/monitor", self._monitor_page_handler)
@@ -281,7 +284,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -346,6 +349,45 @@ class Gateway:
             text="<html><body><h1>Aggr.trade not installed</h1>"
             "<p>Run: <code>cd aggr && npm install && npm run build</code></p></body></html>",
         )
+
+    # ── Polymarket public API proxy ───────────────────────────────────────────
+
+    async def _polymarket_proxy(self, request: web.Request) -> web.Response:
+        """Proxy requests to Polymarket public APIs (Gamma + CLOB)."""
+        endpoint = request.match_info.get("endpoint", "")
+        qs = request.query_string
+
+        # Route to correct upstream
+        if endpoint.startswith("clob/"):
+            upstream = f"https://clob.polymarket.com/{endpoint[5:]}"
+        else:
+            upstream = f"https://gamma-api.polymarket.com/{endpoint}"
+
+        if qs:
+            upstream += f"?{qs}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    upstream,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                    headers={"Accept": "application/json"},
+                ) as resp:
+                    body = await resp.read()
+                    return web.Response(
+                        body=body,
+                        status=resp.status,
+                        content_type=resp.content_type or "application/json",
+                        headers={
+                            "Access-Control-Allow-Origin": "*",
+                            "Cache-Control": "public, max-age=30",
+                        },
+                    )
+        except asyncio.TimeoutError:
+            return web.json_response({"error": "Polymarket API timeout"}, status=504)
+        except Exception as e:
+            logger.error(f"Polymarket proxy error: {e}")
+            return web.json_response({"error": str(e)}, status=502)
 
     # ── Static file helpers ───────────────────────────────────────────────────
 

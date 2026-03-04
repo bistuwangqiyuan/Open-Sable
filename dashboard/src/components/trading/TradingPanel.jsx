@@ -6,6 +6,7 @@ import {
   Send, MessageSquare, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { fmtTime } from '../../lib/utils';
+import PolymarketPanel from './PolymarketPanel';
 
 const s = {
   panel: { display: 'flex', flex: 1, overflow: 'hidden' },
@@ -152,6 +153,14 @@ const STRATEGIES = [
 ];
 
 export default function TradingPanel({ stats, messages, streaming, sendMessage }) {
+  const TABS = [
+    { id: 'portfolio', label: '💼 Portfolio' },
+    { id: 'polymarket', label: '🔮 Polymarket' },
+    { id: 'orders', label: '📋 Orders' },
+    { id: 'signals', label: '🎯 Signals' },
+    { id: 'strategies', label: '🧠 Strategies' },
+    { id: 'charts', label: '📊 Aggr Charts' },
+  ];
   const [tab, setTab] = useState('portfolio');
   const [portfolio, setPortfolio] = useState(INITIAL_PORTFOLIO);
   const [positions, setPositions] = useState([]);
@@ -240,18 +249,17 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
       </div>
 
       <div style={s.tabs}>
-        {['portfolio', 'orders', 'signals', 'strategies', 'charts'].map(t => (
-          <button key={t} style={s.tab(tab === t)} onClick={() => setTab(t)}>
-            {t === 'portfolio' ? '💼 Portfolio' :
-             t === 'orders'    ? '📋 Orders' :
-             t === 'signals'   ? '🎯 Signals' :
-             t === 'strategies'? '🧠 Strategies' :
-             '📊 Aggr Charts'}
+        {TABS.map(t => (
+          <button key={t.id} style={s.tab(tab === t.id)} onClick={() => setTab(t.id)}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div style={s.content}>
+      <div style={tab === 'polymarket' ? { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' } : s.content}>
+        {/* Polymarket Tab */}
+        {tab === 'polymarket' && <PolymarketPanel />}
+
         {/* Portfolio Tab */}
         {tab === 'portfolio' && (
           <div>
@@ -327,6 +335,7 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
                   { label: 'Get Signals', cmd: '/trading signals' },
                   { label: 'Trade History', cmd: '/trading history' },
                   { label: 'Risk Report', cmd: '/trading risk' },
+                  { label: '🔮 Polymarket Scan', cmd: '/trading polymarket scan' },
                 ].map((q, i) => (
                   <button
                     key={i}
