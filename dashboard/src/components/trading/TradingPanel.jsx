@@ -171,8 +171,14 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
   const [refreshing, setRefreshing] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [chatInput, setChatInput] = useState('');
+  const polymarketDataRef = useRef([]);
   const aggrRef = useRef(null);
   const chatEndRef = useRef(null);
+
+  // Callback to receive Polymarket data from PolymarketPanel
+  const handlePolymarketData = useCallback((data) => {
+    polymarketDataRef.current = data || [];
+  }, []);
 
   // Fetch portfolio data via the agent
   const refreshPortfolio = useCallback(() => {
@@ -196,11 +202,43 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Build a concise Polymarket summary for the AI context
+  const buildPolymarketContext = useCallback(() => {
+    const data = polymarketDataRef.current;
+    if (!data || data.length === 0) return '';
+
+    const top = data.slice(0, 20);
+    const totalVol = data.reduce((s, m) => s + m.volume, 0);
+    const totalLiq = data.reduce((s, m) => s + m.liquidity, 0);
+
+    let ctx = `\n\n[POLYMARKET LIVE DATA — ${data.length} active markets | Total Volume: $${(totalVol / 1e6).toFixed(1)}M | Total Liquidity: $${(totalLiq / 1e6).toFixed(1)}M]\n`;
+    ctx += `Top markets by volume:\n`;
+    top.forEach((m, i) => {
+      const prob = m.isMultiMarket
+        ? m.outcomes?.slice(0, 3).map(o => `${o.name}: ${(o.price * 100).toFixed(0)}%`).join(', ')
+        : `Yes: ${(m.yesPrice * 100).toFixed(0)}% / No: ${(m.noPrice * 100).toFixed(0)}%`;
+      ctx += `${i + 1}. "${m.question}" — ${prob} | Vol: $${m.volume >= 1e6 ? (m.volume / 1e6).toFixed(1) + 'M' : m.volume >= 1e3 ? (m.volume / 1e3).toFixed(0) + 'K' : m.volume.toFixed(0)} | Ends: ${m.endDate ? new Date(m.endDate).toLocaleDateString() : 'Open'}\n`;
+    });
+    return ctx;
+  }, []);
+
+  // Send message with optional Polymarket context injection
+  const sendWithContext = useCallback((text) => {
+    if (!text || !sendMessage) return;
+    const mentionsPoly = /poly(market)?|predict|bet|probab|forecast|mercado/i.test(text);
+    const shouldInject = tab === 'polymarket' || mentionsPoly;
+    let finalText = text;
+    if (shouldInject && polymarketDataRef.current.length > 0) {
+      finalText = text + buildPolymarketContext();
+    }
+    sendMessage(finalText);
+  }, [tab, sendMessage, buildPolymarketContext]);
+
   const handleChatSend = (e) => {
     e?.preventDefault();
     const text = chatInput.trim();
     if (!text || !sendMessage) return;
-    sendMessage(text);
+    sendWithContext(text);
     setChatInput('');
   };
 
@@ -258,7 +296,7 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
 
       <div style={tab === 'polymarket' ? { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' } : s.content}>
         {/* Polymarket Tab */}
-        {tab === 'polymarket' && <PolymarketPanel />}
+        {tab === 'polymarket' && <PolymarketPanel onDataUpdate={handlePolymarketData} />}
 
         {/* Portfolio Tab */}
         {tab === 'portfolio' && (
@@ -569,8 +607,10 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
                 'Analyze BTC',
                 'Get signals',
                 'Market overview',
+                '🔮 Top Polymarket bets',
+                '🔮 Best prediction opportunities',
               ].map((q, i) => (
-                <button key={i} onClick={() => sendMessage?.(q)} style={{
+                <button key={i} onClick={() => sendWithContext(q)} style={{
                   padding: '5px 10px', borderRadius: 99, fontSize: 10, fontWeight: 600,
                   border: '1px solid var(--border)', background: 'var(--bg-tertiary)',
                   color: 'var(--text-secondary)', cursor: 'pointer',
@@ -579,21 +619,30 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
             </div>
           </div>
         )}
-        {messages?.map((msg, i) => (
+        {messages?.map((msg, i) => {
+          // Strip injected Polymarket context from user messages for display
+          const displayContent = msg.role === 'user' && msg.content?.includes('\n\n[POLYMARKET LIVE DATA')
+            ? msg.content.split('\n\n[POLYMARKET LIVE DATA')[0]
+            : msg.content;
+          return (
           <div key={i} style={s.chatMsg(msg.role === 'user')}>
             <div style={s.chatAvatar(msg.role === 'user')}>
               {msg.role === 'user' ? '👤' : '🤖'}
             </div>
             <div>
               <div style={s.chatBubble(msg.role === 'user')}>
-                {msg.content}
+                {displayContent}
+                {msg.role === 'user' && msg.content?.includes('[POLYMARKET LIVE DATA') && (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 10, opacity: 0.5 }}>📊 + Polymarket data attached</span>
+                )}
               </div>
               <div style={{ ...s.chatTime, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
                 {fmtTime(msg.ts)}
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         <div ref={chatEndRef} />
       </div>
 
@@ -603,7 +652,7 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={handleChatKey}
-          placeholder="Ask about trading…"
+          placeholder={tab === 'polymarket' ? 'Ask about predictions, markets, probabilities…' : 'Ask about trading…'}
         />
         <button type="submit" style={s.chatSendBtn} title="Send">
           <Send size={14} />

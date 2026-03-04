@@ -284,7 +284,7 @@ async function fetchMarkets({ limit = 100, offset = 0, order = 'volume', active 
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function PolymarketPanel() {
+export default function PolymarketPanel({ onDataUpdate }) {
   const [markets, setMarkets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -380,13 +380,15 @@ export default function PolymarketPanel() {
 
       setMarkets(processed);
       setLastUpdate(new Date());
+      // Expose data to parent for trading chat context
+      onDataUpdate?.(processed);
     } catch (e) {
       console.error('Polymarket fetch error:', e);
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [sort]);
+  }, [sort, onDataUpdate]);
 
   // Initial load + auto-refresh every 30s
   useEffect(() => {
