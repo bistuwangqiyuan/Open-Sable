@@ -1081,6 +1081,44 @@ class XAutonomousAgent:
             "depth penalty",
             "engagement system",
             "interest evaluation",
+            # ── "The user" reasoning preamble ──────────────────────────
+            "the user's tweet",
+            "the user's post",
+            "the user's message",
+            "the user seems",
+            "the user is",
+            "the user wants",
+            "the user asked",
+            "the user might",
+            "the user may",
+            "the user said",
+            "the user appears",
+            "this tweet seems",
+            "this post seems",
+            "seems to be about",
+            "i need to engage",
+            "engage authentically",
+            "while being careful",
+            "being careful with",
+            "in a way that feels",
+            "using \"culture\" in",
+            "this is about",
+            "the tweet is about",
+            "the post is about",
+            "their tweet is",
+            "their post is",
+            "they're saying",
+            "they are saying",
+            "what they mean",
+            "what they're saying",
+            "i'll respond with",
+            "i will respond with",
+            "my response will",
+            "my reply will",
+            "my reply should",
+            "my response should",
+            "for my reply",
+            "for my response",
         ]
         if any(phrase in t for phrase in meta_phrases):
             return True
@@ -1090,8 +1128,11 @@ class XAutonomousAgent:
             r'i\'ll reply|i will reply|i\'ll engage|i should engage|'
             r'let me|first,?\s+let me|i\'ll craft|i will craft|'
             r'okay,?\s+let me|alright,?\s+let me|to (craft|write|compose|create) a|'
-            r'this (tweet|post|reply) (needs|should|requires)|'
-            r'the (best|right|ideal) (way|approach|response))',
+            r'this (tweet|post|reply|message) (needs|should|requires|seems|is about)|'
+            r'the (best|right|ideal) (way|approach|response)|'
+            r'the user(\'s|\s+(seems|is|wants|asked|might|may|said|appears|posted|wrote))|'
+            r'their (tweet|post|message|reply|point|argument) (is|seems|makes|contains)|'
+            r'my (response|reply) (should|will|needs|must))',
             re.IGNORECASE,
         )
         if reasoning_starters.match(text.strip()):
@@ -2436,9 +2477,10 @@ class XAutonomousAgent:
         # a paragraph that reads like an actual tweet.
         _REASONING_LINE = re.compile(
             r'^(i (should|need to|want to|will|must|can)|let me|first[,.]|'
-            r'okay[,.]|the (tweet|post|reply|best|right)|this (requires|needs|should)|'
-            r'considering|thinking about|my approach|to (craft|write|respond)|'
-            r'key (points|arguments|ideas)|\d+\.\s)',
+            r'okay[,.]|the (tweet|post|reply|best|right|user)|this (requires|needs|should|seems|is)|'
+            r'considering|thinking about|my (approach|response|reply)|to (craft|write|respond)|'
+            r'key (points|arguments|ideas)|their (tweet|post|reply|message|point)|'
+            r'seems to be|what they|engage (authentically|with)|\d+\.\s)',
             re.IGNORECASE,
         )
         paras = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
