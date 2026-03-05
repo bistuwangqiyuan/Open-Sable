@@ -101,7 +101,7 @@ VITE_APP_BASE_PATH=/aggr/
 VITE_APP_API_SUPPORTED_TIMEFRAMES=5,10,15,30,60,180,300,900,1260,1800,3600,7200,14400,21600,28800,43200,86400
 AGGRENV
     fi
-    (cd "$aggrdir" && npm install && npx vite build --base /aggr/) || {
+    (cd "$aggrdir" && npm install && npm run build) || {
         echo "⚠️  Aggr.trade build failed — continuing without it"
         return 0
     }
@@ -112,18 +112,22 @@ AGGRENV
 
 patch_aggr_tracking() {
     local dir="$1"
+    # Use portable sed -i (macOS needs '' arg, GNU does not)
+    _sedi() { if [[ "$OSTYPE" == darwin* ]]; then sed -i '' "$@"; else sed -i "$@"; fi; }
     for f in "$dir/index.html" "$dir/dist/index.html"; do
         [ -f "$f" ] || continue
         # Remove GTM script block
-        sed -i '/<!-- Google Tag Manager -->/,/<!-- End Google Tag Manager -->/d' "$f"
+        _sedi '/<!-- Google Tag Manager -->/,/<!-- End Google Tag Manager -->/d' "$f"
         # Remove GTM noscript block
-        sed -i '/<!-- Google Tag Manager (noscript) -->/,/<!-- End Google Tag Manager (noscript) -->/d' "$f"
+        _sedi '/<!-- Google Tag Manager (noscript) -->/,/<!-- End Google Tag Manager (noscript) -->/d' "$f"
         # Remove any remaining GTM iframes/scripts
-        sed -i '/googletagmanager/d' "$f"
+        _sedi '/googletagmanager/d' "$f"
         # Remove google-analytics
-        sed -i '/google-analytics/d' "$f"
+        _sedi '/google-analytics/d' "$f"
+        # Remove zunvra / other third-party analytics
+        _sedi '/zunvra/d' "$f"
         # Fix base href for /aggr/ subpath
-        sed -i 's|<base href="/" />|<base href="/aggr/" />|g' "$f"
+        _sedi 's|<base href="/" />|<base href="/aggr/" />|g' "$f"
     done
     echo "   \U0001f6e1  Tracking stripped + base href fixed"
 }

@@ -130,8 +130,8 @@ trading_backtest_results/
 # Dashboard (React app — keep dist/ for gateway, ignore node_modules)
 dashboard/node_modules/
 
-# Website (built separately)
-website/
+# Website (built separately — root-level only, not aggr subcomponents)
+/website/
 
 # MkDocs build output
 site/

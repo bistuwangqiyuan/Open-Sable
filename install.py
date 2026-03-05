@@ -775,8 +775,6 @@ def _build_npm_project(proj: dict, npm: str) -> bool:
     substep(f"{name}: building...")
 
     build_cmd = [npm, "run", "build"]
-    if proj["dir"] == "aggr":
-        build_cmd = [npx_cmd(), "vite", "build", "--base", "/aggr/"]
 
     r = run(build_cmd, cwd=proj_dir, timeout=300)
     if r.returncode == 0:
@@ -800,7 +798,7 @@ def _patch_aggr_tracking(aggr_dir: Path):
         (r'<noscript[^>]*>[^<]*googletagmanager[^<]*</noscript>', ''),
         (r'<iframe[^>]*googletagmanager[^>]*>[^<]*</iframe[^>]*>', ''),
         (r'<script[^>]*>[^<]*google-analytics[^<]*</script>', ''),
-        (r'<script[^>]*>[^<]*(?:hotjar|fbq|mixpanel|amplitude|segment\.io|fullstory|clarity\.ms)[^<]*</script>', ''),
+        (r'<script[^>]*>[^<]*(?:hotjar|fbq|mixpanel|amplitude|segment\.io|fullstory|clarity\.ms|zunvra)[^<]*</script>', ''),
         (r'<base\s+href="/"\s*/>', '<base href="/aggr/" />'),
     ]
     patched = 0

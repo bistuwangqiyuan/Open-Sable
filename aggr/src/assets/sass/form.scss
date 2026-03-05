@@ -360,5 +360,5 @@
 }
 
 .form-feedback {
-  color: lighten($red, 10%);
+  color: color.adjust($red, $lightness: 10%);
 }

@@ -159,17 +159,17 @@ button {
 
       &:hover {
         color: white;
-        border-color: lighten($blue, 10%);
+        border-color: color.adjust($blue, $lightness: 10%);
       }
     }
 
     &:hover {
-      background-color: lighten($blue, 10%);
-      border-color: lighten($blue, 10%);
+      background-color: color.adjust($blue, $lightness: 10%);
+      border-color: color.adjust($blue, $lightness: 10%);
 
       &.-text {
         background: 0;
-        color: lighten($blue, 10%);
+        color: color.adjust($blue, $lightness: 10%);
         border-color: transparent;
       }
     }
