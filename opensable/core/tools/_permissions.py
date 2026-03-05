@@ -33,6 +33,7 @@ TOOL_PERMISSIONS = {
     "create_pdf": "file_write",
     "create_presentation": "file_write",
     "open_document": "system_command",
+    "write_in_writer": "system_command",
     "clipboard_copy": "system_command",
     "clipboard_paste": "system_command",
     # Trading

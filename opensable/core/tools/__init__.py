@@ -208,6 +208,7 @@ class ToolRegistry(
         self.register("create_presentation", self._create_presentation_tool)
         self.register("read_document", self._read_document_tool)
         self.register("open_document", self._open_document_tool)
+        self.register("write_in_writer", self._write_in_writer_tool)
 
         # ── Email (schema-mapped) ────────────────────────────────────────────
         self.register("email_send", self._email_send_tool)

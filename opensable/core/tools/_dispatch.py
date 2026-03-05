@@ -83,6 +83,7 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "create_presentation": ("create_presentation", _p),
     "read_document": ("read_document", _p),
     "open_document": ("open_document", _p),
+    "write_in_writer": ("write_in_writer", _p),
     # Email
     "email_send": ("email_send", _p),
     "email_read": ("email_read", _p),

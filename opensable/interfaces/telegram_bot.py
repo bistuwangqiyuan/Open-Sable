@@ -637,7 +637,7 @@ class TelegramInterface:
             if not result.should_continue:
                 return
 
-        # ── Regular message — stream response ──────────────────────────
+        # ── Regular message — streamed response ─────────────────────────
         await message.bot.send_chat_action(message.chat.id, "typing")
 
         # Add user message to session history
@@ -647,162 +647,186 @@ class TelegramInterface:
         # Build conversation history to pass to agent
         history = session.get_llm_messages(limit=20)
 
-        try:
-            # Send a placeholder message for progress updates
-            placeholder = await message.answer("💭 _thinking…_", parse_mode=ParseMode.MARKDOWN)
-            _last_progress = {"text": ""}
-
-            async def _tg_progress(status: str):
-                """Edit the placeholder with live progress."""
-                try:
-                    new_text = f"⏳ {status}"
-                    if new_text != _last_progress["text"]:
-                        _last_progress["text"] = new_text
-                        await placeholder.edit_text(new_text, parse_mode=None)
-                except Exception:
-                    pass  # Telegram rate-limit or message-not-modified
-
-            logger.info(f"[Telegram] → agent: {text[:80]}")
-            response = await self.agent.process_message(
-                user_id, text, history=history, progress_callback=_tg_progress
-            )
-
-            # Delete placeholder and send final response
-            try:
-                await placeholder.delete()
-            except Exception:
-                pass
-            await self._safe_reply(message, response)
-        except Exception as e:
-            logger.error(f"Agent error: {e}", exc_info=True)
-            try:
-                await message.answer(f"❌ Something went wrong: {e}")
-            except Exception:
-                pass
-            return
+        response = await self._stream_to_telegram(message, user_id, text, history)
 
         # Persist assistant reply
         if response:
             session.add_message("assistant", response)
             self.session_manager._save_session(session)
 
+        # ── Follow-through: if the agent promised to investigate, do it ──
+        if response and self._promises_followup(response):
+            logger.info("[Telegram] Agent promised a follow-up — auto-continuing")
+            await asyncio.sleep(1.5)
+            await message.bot.send_chat_action(message.chat.id, "typing")
+
+            followup_prompt = (
+                "You just said you would investigate / look into something. "
+                "Do it NOW — use your tools (web search, etc.) and report "
+                "the results. Do NOT say you will do it later. Act immediately."
+            )
+            session.add_message("user", followup_prompt)
+            self.session_manager._save_session(session)
+            followup_history = session.get_llm_messages(limit=20)
+
+            try:
+                followup = await asyncio.wait_for(
+                    self._stream_to_telegram(
+                        message, user_id, followup_prompt, followup_history
+                    ),
+                    timeout=120,  # 2 min max for follow-up
+                )
+                if followup:
+                    session.add_message("assistant", followup)
+                    self.session_manager._save_session(session)
+            except asyncio.TimeoutError:
+                logger.warning("[Telegram] Follow-up timed out after 120s")
+            except Exception as e:
+                logger.warning(f"[Telegram] Follow-up failed: {e}")
+
     # ------------------------------------------------------------------
-    # Streaming
+    # Streaming + Follow-through
     # ------------------------------------------------------------------
 
-    # Keywords that signal the user wants the agent to use a tool (web search, etc.)
-    _TOOL_TRIGGERS = (
-        "search",
-        "busca",
-        "buscar",
-        "look up",
-        "lookup",
-        "find",
-        "encuentra",
-        "google",
-        "bing",
-        "what is",
-        "who is",
-        "quien es",
-        "que es",
-        "latest",
-        "current",
-        "news",
-        "noticias",
-        "weather",
-        "clima",
-        "scrape",
-        "fetch",
-        "download",
-        "url",
-        "http",
+    # Regex patterns that indicate the agent is promising to do something next
+    _FOLLOWUP_PATTERNS = re.compile(
+        r"(?:let me (?:investigate|check|look into|find out|search|verify|dig into|research|explore))"
+        r"|(?:i(?:'ll| will) (?:investigate|check|look into|find out|search|verify|dig into|research|explore|look up))"
+        r"|(?:(?:voy a|déjame|dejame|permíteme|permiteme) (?:investigar|verificar|buscar|revisar|explorar|comprobar))"
+        r"|(?:let me (?:do|run|conduct) (?:a |an |the )?(?:investigation|search|check|analysis|audit|scan))"
+        r"|(?:i(?:'ll| will) (?:do|run|conduct) (?:a |an |the )?(?:investigation|search|check|analysis))"
+        r"|(?:we can investigate)"
+        r"|(?:i want to understand)"
+        r"|(?:let me map)"
+        r"|(?:i tried to use a tool but)",
+        re.IGNORECASE,
     )
 
-    def _needs_tools(self, text: str) -> bool:
-        """Return True when the message likely requires a tool call (e.g. web search)."""
-        lower = text.lower()
-        return any(kw in lower for kw in self._TOOL_TRIGGERS)
+    def _promises_followup(self, text: str) -> bool:
+        """Return True if the agent's response ends with a promise to do more work.
 
-    async def _stream_response(
+        Only checks the LAST ~200 characters of the response.  If the promise
+        phrase appears earlier (e.g. "Let me check … here are the results"),
+        the agent already followed through and we should NOT re-trigger.
+        """
+        tail = text[-200:] if len(text) > 200 else text
+        return bool(self._FOLLOWUP_PATTERNS.search(tail))
+
+    async def _stream_to_telegram(
         self, message: Message, user_id: str, text: str, history: list
     ) -> str:
         """
-        Stream Ollama response by editing a placeholder message progressively.
-        Falls back to a single final reply if streaming is unavailable.
-        """
-        # Send typing placeholder
-        placeholder = await message.answer("💭 _thinking…_", parse_mode=ParseMode.MARKDOWN)
+        Two-phase streaming:
+          Phase 1 — Run the full agent pipeline (``process_message``) with a
+                    live ``progress_callback`` that edits the placeholder to
+                    show tool steps ("🔍 Searching…", "📄 Reading…" etc.).
+          Phase 2 — Re-stream the final response token-by-token via
+                    ``llm.astream`` so the text appears progressively in chat.
 
-        full_text = ""
-        last_edit = 0.0
-        buffer = ""
+        Falls back to a single send if streaming is unavailable.
+        """
+        placeholder = await message.answer(
+            "💭 _thinking…_", parse_mode=ParseMode.MARKDOWN
+        )
+        _last_progress = {"text": ""}
+
+        logger.info(f"[Telegram] → agent (stream): {text[:80]}")
+
+        # ── Phase 1: agent pipeline with live progress ──────────────────
+        async def _tg_progress(status: str):
+            try:
+                new_text = f"⏳ {status}"
+                if new_text != _last_progress["text"]:
+                    _last_progress["text"] = new_text
+                    await placeholder.edit_text(new_text, parse_mode=None)
+            except Exception:
+                pass
 
         try:
-            import ollama
-
-            client = ollama.AsyncClient(host=self.config.ollama_base_url)
-
-            # Prepare messages for Ollama
-            # Use the same system prompt as the agent graph (with CRITICAL RULES)
-            if hasattr(self.agent, "_get_personality_prompt"):
-                system_content = self.agent._get_personality_prompt()
-            else:
-                system_content = "You are Sable, a helpful AI assistant."
-
-            system_content += (
-                "\n\nCRITICAL RULES -- follow these exactly, no exceptions:\n"
-                "- NEVER invent, fabricate, or hallucinate facts, names, dates, or any data\n"
-                "- NEVER simulate search results, tool output, or API responses\n"
-                "- If you don't know something, say 'I don't know' -- do NOT guess\n"
-                "- Do not make up people, organizations, events, or URLs under any circumstance"
+            response = await self.agent.process_message(
+                user_id, text, history=history, progress_callback=_tg_progress
             )
-
-            ollama_messages = [{"role": "system", "content": system_content}]
-            ollama_messages += history[:-1]  # history already includes the user msg as last
-            ollama_messages.append({"role": "user", "content": text})
-
-            async for chunk in await client.chat(
-                model=(
-                    self.agent.llm.current_model
-                    if hasattr(self.agent.llm, "current_model")
-                    else "llama3.1:8b"
-                ),
-                messages=ollama_messages,
-                stream=True,
-            ):
-                delta = chunk.get("message", {}).get("content", "")
-                full_text += delta
-                buffer += delta
-                now = asyncio.get_event_loop().time()
-
-                # Edit the message periodically
-                if len(buffer) >= self._STREAM_CHUNK or (now - last_edit) >= self._STREAM_INTERVAL:
-                    if full_text.strip():
-                        try:
-                            await placeholder.edit_text(
-                                full_text + " ▌",
-                                parse_mode=None,
-                            )
-                        except Exception:
-                            pass
-                        buffer = ""
-                        last_edit = now
-
-            # Final edit — remove cursor
-            if full_text.strip():
-                await self._safe_edit(placeholder, full_text)
-            else:
-                await placeholder.delete()
-                full_text = await self.agent.process_message(user_id, text, history=history)
-                await self._safe_reply(message, full_text)
-
         except Exception as e:
-            logger.warning(f"Stream failed ({e}), using non-streaming agent")
-            await placeholder.delete()
-            full_text = await self.agent.process_message(user_id, text, history=history)
-            await self._safe_reply(message, full_text)
+            logger.error(f"Agent error: {e}", exc_info=True)
+            try:
+                await placeholder.edit_text(
+                    f"❌ Something went wrong: {e}", parse_mode=None
+                )
+            except Exception:
+                pass
+            return ""
 
-        return full_text
+        if not response or not response.strip():
+            try:
+                await placeholder.delete()
+            except Exception:
+                pass
+            return ""
+
+        # ── Phase 2: stream the final text token-by-token ───────────────
+        has_astream = (
+            hasattr(self.agent, "llm")
+            and hasattr(self.agent.llm, "astream")
+        )
+
+        if has_astream:
+            try:
+                full_text = ""
+                last_edit = asyncio.get_event_loop().time()
+                buffer = ""
+
+                # Show first bit of response immediately
+                try:
+                    await placeholder.edit_text("▌", parse_mode=None)
+                except Exception:
+                    pass
+
+                system_prompt = "You are a helpful assistant."
+                if hasattr(self.agent, "_get_personality_prompt"):
+                    system_prompt = self.agent._get_personality_prompt()
+
+                async for token in self.agent.llm.astream([
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": (
+                        "Repeat the following text EXACTLY as written, "
+                        "character for character. Do NOT add or remove anything:\n\n"
+                        + response
+                    )},
+                ]):
+                    full_text += token
+                    buffer += token
+                    now = asyncio.get_event_loop().time()
+
+                    if (
+                        len(buffer) >= self._STREAM_CHUNK
+                        or (now - last_edit) >= self._STREAM_INTERVAL
+                    ):
+                        if full_text.strip():
+                            try:
+                                await placeholder.edit_text(
+                                    full_text + " ▌", parse_mode=None
+                                )
+                            except Exception:
+                                pass
+                            buffer = ""
+                            last_edit = now
+
+                # Final edit — use the REAL agent response (not the astream
+                # replay which might drift), with Markdown formatting
+                await self._safe_edit(placeholder, response)
+                return response.strip()
+
+            except Exception as e:
+                logger.debug(f"astream replay failed ({e}), sending final directly")
+                # Fall through to direct send below
+
+        # ── No streaming available — just show the final response ───────
+        try:
+            await placeholder.delete()
+        except Exception:
+            pass
+        await self._safe_reply(message, response)
+        return response.strip()
 
     # ------------------------------------------------------------------
     # Safe send helpers

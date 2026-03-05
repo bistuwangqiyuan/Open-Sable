@@ -124,4 +124,22 @@ SCHEMAS = [
     },
     },
 
+    {
+    "type": "function",
+    "function": {
+    "name": "write_in_writer",
+    "description": "Open LibreOffice Writer and type text in real-time, character by character, visible on screen. Supports 'live' mode (types in empty document) and 'instant' mode (creates .docx then opens it).",
+    "parameters": {
+    "type": "object",
+    "properties": {
+    "text": {"type": "string", "description": "The text content to type in Writer"},
+    "title": {"type": "string", "description": "Optional document title (typed first, followed by two newlines)"},
+    "mode": {"type": "string", "enum": ["live", "instant"], "description": "'live' = opens empty Writer and types char by char (default). 'instant' = creates .docx then opens it."},
+    "typing_speed": {"type": "number", "description": "Seconds between characters in live mode (default: 0.02). Lower = faster."},
+    },
+    "required": ["text"],
+    },
+    },
+    },
+
 ]

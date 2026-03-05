@@ -2,7 +2,12 @@
 Productivity tools — documents, email, calendar, clipboard, OCR
 """
 
+import asyncio
 import logging
+import os
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import Dict
 
 logger = logging.getLogger(__name__)
@@ -93,6 +98,176 @@ class ProductivityToolsMixin:
         if result.get("success"):
             return f"✅ Opened **{result['opened']}** ({result['system']})"
         return f"❌ {result.get('error')}"
+
+    async def _write_in_writer_tool(self, params: Dict) -> str:
+        """Open LibreOffice Writer and type text live in real-time.
+
+        Supports two modes:
+          1. 'live' (default) — opens Writer empty, then types character by character
+          2. 'instant' — creates a .docx first, then opens it in Writer
+        """
+        text = params.get("text", "")
+        title = params.get("title", "")
+        mode = params.get("mode", "live")  # 'live' or 'instant'
+        typing_speed = float(params.get("typing_speed", 0.02))  # seconds between chars
+
+        if not text and not title:
+            return "⚠️ Please provide text to write."
+
+        # Full content to type
+        full_text = ""
+        if title:
+            full_text = title + "\n\n"
+        if text:
+            full_text += text
+
+        if not full_text.strip():
+            return "⚠️ No content to write."
+
+        try:
+            if mode == "instant":
+                # Create the doc first, then open
+                result = await self.document_skill.create_word(
+                    filename="sable_document.docx",
+                    title=title or "Document",
+                    content=text,
+                )
+                if not result.get("success"):
+                    return f"❌ Failed to create document: {result.get('error')}"
+                doc_path = result["path"]
+                # Open with LibreOffice Writer directly
+                proc = subprocess.Popen(
+                    ["libreoffice", "--writer", doc_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                    env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")},
+                )
+                await asyncio.sleep(2)
+                if proc.poll() is not None:
+                    return "❌ LibreOffice failed to start. Is it installed?"
+                return f"✅ Opened **{doc_path}** in LibreOffice Writer (PID {proc.pid})"
+
+            # ── LIVE MODE: type in real-time ──────────────────────────
+
+            # 1. Launch LibreOffice Writer with empty document
+            proc = subprocess.Popen(
+                ["libreoffice", "--writer"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")},
+            )
+            await asyncio.sleep(1)
+            if proc.poll() is not None:
+                return "❌ LibreOffice failed to start. Is it installed?"
+
+            # 2. Wait for Writer window to appear (up to 15 seconds)
+            writer_ready = False
+            for _ in range(30):
+                try:
+                    r = subprocess.run(
+                        ["xdotool", "search", "--name", "Untitled"],
+                        capture_output=True, text=True, timeout=2,
+                    )
+                    if r.returncode == 0 and r.stdout.strip():
+                        wid = r.stdout.strip().split("\n")[0]
+                        # Focus the window
+                        subprocess.run(
+                            ["xdotool", "windowactivate", "--sync", wid],
+                            timeout=3,
+                        )
+                        await asyncio.sleep(0.5)
+                        writer_ready = True
+                        break
+                except Exception:
+                    pass
+                await asyncio.sleep(0.5)
+
+            if not writer_ready:
+                # Try alternate window name patterns
+                for pattern in ["LibreOffice Writer", "Writer", "soffice"]:
+                    try:
+                        r = subprocess.run(
+                            ["xdotool", "search", "--name", pattern],
+                            capture_output=True, text=True, timeout=2,
+                        )
+                        if r.returncode == 0 and r.stdout.strip():
+                            wid = r.stdout.strip().split("\n")[0]
+                            subprocess.run(
+                                ["xdotool", "windowactivate", "--sync", wid],
+                                timeout=3,
+                            )
+                            await asyncio.sleep(0.5)
+                            writer_ready = True
+                            break
+                    except Exception:
+                        pass
+
+            if not writer_ready:
+                return (
+                    "⚠️ LibreOffice Writer started (PID {}) but couldn't detect the window. "
+                    "It may need more time to load or xdotool is not installed.".format(proc.pid)
+                )
+
+            # 3. Type text live character by character using xdotool
+            #    (xdotool handles Unicode properly, unlike pyautogui.typewrite)
+            logger.info(f"✍️ Typing {len(full_text)} characters in LibreOffice Writer...")
+
+            # Type in chunks for efficiency — line by line for natural effect
+            lines = full_text.split("\n")
+            for line_idx, line in enumerate(lines):
+                if line:
+                    # Use xdotool type for each line (handles Unicode, accents, etc.)
+                    # Type in small chunks to look natural
+                    chunk_size = 5  # chars at a time
+                    for i in range(0, len(line), chunk_size):
+                        chunk = line[i:i + chunk_size]
+                        try:
+                            subprocess.run(
+                                ["xdotool", "type", "--delay",
+                                 str(int(typing_speed * 1000)), "--", chunk],
+                                timeout=10,
+                                env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")},
+                            )
+                        except subprocess.TimeoutExpired:
+                            pass
+                        await asyncio.sleep(typing_speed * len(chunk) * 0.3)
+
+                # Press Enter for newline (except last line)
+                if line_idx < len(lines) - 1:
+                    try:
+                        subprocess.run(
+                            ["xdotool", "key", "Return"],
+                            timeout=2,
+                            env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")},
+                        )
+                    except Exception:
+                        pass
+                    await asyncio.sleep(0.05)
+
+            # 4. Save with Ctrl+S
+            await asyncio.sleep(0.5)
+            try:
+                subprocess.run(
+                    ["xdotool", "key", "ctrl+s"],
+                    timeout=3,
+                    env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")},
+                )
+            except Exception:
+                pass
+
+            logger.info("✅ Finished typing in LibreOffice Writer")
+            return (
+                f"✅ Typed {len(full_text)} characters live in LibreOffice Writer! "
+                f"(PID {proc.pid})"
+            )
+
+        except FileNotFoundError:
+            return "❌ LibreOffice is not installed. Run: sudo apt install libreoffice"
+        except Exception as e:
+            logger.error(f"write_in_writer failed: {e}")
+            return f"❌ Failed: {e}"
 
     # ========== EMAIL TOOLS (SMTP/IMAP) ==========
 
