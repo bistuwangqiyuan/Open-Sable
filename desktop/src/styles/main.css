@@ -186,9 +186,9 @@ html, body, #root {
 
 .mac-btn:active { filter: brightness(0.8); }
 
-/* Unfocused: gray out traffic lights */
-.app:not(:focus-within) .mac-btn { background: var(--bg-hover); }
-.app:not(:focus-within) .mac-btn svg { opacity: 0; }
+/* Unfocused: gray out traffic lights like macOS native */
+.app.window-blurred .mac-btn { background: #d0d0d0 !important; }
+.app.window-blurred .mac-btn svg { opacity: 0; }
 
 /* ─── Day / Night toggle button ──────────────────────────────────── */
 .theme-toggle input[type="checkbox"] { display: none; }

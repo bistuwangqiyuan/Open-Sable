@@ -212,22 +212,45 @@ def _chunks_from_file(path: Path) -> List[CodeChunk]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+async def _embed_one(client: "httpx.AsyncClient", text: str) -> Optional[List[float]]:
+    """Try new /api/embed endpoint (Ollama ≥0.2), fall back to legacy /api/embeddings."""
+    payload_new = {"model": _EMBED_MODEL, "input": text[:2000]}
+    payload_old = {"model": _EMBED_MODEL, "prompt": text[:2000]}
+
+    # ── Try new endpoint first (Ollama ≥0.2, Linux/Mac/Windows) ──────────────
+    try:
+        r = await client.post("http://localhost:11434/api/embed", json=payload_new)
+        if r.status_code == 200:
+            data = r.json()
+            emb = data.get("embeddings") or data.get("embedding")
+            if emb:
+                return emb[0] if isinstance(emb[0], list) else emb
+    except Exception:
+        pass
+
+    # ── Fallback: legacy endpoint (Ollama <0.2) ───────────────────────────────
+    try:
+        r = await client.post("http://localhost:11434/api/embeddings", json=payload_old)
+        if r.status_code == 200:
+            return r.json().get("embedding")
+    except Exception:
+        pass
+
+    return None
+
+
 async def _embed(texts: List[str]) -> Optional[List[List[float]]]:
-    """Get embeddings from Ollama nomic-embed-text."""
+    """Get embeddings from Ollama nomic-embed-text (supports all Ollama versions)."""
     if not _HTTPX_OK:
         return None
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             results = []
             for text in texts:
-                r = await client.post(
-                    "http://localhost:11434/api/embeddings",
-                    json={"model": _EMBED_MODEL, "prompt": text[:2000]},
-                )
-                if r.status_code == 200:
-                    results.append(r.json()["embedding"])
-                else:
+                emb = await _embed_one(client, text)
+                if emb is None:
                     return None
+                results.append(emb)
             return results
     except Exception as e:
         logger.debug(f"Embedding request failed: {e}")

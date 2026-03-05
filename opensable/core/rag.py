@@ -27,6 +27,15 @@ try:
     import chromadb
     from chromadb.config import Settings
 
+    # Patch broken telemetry BEFORE any collection is created.
+    # chromadb 0.5.x changed capture() signature; this silences the error:
+    # "capture() takes 1 positional argument but 3 were given"
+    try:
+        import chromadb.telemetry.product as _ct
+        _ct.ProductTelemetryClient.capture = lambda self, *a, **kw: None
+    except Exception:
+        pass
+
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
@@ -120,10 +129,17 @@ class RAGEngine:
             try:
                 _data = os.environ.get("_SABLE_DATA_DIR", "data")
                 persist_dir = str(Path(_data) / "vectordb")
-                self._client = chromadb.PersistentClient(path=persist_dir)
+                self._client = chromadb.PersistentClient(
+                    path=persist_dir,
+                    settings=Settings(anonymized_telemetry=False),
+                )
+                # embedding_function=None → chromadb stores raw vectors only,
+                # preventing the automatic download of all-MiniLM-L6-v2 from S3.
+                # Embeddings are generated externally via Ollama (nomic-embed-text).
                 self._collection = self._client.get_or_create_collection(
                     name=collection_name,
                     metadata={"hnsw:space": "cosine"},
+                    embedding_function=None,
                 )
                 logger.info(
                     f"📚 RAG Engine initialized with ChromaDB "

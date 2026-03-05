@@ -9,8 +9,10 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+# Allow lib/ inside sub-projects (e.g. sable_dev/lib)
+!sable_dev/lib/
 parts/
 sdist/
 var/

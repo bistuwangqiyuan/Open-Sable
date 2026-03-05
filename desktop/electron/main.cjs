@@ -24,7 +24,10 @@ function createWindow() {
     minWidth: 780,
     minHeight: 560,
     frame: false,
-    titleBarStyle: 'hidden',
+    // titleBarStyle must NOT be set when frame:false on macOS,
+    // otherwise native traffic-light buttons appear duplicated
+    // alongside the custom ones rendered in App.jsx.
+    ...(process.platform !== 'darwin' && { titleBarStyle: 'hidden' }),
     transparent: true,
     backgroundColor: '#00000000',
     show: false,

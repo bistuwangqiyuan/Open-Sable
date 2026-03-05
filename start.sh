@@ -359,7 +359,11 @@ do_start() {
 
     mkdir -p "$DIR/logs"
     echo "🚀 Starting Open-Sable [profile: $PROFILE]..."
-    SABLE_PROFILE="$PROFILE" setsid nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
+    if command -v setsid &>/dev/null; then
+        SABLE_PROFILE="$PROFILE" setsid nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
+    else
+        SABLE_PROFILE="$PROFILE" nohup python -m opensable --profile "$PROFILE" >> "$LOGFILE" 2>&1 &
+    fi
     echo $! > "$PIDFILE"
     sleep 1
 

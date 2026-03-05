@@ -643,6 +643,20 @@ def _pull_optimal_model():
             warn(f"Could not download {model} — you can pull it later: ollama pull {model}")
 
     _set_env_var("DEFAULT_MODEL", model)
+
+    # Pull the embedding model required by the RAG/codebase search system
+    embed_model = "nomic-embed-text"
+    r2 = run(["ollama", "list"], capture=True)
+    if r2.returncode == 0 and embed_model in (r2.stdout or ""):
+        ok(f"{embed_model} (embeddings) already downloaded")
+    else:
+        info(f"Downloading {embed_model} for vector embeddings...")
+        r2 = run(["ollama", "pull", embed_model], timeout=300)
+        if r2.returncode == 0:
+            ok(f"{embed_model} downloaded")
+        else:
+            warn(f"Could not download {embed_model} — run: ollama pull {embed_model}")
+
     substep("Agent auto-downloads additional models at runtime as needed")
 
 
