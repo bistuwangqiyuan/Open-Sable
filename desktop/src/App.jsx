@@ -116,6 +116,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // ── Window focus/blur → color the traffic light buttons correctly ────────
+  useEffect(() => {
+    const onBlur  = () => document.querySelector('.app')?.classList.add('window-blurred')
+    const onFocus = () => document.querySelector('.app')?.classList.remove('window-blurred')
+    window.addEventListener('blur',  onBlur)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener('blur',  onBlur)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [])
+
   // ── Auto-hide sidebar when Dev Studio opens (not part of webview) ─────
   useEffect(() => {
     if (devStudioOpen) {

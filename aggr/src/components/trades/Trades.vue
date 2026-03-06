@@ -406,7 +406,7 @@ export default class Trades extends Mixins(PaneMixin) {
   }
 
   &.-sell {
-    background-color: lighten($red, 35%);
+    background-color: color.adjust($red, $lightness: 35%);
     color: $red;
 
     .icon-side:before {
@@ -415,7 +415,7 @@ export default class Trades extends Mixins(PaneMixin) {
   }
 
   &.-buy {
-    background-color: lighten($green, 50%);
+    background-color: color.adjust($green, $lightness: 50%);
     color: $green;
 
     .icon-side:before {

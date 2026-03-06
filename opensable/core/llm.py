@@ -35,18 +35,35 @@ _OLLAMA_LOCK_PATH = os.environ.get("SABLE_OLLAMA_LOCK", "/tmp/sable-ollama.lock"
 async def _ollama_lock():
     """Async context-manager that acquires an inter-process file lock.
 
-    Uses fcntl.flock (blocking) run in a thread so the event loop isn't
-    blocked while another agent holds the lock.
+    Uses fcntl.flock (non-blocking) with a short timeout so a stale lock
+    from a crashed process never hangs the agent indefinitely.
+    On macOS a single agent runs alone, so the lock is almost never contended;
+    if it is, we log a warning and proceed anyway after the timeout.
     """
     loop = asyncio.get_running_loop()
     fd = os.open(_OLLAMA_LOCK_PATH, os.O_CREAT | os.O_RDWR, 0o666)
+    acquired = False
     try:
-        # Blocking flock — offloaded to thread so the event loop stays alive
-        await loop.run_in_executor(None, fcntl.flock, fd, fcntl.LOCK_EX)
-        logger.debug("Ollama lock acquired")
+        # Try non-blocking first
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
+        except BlockingIOError:
+            # Another process holds the lock — wait up to 10 s then proceed anyway
+            logger.warning("Ollama lock contended — waiting up to 10s...")
+            try:
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, fcntl.flock, fd, fcntl.LOCK_EX),
+                    timeout=10,
+                )
+                acquired = True
+            except asyncio.TimeoutError:
+                logger.warning("Ollama lock wait timed out — proceeding without lock")
+        logger.debug("Ollama lock acquired" if acquired else "Ollama lock skipped")
         yield
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        if acquired:
+            fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         logger.debug("Ollama lock released")
 

@@ -27,7 +27,7 @@ from .codebase_rag import CodebaseRAG
 
 logger = logging.getLogger(__name__)
 
-_LLM_TIMEOUT = 120
+_LLM_TIMEOUT = 300  # 5 min — needed for large local models (llama3.1:8b+) on CPU
 
 # ── Untagged reasoning stripper ──────────────────────────────────────────────
 

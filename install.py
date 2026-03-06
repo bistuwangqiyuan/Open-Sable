@@ -643,6 +643,20 @@ def _pull_optimal_model():
             warn(f"Could not download {model} — you can pull it later: ollama pull {model}")
 
     _set_env_var("DEFAULT_MODEL", model)
+
+    # Pull the embedding model required by the RAG/codebase search system
+    embed_model = "nomic-embed-text"
+    r2 = run(["ollama", "list"], capture=True)
+    if r2.returncode == 0 and embed_model in (r2.stdout or ""):
+        ok(f"{embed_model} (embeddings) already downloaded")
+    else:
+        info(f"Downloading {embed_model} for vector embeddings...")
+        r2 = run(["ollama", "pull", embed_model], timeout=300)
+        if r2.returncode == 0:
+            ok(f"{embed_model} downloaded")
+        else:
+            warn(f"Could not download {embed_model} — run: ollama pull {embed_model}")
+
     substep("Agent auto-downloads additional models at runtime as needed")
 
 
@@ -761,8 +775,6 @@ def _build_npm_project(proj: dict, npm: str) -> bool:
     substep(f"{name}: building...")
 
     build_cmd = [npm, "run", "build"]
-    if proj["dir"] == "aggr":
-        build_cmd = [npx_cmd(), "vite", "build", "--base", "/aggr/"]
 
     r = run(build_cmd, cwd=proj_dir, timeout=300)
     if r.returncode == 0:
@@ -786,7 +798,7 @@ def _patch_aggr_tracking(aggr_dir: Path):
         (r'<noscript[^>]*>[^<]*googletagmanager[^<]*</noscript>', ''),
         (r'<iframe[^>]*googletagmanager[^>]*>[^<]*</iframe[^>]*>', ''),
         (r'<script[^>]*>[^<]*google-analytics[^<]*</script>', ''),
-        (r'<script[^>]*>[^<]*(?:hotjar|fbq|mixpanel|amplitude|segment\.io|fullstory|clarity\.ms)[^<]*</script>', ''),
+        (r'<script[^>]*>[^<]*(?:hotjar|fbq|mixpanel|amplitude|segment\.io|fullstory|clarity\.ms|zunvra)[^<]*</script>', ''),
         (r'<base\s+href="/"\s*/>', '<base href="/aggr/" />'),
     ]
     patched = 0

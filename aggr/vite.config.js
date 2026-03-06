@@ -86,7 +86,7 @@ export default defineConfig(({ mode }) => {
     define: {
       ...processEnvValues
     },
-    base: mode === 'github' ? env.VITE_APP_BASE_PATH : '/',
+    base: env.VITE_APP_BASE_PATH || '/aggr/',
     plugins: [
       vue(),
       svgLoader({
@@ -128,7 +128,8 @@ export default defineConfig(({ mode }) => {
       devSourcemap: true,
       preprocessorOptions: {
         scss: {
-          additionalData: `@import "@/assets/sass/variables.scss";`
+          additionalData: `@use 'sass:color';\n@import "@/assets/sass/variables.scss";\n`,
+          silenceDeprecations: ['legacy-js-api', 'import', 'global-builtin']
         }
       }
     }

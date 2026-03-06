@@ -9,8 +9,10 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+# Allow lib/ inside sub-projects (e.g. sable_dev/lib)
+!sable_dev/lib/
 parts/
 sdist/
 var/
@@ -128,8 +130,8 @@ trading_backtest_results/
 # Dashboard (React app — keep dist/ for gateway, ignore node_modules)
 dashboard/node_modules/
 
-# Website (built separately)
-website/
+# Website (built separately — root-level only, not aggr subcomponents)
+/website/
 
 # MkDocs build output
 site/

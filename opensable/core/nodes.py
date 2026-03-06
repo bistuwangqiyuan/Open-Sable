@@ -325,7 +325,11 @@ class LocalNode:
 
     async def start(self):
         """Start the local node in a background task."""
-        asyncio.create_task(self._client.run())
+        # Keep a strong reference to prevent garbage collection of the task.
+        self._task = asyncio.create_task(self._client.run())
+        self._task.add_done_callback(
+            lambda t: logger.warning(f"[LocalNode] task ended: {t.exception()}" if not t.cancelled() and t.exception() else None)
+        )
         logger.info("[LocalNode] Started")
 
     async def stop(self):
