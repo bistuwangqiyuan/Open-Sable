@@ -551,7 +551,7 @@ graph TD
 
 ---
 
-## 🎯 Core Features
+## �🎯 Core Features
 
 ### Communication & Interfaces (13 platforms)
 - ✅ **Telegram** (primary, bot + userbot)

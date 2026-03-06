@@ -37,12 +37,106 @@ _AGENTS_DIR = _PROJECT_ROOT / "agents"
 _active_profile: Optional["AgentProfile"] = None
 
 
+# ── Tool Groups (OpenClaw-inspired shorthands) ─────────────────────────
+# Users reference groups in tools.json with the ``group:`` prefix.
+# Each group expands to a list of concrete tool names.
+TOOL_GROUPS: Dict[str, List[str]] = {
+    "group:fs": [
+        "read_file", "write_file", "edit_file", "delete_file",
+        "move_file", "list_directory", "search_files",
+    ],
+    "group:runtime": [
+        "execute_command", "execute_code", "system_info",
+    ],
+    "group:web": [
+        "browser_search", "browser_scrape", "browser_snapshot",
+        "browser_action", "open_url",
+    ],
+    "group:desktop": [
+        "desktop_screenshot", "desktop_click", "desktop_type",
+        "desktop_hotkey", "desktop_scroll", "screen_analyze",
+        "screen_find", "screen_click_on", "window_list",
+        "window_focus", "open_app",
+    ],
+    "group:social": [
+        "x_post_tweet", "x_post_thread", "x_search", "x_like",
+        "x_retweet", "x_reply", "x_follow", "x_get_user",
+        "x_get_trends", "x_send_dm", "x_delete_tweet", "x_get_user_tweets",
+        "grok_generate_image", "grok_analyze_image", "grok_chat",
+        "ig_upload_photo", "ig_upload_reel", "ig_upload_story",
+        "ig_search", "ig_like", "ig_comment", "ig_follow",
+        "ig_get_user", "ig_dm", "ig_get_feed", "ig_get_followers",
+        "ig_unfollow", "ig_get_trending",
+        "fb_post", "fb_upload_photo", "fb_feed", "fb_like",
+        "fb_comment", "fb_search", "fb_page_info",
+        "linkedin_search_people", "linkedin_search_jobs",
+        "linkedin_search_companies", "linkedin_post",
+        "linkedin_message", "linkedin_connect",
+        "linkedin_profile", "linkedin_feed",
+        "tiktok_trending", "tiktok_search_videos", "tiktok_search_users",
+        "tiktok_hashtag", "tiktok_user_info", "tiktok_video_info",
+        "yt_search", "yt_video_info", "yt_channel_info",
+        "yt_video_comments", "yt_trending", "yt_like_video",
+        "yt_subscribe", "yt_upload_video", "yt_playlists",
+        "yt_add_to_playlist", "yt_search_channels", "yt_channel_videos",
+    ],
+    "group:trading": [
+        "trading_price", "trading_portfolio", "trading_analyze",
+        "trading_place_trade", "trading_history", "trading_signals",
+        "trading_risk_status", "trading_set_strategy",
+        "trading_start_scan", "trading_stop_scan",
+    ],
+    "group:documents": [
+        "create_document", "read_document", "open_document",
+        "create_spreadsheet", "create_pdf", "create_presentation",
+        "write_in_writer",
+    ],
+    "group:comms": [
+        "email_send", "email_read",
+        "calendar_list_events", "calendar_add_event", "calendar_delete_event",
+        "calendar",
+    ],
+    "group:mobile": [
+        "phone_notify", "phone_reminder", "phone_geofence",
+        "phone_location", "phone_device",
+    ],
+    "group:marketplace": [
+        "marketplace_search", "marketplace_info",
+        "marketplace_install", "marketplace_review",
+    ],
+    "group:vision": [
+        "screen_analyze", "screen_find", "screen_click_on",
+        "generate_image", "grok_generate_image", "grok_analyze_image",
+        "ocr_extract",
+    ],
+}
+
+
+def _expand_groups(tool_list: List[str]) -> List[str]:
+    """Expand ``group:xxx`` shorthands in a tool list into concrete names."""
+    expanded: List[str] = []
+    for entry in tool_list:
+        if entry in TOOL_GROUPS:
+            expanded.extend(TOOL_GROUPS[entry])
+        else:
+            expanded.append(entry)
+    return expanded
+
+
 @dataclass
 class ToolFilter:
-    """Describes which tools a profile is allowed to use."""
+    """Describes which tools a profile is allowed to use.
+
+    Supports ``group:`` shorthands (e.g. ``group:social``, ``group:fs``).
+    Groups are expanded when the filter is evaluated.
+    """
 
     mode: str = "all"  # "all", "allowlist", "denylist"
     tools: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        # Expand any group: references at load time
+        self.tools = _expand_groups(self.tools)
 
     def is_allowed(self, tool_name: str) -> bool:
         """Return True if *tool_name* passes the filter."""

@@ -48,6 +48,7 @@ class CommandHandler:
         "reset": "Clear conversation history",
         "new": "Start a new conversation (alias for /reset)",
         "compact": "Compress old messages into a summary",
+        "context": "Show context window diagnostics (tool schemas, system prompt, memory)",
         "think": "Set thinking depth: off|minimal|low|medium|high|xhigh",
         "verbose": "Toggle verbose output: on|off",
         "usage": "Usage footer: off|tokens|full",
@@ -361,3 +362,87 @@ class CommandHandler:
         except Exception as e:
             logger.error("Plugin command '%s' failed: %s", cmd_name, e)
             return CommandResult(success=False, message=f"❌ Plugin error: {e}")
+
+    # ── /context — context window diagnostics ────────────────────────────
+
+    async def _cmd_context(self, session, args, user_id, is_admin, is_group) -> CommandResult:
+        """Show a breakdown of what fills the LLM context window.
+
+        Inspired by OpenClaw's ``/context detail`` command.
+        """
+        import json
+
+        lines = ["📐 **Context Window Diagnostics**", ""]
+
+        # 1. Tool schemas
+        try:
+            from opensable.core.tools._schemas import get_all_schemas
+            schemas = get_all_schemas()
+            total_chars = len(json.dumps(schemas))
+            est_tokens = total_chars // 4  # rough char→token estimate
+
+            # Per-domain breakdown
+            domain_sizes: dict[str, list] = {}
+            for s in schemas:
+                fn = s.get("function", {})
+                name = fn.get("name", "")
+                size = len(json.dumps(s))
+                # Infer domain from prefix
+                prefix = name.split("_")[0] if "_" in name else "core"
+                domain_sizes.setdefault(prefix, []).append((name, size))
+
+            lines.append(f"**🔧 Tool Schemas:** {len(schemas)} tools · {total_chars:,} chars (~{est_tokens:,} tokens)")
+            lines.append("")
+
+            # Sort domains by total size desc
+            domain_totals = sorted(
+                [(d, sum(sz for _, sz in tools), len(tools)) for d, tools in domain_sizes.items()],
+                key=lambda x: -x[1],
+            )
+            for domain, total_sz, count in domain_totals:
+                lines.append(f"  `{domain}` — {count} tools · {total_sz:,} chars (~{total_sz // 4:,} tok)")
+
+            # Top 5 heaviest individual tools
+            lines.append("")
+            lines.append("**Top 5 heaviest tools:**")
+            all_tool_sizes = [(name, sz) for tools in domain_sizes.values() for name, sz in tools]
+            all_tool_sizes.sort(key=lambda x: -x[1])
+            for name, sz in all_tool_sizes[:5]:
+                lines.append(f"  `{name}` — {sz:,} chars (~{sz // 4:,} tok)")
+
+        except Exception as e:
+            lines.append(f"Tool schemas: error — {e}")
+
+        lines.append("")
+
+        # 2. Conversation history
+        msg_chars = sum(len(str(m.get("content", ""))) for m in session.messages)
+        msg_tokens = msg_chars // 4
+        lines.append(
+            f"**💬 Conversation:** {len(session.messages)} messages · "
+            f"{msg_chars:,} chars (~{msg_tokens:,} tokens)"
+        )
+
+        # 3. System prompt estimate
+        lines.append("")
+        sp_est = 3500  # rough baseline for personality + rules
+        lines.append(f"**📝 System prompt:** ~{sp_est:,} chars (~{sp_est // 4:,} tokens) (baseline estimate)")
+
+        # 4. Total
+        total = total_chars + msg_chars + sp_est
+        lines.append("")
+        lines.append(f"**📊 Total estimated context:** ~{total:,} chars (~{total // 4:,} tokens)")
+
+        # 5. Model info
+        lines.append("")
+        model = session.config.model or "default"
+        lines.append(f"**🤖 Model:** {model}")
+
+        # Lazy loading savings hint
+        lines.append("")
+        lines.append(
+            "💡 *Lazy Tool Loading is active — intent-irrelevant tools are sent "
+            "with compact schemas (name + description only), saving ~30-39% context.*"
+        )
+
+        return CommandResult(success=True, message="\n".join(lines))

@@ -1,5 +1,23 @@
 {
   "mode": "all",
   "tools": [],
-  "_comment": "mode: 'all' = every tool available. 'allowlist' = only listed tools. 'denylist' = everything except listed tools."
+  "_comment": "mode: 'all' = every tool available. 'allowlist' = only listed tools. 'denylist' = everything except listed tools.",
+  "_groups": {
+    "group:fs": "read_file, write_file, edit_file, delete_file, move_file, list_directory, search_files",
+    "group:runtime": "execute_command, execute_code, system_info",
+    "group:web": "browser_search, browser_scrape, browser_snapshot, browser_action, open_url",
+    "group:desktop": "desktop_screenshot, desktop_click, desktop_type, desktop_hotkey, desktop_scroll, screen_analyze, screen_find, screen_click_on, window_list, window_focus, open_app",
+    "group:social": "x_*, grok_*, ig_*, fb_*, linkedin_*, tiktok_*, yt_*",
+    "group:trading": "trading_*",
+    "group:documents": "create_document, read_document, open_document, create_spreadsheet, create_pdf, create_presentation, write_in_writer",
+    "group:comms": "email_send, email_read, calendar_list_events, calendar_add_event, calendar_delete_event",
+    "group:mobile": "phone_notify, phone_reminder, phone_geofence, phone_location, phone_device",
+    "group:marketplace": "marketplace_search, marketplace_info, marketplace_install, marketplace_review",
+    "group:vision": "screen_analyze, screen_find, screen_click_on, generate_image, grok_generate_image, grok_analyze_image, ocr_extract"
+  },
+  "_examples": {
+    "allowlist_coding": { "mode": "allowlist", "tools": ["group:fs", "group:runtime", "group:web", "browser_search"] },
+    "denylist_no_social": { "mode": "denylist", "tools": ["group:social"] },
+    "allowlist_social_agent": { "mode": "allowlist", "tools": ["group:social", "group:web", "generate_image"] }
+  }
 }

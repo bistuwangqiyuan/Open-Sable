@@ -1414,7 +1414,19 @@ class SableAgent:
         # Tool calling loop
         if not tool_results:
             messages = [{"role": "system", "content": base_system}]
-            messages += history_for_ollama[-8:]
+
+            # ── Auto-compaction ──────────────────────────────────────
+            # Truncate individual messages that are excessively long
+            # (e.g. scraped pages, large tool outputs) so they don't
+            # monopolise the context window.
+            _MAX_MSG_CHARS = 4000
+            _recent = history_for_ollama[-8:]
+            for _hm in _recent:
+                _c = _hm.get("content", "")
+                if len(_c) > _MAX_MSG_CHARS:
+                    _hm["content"] = _c[:_MAX_MSG_CHARS] + "\n\n[… truncated]"
+            messages += _recent
+            # ─────────────────────────────────────────────────────────
 
             if plan:
                 messages.append(
@@ -1450,6 +1462,14 @@ class SableAgent:
             _MAX_ROUNDS = 10
             _last_tool_was_code_error = False
             final_text = None
+
+            # ── Loop detection state ────────────────────────────────
+            # Tracks (tool_name, arg_hash) tuples to detect repeated
+            # identical calls (generic repeat, ping-pong, no-progress).
+            _call_history: list[tuple[str, str]] = []
+            _LOOP_THRESHOLD = 3   # same call 3× → break
+            _PINGPONG_LEN = 4     # A-B-A-B pattern length
+            # ────────────────────────────────────────────────────────
 
             for _round in range(_MAX_ROUNDS):
                 offer_tools = (
@@ -1516,6 +1536,58 @@ class SableAgent:
                                 _intent.intent, _model_tier, _dynamically_loaded,
                             )
                             logger.info(f"🔧 Expanded schemas for: {_loaded}")
+
+                    # ── Loop detection ─────────────────────────────────
+                    import hashlib as _hl
+                    for tc in all_tool_calls:
+                        _arg_hash = _hl.md5(
+                            json.dumps(tc.get("arguments", {}), sort_keys=True).encode()
+                        ).hexdigest()[:8]
+                        _call_history.append((tc["name"], _arg_hash))
+
+                    # Pattern 1: same (tool, args) repeated N times
+                    if len(_call_history) >= _LOOP_THRESHOLD:
+                        _last_n = _call_history[-_LOOP_THRESHOLD:]
+                        if len(set(_last_n)) == 1:
+                            logger.warning(
+                                f"🔄 Loop detected: {_last_n[0][0]} called "
+                                f"{_LOOP_THRESHOLD}× with identical args — breaking"
+                            )
+                            messages.append({
+                                "role": "user",
+                                "content": (
+                                    "STOP — you have called the same tool with the same "
+                                    "arguments multiple times and it is not making progress. "
+                                    "Summarize what you have so far and respond to the user."
+                                ),
+                            })
+                            offer_tools = False
+                            tool_schemas = []  # force text-only next round
+                            continue
+
+                    # Pattern 2: A-B-A-B ping-pong
+                    if len(_call_history) >= _PINGPONG_LEN:
+                        _recent = [c[0] for c in _call_history[-_PINGPONG_LEN:]]
+                        if (
+                            _recent[0] == _recent[2]
+                            and _recent[1] == _recent[3]
+                            and _recent[0] != _recent[1]
+                        ):
+                            logger.warning(
+                                f"🔄 Ping-pong detected: {_recent[0]} ↔ {_recent[1]} — breaking"
+                            )
+                            messages.append({
+                                "role": "user",
+                                "content": (
+                                    "STOP — you are alternating between two tools without "
+                                    "making progress. Summarize what you have so far and "
+                                    "respond to the user."
+                                ),
+                            })
+                            offer_tools = False
+                            tool_schemas = []
+                            continue
+                    # ── End loop detection ─────────────────────────────
 
                     # Code feedback loop
                     has_code_error = any(
