@@ -388,16 +388,19 @@ class SableAgent:
     # ------------------------------------------------------------------
     # Lazy tool loading  (OpenClaw-inspired)
     # ------------------------------------------------------------------
-    # ALL 126 tools are ALWAYS sent to the model — none are ever removed.
-    # For intent-relevant tools we send full schemas (with parameters).
-    # For the rest we send *compact* schemas (name + description only,
-    # parameters = empty object).  This saves ~50 % of tool-context tokens
-    # while keeping every tool callable.
+    # LOCAL mode (Ollama / free inference):
+    #   ALL 127 tools are ALWAYS sent — none are ever removed.
+    #   Intent-relevant tools get full schemas (with parameters).
+    #   The rest get *compact* schemas (name + description only).
     #
-    # If the model calls a compact tool, it works normally — the dispatch
-    # layer fills defaults.  But if the model needs to see exact params
-    # first, it can call the meta-tool ``load_tool_details`` which returns
-    # the full schema and the next LLM round will have it expanded.
+    # CLOUD mode (OpenAI, Anthropic, etc. — pay-per-token):
+    #   Only intent-relevant tools are sent (full schemas).
+    #   Non-relevant tools are OMITTED entirely to save tokens/cost.
+    #   The meta-tool ``load_tool_details`` is always included so the
+    #   model can request any tool it needs mid-conversation.
+    #
+    # Detection is automatic — CloudLLM sets self.provider, AdaptiveLLM
+    # (Ollama) does not.  Users can override via TOOL_POLICY env var.
     # ------------------------------------------------------------------
 
     # Tools whose FULL schema is always sent, regardless of intent.
@@ -411,6 +414,7 @@ class SableAgent:
         "execute_code",
         # Documents
         "create_document", "read_document", "open_document",
+        "create_spreadsheet", "create_pdf", "create_presentation", "write_in_writer",
         # Email & calendar
         "email_send", "email_read",
         "calendar_list_events", "calendar_add_event",
@@ -445,7 +449,18 @@ class SableAgent:
         "social_media":       frozenset({"generate_image", "grok_generate_image"}),
         "desktop_screenshot": frozenset({"desktop_screenshot", "screen_analyze", "screen_find"}),
         "trading":            frozenset({"trading_place_trade", "trading_price", "trading_portfolio"}),
+        "file_operation":     frozenset({"create_document", "create_spreadsheet", "create_pdf", "create_presentation", "write_in_writer", "read_document", "open_document"}),
     }
+
+    def _is_cloud_provider(self) -> bool:
+        """Detect if current LLM is a paid cloud API (vs free local Ollama)."""
+        import os
+        override = os.environ.get("TOOL_POLICY", "").lower()
+        if override == "cloud":
+            return True
+        if override == "local":
+            return False
+        return hasattr(self.llm, "provider")  # CloudLLM has .provider, AdaptiveLLM doesn't
 
     @staticmethod
     def _detect_model_tier(model_name: str) -> str:
@@ -474,13 +489,15 @@ class SableAgent:
         intent: str,
         model_tier: str,
         extra_full: set[str] | None = None,
+        is_cloud: bool = False,
     ) -> list[dict]:
-        """Return ALL schemas — full for priority tools, compact for the rest.
+        """Return tool schemas optimized for the current provider.
 
-        Compact = same name + description, but parameters stripped to empty
-        object so the model still sees the tool exists and can call it.
+        LOCAL mode:  ALL schemas returned — full for priority, compact for rest.
+        CLOUD mode:  Only intent-relevant tools returned (full schemas) to save
+                     API costs.  ``load_tool_details`` is always included.
 
-        For *large* models no compaction is applied (they handle 50 K tokens fine).
+        For *large* local models no compaction is applied.
         """
         if model_tier == "large":
             return all_schemas
@@ -514,17 +531,22 @@ class SableAgent:
                 "delete_file", "move_file",
             })
 
-        # Build output — ALL tools present, just some with compact params
+        # Build output
         result: list[dict] = []
         n_full = 0
+        n_compact = 0
+        n_omitted = 0
         for s in all_schemas:
             fn = s.get("function", {})
             name = fn.get("name", "")
             if name in full_names:
                 result.append(s)  # full schema
                 n_full += 1
+            elif is_cloud:
+                # CLOUD mode: omit non-relevant tools entirely to save cost
+                n_omitted += 1
             else:
-                # Compact: keep name + description, empty params
+                # LOCAL mode: compact schema (name + description, empty params)
                 result.append({
                     "type": "function",
                     "function": {
@@ -533,10 +555,12 @@ class SableAgent:
                         "parameters": {"type": "object", "properties": {}},
                     },
                 })
+                n_compact += 1
 
+        mode = "cloud" if is_cloud else "local"
         logger.info(
-            f"🔧 Lazy schemas: intent={intent}, tier={model_tier}, "
-            f"{n_full} full + {len(result) - n_full} compact = {len(result)} total"
+            f"🔧 Lazy schemas [{mode}]: intent={intent}, tier={model_tier}, "
+            f"{n_full} full + {n_compact} compact + {n_omitted} omitted = {len(result)} sent"
         )
         return result
 
@@ -1446,16 +1470,17 @@ class SableAgent:
 
             tool_schemas = self.tools.get_tool_schemas()
 
-            # ── Lazy schema compaction (intent + model-size aware) ───
-            # ALL 126 tools stay in the array — none are removed.
-            # Intent-relevant tools get full schemas (with params).
-            # The rest get compact schemas (name + description only).
+            # ── Lazy schema compaction (intent + model-size + provider aware)
+            # LOCAL: ALL tools stay — intent-relevant get full, rest compact.
+            # CLOUD: Only intent-relevant tools sent (full) to save API cost.
             # The model can call load_tool_details to expand any tool.
             _model_name = getattr(self.llm, "current_model", "") or ""
             _model_tier = self._detect_model_tier(_model_name)
+            _is_cloud = self._is_cloud_provider()
             _dynamically_loaded: set[str] = set()  # tools loaded via load_tool_details
             tool_schemas = self._build_lazy_schemas(
-                tool_schemas, _intent.intent, _model_tier, _dynamically_loaded
+                tool_schemas, _intent.intent, _model_tier, _dynamically_loaded,
+                is_cloud=_is_cloud,
             )
             # ─────────────────────────────────────────────────────────
 
@@ -1534,6 +1559,7 @@ class SableAgent:
                             tool_schemas = self._build_lazy_schemas(
                                 self.tools.get_tool_schemas(),
                                 _intent.intent, _model_tier, _dynamically_loaded,
+                                is_cloud=_is_cloud,
                             )
                             logger.info(f"🔧 Expanded schemas for: {_loaded}")
 
@@ -1824,6 +1850,10 @@ class SableAgent:
         if not text:
             logger.warning(f"[clean_output] Think-block stripping produced empty text (original {len(original)} chars)")
             text = original.replace('<think>', '').replace('</think>', '').strip()
+        # If still empty after all stripping, provide a fallback message
+        if not text:
+            logger.warning("[clean_output] Model produced no usable output, using fallback")
+            text = "I understood your request but had trouble generating a response. Could you try rephrasing it?"
         # Strip leaked role prefixes — llama/mistral models sometimes output
         # "Assistant\n..." or "assistant:" at the start of their reply.
         text = _re.sub(

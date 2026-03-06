@@ -182,6 +182,8 @@ _FILE_OPS = re.compile(
     r'\b(read\s+(the\s+)?file|write\s+(to\s+)?(the\s+)?file|create\s+(a\s+)?file|'
     r'delete\s+(the\s+)?file|list\s+(files|directory|dir)|'
     r'show\s+(files|contents)\s+(in|of)|move\s+file|copy\s+file|'
+    r'(make|create|write|generate|build)\s+(me\s+)?(a\s+)?(document|doc|report|essay|letter|pdf|spreadsheet|presentation|word\s+doc|pptx?|xlsx?)|'
+    r'(hazme|cr[eé]ame|genera|escr[ií]be)\s+(un\s+)?(documento|reporte|ensayo|carta|pdf|hoja\s+de\s+c[aá]lculo|presentaci[oó]n)|'
     r'leer\s+archivo|listar\s+archivos|mostrar\s+archivos)\b',
     re.IGNORECASE,
 )
