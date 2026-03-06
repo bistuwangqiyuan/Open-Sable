@@ -386,6 +386,161 @@ class SableAgent:
         return await self._agentic_loop(state)
 
     # ------------------------------------------------------------------
+    # Lazy tool loading  (OpenClaw-inspired)
+    # ------------------------------------------------------------------
+    # ALL 126 tools are ALWAYS sent to the model — none are ever removed.
+    # For intent-relevant tools we send full schemas (with parameters).
+    # For the rest we send *compact* schemas (name + description only,
+    # parameters = empty object).  This saves ~50 % of tool-context tokens
+    # while keeping every tool callable.
+    #
+    # If the model calls a compact tool, it works normally — the dispatch
+    # layer fills defaults.  But if the model needs to see exact params
+    # first, it can call the meta-tool ``load_tool_details`` which returns
+    # the full schema and the next LLM round will have it expanded.
+    # ------------------------------------------------------------------
+
+    # Tools whose FULL schema is always sent, regardless of intent.
+    _ALWAYS_FULL_TOOLS: frozenset = frozenset({
+        # Browser / web
+        "browser_search", "browser_scrape",
+        # File system
+        "execute_command", "read_file", "write_file", "list_directory",
+        "edit_file", "search_files",
+        # Code
+        "execute_code",
+        # Documents
+        "create_document", "read_document", "open_document",
+        # Email & calendar
+        "email_send", "email_read",
+        "calendar_list_events", "calendar_add_event",
+        # System
+        "system_info", "weather",
+        # Desktop basics
+        "open_app", "open_url",
+        # Meta
+        "load_tool_details",
+    })
+
+    # Intent → extra tool name prefixes that get FULL schemas
+    _INTENT_FULL_PREFIXES: dict = {
+        "desktop_screenshot": ("desktop_", "screen_", "window_"),
+        "desktop_click":      ("desktop_", "screen_", "window_"),
+        "desktop_type":       ("desktop_", "screen_", "window_"),
+        "desktop_hotkey":     ("desktop_", "screen_", "window_"),
+        "window_list":        ("desktop_", "screen_", "window_"),
+        "window_focus":       ("desktop_", "screen_", "window_"),
+        "navigate_url":       ("browser_",),
+        "image_request":      ("grok_", "screen_", "ocr_"),
+        "social_media":       ("x_", "grok_", "ig_", "fb_", "linkedin_", "tiktok_", "yt_"),
+        "trading":            ("trading_",),
+        "file_operation":     ("delete_", "move_"),
+        "system_command":     ("clipboard_",),
+        "code_question":      ("vector_",),
+    }
+
+    # Intent → extra exact tool names that get FULL schemas
+    _INTENT_FULL_EXACT: dict = {
+        "image_request":      frozenset({"generate_image", "grok_generate_image", "grok_analyze_image"}),
+        "social_media":       frozenset({"generate_image", "grok_generate_image"}),
+        "desktop_screenshot": frozenset({"desktop_screenshot", "screen_analyze", "screen_find"}),
+        "trading":            frozenset({"trading_place_trade", "trading_price", "trading_portfolio"}),
+    }
+
+    @staticmethod
+    def _detect_model_tier(model_name: str) -> str:
+        """Classify model into small (≤8B), medium (9-30B), or large (>30B)."""
+        name = model_name.lower()
+        m = re.search(r'(\d+\.?\d*)\s*b(?:\b|[-_])', name)
+        if m:
+            params = float(m.group(1))
+            if params <= 8:
+                return "small"
+            elif params <= 30:
+                return "medium"
+            else:
+                return "large"
+        if any(k in name for k in ("llama3.2:1b", "llama3.2:3b", "gemma3:4b", "phi-3", "phi3")):
+            return "small"
+        if any(k in name for k in ("llama3.1:8b", "hermes3:8b", "llama3:8b")):
+            return "small"
+        if any(k in name for k in ("70b", "72b", "mixtral")):
+            return "large"
+        return "medium"
+
+    def _build_lazy_schemas(
+        self,
+        all_schemas: list[dict],
+        intent: str,
+        model_tier: str,
+        extra_full: set[str] | None = None,
+    ) -> list[dict]:
+        """Return ALL schemas — full for priority tools, compact for the rest.
+
+        Compact = same name + description, but parameters stripped to empty
+        object so the model still sees the tool exists and can call it.
+
+        For *large* models no compaction is applied (they handle 50 K tokens fine).
+        """
+        if model_tier == "large":
+            return all_schemas
+
+        # Build set of tools that get FULL schemas
+        full_names: set[str] = set(self._ALWAYS_FULL_TOOLS)
+
+        # Intent-driven extras
+        prefixes = self._INTENT_FULL_PREFIXES.get(intent, ())
+        exact = self._INTENT_FULL_EXACT.get(intent, frozenset())
+        full_names.update(exact)
+        if prefixes:
+            for s in all_schemas:
+                name = s.get("function", {}).get("name", "")
+                if any(name.startswith(p) for p in prefixes):
+                    full_names.add(name)
+
+        # Dynamically loaded tools (model called load_tool_details earlier)
+        if extra_full:
+            full_names.update(extra_full)
+
+        # Medium models get more generous full schemas
+        if model_tier == "medium":
+            full_names.update({
+                "marketplace_search", "marketplace_info",
+                "phone_notify", "phone_location",
+                "clipboard_copy", "clipboard_paste",
+                "ocr_extract", "write_in_writer",
+                "create_spreadsheet", "create_pdf", "create_presentation",
+                "generate_image", "calendar_delete_event",
+                "delete_file", "move_file",
+            })
+
+        # Build output — ALL tools present, just some with compact params
+        result: list[dict] = []
+        n_full = 0
+        for s in all_schemas:
+            fn = s.get("function", {})
+            name = fn.get("name", "")
+            if name in full_names:
+                result.append(s)  # full schema
+                n_full += 1
+            else:
+                # Compact: keep name + description, empty params
+                result.append({
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": fn.get("description", ""),
+                        "parameters": {"type": "object", "properties": {}},
+                    },
+                })
+
+        logger.info(
+            f"🔧 Lazy schemas: intent={intent}, tier={model_tier}, "
+            f"{n_full} full + {len(result) - n_full} compact = {len(result)} total"
+        )
+        return result
+
+    # ------------------------------------------------------------------
     # Planning
     # ------------------------------------------------------------------
 
@@ -1278,6 +1433,20 @@ class SableAgent:
                 messages.append({"role": "user", "content": task})
 
             tool_schemas = self.tools.get_tool_schemas()
+
+            # ── Lazy schema compaction (intent + model-size aware) ───
+            # ALL 126 tools stay in the array — none are removed.
+            # Intent-relevant tools get full schemas (with params).
+            # The rest get compact schemas (name + description only).
+            # The model can call load_tool_details to expand any tool.
+            _model_name = getattr(self.llm, "current_model", "") or ""
+            _model_tier = self._detect_model_tier(_model_name)
+            _dynamically_loaded: set[str] = set()  # tools loaded via load_tool_details
+            tool_schemas = self._build_lazy_schemas(
+                tool_schemas, _intent.intent, _model_tier, _dynamically_loaded
+            )
+            # ─────────────────────────────────────────────────────────
+
             _MAX_ROUNDS = 10
             _last_tool_was_code_error = False
             final_text = None
@@ -1332,6 +1501,21 @@ class SableAgent:
 
                     results = await self._execute_tools_parallel(all_tool_calls, user_id=user_id)
                     tool_results.extend(results)
+
+                    # If load_tool_details was called, expand those tools'
+                    # schemas for subsequent rounds so the model sees full params.
+                    for tc in all_tool_calls:
+                        if tc["name"] == "load_tool_details":
+                            _loaded = tc.get("arguments", {}).get("tool_names", [])
+                            if isinstance(_loaded, str):
+                                _loaded = [_loaded]
+                            _dynamically_loaded.update(_loaded)
+                            # Rebuild schemas with newly-loaded tools expanded
+                            tool_schemas = self._build_lazy_schemas(
+                                self.tools.get_tool_schemas(),
+                                _intent.intent, _model_tier, _dynamically_loaded,
+                            )
+                            logger.info(f"🔧 Expanded schemas for: {_loaded}")
 
                     # Code feedback loop
                     has_code_error = any(

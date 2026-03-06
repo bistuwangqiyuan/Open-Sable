@@ -117,4 +117,23 @@ SCHEMAS = [
     },
     },
 
+    {
+    "type": "function",
+    "function": {
+    "name": "load_tool_details",
+    "description": "Load the full parameter schema for one or more tools so you can call them with the correct arguments. Use this when you need to call a tool whose parameters you haven't seen yet.",
+    "parameters": {
+    "type": "object",
+    "properties": {
+    "tool_names": {
+    "type": "array",
+    "items": {"type": "string"},
+    "description": "List of tool names to load full schemas for (e.g. ['x_post_tweet', 'trading_place_trade'])",
+    }
+    },
+    "required": ["tool_names"],
+    },
+    },
+    },
+
 ]

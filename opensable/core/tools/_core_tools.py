@@ -822,3 +822,45 @@ class CoreToolsMixin:
         except Exception as e:
             return f"❌ Error listing skills: {str(e)}"
 
+    # ── Meta-tool: lazy schema loading ────────────────────────────────────
+
+    async def _load_tool_details(self, params: Dict) -> str:
+        """Return the full parameter schemas for requested tools.
+
+        When the agent's tool list is sent with compact schemas (name +
+        description only), the model can call this meta-tool to fetch the
+        complete parameter definitions before invoking a complex tool.
+        """
+        import json as _json
+        from ._schemas import get_all_schemas
+
+        requested = params.get("tool_names", [])
+        if isinstance(requested, str):
+            requested = [requested]
+
+        all_schemas = get_all_schemas()
+        schema_map = {
+            s.get("function", {}).get("name", ""): s
+            for s in all_schemas
+        }
+
+        results = []
+        for name in requested:
+            if name in schema_map:
+                fn = schema_map[name]["function"]
+                results.append(
+                    f"**{name}**:\n```json\n"
+                    f"{_json.dumps(fn.get('parameters', {}), indent=2)}\n```"
+                )
+            else:
+                results.append(f"**{name}**: ⚠️ Unknown tool")
+
+        if not results:
+            return "⚠️ No tool names provided. Pass tool_names=['tool1', 'tool2']."
+
+        return (
+            "Here are the full parameter schemas for the requested tools. "
+            "You can now call them with the correct arguments:\n\n"
+            + "\n\n".join(results)
+        )
+

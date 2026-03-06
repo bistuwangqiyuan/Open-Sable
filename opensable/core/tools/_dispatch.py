@@ -38,6 +38,7 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "vector_search": ("vector_search", _p),
     "create_skill": ("create_skill", _p),
     "list_skills": ("list_skills", _p),
+    "load_tool_details": ("load_tool_details", _p),
     # File ops
     "edit_file": ("edit_file", _p),
     "delete_file": ("delete_file", _p),

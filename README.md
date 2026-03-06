@@ -495,6 +495,62 @@ graph TB
 
 ---
 
+## 🧠 Lazy Tool Loading (Smart Schema Compaction)
+
+Open-Sable registers **127 tools** across 20 domain modules (browser, system, desktop, social media, trading, marketplace, mobile, documents, email, calendar, clipboard, OCR, vision, and more). Sending all 127 full JSON schemas to a local LLM on every request adds **~50,000 characters** to the context window — causing slow inference and timeouts on smaller models.
+
+**Lazy Tool Loading** solves this without removing any tools:
+
+```mermaid
+graph TD
+    A[User Message] --> B[Intent Classifier<br/>17 intents · zero-latency regex]
+    B --> C[Model Tier Detection<br/>small ≤8B · medium 9-30B · large >30B]
+    C --> D{Tier?}
+    
+    D -->|large| E[All 127 tools<br/>full schemas]
+    D -->|medium / small| F[Build Lazy Schemas]
+    
+    F --> G[Core + Intent-relevant tools<br/>FULL schema · name + desc + params]
+    F --> H[All other tools<br/>COMPACT schema · name + desc only]
+    
+    G --> I[127 tools sent to LLM<br/>~30-35K chars instead of 50K]
+    H --> I
+    
+    I --> J{Model needs a<br/>compact tool?}
+    J -->|Simple call| K[Call directly<br/>dispatch fills defaults]
+    J -->|Needs params| L[Call load_tool_details<br/>meta-tool]
+    L --> M[Full schema returned<br/>expanded for next round]
+    M --> I
+    
+    E --> N[LLM Inference]
+    I --> N
+```
+
+### How It Works
+
+| Step | What happens |
+|------|-------------|
+| **1. Classify** | The `IntentClassifier` determines what the user wants (e.g., `social_media`, `trading`, `general_chat`) via zero-latency regex — no LLM call |
+| **2. Detect tier** | Model size is extracted from the model name (e.g., `Qwen3-14B` → medium) |
+| **3. Build schemas** | Core tools (browser, files, email, calendar, etc.) + intent-relevant tools get **full schemas**. All remaining tools get **compact schemas** (name + description, empty parameters) |
+| **4. Send all** | All 127 tools are always sent — the model sees every tool and knows what it does |
+| **5. Dynamic expand** | If the model needs a compact tool's parameters, it calls `load_tool_details(["tool_name"])` and receives the full schema. The next inference round includes the expanded schema |
+
+### Context Savings by Tier
+
+| Intent | Tier | Full | Compact | Total | Context Savings |
+|--------|------|------|---------|-------|-----------------|
+| `general_chat` | small (≤8B) | 21 | 106 | 127 | **-39%** |
+| `general_chat` | medium (9-30B) | 35 | 92 | 127 | **-32%** |
+| `social_media` | medium | 95 | 32 | 127 | **-13%** |
+| `trading` | medium | 45 | 82 | 127 | **-29%** |
+| `desktop_*` | medium | 46 | 81 | 127 | **-28%** |
+| _any_ | large (>30B) | 127 | 0 | 127 | 0% |
+
+**Key principle:** Zero tools are ever removed. The model always sees all 127 tools. Only the parameter details are stripped from tools unlikely to be needed for the current request.
+
+---
+
 ## 🎯 Core Features
 
 ### Communication & Interfaces (13 platforms)

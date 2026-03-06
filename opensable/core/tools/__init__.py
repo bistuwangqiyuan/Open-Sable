@@ -230,6 +230,9 @@ class ToolRegistry(
         self.register("create_skill", self._create_skill_tool)
         self.register("list_skills", self._list_skills_tool)
 
+        # ── Meta-tool: lazy schema loading ────────────────────────────────────
+        self.register("load_tool_details", self._load_tool_details)
+
         # ── Skills Marketplace (SAGP gateway) ─────────────────────────────────
         self.register("marketplace_search", self._marketplace_search_tool)
         self.register("marketplace_info", self._marketplace_info_tool)
