@@ -13,18 +13,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests: 340](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)](#-running-tests)
-[![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
+[![Tests: 463](https://img.shields.io/badge/tests-463%20passing-brightgreen.svg)](#-running-tests)
+[![Modules: 76](https://img.shields.io/badge/core%20modules-76-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
-### 🆕 What's new in v1.1.0
+### 🆕 What's new in v1.2.0
+- **Cognitive Memory**, multi-tier memory with exponential decay, STM→LTM consolidation, and Miller's Number attention filter
+- **Self-Reflection Engine**, automated pattern detection (stagnation, failure rate, repeated errors) with reflection prompts
+- **Skill Evolution**, Modern Evolutionary Synthesis — natural selection, mutation pressure, niche construction, adaptive landscape, recombination
+- **Git Brain**, git-backed episodic memory with async operations for full tick history
+- **Inner Life Processor**, System 1 unconscious processing (Kahneman dual-process) with valence-arousal emotion model
+- **Pattern Learner**, LLM-driven pattern detection, institutional learning (patterns → permanent verification rules), history windowing, fitness snapshots
+- **Skill Fitness v2**, windowed fitness computation + fitness dict export for trend analysis
+- **Cognitive tick pipeline**, all 7 new modules integrated into the autonomous tick loop
+- **463 tests**, comprehensive test suite (up from 340)
+
+<details>
+<summary>What was new in v1.1.0</summary>
+
 - **Token & cost tracking**, per-request and cumulative token/cost metrics via `TokenTracker`
 - **Encrypted memory**, Fernet encryption for all memory stored at rest
 - **Crew API**, CrewAI-style multi-agent orchestration with `SharedBlackboard`
@@ -34,6 +47,7 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 - **MkDocs site**, Material-themed docs at `docs-site/` with guides & architecture
 - **Pinned lockfile**, `requirements-lock.txt` generated via `pip-compile`
 - **340 tests**, comprehensive test suite (up from 9)
+</details>
 
 ---
 
@@ -628,7 +642,7 @@ graph TD
 
 ## 🧠 Cognitive Subsystems (Agentic AI)
 
-Open-Sable includes six core subsystems that work together to provide autonomous, self-improving intelligence.
+Open-Sable includes twelve core subsystems that work together to provide autonomous, self-improving intelligence.
 
 ### Agentic AI Architecture
 
@@ -641,6 +655,15 @@ graph LR
         T[Tool Synthesis]
         W[World Model]
         MC[Metacognition]
+    end
+
+    subgraph "Deep Cognition (v1.2)"
+        CM[Cognitive Memory]
+        SR[Self-Reflection]
+        SE[Skill Evolution]
+        GB[Git Brain]
+        IL[Inner Life]
+        PL[Pattern Learner]
     end
     
     subgraph "Integration Layer"
@@ -663,15 +686,85 @@ graph LR
     AGENT --> T
     AGENT --> W
     AGENT --> MC
+
+    AGENT --> CM
+    AGENT --> SR
+    AGENT --> SE
+    AGENT --> GB
+    AGENT --> IL
+    AGENT --> PL
     
     G --> M
     ML --> T
     W --> G
     MC --> ML
+    CM --> M
+    SR --> MC
+    SE --> T
+    PL --> SE
+    IL --> AGENT
+    GB --> M
     
     T --> TASKS
     G --> ENV
 ```
+
+### Deep Cognition Modules (v1.2)
+
+Six new modules add biologically-inspired cognitive depth to the autonomous tick loop:
+
+| Module | Inspiration | What It Does |
+|--------|------------|---------------|
+| **Cognitive Memory** | Atkinson-Shiffrin multi-store model | Exponential decay, STM→LTM consolidation, Miller's Number (7±2) attention filter |
+| **Self-Reflection** | Metacognitive monitoring | Detects stagnation, failure streaks, repeated errors; generates reflection prompts |
+| **Skill Evolution** | Modern Evolutionary Synthesis | Natural selection, mutation pressure, niche construction, adaptive landscape, recombination |
+| **Git Brain** | Episodic memory | Git-backed tick episodes, branch/merge for experimentation, full diff history |
+| **Inner Life** | Kahneman's System 1 | Valence-arousal emotions, impulses, fantasies, mental landscape, temporal sense |
+| **Pattern Learner** | Institutional learning | LLM-driven pattern detection → permanent verification rules; history windowing; fitness snapshots |
+
+All six modules plug into the **cognitive tick pipeline** (`autonomous_mode.py`), executing every tick:
+
+```
+tick start → discover → plan → execute → sub-agents → self-improve
+          → cognitive_tick (memory decay → reflection → evolution → patterns → git episode → inner life)
+          → maintenance → tick end
+```
+
+**Example — Cognitive Memory**:
+```python
+from opensable.core.cognitive_memory import CognitiveMemoryManager
+
+memory = CognitiveMemoryManager(directory="data/cognitive_memory")
+memory.add_memory("User prefers dark mode", category="preference", importance=0.8)
+memory.process_tick(current_tick=5)  # decay + consolidation + attention
+working = memory.get_working_memory()  # top 7 items by importance
+```
+
+**Example — Skill Evolution**:
+```python
+from opensable.core.skill_evolution import SkillEvolutionManager
+
+evo = SkillEvolutionManager(directory="data/skill_evolution")
+evo.record_event("cap_created", "weather_fetcher", tick=0)
+evo.record_event("cap_used", "weather_fetcher", tick=1)
+evo.record_event("cap_error", "weather_fetcher", tick=2, details="timeout")
+result = evo.evaluate_tick(tick=3)  # natural selection + mutation pressure
+# result['condemned'] → low-fitness skills to prune
+# result['mutations'] → stagnant/error-prone skills needing evolution
+```
+
+**Example — Inner Life (System 1)**:
+```python
+from opensable.core.inner_life import InnerLifeProcessor
+
+processor = InnerLifeProcessor(data_dir="data/inner_life")
+prompt = processor.get_system1_prompt(active_goal="Deploy v2", context="3 tests failing")
+# → Send to fast LLM for emotional/intuitive response
+processor.process_response(llm_response, tick=42)
+modulation = processor.get_emotion_modulation()  # 1.0–1.2 arousal multiplier
+```
+
+---
 
 ### 1. Goal System
 
@@ -2015,26 +2108,30 @@ python3 examples/workflow_examples.py
 
 ## 📊 Project Statistics
 
-**Current Version**: 1.1.0
+**Current Version**: 1.2.0
 
 | Component | Files | Lines | Status |
 |-----------|-------|-------|--------|
-| Core Modules | 56 | 45,000+ | ✅ Complete |
+| Core Modules | 62 | 49,000+ | ✅ Complete |
 | Agentic AI Systems | 6 | 5,500+ | ✅ Complete |
+| Deep Cognition (v1.2) | 6 | 3,100+ | ✅ Complete |
 | Phase 3 Engines | 5 | 3,000+ | ✅ Complete |
 | Voice & Multimodal | 4 | 3,000+ | 🧪 Experimental |
 | Interfaces | 13 | 7,000+ | ✅ Complete |
 | Skills (4 categories) | 24 | 4,000+ | ✅ Complete |
 | Examples | 16 | 3,000+ | ✅ Complete |
-| Tests | 16 | 3,000+ | ✅ 340 Passing |
+| Tests | 17 | 4,200+ | ✅ 463 Passing |
 | Documentation | 10 | 2,000+ | ✅ Complete |
 | Kubernetes | 7 | 500+ | 📝 Templates |
-| **Total** | **179** | **82,000+** | **✅ Core Complete** |
+| **Total** | **186** | **86,000+** | **✅ Core Complete** |
 
-### Module Inventory (56 Core Modules)
+### Module Inventory (62 Core Modules)
 
 **Agentic AI Core** (6):
 `goal_system` · `advanced_memory` · `meta_learning` · `tool_synthesis` · `world_model` · `metacognition`
+
+**Deep Cognition** (6):
+`cognitive_memory` · `self_reflection` · `skill_evolution` · `git_brain` · `inner_life` · `pattern_learner`
 
 **Phase 3 Engines** (5):
 `skill_factory` · `rag` · `workflow` · `self_modify` · `image_gen`
@@ -2589,6 +2686,7 @@ graph LR
 - [x] Core agent loop
 - [x] Basic skills (email, calendar, browser)
 - [x] Cognitive subsystems (goals, memory, learning, tool synthesis, world model, metacognition)
+- [x] Deep cognition layer (cognitive memory, self-reflection, skill evolution, git brain, inner life, pattern learner)
 - [x] Voice interface (experimental)
 - [x] Multi-device sync (experimental)
 - [x] Multimodal Agentic AI (experimental)
