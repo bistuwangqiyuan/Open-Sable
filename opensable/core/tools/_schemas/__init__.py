@@ -24,6 +24,7 @@ from .calendar_google import SCHEMAS as CALENDAR_GOOGLE_SCHEMAS
 from .clipboard import SCHEMAS as CLIPBOARD_SCHEMAS
 from .ocr import SCHEMAS as OCR_SCHEMAS
 from .trading import SCHEMAS as TRADING_SCHEMAS
+from .github import SCHEMAS as GITHUB_SCHEMAS
 
 
 def get_all_schemas() -> List[Dict[str, Any]]:
@@ -49,4 +50,5 @@ def get_all_schemas() -> List[Dict[str, Any]]:
     all_schemas.extend(CLIPBOARD_SCHEMAS)
     all_schemas.extend(OCR_SCHEMAS)
     all_schemas.extend(TRADING_SCHEMAS)
+    all_schemas.extend(GITHUB_SCHEMAS)
     return all_schemas

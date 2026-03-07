@@ -13,18 +13,27 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests: 463](https://img.shields.io/badge/tests-463%20passing-brightgreen.svg)](#-running-tests)
-[![Modules: 76](https://img.shields.io/badge/core%20modules-76-blue.svg)](#-project-statistics)
+[![Tests: 518](https://img.shields.io/badge/tests-518%20passing-brightgreen.svg)](#-running-tests)
+[![Modules: 79](https://img.shields.io/badge/core%20modules-79-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
-### 🆕 What's new in v1.2.0
+### 🆕 What's new in v1.3.0
+- **Proactive Reasoning Engine**, LLM-driven autonomous task generation — every N ticks the agent surveys world state and proposes what to do next, with risk filtering, dedup, and JSONL audit trail
+- **ReAct Executor**, Reasoning + Acting loop (Yao et al. 2022) for multi-step task execution — the agent chains tool calls with intermediate reasoning until the task is complete
+- **GitHub Integration**, full GitHub API skill with 13 tools — create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
+- **Expanded Autonomous Pipeline**, proactive tick phase, proactive task execution, ReAct bridge for unknown task types, 9-phase tick loop
+- **518 tests**, comprehensive test suite (up from 463)
+
+<details>
+<summary>What was new in v1.2.0</summary>
+
 - **Cognitive Memory**, multi-tier memory with exponential decay, STM→LTM consolidation, and Miller's Number attention filter
 - **Self-Reflection Engine**, automated pattern detection (stagnation, failure rate, repeated errors) with reflection prompts
 - **Skill Evolution**, Modern Evolutionary Synthesis — natural selection, mutation pressure, niche construction, adaptive landscape, recombination
@@ -34,6 +43,7 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 - **Skill Fitness v2**, windowed fitness computation + fitness dict export for trend analysis
 - **Cognitive tick pipeline**, all 7 new modules integrated into the autonomous tick loop
 - **463 tests**, comprehensive test suite (up from 340)
+</details>
 
 <details>
 <summary>What was new in v1.1.0</summary>
@@ -642,7 +652,7 @@ graph TD
 
 ## 🧠 Cognitive Subsystems (Agentic AI)
 
-Open-Sable includes twelve core subsystems that work together to provide autonomous, self-improving intelligence.
+Open-Sable includes fifteen core subsystems that work together to provide autonomous, self-improving intelligence.
 
 ### Agentic AI Architecture
 
@@ -665,6 +675,12 @@ graph LR
         IL[Inner Life]
         PL[Pattern Learner]
     end
+
+    subgraph "Autonomous Agency (v1.3)"
+        PR[Proactive Reasoning]
+        RE[ReAct Executor]
+        GH[GitHub Skill]
+    end
     
     subgraph "Integration Layer"
         AGENT[Agentic AI Core]
@@ -674,6 +690,7 @@ graph LR
         USER[User Input]
         ENV[Environment]
         TASKS[Tasks]
+        GITHUB[GitHub API]
     end
     
     USER --> AGENT
@@ -693,6 +710,10 @@ graph LR
     AGENT --> GB
     AGENT --> IL
     AGENT --> PL
+
+    AGENT --> PR
+    AGENT --> RE
+    AGENT --> GH
     
     G --> M
     ML --> T
@@ -704,6 +725,11 @@ graph LR
     PL --> SE
     IL --> AGENT
     GB --> M
+
+    PR --> RE
+    RE --> T
+    GH --> GITHUB
+    PR --> G
     
     T --> TASKS
     G --> ENV
@@ -711,7 +737,7 @@ graph LR
 
 ### Deep Cognition Modules (v1.2)
 
-Six new modules add biologically-inspired cognitive depth to the autonomous tick loop:
+Six modules add biologically-inspired cognitive depth to the autonomous tick loop:
 
 | Module | Inspiration | What It Does |
 |--------|------------|---------------|
@@ -722,10 +748,21 @@ Six new modules add biologically-inspired cognitive depth to the autonomous tick
 | **Inner Life** | Kahneman's System 1 | Valence-arousal emotions, impulses, fantasies, mental landscape, temporal sense |
 | **Pattern Learner** | Institutional learning | LLM-driven pattern detection → permanent verification rules; history windowing; fitness snapshots |
 
-All six modules plug into the **cognitive tick pipeline** (`autonomous_mode.py`), executing every tick:
+### Autonomous Agency Modules (v1.3)
+
+Three modules transform the agent from a reactive tool-executor into a proactive autonomous agent:
+
+| Module | Inspiration | What It Does |
+|--------|------------|---------------|
+| **Proactive Reasoning** | Deliberative reasoning | LLM surveys world state every N ticks, proposes actions with risk filtering & dedup, JSONL audit trail |
+| **ReAct Executor** | ReAct (Yao et al. 2022) | Multi-step Thought→Action→Observation loop — chains tool calls with intermediate reasoning until task is complete |
+| **GitHub Skill** | Developer workflow automation | 13 tools: issues, PRs, branches, code search, releases, workflows — PyGithub + `gh` CLI fallback |
+
+All modules plug into the **9-phase tick pipeline** (`autonomous_mode.py`):
 
 ```
 tick start → discover → plan → execute → sub-agents → self-improve
+          → proactive_tick (survey state → propose actions → inject tasks)
           → cognitive_tick (memory decay → reflection → evolution → patterns → git episode → inner life)
           → maintenance → tick end
 ```
@@ -2108,30 +2145,34 @@ python3 examples/workflow_examples.py
 
 ## 📊 Project Statistics
 
-**Current Version**: 1.2.0
+**Current Version**: 1.3.0
 
 | Component | Files | Lines | Status |
 |-----------|-------|-------|--------|
-| Core Modules | 62 | 49,000+ | ✅ Complete |
+| Core Modules | 65 | 50,000+ | ✅ Complete |
 | Agentic AI Systems | 6 | 5,500+ | ✅ Complete |
 | Deep Cognition (v1.2) | 6 | 3,100+ | ✅ Complete |
+| Autonomous Agency (v1.3) | 3 | 1,400+ | ✅ Complete |
 | Phase 3 Engines | 5 | 3,000+ | ✅ Complete |
 | Voice & Multimodal | 4 | 3,000+ | 🧪 Experimental |
 | Interfaces | 13 | 7,000+ | ✅ Complete |
-| Skills (4 categories) | 24 | 4,000+ | ✅ Complete |
+| Skills (4 categories) | 25 | 4,500+ | ✅ Complete |
 | Examples | 16 | 3,000+ | ✅ Complete |
-| Tests | 17 | 4,200+ | ✅ 463 Passing |
+| Tests | 18 | 5,000+ | ✅ 518 Passing |
 | Documentation | 10 | 2,000+ | ✅ Complete |
 | Kubernetes | 7 | 500+ | 📝 Templates |
-| **Total** | **186** | **86,000+** | **✅ Core Complete** |
+| **Total** | **194** | **90,000+** | **✅ Core Complete** |
 
-### Module Inventory (62 Core Modules)
+### Module Inventory (65 Core Modules)
 
 **Agentic AI Core** (6):
 `goal_system` · `advanced_memory` · `meta_learning` · `tool_synthesis` · `world_model` · `metacognition`
 
 **Deep Cognition** (6):
 `cognitive_memory` · `self_reflection` · `skill_evolution` · `git_brain` · `inner_life` · `pattern_learner`
+
+**Autonomous Agency** (3):
+`proactive_reasoning` · `react_executor` · `github_skill`
 
 **Phase 3 Engines** (5):
 `skill_factory` · `rag` · `workflow` · `self_modify` · `image_gen`

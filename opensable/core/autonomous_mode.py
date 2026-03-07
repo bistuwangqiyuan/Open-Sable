@@ -55,6 +55,9 @@ class AutonomousMode:
         self.git_brain = None           # GitBrain
         self.inner_life = None          # InnerLifeProcessor
         self.pattern_learner = None     # PatternLearningManager
+        self.proactive_engine = None    # ProactiveReasoningEngine
+        self.react_executor = None      # ReActExecutor
+        self.github_skill = None        # GitHubSkill
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -142,6 +145,41 @@ class AutonomousMode:
             logger.info("🔍 Pattern learner initialized")
         except Exception as e:
             logger.warning(f"Pattern learner unavailable: {e}")
+
+        try:
+            from opensable.core.proactive_reasoning import ProactiveReasoningEngine
+            think_interval = getattr(self.config, "proactive_think_every_n_ticks", 5)
+            max_risk = getattr(self.config, "proactive_max_risk", "medium")
+            self.proactive_engine = ProactiveReasoningEngine(
+                directory=data_dir / "proactive",
+                think_every_n_ticks=think_interval,
+                max_risk_level=max_risk,
+            )
+            logger.info(f"🧠 Proactive reasoning initialized (every {think_interval} ticks)")
+        except Exception as e:
+            logger.warning(f"Proactive reasoning unavailable: {e}")
+
+        try:
+            from opensable.core.react_executor import ReActExecutor
+            self.react_executor = ReActExecutor(
+                max_steps=getattr(self.config, "react_max_steps", 8),
+                timeout_s=getattr(self.config, "react_timeout_s", 180.0),
+                log_dir=data_dir / "react_logs",
+            )
+            logger.info("⚡ ReAct executor initialized")
+        except Exception as e:
+            logger.warning(f"ReAct executor unavailable: {e}")
+
+        try:
+            from opensable.skills.automation.github_skill import GitHubSkill
+            self.github_skill = GitHubSkill(self.config)
+            gh_ok = await self.github_skill.initialize()
+            if gh_ok:
+                logger.info("🐙 GitHub skill initialized")
+            else:
+                self.github_skill = None
+        except Exception as e:
+            logger.warning(f"GitHub skill unavailable: {e}")
 
         # Load persisted tick counter
         await self._load_state()
@@ -242,13 +280,16 @@ class AutonomousMode:
                 if self.goal_manager:
                     await self._self_improve()
 
-                # ── Phase 6: Cognitive processing ───────────────────────
+                # ── Phase 6: Proactive reasoning ─────────────────────
+                await self._proactive_tick()
+
+                # ── Phase 7: Cognitive processing ───────────────────────
                 await self._cognitive_tick()
 
-                # ── Phase 7: Maintenance + state save ───────────────────
+                # ── Phase 8: Maintenance + state save ───────────────────
                 await self._perform_maintenance()
 
-                # ── Phase 8: Trace tick end + advance ───────────────────
+                # ── Phase 9: Trace tick end + advance ───────────────────
                 tick_duration = (time.monotonic() - self.tick_start) * 1000
                 if self.trace_exporter:
                     self.trace_exporter.record_tick_end(
@@ -468,11 +509,17 @@ class AutonomousMode:
         elif task_type == "reminder":
             # Send reminder
             message = task.get("message")
-            # This would send notification to configured channels
             logger.info(f"Reminder: {message}")
             return message
 
+        elif task_type == "proactive":
+            # Execute proactive task via ReAct loop
+            return await self._execute_proactive_task(task)
+
         else:
+            # Unknown type — try ReAct if available
+            if self.react_executor and self.agent.llm:
+                return await self._execute_via_react(task.get("description", str(task)))
             logger.warning(f"Unknown task type: {task_type}")
             return None
 
@@ -498,6 +545,155 @@ class AutonomousMode:
 
         except Exception as e:
             logger.error(f"Self-improvement failed: {e}")
+
+    async def _proactive_tick(self):
+        """Run proactive reasoning — LLM decides what to do autonomously.
+
+        Only triggers every N ticks (configurable). Generates action proposals
+        and injects them into the task queue for execution.
+        """
+        if not self.proactive_engine:
+            return
+        if not self.proactive_engine.should_think(self.tick):
+            return
+        if not self.agent.llm:
+            return
+
+        try:
+            # Build world context
+            system_state = {}
+            try:
+                system_state = self.get_status()
+            except Exception:
+                pass
+
+            cognitive_state = {}
+            if self.inner_life and hasattr(self.inner_life, "state"):
+                try:
+                    cognitive_state["emotion"] = str(self.inner_life.state.emotion.trigger)
+                except Exception:
+                    pass
+            if self.self_reflection:
+                try:
+                    cognitive_state["reflection"] = self.self_reflection.get_summary()
+                except Exception:
+                    pass
+
+            goals = []
+            if self.goal_manager:
+                try:
+                    for g in self.goal_manager.goals.values():
+                        if g.status == "active":
+                            goals.append(g.description)
+                except Exception:
+                    pass
+
+            recent_errors = []
+            for t in self.completed_tasks[-10:]:
+                if t.get("status") == "error":
+                    recent_errors.append(str(t.get("result", ""))[:100])
+
+            context = self.proactive_engine.build_context(
+                tick=self.tick,
+                completed_tasks=self.completed_tasks,
+                queued_tasks=self.task_queue,
+                system_state=system_state,
+                recent_errors=recent_errors,
+                goals=goals,
+                cognitive_state=cognitive_state,
+            )
+
+            # Ask LLM to think proactively
+            proposals = await self.proactive_engine.think(
+                llm=self.agent.llm,
+                tick=self.tick,
+                context=context,
+            )
+
+            # Inject proposals into task queue
+            for proposal in proposals:
+                task = proposal.to_task(self.tick)
+                self.task_queue.append(task)
+                self.proactive_engine.record_accepted(proposal)
+                logger.info(
+                    f"🧠 Proactive: {proposal.action[:60]} "
+                    f"(type={proposal.goal_type.value}, pri={proposal.priority:.1f})"
+                )
+
+            if self.trace_exporter and proposals:
+                self.trace_exporter.record_event(
+                    "proactive_proposals",
+                    summary=f"{len(proposals)} proposals generated",
+                    tick=self.tick,
+                    data={"actions": [p.action[:80] for p in proposals]},
+                )
+
+        except Exception as e:
+            logger.warning(f"Proactive reasoning tick failed: {e}")
+
+    async def _execute_proactive_task(self, task: Dict) -> Any:
+        """Execute a proactive task, using ReAct if available."""
+        description = task.get("description", "")
+        tool_name = task.get("tool_name")
+        tool_args = task.get("tool_args", {})
+
+        # If a specific tool was proposed, try direct execution first
+        if tool_name and tool_args:
+            try:
+                result = await self.agent.tools.execute(tool_name, tool_args)
+                return result
+            except Exception as e:
+                logger.debug(f"Direct tool execution failed, falling back to ReAct: {e}")
+
+        # Fall back to ReAct for complex tasks
+        return await self._execute_via_react(description)
+
+    async def _execute_via_react(self, task_description: str) -> Any:
+        """Execute a task using the ReAct reasoning + acting loop."""
+        if not self.react_executor or not self.agent.llm:
+            logger.debug(f"ReAct not available for task: {task_description[:60]}")
+            return None
+
+        async def tool_executor(tool_name: str, args: Dict[str, Any]) -> str:
+            """Bridge between ReAct and the ToolRegistry."""
+            try:
+                result = await self.agent.tools.execute(tool_name, args)
+                return str(result)[:2000]
+            except Exception as e:
+                return f"Error: {e}"
+
+        # Get available tool schemas for the LLM
+        available_tools = []
+        try:
+            available_tools = self.agent.tools.get_tool_schemas()[:30]
+        except Exception:
+            pass
+
+        result = await self.react_executor.execute(
+            task=task_description,
+            llm=self.agent.llm,
+            tool_executor=tool_executor,
+            available_tools=available_tools,
+        )
+
+        if self.trace_exporter:
+            self.trace_exporter.record_event(
+                "react_execution",
+                summary=f"{'✅' if result.success else '❌'} {task_description[:60]}",
+                tick=self.tick,
+                data={
+                    "success": result.success,
+                    "steps": len(result.steps),
+                    "tools_used": result.tools_used,
+                    "duration_ms": result.total_duration_ms,
+                },
+            )
+
+        if result.success:
+            return result.final_answer
+        else:
+            logger.warning(f"ReAct execution failed: {result.error}")
+            return None
 
     async def _cognitive_tick(self):
         """Run all cognitive modules for the current tick.
@@ -662,6 +858,12 @@ class AutonomousMode:
             status["skill_fitness"] = {
                 "tracked_events": self.skill_fitness.event_count,
             }
+        if self.proactive_engine:
+            status["proactive"] = self.proactive_engine.get_stats()
+        if self.react_executor:
+            status["react"] = self.react_executor.get_stats()
+        if self.github_skill and self.github_skill.is_available():
+            status["github"] = True
         return status
 
     def add_task(self, task: Dict):

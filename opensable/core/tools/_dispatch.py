@@ -169,4 +169,18 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "yt_subscribe": ("yt_subscribe", _p),
     "yt_trending": ("yt_trending", _p),
     "yt_upload_video": ("yt_upload_video", _p),
+    # GitHub
+    "github_create_issue": ("github_create_issue", _p),
+    "github_list_issues": ("github_list_issues", _p),
+    "github_comment_issue": ("github_comment_issue", _p),
+    "github_close_issue": ("github_close_issue", _p),
+    "github_create_pr": ("github_create_pr", _p),
+    "github_list_prs": ("github_list_prs", _p),
+    "github_merge_pr": ("github_merge_pr", _p),
+    "github_repo_info": ("github_repo_info", _p),
+    "github_list_repos": ("github_list_repos", _p),
+    "github_create_branch": ("github_create_branch", _p),
+    "github_search_code": ("github_search_code", _p),
+    "github_get_file": ("github_get_file", _p),
+    "github_create_release": ("github_create_release", _p),
 }

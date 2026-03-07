@@ -219,6 +219,9 @@ class SableAgent:
         self.git_brain = None            # GitBrain
         self.inner_life = None           # InnerLifeProcessor
         self.pattern_learner = None      # PatternLearningManager
+        self.proactive_engine = None     # ProactiveReasoningEngine
+        self.react_executor = None       # ReActExecutor
+        self.github_skill = None         # GitHubSkill
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -284,6 +287,9 @@ class SableAgent:
             ("Git brain", self._init_git_brain),
             ("Inner life", self._init_inner_life),
             ("Pattern learner", self._init_pattern_learner),
+            ("Proactive reasoning", self._init_proactive_reasoning),
+            ("ReAct executor", self._init_react_executor),
+            ("GitHub skill", self._init_github_skill),
         ]:
             try:
                 await init_fn()
@@ -402,6 +408,27 @@ class SableAgent:
             directory=Path(self._data_dir) / "patterns"
         )
 
+    async def _init_proactive_reasoning(self):
+        from .proactive_reasoning import ProactiveReasoningEngine
+        self.proactive_engine = ProactiveReasoningEngine(
+            directory=Path(self._data_dir) / "proactive",
+            think_every_n_ticks=getattr(self.config, "proactive_think_every_n_ticks", 5),
+            max_risk_level=getattr(self.config, "proactive_max_risk", "medium"),
+        )
+
+    async def _init_react_executor(self):
+        from .react_executor import ReActExecutor
+        self.react_executor = ReActExecutor(
+            max_steps=getattr(self.config, "react_max_steps", 8),
+            timeout_s=getattr(self.config, "react_timeout_s", 180.0),
+            log_dir=Path(self._data_dir) / "react_logs",
+        )
+
+    async def _init_github_skill(self):
+        from opensable.skills.automation.github_skill import GitHubSkill
+        self.github_skill = GitHubSkill(self.config)
+        await self.github_skill.initialize()
+
     # ------------------------------------------------------------------
     # Progress
     # ------------------------------------------------------------------
@@ -459,6 +486,9 @@ class SableAgent:
             ("Git Brain", self.git_brain),
             ("Inner Life", self.inner_life),
             ("Pattern Learner", self.pattern_learner),
+            ("Proactive Reasoning", self.proactive_engine),
+            ("ReAct Executor", self.react_executor),
+            ("GitHub", self.github_skill),
         ]:
             components.append({"name": name, "status": "ok" if attr else "off"})
 

@@ -108,4 +108,18 @@ TOOL_PERMISSIONS = {
     "phone_geofence": "mobile_write",
     "phone_location": "mobile_read",
     "phone_device": "mobile_read",
+    # GitHub
+    "github_create_issue": "github_write",
+    "github_list_issues": "github_read",
+    "github_comment_issue": "github_write",
+    "github_close_issue": "github_write",
+    "github_create_pr": "github_write",
+    "github_list_prs": "github_read",
+    "github_merge_pr": "github_write",
+    "github_repo_info": "github_read",
+    "github_list_repos": "github_read",
+    "github_create_branch": "github_write",
+    "github_search_code": "github_read",
+    "github_get_file": "github_read",
+    "github_create_release": "github_write",
 }

@@ -56,6 +56,7 @@ from ._productivity import ProductivityToolsMixin
 from ._trading import TradingToolsMixin
 from ._marketplace import MarketplaceToolsMixin
 from ._mobile import MobileToolsMixin
+from ._github import GitHubToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
 from ._dispatch import SCHEMA_TO_TOOL
@@ -70,6 +71,7 @@ class ToolRegistry(
     TradingToolsMixin,
     MarketplaceToolsMixin,
     MobileToolsMixin,
+    GitHubToolsMixin,
 ):
     """Registry of all available tools/actions.
 
@@ -81,6 +83,7 @@ class ToolRegistry(
     - TradingToolsMixin: trading portfolio, prices, orders, analysis
     - MarketplaceToolsMixin: skills marketplace (SAGP)
     - MobileToolsMixin: phone notification, reminders, geofence, location, device status
+    - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
     """
 
     # RBAC permissions (imported from _permissions.py)
@@ -165,6 +168,14 @@ class ToolRegistry(
             except Exception as e:
                 logger.warning(f"Trading skill creation failed: {e}")
 
+        # GitHub skill (conditional)
+        self.github_skill = None
+        try:
+            from ...skills.automation.github_skill import GitHubSkill
+            self.github_skill = GitHubSkill(config)
+        except Exception as e:
+            logger.debug(f"GitHub skill not available: {e}")
+
     # ── Initialization ────────────────────────────────────────────────────────
 
     async def initialize(self):
@@ -245,7 +256,27 @@ class ToolRegistry(
         self.register("phone_geofence", self._phone_geofence_tool)
         self.register("phone_location", self._phone_location_tool)
         self.register("phone_device", self._phone_device_tool)
+        # ── GitHub ───────────────────────────────────────────────────────────────
+        self.register("github_create_issue", self._github_create_issue_tool)
+        self.register("github_list_issues", self._github_list_issues_tool)
+        self.register("github_comment_issue", self._github_comment_issue_tool)
+        self.register("github_close_issue", self._github_close_issue_tool)
+        self.register("github_create_pr", self._github_create_pr_tool)
+        self.register("github_list_prs", self._github_list_prs_tool)
+        self.register("github_merge_pr", self._github_merge_pr_tool)
+        self.register("github_repo_info", self._github_repo_info_tool)
+        self.register("github_list_repos", self._github_list_repos_tool)
+        self.register("github_create_branch", self._github_create_branch_tool)
+        self.register("github_search_code", self._github_search_code_tool)
+        self.register("github_get_file", self._github_get_file_tool)
+        self.register("github_create_release", self._github_create_release_tool)
 
+        # Initialize GitHub skill
+        if self.github_skill:
+            try:
+                await self.github_skill.initialize()
+            except Exception as e:
+                logger.debug(f"GitHub skill init failed: {e}")
         # ── X (Twitter) ──────────────────────────────────────────────────────
         self.register("x_post_tweet", self._x_post_tweet_tool)
         self.register("x_post_thread", self._x_post_thread_tool)
