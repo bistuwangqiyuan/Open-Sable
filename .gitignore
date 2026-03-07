@@ -154,3 +154,4 @@ agents/*/profile.env
 .sable-nexus_erebus.pid
 .sable-sable.pid
 .dev-studio.pid
+_reference_external_DO_NOT_SHIP/

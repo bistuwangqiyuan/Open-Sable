@@ -638,6 +638,9 @@ class SkillFactory:
         self.templates_dir.mkdir(parents=True, exist_ok=True)
 
         self.validator = SkillValidator()
+
+        # Fitness tracking hook — set by agent.py after init
+        self._fitness_tracker = None  # SkillFitnessTracker or None
         self.md_generator = SkillMDGenerator()
 
         # Track created skills
@@ -1162,6 +1165,13 @@ def {func_name}({params}) -> dict:
         self._creation_log.append(creation_record)
 
         logger.info(f"  🎉 Skill '{name}' created successfully!")
+
+        # ── Fitness tracking: record creation ──
+        if self._fitness_tracker:
+            try:
+                self._fitness_tracker.record_created(skill_slug)
+            except Exception as e:
+                logger.debug(f"Fitness tracking failed: {e}")
 
         return {
             "success": True,

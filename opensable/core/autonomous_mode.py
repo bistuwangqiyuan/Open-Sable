@@ -1,10 +1,16 @@
 """
-Autonomous Agent Mode - Continuous operation
-Allows the agent to run autonomously, taking actions without user prompts
+Autonomous Agent Mode - Tick-based continuous operation.
+
+Tick-based continuous autonomous operation.  Each tick is a numbered cycle:
+  discover → plan → execute → learn → trace → advance
+
+The tick counter persists across restarts.  An append-only JSONL trace
+records every phase of every tick for post-hoc observability.
 """
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -18,8 +24,11 @@ logger = logging.getLogger(__name__)
 
 class AutonomousMode:
     """
-    Autonomous operation mode
-    Agent runs continuously, setting its own goals and executing tasks
+    Tick-based autonomous operation mode.
+
+    Each iteration of the loop is a *tick* — numbered, traced, and
+    persisted.  Sub-agents and fitness tracking plug in via the manager
+    fields initialized in start().
     """
 
     def __init__(self, agent: SableAgent, config):
@@ -31,6 +40,16 @@ class AutonomousMode:
         self.goal_manager: Optional[GoalManager] = None
         self.x_autoposter = None
 
+        # ── Tick state ──────────────────────────────────────────────────
+        self.tick: int = 0  # Monotonic tick counter (persisted)
+        self.tick_start: float = 0.0
+
+        # Pluggable modules (initialized in start())
+        self.trace_exporter = None      # TraceExporter
+        self.sub_agent_manager = None   # SubAgentManager
+        self.skill_fitness = None       # SkillFitnessTracker
+        self.conversation_logger = None # ConversationLogger
+
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
         self.max_concurrent_tasks = getattr(config, "autonomous_max_tasks", 3)
@@ -41,6 +60,42 @@ class AutonomousMode:
     async def start(self):
         """Start autonomous operation"""
         logger.info("🤖 Starting autonomous mode...")
+
+        # ── Initialize tick-based modules ───────────────────────────────
+        data_dir = Path(getattr(self.config, "data_dir", "./data"))
+
+        try:
+            from opensable.core.trace_exporter import TraceExporter
+            self.trace_exporter = TraceExporter(directory=data_dir / "traces")
+            logger.info("📝 Trace exporter initialized")
+        except Exception as e:
+            logger.warning(f"Trace exporter unavailable: {e}")
+
+        try:
+            from opensable.core.sub_agents import SubAgentManager, DEFAULT_SUB_AGENTS
+            self.sub_agent_manager = SubAgentManager(self.agent)
+            for spec in DEFAULT_SUB_AGENTS:
+                self.sub_agent_manager.register(spec)
+            logger.info(f"🤖 Sub-agent manager: {len(DEFAULT_SUB_AGENTS)} agents registered")
+        except Exception as e:
+            logger.warning(f"Sub-agent manager unavailable: {e}")
+
+        try:
+            from opensable.core.skill_fitness import SkillFitnessTracker
+            self.skill_fitness = SkillFitnessTracker(directory=data_dir / "fitness")
+            logger.info("🏋️ Skill fitness tracker initialized")
+        except Exception as e:
+            logger.warning(f"Skill fitness tracker unavailable: {e}")
+
+        try:
+            from opensable.core.conversation_log import ConversationLogger
+            self.conversation_logger = ConversationLogger(directory=data_dir / "conversations")
+            logger.info("💬 Conversation logger initialized")
+        except Exception as e:
+            logger.warning(f"Conversation logger unavailable: {e}")
+
+        # Load persisted tick counter
+        await self._load_state()
 
         # Initialize goal manager if Agentic AI is available
         try:
@@ -86,32 +141,88 @@ class AutonomousMode:
             await self.x_autoposter.stop()
 
     async def _autonomous_loop(self):
-        """Main autonomous operation loop"""
-        logger.info(f"Autonomous loop started (check interval: {self.check_interval}s)")
+        """Main tick-based autonomous loop.
+
+        Each iteration is a numbered *tick*.  Pipeline per tick:
+          1. trace_tick_start
+          2. discover tasks
+          3. prioritize
+          4. execute
+          5. collect sub-agent results
+          6. self-improve
+          7. maintain
+          8. trace_tick_end + advance tick counter
+        """
+        logger.info(
+            f"Autonomous loop started — tick {self.tick} "
+            f"(interval: {self.check_interval}s)"
+        )
 
         while self.running:
+            self.tick_start = time.monotonic()
             try:
-                # 1. Check for new tasks from various sources
+                # ── Phase 0: Trace tick start ───────────────────────────
+                if self.trace_exporter:
+                    self.trace_exporter.record_tick_start(
+                        tick=self.tick,
+                    )
+
+                # ── Phase 1: Discover ───────────────────────────────────
                 await self._discover_tasks()
 
-                # 2. Prioritize tasks
+                # ── Phase 2: Prioritize ─────────────────────────────────
                 await self._prioritize_tasks()
 
-                # 3. Execute tasks (up to max_concurrent)
+                # ── Phase 3: Execute ────────────────────────────────────
                 await self._execute_tasks()
 
-                # 4. Self-improvement (if Agentic AI available)
+                # ── Phase 4: Collect sub-agent results ──────────────────
+                if self.sub_agent_manager and self.sub_agent_manager.pending_count > 0:
+                    results = await self.sub_agent_manager.await_all(timeout_s=30.0)
+                    for task_id, result in results.items():
+                        if self.trace_exporter:
+                            self.trace_exporter.record_event(
+                                "sub_agent_result",
+                                summary=f"{result.agent_name}: {result.status} — {result.task[:60]}",
+                                tick=self.tick,
+                                data={"task_id": task_id, "duration_ms": result.duration_ms},
+                            )
+                    self.sub_agent_manager.clear_inbox()
+
+                # ── Phase 5: Self-improvement ───────────────────────────
                 if self.goal_manager:
                     await self._self_improve()
 
-                # 5. System maintenance
+                # ── Phase 6: Maintenance + state save ───────────────────
                 await self._perform_maintenance()
 
-                # Wait before next check
+                # ── Phase 7: Trace tick end + advance ───────────────────
+                tick_duration = (time.monotonic() - self.tick_start) * 1000
+                if self.trace_exporter:
+                    self.trace_exporter.record_tick_end(
+                        tick=self.tick,
+                        summary=f"completed {len(self.completed_tasks)} tasks",
+                        duration_ms=tick_duration,
+                    )
+
+                logger.info(
+                    f"✅ Tick {self.tick} complete ({tick_duration:.0f}ms, "
+                    f"{len(self.task_queue)} queued, "
+                    f"{len(self.completed_tasks)} completed)"
+                )
+                self.tick += 1
+
+                # Wait before next tick
                 await asyncio.sleep(self.check_interval)
 
             except Exception as e:
-                logger.error(f"Error in autonomous loop: {e}")
+                logger.error(f"Error in tick {self.tick}: {e}")
+                if self.trace_exporter:
+                    self.trace_exporter.record_event(
+                        "tick_error",
+                        summary=str(e),
+                        tick=self.tick,
+                    )
                 await asyncio.sleep(self.check_interval)
 
     async def _discover_tasks(self):
@@ -355,12 +466,13 @@ class AutonomousMode:
             logger.error(f"Maintenance failed: {e}")
 
     async def _save_state(self):
-        """Save autonomous agent state"""
+        """Save autonomous agent state including tick counter"""
         try:
             state_file = Path(getattr(self.config, "data_dir", "./data")) / "autonomous_state.json"
             state_file.parent.mkdir(parents=True, exist_ok=True)
 
             state = {
+                "tick": self.tick,
                 "task_queue": self.task_queue,
                 "completed_tasks": self.completed_tasks[-50:],  # Keep last 50
                 "last_update": datetime.now().isoformat(),
@@ -372,29 +484,38 @@ class AutonomousMode:
             logger.error(f"Failed to save state: {e}")
 
     async def _load_state(self):
-        """Load autonomous agent state"""
+        """Load autonomous agent state including tick counter"""
         try:
             state_file = Path(getattr(self.config, "data_dir", "./data")) / "autonomous_state.json"
 
             if state_file.exists():
                 state = json.loads(state_file.read_text())
+                self.tick = state.get("tick", 0)
                 self.task_queue = state.get("task_queue", [])
                 self.completed_tasks = state.get("completed_tasks", [])
-                logger.info("Loaded autonomous state")
+                logger.info(f"Loaded autonomous state — resuming at tick {self.tick}")
 
         except Exception as e:
             logger.error(f"Failed to load state: {e}")
 
     def get_status(self) -> Dict[str, Any]:
         """Get current autonomous agent status"""
-        return {
+        status = {
             "running": self.running,
+            "tick": self.tick,
             "tasks_queued": len(self.task_queue),
             "tasks_completed": len(self.completed_tasks),
             "enabled_sources": self.enabled_sources,
             "check_interval": self.check_interval,
             "current_tasks": self.task_queue[:5],  # Show next 5 tasks
         }
+        if self.sub_agent_manager:
+            status["sub_agents"] = self.sub_agent_manager.get_status()
+        if self.skill_fitness:
+            status["skill_fitness"] = {
+                "tracked_skills": len(self.skill_fitness._records),
+            }
+        return status
 
     def add_task(self, task: Dict):
         """Manually add a task to the queue"""

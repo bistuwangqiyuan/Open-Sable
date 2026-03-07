@@ -208,6 +208,12 @@ class SableAgent:
         self.world_model = None
         self.tracer = None
 
+        # Cognitive autonomy modules
+        self.trace_exporter = None       # TraceExporter (JSONL append-only)
+        self.skill_fitness = None        # SkillFitnessTracker
+        self.conversation_logger = None  # ConversationLogger
+        self.sub_agent_manager = None    # SubAgentManager
+
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
         self.codebase_rag = CodebaseRAG()
@@ -221,6 +227,17 @@ class SableAgent:
         self.tools = ToolRegistry(self.config)
         await self.tools.initialize()
         await self._initialize_agi_systems()
+
+        # Wire fitness tracker into SkillFactory (if both initialized)
+        if self.skill_fitness:
+            try:
+                hub = getattr(self.tools, "skills_hub", None)
+                if hub and hasattr(hub, "factory"):
+                    hub.factory._fitness_tracker = self.skill_fitness
+                    logger.info("🏋️ Fitness tracker wired into SkillFactory")
+            except Exception as e:
+                logger.debug(f"Could not wire fitness tracker: {e}")
+
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         # Index the codebase in the background so the agent can search its own source
         asyncio.create_task(self.codebase_rag.ensure_indexed())
@@ -251,6 +268,10 @@ class SableAgent:
             ("Emotional intelligence", self._init_emotional_intelligence),
             ("Distributed tracing", self._init_tracing),
             ("Handoff router", self._init_handoffs),
+            ("Trace exporter", self._init_trace_exporter),
+            ("Skill fitness", self._init_skill_fitness),
+            ("Conversation logger", self._init_conversation_logger),
+            ("Sub-agent manager", self._init_sub_agents),
         ]:
             try:
                 await init_fn()
@@ -309,6 +330,30 @@ class SableAgent:
         self.handoff_router = HandoffRouter()
         for h in default_handoffs():
             self.handoff_router.register(h)
+
+    async def _init_trace_exporter(self):
+        from .trace_exporter import TraceExporter
+        self.trace_exporter = TraceExporter(
+            directory=Path(self._data_dir) / "traces"
+        )
+
+    async def _init_skill_fitness(self):
+        from .skill_fitness import SkillFitnessTracker
+        self.skill_fitness = SkillFitnessTracker(
+            directory=Path(self._data_dir) / "fitness"
+        )
+
+    async def _init_conversation_logger(self):
+        from .conversation_log import ConversationLogger
+        self.conversation_logger = ConversationLogger(
+            directory=Path(self._data_dir) / "conversations"
+        )
+
+    async def _init_sub_agents(self):
+        from .sub_agents import SubAgentManager, DEFAULT_SUB_AGENTS
+        self.sub_agent_manager = SubAgentManager(self)
+        for spec in DEFAULT_SUB_AGENTS:
+            self.sub_agent_manager.register(spec)
 
     # ------------------------------------------------------------------
     # Progress
@@ -901,15 +946,34 @@ class SableAgent:
             _dur = int((time.time() - _t0) * 1000)
             self._monitor_stats["tool_calls"] += 1
             await self._emit_monitor("tool.done", {"name": name, "success": True, "result": str(result)[:200], "duration_ms": _dur})
+            # ── Trace: tool call ──
+            if self.trace_exporter:
+                self.trace_exporter.record_tool_call(
+                    tool_name=name, args=arguments, user_id=user_id,
+                )
+                self.trace_exporter.record_tool_result(
+                    tool_name=name, result=str(result)[:500], success=True,
+                    duration_ms=_dur, user_id=user_id,
+                )
             return f"**{name}:** {result}"
         except asyncio.TimeoutError:
             logger.error(f"Tool {name} timed out")
             self._monitor_stats["errors"] += 1
             await self._emit_monitor("tool.done", {"name": name, "success": False, "result": "Timed out", "duration_ms": int((time.time() - _t0) * 1000)})
+            if self.trace_exporter:
+                self.trace_exporter.record_tool_result(
+                    tool_name=name, result="Timed out", success=False,
+                    duration_ms=int((time.time() - _t0) * 1000), user_id=user_id,
+                )
             return f"**{name}:** ❌ Timed out"
         except Exception as e:
             self._monitor_stats["errors"] += 1
             await self._emit_monitor("tool.done", {"name": name, "success": False, "result": str(e)[:200], "duration_ms": int((time.time() - _t0) * 1000)})
+            if self.trace_exporter:
+                self.trace_exporter.record_tool_result(
+                    tool_name=name, result=str(e)[:500], success=False,
+                    duration_ms=int((time.time() - _t0) * 1000), user_id=user_id,
+                )
             return f"**{name}:** ❌ {e}"
 
     # X-related tool names that must NEVER run concurrently
@@ -1443,6 +1507,14 @@ class SableAgent:
                 await self._notify_progress(f"📋 Plan ({len(plan.steps)} steps):\n{plan.summary()}")
                 checkpoint.record_plan(plan.steps)
                 self.checkpoint_store.save(checkpoint)
+                # ── Trace: plan ──
+                if self.trace_exporter:
+                    self.trace_exporter.record_event(
+                        "plan",
+                        summary=plan.summary() if hasattr(plan, 'summary') else str(plan.steps),
+                        user_id=user_id,
+                        run_id=checkpoint.run_id,
+                    )
 
         # Tool calling loop
         if not tool_results:
@@ -1821,6 +1893,16 @@ class SableAgent:
         checkpoint.record_synthesis(final_text or "")
         self.checkpoint_store.save(checkpoint)
 
+        # ── Trace: synthesis ──
+        if self.trace_exporter:
+            self.trace_exporter.record_event(
+                "synthesis",
+                summary=(final_text or "")[:200],
+                user_id=user_id,
+                run_id=checkpoint.run_id,
+                data={"response_length": len(final_text or ""), "tools_used": len(tool_results)},
+            )
+
         state["messages"].append(
             {
                 "role": "final_response",
@@ -1829,6 +1911,21 @@ class SableAgent:
             }
         )
         await self._store_memory(user_id, task, final_text)
+
+        # ── Conversation logger: persist for cross-session context ──
+        if self.conversation_logger:
+            try:
+                self.conversation_logger.save_conversation(
+                    messages=history_for_ollama + [
+                        {"role": "user", "content": task},
+                        {"role": "assistant", "content": final_text or ""},
+                    ],
+                    user_id=user_id,
+                    run_id=checkpoint.run_id,
+                    plan_summary=plan.summary() if plan and hasattr(plan, 'summary') else None,
+                )
+            except Exception as e:
+                logger.debug(f"Conversation logging failed: {e}")
 
         if span:
             span.set_attribute("response_length", len(final_text or ""))
