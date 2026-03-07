@@ -220,6 +220,20 @@ class OpenSableConfig(BaseModel):
     trading_strategies: str = "momentum,mean_reversion,sentiment"  # comma-separated
     trading_watchlist: str = "BTC/USDT,ETH/USDT,SOL/USDT"  # comma-separated
 
+    # ── Autonomous Mode ──────────────────────────────────────────
+    autonomous_mode: bool = False  # Enable autonomous tick loop
+    autonomous_check_interval: int = 60  # Seconds between ticks
+    autonomous_max_tasks: int = 3  # Max tasks per tick
+    autonomous_sources: str = "calendar,email,system_monitoring"  # comma-separated
+
+    # ── Proactive Reasoning ─────────────────────────────────────
+    proactive_think_every_n_ticks: int = 5  # LLM reasoning every N ticks
+    proactive_max_risk: str = "medium"  # low / medium / high
+
+    # ── GitHub Integration ──────────────────────────────────────
+    github_token: Optional[str] = None  # Personal access token (ghp_...)
+    github_default_repo: Optional[str] = None  # owner/repo
+
     # ── Pixel-Bridge (Pixel Agents VS Code extension integration) ─
     # When True, pixel-bridge.py is auto-launched alongside the agent so the
     # Pixel Agents extension can show an animated character for this agent.
@@ -514,6 +528,17 @@ def load_config() -> OpenSableConfig:
         "trading_watchlist": os.getenv("TRADING_WATCHLIST", "BTC/USDT,ETH/USDT,SOL/USDT"),
         # ── Skills Marketplace ──────────────────────────────────
         "skill_install_auto_approve": os.getenv("SKILL_INSTALL_AUTO_APPROVE", "false").lower() == "true",
+        # ── Autonomous Mode ─────────────────────────────────────
+        "autonomous_mode": os.getenv("AUTONOMOUS_MODE", "false").lower() == "true",
+        "autonomous_check_interval": int(os.getenv("AUTONOMOUS_CHECK_INTERVAL", "60")),
+        "autonomous_max_tasks": int(os.getenv("AUTONOMOUS_MAX_TASKS", "3")),
+        "autonomous_sources": os.getenv("AUTONOMOUS_SOURCES", "calendar,email,system_monitoring"),
+        # ── Proactive Reasoning ─────────────────────────────────
+        "proactive_think_every_n_ticks": int(os.getenv("PROACTIVE_THINK_EVERY_N_TICKS", "5")),
+        "proactive_max_risk": os.getenv("PROACTIVE_MAX_RISK", "medium"),
+        # ── GitHub Integration ──────────────────────────────────
+        "github_token": os.getenv("GITHUB_TOKEN"),
+        "github_default_repo": os.getenv("GITHUB_DEFAULT_REPO"),
         # ── Pixel-Bridge ────────────────────────────────────────
         "pixel_bridge_enabled": os.getenv("PIXEL_BRIDGE_ENABLED", "false").lower() == "true",
     }

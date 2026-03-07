@@ -162,20 +162,26 @@ async def async_main():
             except Exception as e:
                 logger.warning(f"Mobile relay failed to start: {e}")
 
-        # Check if autonomous mode is enabled
+        # ── Autonomous Mode (runs as background task alongside interfaces) ────
+        autonomous = None
         autonomous_enabled = getattr(config, "autonomous_mode", False)
 
         if autonomous_enabled:
             console.print("[bold yellow]🤖 AUTONOMOUS MODE ENABLED[/bold yellow]")
-            console.print("[dim]Agent will run continuously and take actions independently[/dim]")
+            console.print("[dim]Agent will run the autonomous tick loop in the background[/dim]")
 
             from opensable.core.autonomous_mode import AutonomousMode
 
             autonomous = AutonomousMode(agent, config)
 
-            # Start autonomous operation (autoposter starts inside if configured)
-            await autonomous.start()
-            return
+            async def _run_autonomous():
+                try:
+                    await autonomous.start()
+                except Exception as exc:
+                    logger.error(f"🤖 Autonomous mode crashed: {exc}", exc_info=True)
+
+            asyncio.create_task(_run_autonomous())
+            logger.info("🤖 Autonomous tick loop running in background")
 
         # ── X Autoposter (runs alongside any interface mode) ──────────────────
         x_autoposter = None
@@ -285,6 +291,8 @@ async def async_main():
         finally:
             if _bridge_proc and _bridge_proc.returncode is None:
                 _bridge_proc.terminate()
+            if autonomous:
+                await autonomous.stop()
             if x_autoposter:
                 await x_autoposter.stop()
             if mobile_relay:

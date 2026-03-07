@@ -62,9 +62,11 @@ class AutonomousMode:
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
         self.max_concurrent_tasks = getattr(config, "autonomous_max_tasks", 3)
-        self.enabled_sources = getattr(
-            config, "autonomous_sources", ["calendar", "email", "system_monitoring"]
-        )
+        _sources = getattr(config, "autonomous_sources", "calendar,email,system_monitoring")
+        if isinstance(_sources, str):
+            self.enabled_sources = [s.strip() for s in _sources.split(",") if s.strip()]
+        else:
+            self.enabled_sources = list(_sources)
 
     async def start(self):
         """Start autonomous operation"""
@@ -194,9 +196,11 @@ class AutonomousMode:
         except ImportError:
             logger.warning("Agentic AI not available, using basic autonomous mode")
 
-        # Initialize X Autoposter if enabled
-        if getattr(self.config, "x_autoposter_enabled", False) and getattr(
-            self.config, "x_enabled", False
+        # Initialize X Autoposter if enabled and not already running
+        if (
+            getattr(self.config, "x_autoposter_enabled", False)
+            and getattr(self.config, "x_enabled", False)
+            and not getattr(self.agent, "x_autoposter", None)
         ):
             try:
                 from .x_autoposter import XAutoposter
