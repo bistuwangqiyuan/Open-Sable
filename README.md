@@ -2546,7 +2546,8 @@ graph LR
     
     subgraph "After 1 Month"
         M1["Success: 88% | Strategies: 32 | Tools: 45 | Mastered: 12 tasks"]
-    
+    end
+
     S1 --> W1
     W1 --> M1
 ```
