@@ -79,9 +79,14 @@ _REASONING_STARTERS = re.compile(
     r"i should\b|i\'ve been\b|maybe i(\'ll| will)\b|"
     r"so i (need|should|want|will)\b|now i\b|next,?\s+i\b|"
     r"looking at (the|this|their)\b|this (is|seems|looks|appears) (to be|like)\b|"
-    r"they (are|might be|seem|could be|want|may be)\b|"
-    r"my response should\b|i\'ll (acknowledge|address|respond|help|note)\b|"
-    r"\(also,?\b|\(note[,:]|\(thinking|\(internal)",
+    r"they(\'re|\'ve been|\'ve| are| might be| seem| could be| want| may be| did| have)\b|"
+    r"(he|she|it) (is|was|seems|wants|might|appears|\'s)\b|"
+    r"my response should\b|i\'ll (acknowledge|address|respond|help|note|craft|keep|try|make|provide)\b|"
+    r"i\'m (going|trying|not sure|looking|noticing|thinking)\b|"
+    r"i (should|need to|will|must|can|notice|see that|recognize|understand)\b|"
+    r"(alright|okay|ok|hmm),?\s+(let me|i)\b|"
+    r"(?:not )?a (?:complaint|question|request|greeting|test|genuine)\b|"
+    r"\(also,?\b|\(note[,:]|\(thinking|\(internal|\(context)",
     re.IGNORECASE,
 )
 
@@ -1142,6 +1147,25 @@ class Gateway:
                     f"Falling back to raw or default."
                 )
                 reply = (raw_reply or "").strip() or "I processed your request but couldn't generate a response. Please try again."
+
+            # Deduplicate: if the reply is identical to the last assistant message,
+            # the model is repeating itself — ask it to try again without history
+            if history:
+                last_assistant = next(
+                    (m["content"] for m in reversed(history) if m.get("role") == "assistant"),
+                    None,
+                )
+                if last_assistant and reply.strip() == last_assistant.strip():
+                    logger.warning("[Gateway] Duplicate response detected — retrying without history")
+                    try:
+                        retry_reply = await self.agent.process_message(
+                            user_id, text, history=[], progress_callback=_progress
+                        )
+                        retry_reply = _clean_gateway_reply(retry_reply or "")
+                        if retry_reply and retry_reply.strip() != last_assistant.strip():
+                            reply = retry_reply
+                    except Exception:
+                        pass  # keep original reply
 
             try:
                 if not session.metadata.get("title"):

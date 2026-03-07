@@ -6,6 +6,7 @@ v2: Multi-step planning, parallel tool calls, streaming progress,
 """
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -34,16 +35,24 @@ _LLM_TIMEOUT = 300  # 5 min — needed for large local models (llama3.1:8b+) on 
 # Patterns that indicate a line is internal monologue rather than a reply.
 _REASONING_LINE_RE = re.compile(
     r"^\s*("
-    r"(system\b)|"                              # starts with "system"
-    r"(the user (is|wants|might|may|seems|said|asked|appears))|"
-    r"(i (should|need to|will|must|am going to|have to|think i))|"
-    r"(let me (think|consider|analyze|look|check|re-read|re-examine))|"
+    r"(system\b)|"
+    r"(the user (is|wants|might|may|seems|said|asked|appears|has|did|does|didn't|hasn't|provided|'s message))|"
+    r"(i (should|need to|will|must|am going to|have to|think i|can|notice|see that|recognize|detect|understand))|"
+    r"(i'm (going|trying|not sure|looking|noticing|thinking))|"
+    r"(let me (think|consider|analyze|look|check|re-read|re-examine|reflect|assess))|"
     r"(looking at (the|this|their))|"
-    r"(this (is|seems|looks|appears) (to be|like a?))|"
-    r"(they (are|might be|seem|could be|want|may be))|"
+    r"(this (is|seems|looks|appears|could be|might be|requires) (to be|like a?|a |the ))|"
+    r"(they('re|'ve been|'ve| are| might be| seem| could be| want| may be| did| have))|"
+    r"(he|she|it) (is|was|seems|wants|might|appears|'s)\b|"
     r"(my response should)|"
-    r"(i('ll| will) (acknowledge|address|respond|answer|help|note)|"
-    r"(maybe i('ll| will)))"
+    r"(i('ll| will) (acknowledge|address|respond|answer|help|note|keep|craft|make|try|provide)|"
+    r"(maybe i('ll| will)))|"
+    r"(so i (need|should|want|will|can))|"
+    r"(now i\b)|"
+    r"(next,?\s+i\b)|"
+    r"((alright|okay|ok|first|hmm),?\s+(let me|i (should|need|will|think)))|"
+    r"((?:not )?a (?:complaint|question|request|greeting|test|genuine))|"
+    r"(\(also|\(note|\(thinking|\(internal|\(context)"
     r")",
     re.IGNORECASE,
 )

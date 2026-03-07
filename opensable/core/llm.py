@@ -88,11 +88,25 @@ def parse_thinking(text: str) -> Tuple[str, Optional[str]]:
     return clean, reasoning
 
 
-def _inject_no_think(messages: List[Dict]) -> List[Dict]:
+# Models where /no_think kills output — the distilled versions don't handle
+# the Qwen3 /no_think token properly and produce empty responses.
+_NO_THINK_BLOCKLIST_PATTERNS = ["distill", "distilled", "claude.*opus.*distill", "opus.*distill"]
+
+def _should_skip_no_think(model_name: str) -> bool:
+    """Return True if the model is known to break with /no_think."""
+    lower = (model_name or "").lower()
+    for pat in _NO_THINK_BLOCKLIST_PATTERNS:
+        if re.search(pat, lower):
+            return True
+    return False
+
+def _inject_no_think(messages: List[Dict], model_name: str = "") -> List[Dict]:
     """For Qwen3 models: append /no_think to the last user message to disable
     chain-of-thought output. This is the official Qwen3 per-turn mechanism.
-    Works with any model — non-Qwen3 models simply ignore the token.
+    Skips injection for distilled models that don't handle it properly.
     """
+    if _should_skip_no_think(model_name):
+        return messages
     messages = list(messages)  # shallow copy — don't mutate caller's list
     for i in range(len(messages) - 1, -1, -1):
         if messages[i].get("role") == "user":
@@ -380,14 +394,25 @@ class AdaptiveLLM:
         if not system_injected:
             new_messages.insert(0, {"role": "system", "content": tool_instruction})
 
-        new_messages = _inject_no_think(new_messages)
+        _skip_no_think = _should_skip_no_think(self.current_model)
+        if not _skip_no_think:
+            new_messages = _inject_no_think(new_messages, self.current_model)
         client = ollama.AsyncClient(host=self.base_url)
+        _chat_kwargs = {"model": self.current_model, "messages": new_messages}
+        if not _skip_no_think:
+            _chat_kwargs["think"] = False
         async with _ollama_lock():
-            resp = await client.chat(model=self.current_model, messages=new_messages, think=False)
+            resp = await client.chat(**_chat_kwargs)
         raw_text = resp.get("message", {}).get("content", "")
         thinking_field = resp.get("message", {}).get("thinking", "") or ""
         clean_text, reasoning_from_tags = parse_thinking(raw_text)
         reasoning = (thinking_field.strip() or reasoning_from_tags) or None
+
+        # If content is empty but reasoning exists, the model put its
+        # answer inside <think> tags — extract usable text from reasoning.
+        if not clean_text.strip() and reasoning:
+            logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
+            clean_text = reasoning
 
         # Parse <tool_call>...</tool_call> blocks
         tool_call_re = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
@@ -443,14 +468,18 @@ class AdaptiveLLM:
             client = ollama.AsyncClient(host=self.base_url)
             # /no_think injected into last user message: official Qwen3 mechanism to
             # suppress chain-of-thought output while keeping full response quality.
-            messages = _inject_no_think(messages)
+            _skip_no_think = _should_skip_no_think(self.current_model)
+            if not _skip_no_think:
+                messages = _inject_no_think(messages, self.current_model)
+            _chat_kwargs = {
+                "model": self.current_model,
+                "messages": messages,
+                "tools": tools,
+            }
+            if not _skip_no_think:
+                _chat_kwargs["think"] = False
             async with _ollama_lock():
-                response = await client.chat(
-                    model=self.current_model,
-                    messages=messages,
-                    tools=tools,
-                    think=False,
-                )
+                response = await client.chat(**_chat_kwargs)
             msg = response.get("message", {})
 
             # Track tokens (Ollama provides prompt_eval_count / eval_count)
@@ -493,6 +522,11 @@ class AdaptiveLLM:
             # Also strip any <think> tags that leaked into content
             clean_text, reasoning_from_tags = parse_thinking(raw_text)
             reasoning = (thinking_field.strip() or reasoning_from_tags) or None
+            # If content is empty but reasoning exists, the model put its
+            # answer inside <think> tags — extract usable text from reasoning.
+            if not clean_text.strip() and reasoning:
+                logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
+                clean_text = reasoning
             result = {"tool_call": None, "tool_calls": [], "text": clean_text}
             if reasoning:
                 result["reasoning"] = reasoning
@@ -520,13 +554,21 @@ class AdaptiveLLM:
                 for m in messages:
                     role = m.get("role", "user")
                     plain_msgs.append({"role": role, "content": m.get("content", "")})
-                plain_msgs = _inject_no_think(plain_msgs)
+                _skip_nt = _should_skip_no_think(self.current_model)
+                if not _skip_nt:
+                    plain_msgs = _inject_no_think(plain_msgs, self.current_model)
+                _chat_kw = {"model": self.current_model, "messages": plain_msgs}
+                if not _skip_nt:
+                    _chat_kw["think"] = False
                 async with _ollama_lock():
-                    resp = await client.chat(model=self.current_model, messages=plain_msgs, think=False)
+                    resp = await client.chat(**_chat_kw)
                 raw_text = resp.get("message", {}).get("content", "")
                 thinking_field = resp.get("message", {}).get("thinking", "") or ""
                 clean_text, reasoning_from_tags = parse_thinking(raw_text)
                 reasoning = (thinking_field.strip() or reasoning_from_tags) or None
+                if not clean_text.strip() and reasoning:
+                    logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
+                    clean_text = reasoning
                 result = {"tool_call": None, "tool_calls": [], "text": clean_text}
                 if reasoning:
                     result["reasoning"] = reasoning
@@ -549,17 +591,17 @@ class AdaptiveLLM:
         """
         try:
             client = ollama.AsyncClient(host=self.base_url)
-            messages = _inject_no_think(messages)
+            _skip_nt = _should_skip_no_think(self.current_model)
+            if not _skip_nt:
+                messages = _inject_no_think(messages, self.current_model)
             # Acquire Ollama lock for the entire streaming duration
             self._stream_lock_cm = _ollama_lock()
             await self._stream_lock_cm.__aenter__()
+            _stream_kw = {"model": self.current_model, "messages": messages, "stream": True}
+            if not _skip_nt:
+                _stream_kw["think"] = False
             try:
-                stream = await client.chat(
-                    model=self.current_model,
-                    messages=messages,
-                    stream=True,
-                    think=False,
-                )
+                stream = await client.chat(**_stream_kw)
             except Exception:
                 await self._stream_lock_cm.__aexit__(None, None, None)
                 raise
