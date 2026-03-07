@@ -441,7 +441,7 @@ graph TB
     end
     
     subgraph "Skills System"
-        HUB[Skills Hub, 21+]
+        HUB["Skills Hub (21+)"]
         COMMUNITY[Community Skills]
         MARKET[Skills Marketplace]
     end
@@ -484,7 +484,7 @@ graph TB
     MAIN --> SELFMOD
     
     SKILL_F --> HUB
-    HUB --> CLAW
+    HUB --> COMMUNITY
     HUB --> MARKET
     
     RAG --> VECTOR
@@ -960,7 +960,7 @@ graph TB
     subgraph "World State"
         ENT[Entities]
         REL[Relations]
-        SNAP[Snapshots, Last 100]
+        SNAP["Snapshots (Last 100)"]
     end
     
     subgraph "Reasoning"
@@ -2536,17 +2536,16 @@ The Agentic AI system learns and improves over time:
 
 ```mermaid
 graph LR
-    subgraph "Session 1 (Initial)"
-        S1[Success: 60%, Strategies: 5, Tools: 10]
+    subgraph "Session 1 - Initial"
+        S1["Success: 60% | Strategies: 5 | Tools: 10"]
     end
     
     subgraph "After 1 Week"
-        W1[Success: 75% ↑15%, Strategies: 18 ↑13, Tools: 25 ↑15]
+        W1["Success: 75% | Strategies: 18 | Tools: 25"]
     end
     
     subgraph "After 1 Month"
-        M1[Success: 88% ↑28%, Strategies: 32 ↑27, Tools: 45 ↑35, Mastered: 12 tasks]
-    end
+        M1["Success: 88% | Strategies: 32 | Tools: 45 | Mastered: 12 tasks"]
     
     S1 --> W1
     W1 --> M1
@@ -2600,7 +2599,7 @@ graph LR
 - [x] SKILL.md skill format support
 - [x] 16 real community skills (DuckDuckGo, Open-Meteo, MyMemory)
 - [x] Enterprise features (RBAC, SSO, multi-tenancy)
-- [ ] Skills marketplace (public registry)
+- [x] Skills marketplace (public registry)
 - [ ] Mobile app (Expo + React Native)
 - [x] Neural tool synthesis (pattern-match + AST compose + optional LLM refinement)
 - [x] Distributed Agentic AI (multi-agent coordination with network node delegation)
@@ -2656,36 +2655,43 @@ GROQ_API_KEY=gsk_...
 ```mermaid
 graph TB
     subgraph "Document Creation"
-        DOCX["📝 Word (.docx)<br>python-docx"]
-        XLSX["📊 Excel (.xlsx)<br>openpyxl"]
-        PDF["📄 PDF<br>reportlab"]
-        PPTX["📽️ PowerPoint (.pptx)<br>python-pptx"]
-        READ["📖 Document Reader<br>.docx .xlsx .pdf .pptx"]
+        DOCX["Word .docx"]
+        XLSX["Excel .xlsx"]
+        PDF["PDF"]
+        PPTX["PowerPoint .pptx"]
+        READ["Document Reader"]
     end
 
     subgraph "Communication"
-        EMAIL["✉️ Email (SMTP/IMAP)<br>Send, Read, Attachments"]
-        CAL["📅 Google Calendar<br>List, Add, Delete"]
-        CLIP["📋 Clipboard<br>Cross-Platform"]
+        EMAIL["Email SMTP/IMAP"]
+        CAL["Google Calendar"]
+        CLIP["Clipboard"]
     end
 
-    subgraph "Vision & OCR"
-        EOCR["👁️ EasyOCR<br>GPU, Multi-Language"]
-        TESS["🔤 Tesseract<br>Lightweight"]
-        FITZ["📑 PyMuPDF<br>PDF + Scanned Pages"]
+    subgraph "Vision and OCR"
+        EOCR["EasyOCR"]
+        TESS["Tesseract"]
+        FITZ["PyMuPDF"]
     end
 
     subgraph "Reliability Engine"
-        HEAL["🩹 Self-Healing<br>Auto-Repair on Errors"]
-        RATE["⏱️ Rate Limiter<br>Adaptive FIFO Queue"]
-        SEQ["🔗 Sequential Executor<br>One API Call at a Time"]
-        HTTP["🌐 HTTP Client<br>curl_cffi + httpx"]
-        BROWSER["🧹 Session Manager<br>WhatsApp Bridge"]
+        HEAL["Self-Healing"]
+        RATE["Rate Limiter"]
+        SEQ["Sequential Executor"]
+        HTTP["HTTP Client"]
+        BROWSER["Session Manager"]
     end
 
-    AGENT((Agent)) --> DOCX & XLSX & PDF & PPTX
-    AGENT --> EMAIL & CAL & CLIP
-    AGENT --> EOCR & TESS & FITZ
+    AGENT((Agent)) --> DOCX
+    AGENT --> XLSX
+    AGENT --> PDF
+    AGENT --> PPTX
+    AGENT --> EMAIL
+    AGENT --> CAL
+    AGENT --> CLIP
+    AGENT --> EOCR
+    AGENT --> TESS
+    AGENT --> FITZ
     HEAL --> RATE --> SEQ --> HTTP
 ```
 
