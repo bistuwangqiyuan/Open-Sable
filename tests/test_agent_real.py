@@ -68,8 +68,10 @@ class TestAgentInit:
         ]:
             assert name in tool_list, f"Missing critical tool: {name}"
 
-    def test_agent_has_graph(self, agent):
-        assert agent.graph is not None
+    def test_agent_has_llm_model(self, agent):
+        """Verify agent has a valid LLM with a selected model."""
+        assert agent.llm.current_model is not None
+        assert len(agent.llm.current_model) > 0
 
     def test_model_is_actually_available(self, agent):
         """Verify the selected model exists in Ollama (the bug we fixed)"""

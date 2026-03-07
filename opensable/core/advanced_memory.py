@@ -16,7 +16,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -401,7 +401,7 @@ class SemanticMemory:
             content=fact,
             context=context or {},
             importance=importance,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metadata={"concepts": concepts},
             embedding=_simple_embedding(fact),
         )

@@ -311,7 +311,7 @@ class TestAgenticLoopCodeRetry:
                 {"text": "Code output: Hello World"},
             ],
         )
-        state = _make_agent_state("Run a hello world in Python")
+        state = _make_agent_state("Please create a hello world script and test it")
         result = await agent._agentic_loop(state)
 
         final = [m for m in result["messages"] if m["role"] == "final_response"]

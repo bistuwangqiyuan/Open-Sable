@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests: 297](https://img.shields.io/badge/tests-297%20passing-brightgreen.svg)](#-running-tests)
+[![Tests: 340](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)](#-running-tests)
 [![Modules: 70](https://img.shields.io/badge/core%20modules-70-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
@@ -29,7 +29,7 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 - **Tools split**, monolithic `tools.py` → mixin-based `tools/` package (5 domain files)
 - **MkDocs site**, Material-themed docs at `docs-site/` with guides & architecture
 - **Pinned lockfile**, `requirements-lock.txt` generated via `pip-compile`
-- **297 tests**, comprehensive test suite (up from 9)
+- **340 tests**, comprehensive test suite (up from 9)
 
 ---
 
@@ -2022,7 +2022,7 @@ python3 examples/workflow_examples.py
 | Interfaces | 13 | 7,000+ | ✅ Complete |
 | Skills (4 categories) | 24 | 4,000+ | ✅ Complete |
 | Examples | 16 | 3,000+ | ✅ Complete |
-| Tests | 16 | 3,000+ | ✅ 297 Passing |
+| Tests | 16 | 3,000+ | ✅ 340 Passing |
 | Documentation | 10 | 2,000+ | ✅ Complete |
 | Kubernetes | 7 | 500+ | 📝 Templates |
 | **Total** | **179** | **82,000+** | **✅ Core Complete** |

@@ -8,7 +8,7 @@ summarization, and context retrieval for large conversations.
 import asyncio
 import logging
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from opensable.core.config import Config
@@ -57,7 +57,7 @@ class ContextWindow:
     def add_message(self, role: str, content: str):
         """Add message to context"""
         self.recent_messages.append(
-            {"role": role, "content": content, "timestamp": datetime.utcnow().isoformat()}
+            {"role": role, "content": content, "timestamp": datetime.now(timezone.utc).isoformat()}
         )
         self.total_messages += 1
 
@@ -192,7 +192,7 @@ class SemanticMemory:
         memory = {
             "content": content,
             "metadata": metadata or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "embedding": None,  # Will be computed if embeddings enabled
         }
 

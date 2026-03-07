@@ -457,7 +457,7 @@ class TestGatewayCompat:
         assert GatewayServer is Gateway
 
     def test_socket_path(self):
-        assert SOCKET_PATH == Path("/tmp/sable.sock")
+        assert SOCKET_PATH == Path("/tmp/sable-sable.sock")
 
     def test_version(self):
         assert isinstance(GATEWAY_VER, str)
