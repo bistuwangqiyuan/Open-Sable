@@ -17,8 +17,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Callable, AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime
-
+from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
@@ -147,7 +146,7 @@ class WhisperSTT:
         """
         await self.load_model()
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Transcribe
@@ -174,7 +173,7 @@ class WhisperSTT:
                 all_segments.append(seg_dict)
                 full_text.append(segment.text)
 
-            duration = (datetime.utcnow() - start_time).total_seconds()
+            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             result = TranscriptionResult(
                 text=" ".join(full_text).strip(),

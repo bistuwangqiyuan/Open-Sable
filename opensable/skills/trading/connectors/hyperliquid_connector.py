@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from ..base import (
@@ -98,7 +98,7 @@ class HyperliquidConnector(ExchangeConnector):
             return []
         try:
             # Hyperliquid candle snapshot
-            end_time = int(datetime.utcnow().timestamp() * 1000)
+            end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
             interval_map = {
                 "1m": 60000, "5m": 300000, "15m": 900000,
                 "1h": 3600000, "4h": 14400000, "1d": 86400000,
@@ -115,7 +115,7 @@ class HyperliquidConnector(ExchangeConnector):
                     low=Decimal(str(c["l"])),
                     close=Decimal(str(c["c"])),
                     volume=Decimal(str(c["v"])),
-                    timestamp=datetime.utcfromtimestamp(c["t"] / 1000),
+                    timestamp=datetime.fromtimestamp(c["t"] / 1000, tz=timezone.utc),
                     interval=interval,
                 )
                 for c in candles[:limit]

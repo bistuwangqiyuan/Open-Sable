@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -120,7 +120,7 @@ class PerformanceTracker:
         record = PerformanceRecord(
             task_id=task_id,
             task_type=task_type,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             success=success,
             duration=duration,
             metrics=metrics,
@@ -330,7 +330,7 @@ class StrategyLibrary:
         strategy = self.strategies[strategy_id]
         strategy.update_success_rate(success)
         strategy.usage_count += 1
-        strategy.last_used = datetime.utcnow()
+        strategy.last_used = datetime.now(timezone.utc)
 
         # Update average duration
         if strategy.avg_duration:

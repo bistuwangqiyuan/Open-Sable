@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -61,7 +61,7 @@ class Goal:
     status: GoalStatus = GoalStatus.PENDING
     progress: float = 0.0  # 0-1
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Optional[Any] = None
@@ -294,7 +294,7 @@ class GoalExecutor:
             Execution result
         """
         goal.status = GoalStatus.IN_PROGRESS
-        goal.started_at = datetime.utcnow()
+        goal.started_at = datetime.now(timezone.utc)
 
         try:
             results = []
@@ -318,7 +318,7 @@ class GoalExecutor:
 
             if success:
                 goal.status = GoalStatus.COMPLETED
-                goal.completed_at = datetime.utcnow()
+                goal.completed_at = datetime.now(timezone.utc)
                 goal.result = results
             else:
                 goal.status = GoalStatus.FAILED
@@ -328,7 +328,7 @@ class GoalExecutor:
             self.execution_history.append(
                 {
                     "goal_id": goal.goal_id,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "success": success,
                     "results": results,
                 }
@@ -651,7 +651,7 @@ async def main():
             "Tests pass with >80% coverage",
         ],
         priority=GoalPriority.HIGH,
-        deadline=datetime.utcnow() + timedelta(days=30),
+        deadline=datetime.now(timezone.utc) + timedelta(days=30),
         auto_decompose=True,
     )
 

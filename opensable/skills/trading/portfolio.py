@@ -11,7 +11,7 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -91,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON portfolio_snapshots(timestamp);
 @dataclass
 class PortfolioSnapshot:
     """Point-in-time snapshot of the entire portfolio."""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     total_value_usd: Decimal = Decimal("0")
     cash_value_usd: Decimal = Decimal("0")
     positions_value_usd: Decimal = Decimal("0")
@@ -197,7 +197,7 @@ class PortfolioManager:
         unrealized = sum((p.unrealized_pnl for p in all_positions), Decimal("0"))
 
         snapshot = PortfolioSnapshot(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             total_value_usd=cash_value + positions_value,
             cash_value_usd=cash_value,
             positions_value_usd=positions_value,

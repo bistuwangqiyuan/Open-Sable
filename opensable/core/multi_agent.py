@@ -11,7 +11,7 @@ import asyncio
 import logging
 import time as _time
 from typing import Dict, List, Optional, Any, Callable, Awaitable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from dataclasses import dataclass, field
 import json
@@ -287,7 +287,7 @@ class MultiAgentOrchestrator:
     ) -> Any:
         """Execute a single agent task"""
         task.status = "running"
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(timezone.utc)
 
         try:
             # Get or create agent for this role (lazy init)
@@ -335,7 +335,7 @@ class MultiAgentOrchestrator:
 
             # Mark completed
             task.status = "completed"
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             task.result = result
 
             # Write result to shared blackboard
@@ -355,7 +355,7 @@ class MultiAgentOrchestrator:
             logger.error(f"Task failed: {task.task_id} - {e}", exc_info=True)
 
             task.status = "failed"
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             task.error = str(e)
 
             self.stats["failed_tasks"] += 1

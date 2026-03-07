@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -90,7 +90,7 @@ class RiskManager:
         self.banned_assets = set(a.upper() for a in (banned_assets or []))
         self.allowed_exchanges = set(allowed_exchanges) if allowed_exchanges else None
 
-        self._daily_stats = DailyStats(date=datetime.utcnow().strftime("%Y-%m-%d"))
+        self._daily_stats = DailyStats(date=datetime.now(timezone.utc).strftime("%Y-%m-%d"))
         self._halt = False
         self._halt_reason = ""
 
@@ -250,7 +250,7 @@ class RiskManager:
 
     def _refresh_daily_stats(self) -> None:
         """Reset daily stats if we rolled into a new day."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if self._daily_stats.date != today:
             self._daily_stats = DailyStats(date=today)
 

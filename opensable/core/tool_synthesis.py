@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -75,7 +75,7 @@ class SynthesizedTool:
     function: Optional[Callable] = None
     validated: bool = False
     test_results: Optional[Dict[str, Any]] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     usage_count: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -466,7 +466,7 @@ class NeuralSynthesizer:
         log_entry = {
             "spec": spec.name,
             "tiers_used": [],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # ── Tier 1: Pattern matching ─────────────────────────────────
@@ -609,7 +609,7 @@ class ToolValidator:
         self.validation_results.append(
             {
                 "tool_id": tool.tool_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "results": results,
             }
         )

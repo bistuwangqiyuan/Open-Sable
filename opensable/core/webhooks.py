@@ -8,7 +8,7 @@ Supports webhook authentication, retries, and event subscriptions.
 import asyncio
 import logging
 from typing import Dict, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import hmac
 import hashlib
@@ -49,7 +49,7 @@ class WebhookDelivery:
         self.webhook_id = webhook_id
         self.event = event
         self.payload = payload
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.attempts = 0
         self.max_attempts = 3
         self.last_attempt_at: Optional[datetime] = None
@@ -75,7 +75,7 @@ class Webhook:
         self.events = events
         self.secret = secret
         self.enabled = enabled
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.last_delivery_at: Optional[datetime] = None
         self.total_deliveries = 0
         self.failed_deliveries = 0
@@ -204,7 +204,7 @@ class WebhookManager:
         # Build payload
         webhook_payload = {
             "event": event,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": payload,
         }
 
@@ -218,7 +218,7 @@ class WebhookManager:
         # Attempt delivery with retries
         while delivery.attempts < delivery.max_attempts:
             delivery.attempts += 1
-            delivery.last_attempt_at = datetime.utcnow()
+            delivery.last_attempt_at = datetime.now(timezone.utc)
 
             try:
                 async with self.session.post(
@@ -232,7 +232,7 @@ class WebhookManager:
 
                     if 200 <= response.status < 300:
                         delivery.success = True
-                        webhook.last_delivery_at = datetime.utcnow()
+                        webhook.last_delivery_at = datetime.now(timezone.utc)
                         webhook.total_deliveries += 1
                         logger.info(f"Webhook delivered: {webhook.webhook_id} ({event})")
                         return

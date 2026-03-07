@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -161,7 +161,7 @@ class ConflictResolver:
 
         elif self.strategy == SyncStrategy.MANUAL:
             self.manual_queue.append(
-                {"local": local_item, "remote": remote_item, "timestamp": datetime.utcnow()}
+                {"local": local_item, "remote": remote_item, "timestamp": datetime.now(timezone.utc)}
             )
             # Return local for now
             return local_item
@@ -193,7 +193,7 @@ class ConflictResolver:
             scope=local.scope,
             data=merged_data,
             version=max(local.version, remote.version) + 1,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             device_id=local.device_id,
             checksum="",
         )
@@ -418,7 +418,7 @@ class MultiDeviceSync:
             device_id=device_id,
             device_name=device_name,
             device_type=device_type,
-            last_seen=datetime.utcnow(),
+            last_seen=datetime.now(timezone.utc),
             public_key=public_key,
             trusted=False,  # Requires manual approval
             sync_enabled=True,
@@ -464,7 +464,7 @@ class MultiDeviceSync:
             scope=scope,
             data=data,
             version=version,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             device_id=self.device_id,
             checksum="",
         )
@@ -516,7 +516,7 @@ class MultiDeviceSync:
             status=SyncStatus.IN_PROGRESS,
             items_total=len(pending),
             items_synced=0,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
 
         self.sync_operations[operation_id] = operation
@@ -542,7 +542,7 @@ class MultiDeviceSync:
             if operation.items_synced == operation.items_total
             else SyncStatus.FAILED
         )
-        operation.completed_at = datetime.utcnow()
+        operation.completed_at = datetime.now(timezone.utc)
 
         logger.info(
             f"Sync operation complete: {operation.items_synced}/{operation.items_total} synced"
@@ -634,7 +634,7 @@ class MultiDeviceSync:
                 [
                     op
                     for op in self.sync_operations.values()
-                    if op.started_at > datetime.utcnow() - timedelta(hours=1)
+                    if op.started_at > datetime.now(timezone.utc) - timedelta(hours=1)
                 ]
             ),
         }

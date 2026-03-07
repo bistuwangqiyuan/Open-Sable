@@ -14,7 +14,7 @@ Design:
 import json
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
 import hashlib
@@ -30,7 +30,7 @@ class Message:
 
     role: str  # "user", "assistant", "system"
     content: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -75,8 +75,8 @@ class Session:
         self.config = config or SessionConfig()
 
         self.messages: List[Message] = []
-        self.created_at: datetime = datetime.utcnow()
-        self.updated_at: datetime = datetime.utcnow()
+        self.created_at: datetime = datetime.now(timezone.utc)
+        self.updated_at: datetime = datetime.now(timezone.utc)
         self.metadata: Dict[str, Any] = {}
 
         # Stats
@@ -92,7 +92,7 @@ class Session:
         """Append a message and auto-compact when limit is reached."""
         self.messages.append(Message(role=role, content=content, metadata=metadata or {}))
         self.message_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
         if self.config.auto_compact and len(self.messages) > self.config.max_history:
             self._trim_history()
@@ -103,14 +103,14 @@ class Session:
         self.message_count = 0
         self.total_tokens = 0
         self.total_cost = 0.0
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def compact_messages(self, keep_recent: int = 20):
         """Keep system messages + last *keep_recent* messages."""
         system = [m for m in self.messages if m.role == "system"]
         recent = [m for m in self.messages if m.role != "system"][-keep_recent:]
         self.messages = system + recent
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def _trim_history(self):
         """Internal trim when auto_compact kicks in."""
@@ -148,7 +148,7 @@ class Session:
     def update_stats(self, tokens: int = 0, cost: float = 0.0):
         self.total_tokens += tokens
         self.total_cost += cost
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     # ──────────────────────────────────────────────────────
     # Serialisation
@@ -267,7 +267,7 @@ class SessionManager:
 
     def cleanup_old_sessions(self):
         """Evict sessions inactive for > session_timeout from memory (keep on disk)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         evict = [sid for sid, s in self.active.items() if now - s.updated_at > self.session_timeout]
         for sid in evict:
             self._save(self.active[sid])
@@ -309,7 +309,7 @@ class SessionManager:
 
     def _load_recent(self):
         """Load sessions updated within the last 48 h on startup."""
-        cutoff = datetime.utcnow() - self.session_timeout
+        cutoff = datetime.now(timezone.utc) - self.session_timeout
         loaded = 0
         for path in self.sessions_dir.glob("*.json"):
             try:

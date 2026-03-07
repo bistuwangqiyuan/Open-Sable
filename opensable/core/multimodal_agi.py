@@ -18,8 +18,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime
-
+from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
@@ -185,7 +184,7 @@ class VisionProcessor:
         Returns:
             ImageAnalysisResult
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         await self.load_model(task)
 
@@ -212,7 +211,7 @@ class VisionProcessor:
             elif task == VisionTask.SCENE_UNDERSTANDING:
                 result = await self._understand_scene(img)
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             result.processing_time = processing_time
 
             logger.info(f"Image analysis complete: {task.value} in {processing_time:.2f}s")
@@ -409,7 +408,7 @@ class AudioProcessor:
         Returns:
             AudioAnalysisResult
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         result = AudioAnalysisResult(task=task, metadata={})
 
@@ -420,7 +419,7 @@ class AudioProcessor:
             elif task == AudioTask.SOUND_CLASSIFICATION:
                 result = await self._classify_sound(audio)
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             result.processing_time = processing_time
 
             logger.info(f"Audio analysis complete: {task.value} in {processing_time:.2f}s")

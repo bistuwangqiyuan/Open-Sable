@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -64,7 +64,7 @@ class ThoughtTrace:
     trace_id: str
     task: str
     steps: List[Dict[str, Any]] = field(default_factory=list)
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
     final_answer: Optional[Any] = None
     confidence: float = 0.5
@@ -84,14 +84,14 @@ class ThoughtTrace:
                 "type": step_type,
                 "content": content,
                 "confidence": confidence,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "metadata": metadata or {},
             }
         )
 
     def complete(self, final_answer: Any, confidence: float):
         """Mark trace as complete."""
-        self.end_time = datetime.utcnow()
+        self.end_time = datetime.now(timezone.utc)
         self.final_answer = final_answer
         self.confidence = confidence
 
@@ -117,7 +117,7 @@ class ErrorReport:
     description: str
     severity: int  # 1-10
     context: Dict[str, Any]
-    detected_at: datetime = field(default_factory=datetime.utcnow)
+    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     resolved: bool = False
     resolution: Optional[str] = None
 
@@ -151,7 +151,7 @@ class SelfMonitor:
 
     def start_trace(self, task: str) -> str:
         """Start monitoring a reasoning trace."""
-        trace_id = f"trace_{len(self.active_traces)}_{datetime.utcnow().timestamp()}"
+        trace_id = f"trace_{len(self.active_traces)}_{datetime.now(timezone.utc).timestamp()}"
 
         trace = ThoughtTrace(trace_id=trace_id, task=task)
 
@@ -395,7 +395,7 @@ class ErrorDetector:
         self, error_type: ErrorType, description: str, severity: int, context: Dict[str, Any]
     ) -> ErrorReport:
         """Create error report."""
-        error_id = f"err_{len(self.error_reports)}_{datetime.utcnow().timestamp()}"
+        error_id = f"err_{len(self.error_reports)}_{datetime.now(timezone.utc).timestamp()}"
 
         return ErrorReport(
             error_id=error_id,
@@ -431,7 +431,7 @@ class ConfidenceCalibrator:
             {
                 "confidence": predicted_confidence,
                 "correct": actual_correctness,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -560,7 +560,7 @@ class ErrorRecovery:
                 "error_type": error.error_type.value,
                 "strategy": strategy.value,
                 "success": result["success"],
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

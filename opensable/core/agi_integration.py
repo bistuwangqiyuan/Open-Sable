@@ -170,8 +170,7 @@ class AGIAgent:
         Returns:
             Execution result
         """
-        from datetime import datetime
-
+        from datetime import datetime, timezone
         # Get goal
         goal = self.goals.get_goal(goal_id)
         if not goal:
@@ -180,7 +179,7 @@ class AGIAgent:
         logger.info(f"Executing goal: {goal.description}")
 
         # Start timer
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Get best strategy from meta-learning
         strategy = await self.meta_learning.get_strategy_for_task(goal.description)
@@ -200,7 +199,7 @@ class AGIAgent:
         try:
             result = await self.goals.execute_goal(goal_id)
             success = result.get("success", False)
-            duration = datetime.utcnow() - start_time
+            duration = datetime.now(timezone.utc) - start_time
 
             # Record performance for meta-learning
             self.meta_learning.record_task_performance(
@@ -240,7 +239,7 @@ class AGIAgent:
             logger.error(f"Goal execution error: {e}")
 
             # Record failure
-            duration = datetime.utcnow() - start_time
+            duration = datetime.now(timezone.utc) - start_time
             self.meta_learning.record_task_performance(
                 task_id=goal_id, task_type=goal.description, success=False, duration=duration
             )

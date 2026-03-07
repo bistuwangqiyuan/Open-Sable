@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 
 from opensable.core.skill_factory import SkillFactory
@@ -254,8 +254,8 @@ class SkillsHub:
         ]
 
         for skill_data in example_skills:
-            skill_data["created_at"] = datetime.utcnow().isoformat()
-            skill_data["updated_at"] = datetime.utcnow().isoformat()
+            skill_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            skill_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             skill = Skill(**skill_data)
             self.skills_catalog[skill.skill_id] = skill
 
@@ -267,7 +267,7 @@ class SkillsHub:
         try:
             data = {
                 "skills": [skill.to_dict() for skill in self.skills_catalog.values()],
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             with open(self.cache_file, "w") as f:
                 json.dump(data, f, indent=2)
@@ -356,8 +356,8 @@ Version: {skill.version}
             if not skill.skill_id:
                 skill.skill_id = hashlib.md5((skill.name + skill.author).encode()).hexdigest()[:12]
 
-            skill.created_at = datetime.utcnow().isoformat()
-            skill.updated_at = datetime.utcnow().isoformat()
+            skill.created_at = datetime.now(timezone.utc).isoformat()
+            skill.updated_at = datetime.now(timezone.utc).isoformat()
 
             self.skills_catalog[skill.skill_id] = skill
             await self._save_cache()

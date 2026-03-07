@@ -8,7 +8,7 @@ Provides insights for improving the agent and understanding usage patterns.
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import json
 from collections import defaultdict, Counter
@@ -28,7 +28,7 @@ class MetricEvent:
     ):
         self.event_type = event_type
         self.data = data or {}
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(timezone.utc)
         self.event_id = self._generate_id()
 
     def _generate_id(self) -> str:
@@ -99,7 +99,7 @@ class Analytics:
         self.max_errors = 100
 
         # Start time
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
 
         # Auto-save interval
         self.auto_save_interval = 300  # 5 minutes
@@ -149,9 +149,9 @@ class Analytics:
         # Update user activity
         user = self.user_activity[user_id]
         user["messages"] += 1
-        user["last_seen"] = datetime.utcnow()
+        user["last_seen"] = datetime.now(timezone.utc)
         if not user["first_seen"]:
-            user["first_seen"] = datetime.utcnow()
+            user["first_seen"] = datetime.now(timezone.utc)
 
         self.track_event(
             "message_received",
@@ -215,7 +215,7 @@ class Analytics:
             "error_type": error_type,
             "error_message": error_message,
             "context": context or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         self.errors.append(error_data)
@@ -228,7 +228,7 @@ class Analytics:
 
     def get_summary(self) -> Dict[str, Any]:
         """Get analytics summary"""
-        uptime = (datetime.utcnow() - self.start_time).total_seconds()
+        uptime = (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
         # Calculate average response time
         avg_response_time = 0.0
@@ -339,7 +339,7 @@ class Analytics:
                     for user_id, user in self.user_activity.items()
                 },
                 "errors": self.errors,
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
 
             # Save to file

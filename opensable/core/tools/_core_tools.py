@@ -789,7 +789,8 @@ class CoreToolsMixin:
         code = params.get("code", "")
         author = params.get("author", "sable")
 
-        metadata = {"author": author, "created_at": datetime.utcnow().isoformat()}
+        from datetime import datetime, timezone
+        metadata = {"author": author, "created_at": datetime.now(timezone.utc).isoformat()}
 
         try:
             result = await self.skill_creator.create_skill(name, description, code, metadata)

@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -54,14 +54,14 @@ class Entity:
     entity_type: EntityType
     name: str
     properties: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    last_updated: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     confidence: float = 1.0  # Confidence in entity existence
 
     def update_property(self, key: str, value: Any):
         """Update entity property."""
         self.properties[key] = value
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -84,7 +84,7 @@ class Relation:
     source_id: str
     target_id: str
     properties: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     confidence: float = 1.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -222,12 +222,12 @@ class StateTracker:
 
     def snapshot_state(self) -> str:
         """Create snapshot of current state."""
-        state_id = f"state_{len(self.state_history)}_{datetime.utcnow().timestamp()}"
+        state_id = f"state_{len(self.state_history)}_{datetime.now(timezone.utc).timestamp()}"
 
         # Deep copy current state
         snapshot = WorldState(
             state_id=state_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             entities={eid: Entity(**e.to_dict()) for eid, e in self.entities.items()},
             relations={rid: Relation(**r.to_dict()) for rid, r in self.relations.items()},
             global_properties=self.global_properties.copy(),
@@ -255,7 +255,7 @@ class StateTracker:
 
     def _generate_id(self, content: str) -> str:
         """Generate unique ID."""
-        return hashlib.sha256(f"{content}_{datetime.utcnow().isoformat()}".encode()).hexdigest()[
+        return hashlib.sha256(f"{content}_{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()[
             :16
         ]
 
@@ -376,14 +376,14 @@ class StatePredictor:
                     pass
 
         # Apply causal rules
-        current_state_dict = {"entities": len(current_entities), "time": datetime.utcnow()}
+        current_state_dict = {"entities": len(current_entities), "time": datetime.now(timezone.utc)}
 
         predicted_effects = self.reasoner.apply_causal_rules(current_state_dict)
 
         # Create predicted state
         predicted_state = WorldState(
-            state_id=f"predicted_{datetime.utcnow().timestamp()}",
-            timestamp=datetime.utcnow() + time_delta,
+            state_id=f"predicted_{datetime.now(timezone.utc).timestamp()}",
+            timestamp=datetime.now(timezone.utc) + time_delta,
             entities=current_entities,
             relations=current_relations,
             global_properties={"prediction": True, "time_delta": time_delta.total_seconds()},
@@ -393,7 +393,7 @@ class StatePredictor:
         self.prediction_history.append(
             {
                 "predicted_state_id": predicted_state.state_id,
-                "prediction_time": datetime.utcnow().isoformat(),
+                "prediction_time": datetime.now(timezone.utc).isoformat(),
                 "target_time": predicted_state.timestamp.isoformat(),
                 "effects": predicted_effects,
             }
@@ -561,8 +561,8 @@ class WorldModel:
 
         # Return simulated state
         return WorldState(
-            state_id=f"simulated_{datetime.utcnow().timestamp()}",
-            timestamp=datetime.utcnow(),
+            state_id=f"simulated_{datetime.now(timezone.utc).timestamp()}",
+            timestamp=datetime.now(timezone.utc),
             entities=temp_entities,
             relations=self.tracker.relations.copy(),
             global_properties={"simulated": True, "action": action},

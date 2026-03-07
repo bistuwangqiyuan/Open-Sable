@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from ..base import (
@@ -100,7 +100,7 @@ class CoinbaseConnector(ExchangeConnector):
                 open=Decimal(str(c[1])), high=Decimal(str(c[2])),
                 low=Decimal(str(c[3])), close=Decimal(str(c[4])),
                 volume=Decimal(str(c[5])),
-                timestamp=datetime.utcfromtimestamp(c[0] / 1000),
+                timestamp=datetime.fromtimestamp(c[0] / 1000, tz=timezone.utc),
                 interval=interval,
             )
             for c in candles

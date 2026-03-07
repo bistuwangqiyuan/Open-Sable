@@ -11,7 +11,7 @@ import asyncio
 import logging
 import random
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, AsyncIterator, Dict, List, Optional
 
@@ -274,7 +274,7 @@ class PaperTradingConnector(ExchangeConnector):
                     exchange="paper",
                     strategy=order.strategy,
                     entry_time=pos.opened_at,
-                    exit_time=datetime.utcnow(),
+                    exit_time=datetime.now(timezone.utc),
                 ))
 
                 pos.quantity -= qty
@@ -289,7 +289,7 @@ class PaperTradingConnector(ExchangeConnector):
         order.average_fill_price = fill_price
         order.fee = fee
         order.fee_asset = "USDT"
-        order.updated_at = datetime.utcnow()
+        order.updated_at = datetime.now(timezone.utc)
         self._orders[order.order_id] = order
         return order
 
@@ -298,7 +298,7 @@ class PaperTradingConnector(ExchangeConnector):
             order = self._orders[order_id]
             if order.is_open:
                 order.status = OrderStatus.CANCELLED
-                order.updated_at = datetime.utcnow()
+                order.updated_at = datetime.now(timezone.utc)
                 return True
         return False
 

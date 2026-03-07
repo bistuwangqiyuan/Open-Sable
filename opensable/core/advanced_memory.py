@@ -118,7 +118,7 @@ class Memory:
     def access(self):
         """Record memory access."""
         self.access_count += 1
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = datetime.now(timezone.utc)
         # Strengthen memory on access
         self.decay_factor = min(1.0, self.decay_factor + 0.1)
 
@@ -261,7 +261,7 @@ class EpisodicMemory:
             content=event,
             context=context,
             importance=importance,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             embedding=_simple_embedding(event),
         )
 
@@ -338,7 +338,7 @@ class EpisodicMemory:
 
     def _generate_id(self, event: str, context: Dict[str, Any]) -> str:
         """Generate unique memory ID."""
-        content = f"{event}_{json.dumps(context, sort_keys=True)}_{datetime.utcnow().isoformat()}"
+        content = f"{event}_{json.dumps(context, sort_keys=True)}_{datetime.now(timezone.utc).isoformat()}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def _evict_least_important(self):
@@ -470,7 +470,7 @@ class SemanticMemory:
         """Update existing knowledge."""
         if memory_id in self.memories:
             self.memories[memory_id].content = new_content
-            self.memories[memory_id].timestamp = datetime.utcnow()
+            self.memories[memory_id].timestamp = datetime.now(timezone.utc)
 
     def _generate_id(self, fact: str) -> str:
         """Generate unique memory ID."""
@@ -520,7 +520,7 @@ class WorkingMemory:
             content=content,
             context=context or {},
             importance=MemoryImportance.HIGH,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         self.active_items.append(memory)
@@ -614,7 +614,7 @@ class MemoryConsolidator:
             score += 0.1
 
         # Recent
-        age = datetime.utcnow() - memory.timestamp
+        age = datetime.now(timezone.utc) - memory.timestamp
         if age < timedelta(hours=1):
             score += 0.2
 
@@ -827,7 +827,7 @@ class AdvancedMemorySystem:
 
     def apply_decay(self):
         """Apply time-based decay to all memories."""
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
 
         # Decay episodic memories
         for memory in self.episodic.memories.values():

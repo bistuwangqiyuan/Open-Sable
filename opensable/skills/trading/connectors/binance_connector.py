@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 from ..base import (
@@ -148,7 +148,7 @@ class BinanceConnector(ExchangeConnector):
                 low=Decimal(str(c[3])),
                 close=Decimal(str(c[4])),
                 volume=Decimal(str(c[5])),
-                timestamp=datetime.utcfromtimestamp(c[0] / 1000),
+                timestamp=datetime.fromtimestamp(c[0] / 1000, tz=timezone.utc),
                 interval=interval,
             )
             for c in candles
@@ -288,5 +288,5 @@ class BinanceConnector(ExchangeConnector):
             fee=Decimal(str(data.get("fee", {}).get("cost", 0) or 0)),
             fee_asset=data.get("fee", {}).get("currency", ""),
             exchange="binance",
-            created_at=datetime.utcfromtimestamp(data["timestamp"] / 1000) if data.get("timestamp") else datetime.utcnow(),
+            created_at=datetime.fromtimestamp(data["timestamp"] / 1000, tz=timezone.utc) if data.get("timestamp") else datetime.now(timezone.utc),
         )

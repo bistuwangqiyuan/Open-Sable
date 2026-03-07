@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -79,7 +79,7 @@ class PriceTick:
     bid: Optional[Decimal] = None
     ask: Optional[Decimal] = None
     volume_24h: Optional[Decimal] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     exchange: str = ""
 
 
@@ -92,7 +92,7 @@ class OHLCV:
     low: Decimal
     close: Decimal
     volume: Decimal
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     interval: str = "1h"  # 1m, 5m, 15m, 1h, 4h, 1d
 
 
@@ -130,8 +130,8 @@ class Order:
     fee_asset: str = ""
     exchange: str = ""
     strategy: str = ""  # Which strategy created this order
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -158,7 +158,7 @@ class Position:
     take_profit: Optional[Decimal] = None
     exchange: str = ""
     strategy: str = ""
-    opened_at: datetime = field(default_factory=datetime.utcnow)
+    opened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -196,7 +196,7 @@ class TradeRecord:
     fees: Decimal = Decimal("0")
     exchange: str = ""
     strategy: str = ""
-    entry_time: datetime = field(default_factory=datetime.utcnow)
+    entry_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     exit_time: Optional[datetime] = None
     duration_seconds: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)

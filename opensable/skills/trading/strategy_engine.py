@@ -12,7 +12,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -44,7 +44,7 @@ class Signal:
     order_type: OrderType = OrderType.MARKET
     reason: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def side(self) -> OrderSide:
@@ -126,11 +126,11 @@ class Strategy(ABC):
         """Check if enough time has passed since last run."""
         if not self._last_run:
             return True
-        elapsed = (datetime.utcnow() - self._last_run).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self._last_run).total_seconds()
         return elapsed >= self.run_interval_seconds
 
     def mark_run(self) -> None:
-        self._last_run = datetime.utcnow()
+        self._last_run = datetime.now(timezone.utc)
 
 
 class StrategyEngine:

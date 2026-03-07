@@ -20,7 +20,7 @@ import re
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
@@ -483,7 +483,7 @@ class RemedyEngine:
 
     def _pause_until_midnight(self) -> Dict:
         """Twitter 344: daily post limit hit. Pause post/trend loops until midnight UTC."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         midnight = (now + timedelta(days=1)).replace(hour=0, minute=5, second=0, microsecond=0)
         for loop in ["post", "trend"]:
             self._paused_loops[loop] = midnight

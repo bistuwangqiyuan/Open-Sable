@@ -8,7 +8,7 @@ Provides endpoints for messaging, session management, and real-time updates.
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
 try:
@@ -127,13 +127,13 @@ class MobileAPI:
 
     def create_access_token(self, user_id: str, device_id: Optional[str] = None) -> str:
         """Create JWT access token"""
-        expire = datetime.utcnow() + timedelta(seconds=self.access_token_expire)
+        expire = datetime.now(timezone.utc) + timedelta(seconds=self.access_token_expire)
         payload = {"user_id": user_id, "device_id": device_id, "exp": expire, "type": "access"}
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
     def create_refresh_token(self, user_id: str, device_id: Optional[str] = None) -> str:
         """Create JWT refresh token"""
-        expire = datetime.utcnow() + timedelta(seconds=self.refresh_token_expire)
+        expire = datetime.now(timezone.utc) + timedelta(seconds=self.refresh_token_expire)
         payload = {"user_id": user_id, "device_id": device_id, "exp": expire, "type": "refresh"}
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
@@ -256,7 +256,7 @@ class MobileAPI:
                         return MessageResponse(
                             response=result.message,
                             session_id=session.session_id,
-                            timestamp=datetime.utcnow().isoformat(),
+                            timestamp=datetime.now(timezone.utc).isoformat(),
                         )
 
                 # Process through agent
@@ -265,7 +265,7 @@ class MobileAPI:
                 return MessageResponse(
                     response=response,
                     session_id=session.session_id,
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(timezone.utc).isoformat(),
                 )
 
             except Exception as e:
@@ -342,7 +342,7 @@ class MobileAPI:
                     {
                         "type": "connected",
                         "user_id": user_id,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -364,7 +364,7 @@ class MobileAPI:
         msg_type = data.get("type")
 
         if msg_type == "ping":
-            await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+            await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
 
         elif msg_type == "message":
             message = data.get("message")
@@ -389,7 +389,7 @@ class MobileAPI:
                     "type": "response",
                     "response": response,
                     "session_id": session.session_id,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
 

@@ -88,7 +88,7 @@ class PairingStore:
             if uid and uid not in self.allowlist:
                 self.allowlist[uid] = {
                     "username": "env-seeded",
-                    "approved_at": datetime.utcnow().isoformat(),
+                    "approved_at": datetime.now(timezone.utc).isoformat(),
                 }
 
     # ------------------------------------------------------------------
@@ -103,7 +103,7 @@ class PairingStore:
         """Auto-approve the very first user as owner."""
         self.allowlist[user_id] = {
             "username": username,
-            "approved_at": datetime.utcnow().isoformat(),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
             "role": "owner",
         }
         self._save()
@@ -132,12 +132,12 @@ class PairingStore:
         for code, info in list(self.pending.items()):
             if info["user_id"] == user_id:
                 expires = datetime.fromisoformat(info["expires"])
-                if expires > datetime.utcnow():
+                if expires > datetime.now(timezone.utc):
                     return code
                 del self.pending[code]
 
         code = _generate_pair_code()
-        expires = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
+        expires = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
         self.pending[code] = {"user_id": user_id, "username": username, "expires": expires}
         self._save()
         return code
@@ -152,12 +152,12 @@ class PairingStore:
             return None
         info = self.pending.pop(code)
         expires = datetime.fromisoformat(info["expires"])
-        if expires < datetime.utcnow():
+        if expires < datetime.now(timezone.utc):
             self._save()
             return None
         self.allowlist[info["user_id"]] = {
             "username": info["username"],
-            "approved_at": datetime.utcnow().isoformat(),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
             "role": "user",
         }
         self._save()

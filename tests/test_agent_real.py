@@ -13,6 +13,20 @@ from pathlib import Path
 # Add project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Skip entire module if Ollama is not running
+def _ollama_available():
+    try:
+        import urllib.request
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
+        return True
+    except Exception:
+        return False
+
+pytestmark = pytest.mark.skipif(
+    not _ollama_available(),
+    reason="Ollama not running on localhost:11434 (integration test)",
+)
+
 from opensable.core.config import OpenSableConfig, load_config
 from opensable.core.agent import SableAgent
 

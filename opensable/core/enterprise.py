@@ -12,7 +12,7 @@ import secrets
 import time
 from typing import Dict, Any, Optional, List, Set
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
@@ -511,8 +511,8 @@ class SSOProvider:
             "user_id": user_id,
             "tenant_id": tenant_id,
             "roles": roles,
-            "exp": datetime.utcnow() + timedelta(seconds=expires_in),
-            "iat": datetime.utcnow(),
+            "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
+            "iat": datetime.now(timezone.utc),
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm="HS256")

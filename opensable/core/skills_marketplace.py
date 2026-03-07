@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import os
 
@@ -429,7 +429,7 @@ class SkillRegistry:
                 # Update cache
                 for meta in results:
                     self.cache[meta.skill_id] = meta
-                self.cache_updated = datetime.utcnow()
+                self.cache_updated = datetime.now(timezone.utc)
 
                 logger.info(f"🏪 Marketplace returned {len(results)} skills")
                 return results
@@ -448,7 +448,7 @@ class SkillRegistry:
                 results = [self._to_metadata(s) for s in api_results]
                 for meta in results:
                     self.cache[meta.skill_id] = meta
-                self.cache_updated = datetime.utcnow()
+                self.cache_updated = datetime.now(timezone.utc)
                 logger.info(f"🏪 Store API returned {len(results)} skills")
                 return results
 
@@ -909,7 +909,7 @@ class SkillManager:
             metadata=metadata,
             install_path=install_path,
             status=SkillStatus.INSTALLED,
-            installed_at=datetime.utcnow(),
+            installed_at=datetime.now(timezone.utc),
             config=config or {},
             enabled=True,
             auto_update=True,

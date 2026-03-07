@@ -7,8 +7,7 @@ Integrates STT/TTS for voice conversation capabilities.
 
 import logging
 from typing import Dict, Any
-from datetime import datetime
-
+from datetime import datetime, timezone
 from opensable.core.agent import SableAgent
 from opensable.core.config import Config
 from opensable.core.session_manager import SessionManager
@@ -52,7 +51,7 @@ class VoiceCallHandler:
         self.active_calls[call_sid] = {
             "from": from_number,
             "session_id": session.session_id,
-            "start_time": datetime.utcnow(),
+            "start_time": datetime.now(timezone.utc),
             "state": "active",
         }
 
@@ -112,7 +111,7 @@ class VoiceCallHandler:
         """Handle call hangup"""
         if call_sid in self.active_calls:
             call_info = self.active_calls[call_sid]
-            duration = (datetime.utcnow() - call_info["start_time"]).total_seconds()
+            duration = (datetime.now(timezone.utc) - call_info["start_time"]).total_seconds()
 
             logger.info(f"Call ended: {call_sid}, duration: {duration}s")
 

@@ -336,14 +336,11 @@ def test_onboarding_wizard():
         print("✅ Use cases defined (Personal, Developer, Business, Content, Research)")
 
         print("\n✅ Test PASSED - Onboarding Wizard ready\n")
-        return True
 
     except Exception as e:
-        print(f"\n❌ Test FAILED - {e}")
         import traceback
-
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Test FAILED - {e}") from e
 
 
 def test_skill_factory():
@@ -437,14 +434,11 @@ def test_skill_factory():
         print("✅ Introspection: get_created_skills, get_installed_skills")
 
         print("\n✅ Test PASSED - Skill Factory fully operational\n")
-        return True
 
     except Exception as e:
-        print(f"\n❌ Test FAILED - {e}")
         import traceback
-
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Test FAILED - {e}") from e
 
 
 def run_all_tests():

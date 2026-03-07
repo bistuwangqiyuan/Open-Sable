@@ -8,7 +8,7 @@ and distributed work across multiple workers.
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import json
 from enum import Enum
@@ -50,7 +50,7 @@ class Task:
     kwargs: dict = field(default_factory=dict)
     priority: TaskPriority = TaskPriority.NORMAL
     status: TaskStatus = TaskStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Any = None
@@ -185,7 +185,7 @@ class TaskQueue:
 
         # Re-enqueue
         await self.pending_queue.put(
-            (-task.priority.value, datetime.utcnow().timestamp(), task.task_id)
+            (-task.priority.value, datetime.now(timezone.utc).timestamp(), task.task_id)
         )
 
         logger.info(f"Retrying task: {task_id} (attempt {task.retry_count}/{task.max_retries})")
@@ -225,7 +225,7 @@ class TaskQueue:
         logger.info(f"Worker {worker_id} executing task: {task.task_id} ({task.func_name})")
 
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(timezone.utc)
 
         try:
             # Get handler
@@ -242,7 +242,7 @@ class TaskQueue:
 
             # Mark completed
             task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             task.result = result
             self.stats["completed_tasks"] += 1
 
@@ -252,7 +252,7 @@ class TaskQueue:
             logger.error(f"Task failed: {task.task_id} - {e}", exc_info=True)
 
             task.status = TaskStatus.FAILED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             task.error = str(e)
             self.stats["failed_tasks"] += 1
 

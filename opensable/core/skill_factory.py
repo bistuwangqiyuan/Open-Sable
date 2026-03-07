@@ -467,7 +467,7 @@ class SkillValidator:
             ]
             has_docstring = any(
                 isinstance(node.body[0], ast.Expr)
-                and isinstance(node.body[0].value, (ast.Str, ast.Constant))
+                and isinstance(node.body[0].value, ast.Constant)
                 for node in ast.walk(tree)
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.body
             )
