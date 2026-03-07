@@ -4,6 +4,10 @@
   <img src="https://aswss.com/images/sable.png" alt="Sable the Open-Sable mascot" width="420"/>
 </p>
 
+<p align="center">
+  <img src="static/images/desktop-app.png" alt="Open-Sable Desktop App" width="700"/>
+</p>
+
 **Your personal AI that actually does things autonomous, local, and yours forever.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
