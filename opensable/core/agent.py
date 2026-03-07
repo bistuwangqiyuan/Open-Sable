@@ -213,6 +213,12 @@ class SableAgent:
         self.skill_fitness = None        # SkillFitnessTracker
         self.conversation_logger = None  # ConversationLogger
         self.sub_agent_manager = None    # SubAgentManager
+        self.cognitive_memory = None     # CognitiveMemoryManager
+        self.self_reflection = None      # ReflectionEngine
+        self.skill_evolution = None      # SkillEvolutionManager
+        self.git_brain = None            # GitBrain
+        self.inner_life = None           # InnerLifeProcessor
+        self.pattern_learner = None      # PatternLearningManager
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -272,6 +278,12 @@ class SableAgent:
             ("Skill fitness", self._init_skill_fitness),
             ("Conversation logger", self._init_conversation_logger),
             ("Sub-agent manager", self._init_sub_agents),
+            ("Cognitive memory", self._init_cognitive_memory),
+            ("Self-reflection", self._init_self_reflection),
+            ("Skill evolution", self._init_skill_evolution),
+            ("Git brain", self._init_git_brain),
+            ("Inner life", self._init_inner_life),
+            ("Pattern learner", self._init_pattern_learner),
         ]:
             try:
                 await init_fn()
@@ -355,6 +367,41 @@ class SableAgent:
         for spec in DEFAULT_SUB_AGENTS:
             self.sub_agent_manager.register(spec)
 
+    async def _init_cognitive_memory(self):
+        from .cognitive_memory import CognitiveMemoryManager
+        self.cognitive_memory = CognitiveMemoryManager(
+            directory=Path(self._data_dir) / "cognitive_memory"
+        )
+
+    async def _init_self_reflection(self):
+        from .self_reflection import ReflectionEngine
+        self.self_reflection = ReflectionEngine(
+            directory=Path(self._data_dir) / "reflection"
+        )
+
+    async def _init_skill_evolution(self):
+        from .skill_evolution import SkillEvolutionManager
+        self.skill_evolution = SkillEvolutionManager(
+            directory=Path(self._data_dir) / "skill_evolution"
+        )
+
+    async def _init_git_brain(self):
+        from .git_brain import GitBrain
+        self.git_brain = GitBrain(repo_dir=Path("."))
+        await self.git_brain.initialize()
+
+    async def _init_inner_life(self):
+        from .inner_life import InnerLifeProcessor
+        self.inner_life = InnerLifeProcessor(
+            data_dir=Path(self._data_dir) / "inner_life"
+        )
+
+    async def _init_pattern_learner(self):
+        from .pattern_learner import PatternLearningManager
+        self.pattern_learner = PatternLearningManager(
+            directory=Path(self._data_dir) / "patterns"
+        )
+
     # ------------------------------------------------------------------
     # Progress
     # ------------------------------------------------------------------
@@ -406,6 +453,12 @@ class SableAgent:
             ("Tool Synthesis", self.tool_synthesizer),
             ("Emotional Intel", getattr(self, "emotional_intelligence", None)),
             ("Tracing", self.tracer), ("Handoffs", self.handoff_router),
+            ("Cognitive Memory", self.cognitive_memory),
+            ("Self-Reflection", self.self_reflection),
+            ("Skill Evolution", self.skill_evolution),
+            ("Git Brain", self.git_brain),
+            ("Inner Life", self.inner_life),
+            ("Pattern Learner", self.pattern_learner),
         ]:
             components.append({"name": name, "status": "ok" if attr else "off"})
 
@@ -2103,6 +2156,17 @@ class SableAgent:
                 )
             except Exception as e:
                 logger.debug(f"Failed to store in advanced memory: {e}")
+
+        # ── Cognitive memory: store user message ──
+        if self.cognitive_memory:
+            try:
+                self.cognitive_memory.add_memory(
+                    content=f"User {user_id}: {message[:500]}",
+                    category="conversation",
+                    importance=0.6,
+                )
+            except Exception as e:
+                logger.debug(f"Cognitive memory store failed: {e}")
 
         resolved_message = self._resolve_message(message, history or [])
 

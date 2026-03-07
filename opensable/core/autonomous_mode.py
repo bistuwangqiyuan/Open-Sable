@@ -49,6 +49,12 @@ class AutonomousMode:
         self.sub_agent_manager = None   # SubAgentManager
         self.skill_fitness = None       # SkillFitnessTracker
         self.conversation_logger = None # ConversationLogger
+        self.cognitive_memory = None    # CognitiveMemoryManager
+        self.self_reflection = None     # ReflectionEngine
+        self.skill_evolution = None     # SkillEvolutionManager
+        self.git_brain = None           # GitBrain
+        self.inner_life = None          # InnerLifeProcessor
+        self.pattern_learner = None     # PatternLearningManager
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -93,6 +99,49 @@ class AutonomousMode:
             logger.info("💬 Conversation logger initialized")
         except Exception as e:
             logger.warning(f"Conversation logger unavailable: {e}")
+
+        try:
+            from opensable.core.cognitive_memory import CognitiveMemoryManager
+            self.cognitive_memory = CognitiveMemoryManager(directory=data_dir / "cognitive_memory")
+            logger.info("🧠 Cognitive memory initialized")
+        except Exception as e:
+            logger.warning(f"Cognitive memory unavailable: {e}")
+
+        try:
+            from opensable.core.self_reflection import ReflectionEngine
+            self.self_reflection = ReflectionEngine(directory=data_dir / "reflection")
+            logger.info("🪞 Self-reflection engine initialized")
+        except Exception as e:
+            logger.warning(f"Self-reflection unavailable: {e}")
+
+        try:
+            from opensable.core.skill_evolution import SkillEvolutionManager
+            self.skill_evolution = SkillEvolutionManager(directory=data_dir / "skill_evolution")
+            logger.info("🧬 Skill evolution manager initialized")
+        except Exception as e:
+            logger.warning(f"Skill evolution unavailable: {e}")
+
+        try:
+            from opensable.core.git_brain import GitBrain
+            self.git_brain = GitBrain(repo_dir=Path("."))
+            await self.git_brain.initialize()
+            logger.info("📓 Git brain initialized")
+        except Exception as e:
+            logger.warning(f"Git brain unavailable: {e}")
+
+        try:
+            from opensable.core.inner_life import InnerLifeProcessor
+            self.inner_life = InnerLifeProcessor(data_dir=data_dir / "inner_life")
+            logger.info("💭 Inner life processor initialized")
+        except Exception as e:
+            logger.warning(f"Inner life unavailable: {e}")
+
+        try:
+            from opensable.core.pattern_learner import PatternLearningManager
+            self.pattern_learner = PatternLearningManager(directory=data_dir / "patterns")
+            logger.info("🔍 Pattern learner initialized")
+        except Exception as e:
+            logger.warning(f"Pattern learner unavailable: {e}")
 
         # Load persisted tick counter
         await self._load_state()
@@ -193,10 +242,13 @@ class AutonomousMode:
                 if self.goal_manager:
                     await self._self_improve()
 
-                # ── Phase 6: Maintenance + state save ───────────────────
+                # ── Phase 6: Cognitive processing ───────────────────────
+                await self._cognitive_tick()
+
+                # ── Phase 7: Maintenance + state save ───────────────────
                 await self._perform_maintenance()
 
-                # ── Phase 7: Trace tick end + advance ───────────────────
+                # ── Phase 8: Trace tick end + advance ───────────────────
                 tick_duration = (time.monotonic() - self.tick_start) * 1000
                 if self.trace_exporter:
                     self.trace_exporter.record_tick_end(
@@ -447,6 +499,101 @@ class AutonomousMode:
         except Exception as e:
             logger.error(f"Self-improvement failed: {e}")
 
+    async def _cognitive_tick(self):
+        """Run all cognitive modules for the current tick.
+
+        Order:
+          1. Cognitive memory — decay + consolidation + attention filter
+          2. Self-reflection — pattern detection + stagnation check
+          3. Skill evolution — natural selection + mutation + niche
+          4. Pattern learner — windowed analysis + snapshots + rules
+          5. Git brain — write episode + optional auto-commit
+          6. Inner life — System 1 update
+        """
+        try:
+            # 1. Cognitive memory
+            if self.cognitive_memory:
+                try:
+                    self.cognitive_memory.process_tick(self.tick)
+                except Exception as e:
+                    logger.debug(f"Cognitive memory tick failed: {e}")
+
+            # 2. Self-reflection
+            if self.self_reflection:
+                try:
+                    completed_count = len(self.completed_tasks)
+                    errors_count = sum(
+                        1 for t in self.completed_tasks
+                        if t.get("status") == "error"
+                    )
+                    from .self_reflection import TickOutcome
+                    outcome = TickOutcome(
+                        tick=self.tick,
+                        success=errors_count == 0,
+                        summary=f"Tick {self.tick}: {completed_count} tasks",
+                        tools_used=[],
+                        errors=[],
+                        goals_progressed=[],
+                    )
+                    self.self_reflection.record_outcome(outcome)
+                except Exception as e:
+                    logger.debug(f"Self-reflection tick failed: {e}")
+
+            # 3. Skill evolution
+            if self.skill_evolution:
+                try:
+                    evolution_result = self.skill_evolution.evaluate_tick(self.tick)
+                    if evolution_result.get("condemned"):
+                        logger.info(
+                            f"🧬 Evolution condemned {len(evolution_result['condemned'])} skills"
+                        )
+                except Exception as e:
+                    logger.debug(f"Skill evolution tick failed: {e}")
+
+            # 4. Pattern learner + fitness snapshots
+            if self.pattern_learner:
+                try:
+                    fitness_dicts = []
+                    if self.skill_fitness:
+                        fitness_dicts = self.skill_fitness.get_fitness_dicts(
+                            current_tick=self.tick, window_ticks=50,
+                        )
+                    events = []
+                    if self.skill_fitness:
+                        events = self.skill_fitness.events
+                    self.pattern_learner.process_tick(
+                        tick=self.tick,
+                        events=events,
+                        fitness_records=fitness_dicts,
+                    )
+                except Exception as e:
+                    logger.debug(f"Pattern learner tick failed: {e}")
+
+            # 5. Git brain — write episode
+            if self.git_brain:
+                try:
+                    await self.git_brain.write_episode(
+                        self.tick,
+                        summary=f"{len(self.completed_tasks)} tasks completed",
+                    )
+                except Exception as e:
+                    logger.debug(f"Git brain tick failed: {e}")
+
+            # 6. Inner life — update emotional state
+            if self.inner_life:
+                try:
+                    self.inner_life.state.emotion.trigger = (
+                        f"tick_{self.tick}"
+                    )
+                    # Save state using the module-level function
+                    from opensable.core.inner_life import save_inner_state
+                    save_inner_state(self.inner_life.state, self.inner_life.data_dir)
+                except Exception as e:
+                    logger.debug(f"Inner life tick failed: {e}")
+
+        except Exception as e:
+            logger.warning(f"Cognitive tick failed: {e}")
+
     async def _perform_maintenance(self):
         """Perform system maintenance tasks"""
         try:
@@ -513,7 +660,7 @@ class AutonomousMode:
             status["sub_agents"] = self.sub_agent_manager.get_status()
         if self.skill_fitness:
             status["skill_fitness"] = {
-                "tracked_skills": len(self.skill_fitness._records),
+                "tracked_events": self.skill_fitness.event_count,
             }
         return status
 

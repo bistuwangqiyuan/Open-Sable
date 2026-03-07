@@ -324,6 +324,40 @@ class SkillFitnessTracker:
             )
         return "\n".join(lines)
 
+    # ── History window integration ─────────────────────────────────────────
+
+    def compute_fitness_windowed(
+        self,
+        current_tick: int,
+        window_ticks: int = 50,
+    ) -> List[SkillFitnessRecord]:
+        """Compute fitness using only events within recent tick window.
+
+        Prevents O(n) growth on large histories.
+        """
+        cutoff = current_tick - window_ticks
+        windowed = [e for e in self._events if e.tick >= cutoff]
+        return compute_skill_fitness(windowed)
+
+    def get_fitness_dicts(
+        self,
+        current_tick: int = 0,
+        window_ticks: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Get fitness records as dicts (for FitnessSnapshotter).
+
+        If window_ticks > 0, uses windowed computation.
+        """
+        if window_ticks > 0 and current_tick > 0:
+            records = self.compute_fitness_windowed(current_tick, window_ticks)
+        else:
+            records = self.compute_fitness()
+        return [r.to_dict() for r in records]
+
+    def get_events_since(self, tick: int) -> List[SkillEvolutionEvent]:
+        """Get events from tick onwards (for external analysis)."""
+        return [e for e in self._events if e.tick >= tick]
+
     @property
     def events(self) -> List[SkillEvolutionEvent]:
         return list(self._events)
