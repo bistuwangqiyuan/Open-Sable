@@ -335,6 +335,10 @@ class Gateway:
         app.router.add_get("/api/knowledge-graph", self._knowledge_graph_handler)
         app.router.add_get("/api/iot-controller", self._iot_controller_handler)
         app.router.add_get("/api/distributed-tasks", self._distributed_task_queue_handler)
+        # ── LLM Management ──
+        app.router.add_get("/api/llm/status", self._llm_status_http_handler)
+        app.router.add_get("/api/llm/models", self._llm_models_http_handler)
+        app.router.add_post("/api/llm/switch", self._llm_switch_http_handler)
 
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
@@ -368,7 +372,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path.startswith("/api/nl-automation") or path.startswith("/api/video-understanding") or path.startswith("/api/knowledge-graph") or path.startswith("/api/iot-controller") or path.startswith("/api/distributed-tasks") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path.startswith("/api/nl-automation") or path.startswith("/api/video-understanding") or path.startswith("/api/knowledge-graph") or path.startswith("/api/iot-controller") or path.startswith("/api/distributed-tasks") or path.startswith("/api/llm/") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -732,6 +736,46 @@ class Gateway:
     async def _distributed_task_queue_handler(self, request: web.Request) -> web.Response:
         return await self._generic_module_handler("distributed_task_queue", "Distributed task queue", request)
 
+    # ── LLM Management HTTP handlers ─────────────────────────────────────────
+
+    async def _llm_status_http_handler(self, request: web.Request) -> web.Response:
+        """GET /api/llm/status — current provider, model, and configured providers."""
+        try:
+            from opensable.core.llm import AdaptiveLLM
+            llm = self.agent.llm
+            provider = "ollama" if isinstance(llm, AdaptiveLLM) else getattr(llm, "provider", "unknown")
+            return web.json_response({
+                "provider": provider,
+                "model": llm.current_model,
+                "available_models": getattr(llm, "available_models", []),
+                "providers_configured": self._get_configured_providers(),
+            }, headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _llm_models_http_handler(self, request: web.Request) -> web.Response:
+        """GET /api/llm/models — list all available models across providers."""
+        try:
+            from opensable.core.llm import list_all_models
+            models = await list_all_models(self.agent.config)
+            return web.json_response({"models": models}, headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _llm_switch_http_handler(self, request: web.Request) -> web.Response:
+        """POST /api/llm/switch — switch provider/model at runtime.
+        Body: {"provider": "openwebui", "model": "optional-model-name"}
+        """
+        try:
+            from opensable.core.llm import switch_llm
+            body = await request.json()
+            provider = body.get("provider", "ollama")
+            model = body.get("model")
+            result = switch_llm(self.agent, provider, model)
+            return web.json_response(result, headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"success": False, "error": str(e)}, status=500)
+
     async def _generic_module_handler(self, attr: str, label: str, request: web.Request) -> web.Response:
         """Generic handler for cognitive module stats endpoints."""
         try:
@@ -1008,12 +1052,104 @@ class Gateway:
             await self._on_agents_brain_data(client, msg)
         elif t == "brain.data":
             await self._on_brain_data(client, msg)
+        elif t == "llm.status":
+            await self._on_llm_status(client)
+        elif t == "llm.models":
+            await self._on_llm_models(client)
+        elif t == "llm.switch":
+            await self._on_llm_switch(client, msg)
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
             await client.send({"type": "error", "text": f"Unknown type: {t!r}"})
 
     # ── Handlers ──────────────────────────────────────────────────────────────
+
+    async def _on_llm_status(self, client: _Client):
+        """Return current LLM provider/model info."""
+        try:
+            from opensable.core.llm import AdaptiveLLM
+            llm = self.agent.llm
+            provider = "ollama" if isinstance(llm, AdaptiveLLM) else getattr(llm, "provider", "unknown")
+            model = llm.current_model
+            available = getattr(llm, "available_models", [])
+            tokens = llm.token_tracker.snapshot() if hasattr(llm, "token_tracker") else {}
+            await client.send({
+                "type": "llm.status",
+                "provider": provider,
+                "model": model,
+                "available_models": available,
+                "tokens": tokens,
+                "providers_configured": self._get_configured_providers(),
+            })
+        except Exception as e:
+            await client.send({"type": "llm.status", "error": str(e)})
+
+    async def _on_llm_models(self, client: _Client):
+        """List all available models across all configured providers."""
+        try:
+            from opensable.core.llm import list_all_models
+            models = await list_all_models(self.agent.config)
+            await client.send({"type": "llm.models", "models": models})
+        except Exception as e:
+            await client.send({"type": "llm.models", "error": str(e), "models": {}})
+
+    async def _on_llm_switch(self, client: _Client, msg: dict):
+        """Switch LLM provider and/or model at runtime."""
+        try:
+            from opensable.core.llm import switch_llm
+            provider = msg.get("provider", "ollama")
+            model = msg.get("model")
+            result = switch_llm(self.agent, provider, model)
+            await client.send({"type": "llm.switch", **result})
+            # Broadcast model change to all monitor clients
+            if result.get("success"):
+                broadcast = {
+                    "type": "llm.changed",
+                    "provider": result["current"]["provider"],
+                    "model": result["current"]["model"],
+                }
+                for mc in list(self._monitor_clients):
+                    try:
+                        await mc.send(broadcast)
+                    except Exception:
+                        pass
+        except Exception as e:
+            await client.send({"type": "llm.switch", "success": False, "error": str(e)})
+
+    def _get_configured_providers(self) -> list:
+        """Return list of providers that have API keys configured."""
+        config = self.agent.config
+        result = []
+        # Ollama is always available if the agent started with it
+        from opensable.core.llm import AdaptiveLLM
+        if isinstance(self.agent.llm, AdaptiveLLM):
+            result.append({"name": "ollama", "active": True})
+        else:
+            result.append({"name": "ollama", "active": False})
+
+        provider_keys = [
+            ("openwebui", "openwebui_api_key"),
+            ("openai", "openai_api_key"),
+            ("anthropic", "anthropic_api_key"),
+            ("gemini", "gemini_api_key"),
+            ("deepseek", "deepseek_api_key"),
+            ("groq", "groq_api_key"),
+            ("mistral", "mistral_api_key"),
+            ("together", "together_api_key"),
+            ("xai", "xai_api_key"),
+            ("cohere", "cohere_api_key"),
+            ("openrouter", "openrouter_api_key"),
+        ]
+        current_provider = "ollama" if isinstance(self.agent.llm, AdaptiveLLM) else getattr(self.agent.llm, "provider", "")
+        for name, key_attr in provider_keys:
+            has_key = bool(getattr(config, key_attr, None))
+            result.append({
+                "name": name,
+                "configured": has_key,
+                "active": current_provider == name,
+            })
+        return result
 
     async def _on_tools_list(self, client: _Client):
         tool_names: list = []
