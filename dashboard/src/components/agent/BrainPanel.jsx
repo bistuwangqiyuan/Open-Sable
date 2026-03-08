@@ -4,7 +4,7 @@ import {
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
   User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
   AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
-  BookMarked, Newspaper,
+  BookMarked, Newspaper, Network,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1155,6 +1155,9 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   // Source 22 – News
   const newsCache      = data?.news_cache || [];
 
+  // Source 23 – Connectome (FlyWire neural colony)
+  const connectome     = data?.connectome || null;
+
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
   const valence = (typeof rawEmotion === 'object' ? rawEmotion.valence : null) ?? il.valence ?? liveStats.valence ?? 0;
@@ -1447,6 +1450,9 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
             </div>
           )}
 
+          {/* ── Connectome – Neural Colony ──────────────────────── */}
+          {connectome && <ConnectomeMonitor connectome={connectome} />}
+
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (
             <div style={{ ...s.section, gridColumn: '1 / -1' }}>
@@ -1466,6 +1472,236 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Connectome Monitor ───────────────────────────────────────────────
+const _NODE_POS = {
+  AL:  { x: 80,  y: 50  },
+  OL:  { x: 320, y: 50  },
+  MB:  { x: 140, y: 140 },
+  LH:  { x: 260, y: 140 },
+  CX:  { x: 200, y: 230 },
+  PI:  { x: 80,  y: 280 },
+  LPC: { x: 320, y: 280 },
+  SEZ: { x: 200, y: 340 },
+};
+
+const _REGION_LABELS = {
+  AL: 'Antennal Lobe', OL: 'Optic Lobe', MB: 'Mushroom Body',
+  LH: 'Lateral Horn', CX: 'Central Complex', PI: 'Pars Intercerebralis',
+  LPC: 'Lateral Protocerebrum', SEZ: 'Subesophageal Zone',
+};
+
+function ConnectomeMonitor({ connectome }) {
+  const [hovered, setHovered] = useState(null);
+
+  const nodes = connectome.nodes || [];
+  const edges = connectome.edges || [];
+  const gen = connectome.generation ?? 0;
+  const totalProp = connectome.total_propagations ?? 0;
+  const totalFire = connectome.total_firings ?? 0;
+
+  const nodesById = {};
+  nodes.forEach(n => { nodesById[n.id] = n; });
+
+  const mutated = edges.filter(e => (e.mutations ?? 0) > 0).length;
+  const maxDrift = edges.reduce((m, e) => Math.max(m, Math.abs(e.drift ?? 0)), 0);
+  const totalMutations = edges.reduce((s, e) => s + (e.mutations ?? 0), 0);
+
+  const actColor = (act) => {
+    if (act > 0.6) return '#7c3aed';
+    if (act > 0.3) return '#00cec9';
+    if (act > 0.1) return '#6c7a89';
+    return '#3a3f47';
+  };
+
+  const edgeColor = (e) => {
+    const d = Math.abs(e.drift ?? 0);
+    if (d > 0.2) return '#f39c12';
+    if (d > 0.05) return '#e2b93d';
+    return '#4a5568';
+  };
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Network size={12} /> Connectome Neural Colony</div>
+
+      {/* Stats bar */}
+      <div style={{
+        display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16, padding: '8px 12px',
+        background: 'var(--bg-tertiary)', borderRadius: 8, alignItems: 'center',
+      }}>
+        <_Stat label="Generation" value={gen} color="#7c3aed" />
+        <_Stat label="Propagations" value={totalProp} color="#00cec9" />
+        <_Stat label="Total fires" value={totalFire} color="#e17055" />
+        <_Stat label="Mutated" value={`${mutated}/${edges.length}`} color="#f39c12" />
+        <_Stat label="Mutations" value={totalMutations} color="#fdcb6e" />
+        <_Stat label="Max drift" value={maxDrift.toFixed(4)} color={maxDrift > 0.3 ? '#e17055' : '#00b894'} />
+        <span style={{ marginLeft: 'auto', fontSize: 8, color: 'var(--text-muted)', fontStyle: 'italic' }}>FlyWire FAFB v783</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {/* SVG Brain Map */}
+        <div style={{
+          flex: '1 1 400px', minHeight: 400, background: 'var(--bg-tertiary)',
+          borderRadius: 10, border: '1px solid var(--border)', position: 'relative', overflow: 'hidden',
+        }}>
+          <svg viewBox="0 0 400 400" style={{ width: '100%', height: '100%' }}>
+            {/* Edges */}
+            {edges.map((e, i) => {
+              const sp = _NODE_POS[e.src];
+              const dp = _NODE_POS[e.dst];
+              if (!sp || !dp) return null;
+              const w = e.weight ?? 0;
+              const highlighted = hovered === e.src || hovered === e.dst;
+              return (
+                <line key={i}
+                  x1={sp.x} y1={sp.y} x2={dp.x} y2={dp.y}
+                  stroke={highlighted ? edgeColor(e) : '#2d3436'}
+                  strokeWidth={highlighted ? 1.5 + w * 2.5 : 0.5 + w * 1.5}
+                  strokeOpacity={highlighted ? 0.9 : 0.35}
+                  strokeDasharray={Math.abs(e.drift ?? 0) > 0.1 ? '4,2' : 'none'}
+                  style={{ transition: 'all 0.4s' }}
+                />
+              );
+            })}
+            {/* Nodes */}
+            {nodes.map(n => {
+              const pos = _NODE_POS[n.id];
+              if (!pos) return null;
+              const act = n.activation ?? 0;
+              const r = 16 + act * 14;
+              const col = actColor(act);
+              const isHov = hovered === n.id;
+              return (
+                <g key={n.id}
+                  onMouseEnter={() => setHovered(n.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* Glow */}
+                  {act > 0.2 && (
+                    <circle cx={pos.x} cy={pos.y} r={r + 8}
+                      fill="none" stroke={col} strokeWidth={1}
+                      opacity={0.2 + act * 0.3}
+                    >
+                      <animate attributeName="r" values={`${r + 4};${r + 12};${r + 4}`} dur="2s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values={`${0.15 + act * 0.2};${0.05};${0.15 + act * 0.2}`} dur="2s" repeatCount="indefinite" />
+                    </circle>
+                  )}
+                  {/* Node circle */}
+                  <circle cx={pos.x} cy={pos.y} r={isHov ? r + 3 : r}
+                    fill={col} fillOpacity={0.15 + act * 0.4}
+                    stroke={col} strokeWidth={isHov ? 2 : 1.2}
+                    style={{ transition: 'all 0.3s' }}
+                  />
+                  {/* Region label */}
+                  <text x={pos.x} y={pos.y - 2} textAnchor="middle"
+                    fontSize={11} fontWeight={700} fill={col}
+                    style={{ userSelect: 'none' }}
+                  >{n.id}</text>
+                  {/* Module label */}
+                  <text x={pos.x} y={pos.y + 10} textAnchor="middle"
+                    fontSize={7} fill="#6c7a89"
+                    style={{ userSelect: 'none' }}
+                  >{n.module?.replace('_', ' ')}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Right panel — Region details + connection table */}
+        <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Region cards */}
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Brain Regions</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+            {[...nodes].sort((a, b) => (b.fire_count ?? 0) - (a.fire_count ?? 0)).map(n => {
+              const act = n.activation ?? 0;
+              const col = actColor(act);
+              const fullName = _REGION_LABELS[n.id] || n.id;
+              return (
+                <div key={n.id}
+                  onMouseEnter={() => setHovered(n.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px',
+                    background: hovered === n.id ? 'var(--bg-tertiary)' : 'transparent',
+                    borderRadius: 6, transition: 'background 0.2s', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)' }}>{n.id} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— {fullName}</span></div>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>{n.module}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: col, fontWeight: 600 }}>{act.toFixed(2)}</div>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>{n.fire_count ?? 0} fires</div>
+                  </div>
+                  <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--bg-tertiary)', overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ height: '100%', width: `${Math.min(act * 100, 100)}%`, borderRadius: 2, background: col, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Connections table */}
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6 }}>Synaptic Connections</div>
+          <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, fontFamily: 'var(--mono)' }}>
+              <thead>
+                <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '3px 4px', fontWeight: 600 }}>Route</th>
+                  <th style={{ textAlign: 'right', padding: '3px 4px', fontWeight: 600 }}>Weight</th>
+                  <th style={{ textAlign: 'right', padding: '3px 4px', fontWeight: 600 }}>Base</th>
+                  <th style={{ textAlign: 'right', padding: '3px 4px', fontWeight: 600 }}>Drift</th>
+                  <th style={{ textAlign: 'right', padding: '3px 4px', fontWeight: 600 }}>Mut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...edges].sort((a, b) => b.weight - a.weight).map((e, i) => {
+                  const drift = e.drift ?? 0;
+                  const dAbs = Math.abs(drift);
+                  const dCol = dAbs > 0.2 ? '#e17055' : dAbs > 0.05 ? '#f39c12' : 'var(--text-muted)';
+                  const highlighted = hovered === e.src || hovered === e.dst;
+                  return (
+                    <tr key={i} style={{
+                      borderBottom: '1px solid var(--border)',
+                      background: highlighted ? 'rgba(124,58,237,0.06)' : 'transparent',
+                      transition: 'background 0.2s',
+                    }}>
+                      <td style={{ padding: '3px 4px' }}>
+                        <span style={{ color: '#7c3aed' }}>{e.src}</span>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 2px' }}>→</span>
+                        <span style={{ color: '#00cec9' }}>{e.dst}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px', color: 'var(--text-primary)', fontWeight: 600 }}>{e.weight.toFixed(3)}</td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px', color: 'var(--text-muted)' }}>{e.base_weight.toFixed(3)}</td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px', color: dCol }}>
+                        {dAbs > 0.001 ? `${drift > 0 ? '+' : ''}${drift.toFixed(3)}` : '—'}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px', color: e.mutations > 0 ? '#f39c12' : 'var(--text-muted)' }}>{e.mutations ?? 0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function _Stat({ label, value, color }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <span style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)', color }}>{value}</span>
     </div>
   );
 }

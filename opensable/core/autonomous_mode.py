@@ -1322,14 +1322,69 @@ class AutonomousMode:
         """Run all cognitive modules for the current tick.
 
         Order:
+          0. Connectome — propagate signals through FlyWire-derived neural colony
           1. Cognitive memory — decay + consolidation + attention filter
           2. Self-reflection — pattern detection + stagnation check (with real data)
           3. Skill evolution — natural selection + mutation + niche
           4. Pattern learner — windowed analysis + snapshots + rules
           5. Git brain — write episode + optional auto-commit
           6. Inner life — System 1 LLM pass (emotion, impulse, fantasy, landscape)
+          7. Connectome Hebbian learning — update wiring from task outcomes
         """
         try:
+            # ── 0. Connectome — bio-inspired signal routing ──
+            connectome = getattr(self.agent, "connectome", None)
+            connectome_biases = {}
+            if connectome:
+                try:
+                    # Stimulate sensory regions based on current state
+                    has_tasks = len(self.task_queue) > 0
+                    recent = self.completed_tasks[-5:]
+                    error_rate = (
+                        sum(1 for t in recent if t.get("status") == "error")
+                        / max(len(recent), 1)
+                    )
+                    success_rate = 1.0 - error_rate
+
+                    # AL (sensory): high if new tasks incoming
+                    connectome.stimulate("AL", 0.8 if has_tasks else 0.2)
+                    # OL (context): always moderate — agent always observes
+                    connectome.stimulate("OL", 0.5)
+                    # PI (motivation): high if goals active, low if idle
+                    drive = 0.3
+                    if self.goal_manager:
+                        from .goal_system import GoalStatus
+                        active = sum(
+                            1 for g in self.goal_manager.goals.values()
+                            if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS)
+                        )
+                        drive = min(1.0, 0.3 + active * 0.15)
+                    connectome.stimulate("PI", drive)
+                    # LPC (emotion): feed from inner life if available
+                    inner_life = getattr(self.agent, "inner_life", None)
+                    if inner_life and hasattr(inner_life, "emotion"):
+                        arousal = getattr(inner_life.emotion, "arousal", 0.5)
+                        connectome.stimulate("LPC", arousal)
+                    # LH (reflex): high if errors — instinct to fix
+                    connectome.stimulate("LH", error_rate * 0.8)
+
+                    # Propagate through the connectome
+                    results = connectome.propagate(max_cycles=3)
+                    connectome_biases = connectome.compute_routing_bias(results)
+
+                    if results:
+                        fired_modules = connectome.get_firing_modules(results)
+                        if fired_modules:
+                            logger.debug(
+                                f"🧠 Connectome fired: "
+                                + ", ".join(
+                                    f"{m}={s:.2f}" for m, s in
+                                    sorted(fired_modules.items(), key=lambda x: -x[1])[:4]
+                                )
+                            )
+                except Exception as e:
+                    logger.debug(f"Connectome tick failed: {e}")
+
             # ── 1. Cognitive memory ──
             if self.cognitive_memory:
                 try:
@@ -1520,6 +1575,49 @@ class AutonomousMode:
                 except Exception as e:
                     logger.warning(f"Inner life tick failed: {e}")
 
+            # ── 7. Connectome Hebbian learning ──
+            if connectome and self.tick % 5 == 0:
+                try:
+                    recent = self.completed_tasks[-20:]
+                    if len(recent) >= 3:
+                        success_count = sum(1 for t in recent if t.get("status") == "done")
+                        error_count = sum(1 for t in recent if t.get("status") == "error")
+                        total = max(len(recent), 1)
+
+                        # Build performance scores for each module
+                        performance = {
+                            # Memory: good if tasks are completing (learned patterns)
+                            "memory": (success_count / total) * 0.5,
+                            # Decision: good if more successes than errors
+                            "decision": (success_count - error_count) / total,
+                            # Action: good if tasks execute at all
+                            "action": 0.3 if total > 0 else -0.2,
+                            # Reflex: good if errors are low (fast responses work)
+                            "reflex": 0.4 if error_count == 0 else -0.3,
+                            # Emotion: neutral — doesn't directly affect performance
+                            "emotion": 0.0,
+                            # Motivation: good if queue isn't stagnating
+                            "motivation": 0.2 if len(self.task_queue) < 20 else -0.2,
+                            # Sensory: always slightly positive (input is needed)
+                            "intent_classifier": 0.1,
+                            "context_processor": 0.1,
+                        }
+
+                        # Inner life emotional valence modulates everything
+                        inner = getattr(self.agent, "inner_life", None)
+                        if inner and hasattr(inner, "emotion"):
+                            valence = getattr(inner.emotion, "valence", 0.0)
+                            performance["emotion"] = valence * 0.3
+
+                        connectome.apply_evolution_pressure(
+                            performance, learning_rate=0.02
+                        )
+                        logger.debug(
+                            f"🧬 Connectome Hebbian update: gen {connectome._generation}"
+                        )
+                except Exception as e:
+                    logger.debug(f"Connectome learning failed: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -1621,6 +1719,9 @@ class AutonomousMode:
             status["github"] = True
         if self.evolution_engine:
             status["evolution_engine"] = self.evolution_engine.get_stats()
+        connectome = getattr(self.agent, "connectome", None)
+        if connectome:
+            status["connectome"] = connectome.get_stats()
         return status
 
     def add_task(self, task: Dict):

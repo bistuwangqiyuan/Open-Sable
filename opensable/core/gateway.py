@@ -260,6 +260,9 @@ class Gateway:
         # Serve generated files (images, etc.)
         app.router.add_get("/files/genelia/{filename}", self._genelia_file_handler)
 
+        # Connectome REST endpoint
+        app.router.add_get("/api/connectome", self._connectome_handler)
+
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
         app.router.add_get("/monitor", self._monitor_page_handler)
@@ -396,6 +399,21 @@ class Gateway:
         except Exception as e:
             logger.error(f"Polymarket proxy error: {e}")
             return web.json_response({"error": str(e)}, status=502)
+
+    # ── Connectome REST endpoint ─────────────────────────────────────────────
+
+    async def _connectome_handler(self, request: web.Request) -> web.Response:
+        """Return connectome wiring diagram + stats as JSON."""
+        try:
+            connectome = getattr(self.agent, "connectome", None)
+            if not connectome:
+                return web.json_response({"error": "Connectome not initialised"}, status=404)
+            data = connectome.get_wiring_diagram()
+            data["stats"] = connectome.get_stats()
+            return web.json_response(data, headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            logger.error(f"Connectome endpoint error: {e}")
+            return web.json_response({"error": str(e)}, status=500)
 
     # ── Generated files ──────────────────────────────────────────────────────
 
@@ -1707,6 +1725,15 @@ class Gateway:
                     result["news_cache"] = news_items[:30]
             except Exception:
                 pass
+
+            # ── 23. Connectome (FlyWire neural colony) ────────────────────
+            if hasattr(self.agent, "connectome") and self.agent.connectome:
+                try:
+                    result["connectome"] = self.agent.connectome.get_wiring_diagram()
+                except Exception:
+                    result["connectome"] = None
+            else:
+                result["connectome"] = None
 
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")

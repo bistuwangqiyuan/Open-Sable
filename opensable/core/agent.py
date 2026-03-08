@@ -222,6 +222,7 @@ class SableAgent:
         self.proactive_engine = None     # ProactiveReasoningEngine
         self.react_executor = None       # ReActExecutor
         self.github_skill = None         # GitHubSkill
+        self.connectome = None           # NeuralColony (FlyWire connectome)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -290,6 +291,7 @@ class SableAgent:
             ("Proactive reasoning", self._init_proactive_reasoning),
             ("ReAct executor", self._init_react_executor),
             ("GitHub skill", self._init_github_skill),
+            ("Connectome", self._init_connectome),
         ]:
             try:
                 await init_fn()
@@ -425,6 +427,12 @@ class SableAgent:
         from .git_brain import GitBrain
         self.git_brain = GitBrain(repo_dir=Path("."))
         await self.git_brain.initialize()
+
+    async def _init_connectome(self):
+        from .connectome import NeuralColony
+        self.connectome = NeuralColony(
+            data_dir=Path(self._data_dir) / "connectome"
+        )
 
     async def _init_inner_life(self):
         from .inner_life import InnerLifeProcessor

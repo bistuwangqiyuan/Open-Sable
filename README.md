@@ -19,12 +19,13 @@
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
 ### 🆕 What's new in v1.3.0
+- **Connectome Neural Colony**, agent cognitive modules wired following the real *Drosophila melanogaster* brain connectome (FlyWire FAFB v783, 139K neurons, 3.7M synapses). Signals propagate through 8 brain regions with Hebbian learning — connections that produce good outcomes strengthen over time. Each agent evolves a unique cognitive profile. Dashboard visualization with live SVG brain map
 - **Proactive Reasoning Engine**, LLM-driven autonomous task generation — every N ticks the agent surveys world state and proposes what to do next, with risk filtering, dedup, and JSONL audit trail
 - **ReAct Executor**, Reasoning + Acting loop (Yao et al. 2022) for multi-step task execution — the agent chains tool calls with intermediate reasoning until the task is complete
 - **GitHub Integration**, full GitHub API skill with 13 tools — create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
@@ -681,6 +682,10 @@ graph LR
         RE[ReAct Executor]
         GH[GitHub Skill]
     end
+
+    subgraph "Neural Architecture"
+        NC[Connectome Colony]
+    end
     
     subgraph "Integration Layer"
         AGENT[Agentic AI Core]
@@ -714,6 +719,11 @@ graph LR
     AGENT --> PR
     AGENT --> RE
     AGENT --> GH
+    AGENT --> NC
+
+    NC --> AGENT
+    IL --> NC
+    NC --> G
     
     G --> M
     ML --> T
@@ -748,6 +758,29 @@ Six modules add biologically-inspired cognitive depth to the autonomous tick loo
 | **Inner Life** | Kahneman's System 1 | Valence-arousal emotions, impulses, fantasies, mental landscape, temporal sense |
 | **Pattern Learner** | Institutional learning | LLM-driven pattern detection → permanent verification rules; history windowing; fitness snapshots |
 
+### Connectome Neural Colony
+
+The agent's cognitive modules are wired following the actual **Drosophila melanogaster** brain connectome — the most complete brain map in existence (FlyWire FAFB v783, 139,255 neurons, 3,732,460 synaptic connections, published in *Nature* 2024).
+
+| Brain Region | Agent Module | Role |
+|---|---|---|
+| **AL** (Antennal Lobe) | Intent Classifier | Categorizes incoming sensory input |
+| **OL** (Optic Lobe) | Context Processor | Pattern recognition and context analysis |
+| **MB** (Mushroom Body) | Memory | Associative learning and recall |
+| **LH** (Lateral Horn) | Reflex | Fast innate responses to threats |
+| **CX** (Central Complex) | Decision | Action selection and planning |
+| **PI** (Pars Intercerebralis) | Motivation | Goal and drive regulation |
+| **LPC** (Lateral Protocerebrum) | Emotion | Emotional processing (feeds from Inner Life) |
+| **SEZ** (Subesophageal Zone) | Action | Motor output / task execution |
+
+**How it works:**
+- Each cognitive tick, signals are injected into brain regions based on agent state (tasks → AL, context → OL, goals → PI, emotions → LPC, errors → LH)
+- Signals **propagate** through 3 cycles following real synapse weights — e.g. AL → MB → CX → SEZ (sensory → association → decision → action)
+- **Hebbian learning** every 5 ticks: connections that carried signals between well-performing modules strengthen; poorly-performing paths weaken
+- Each agent instance evolves a **unique cognitive profile** — the brain rewires itself through use
+- State persists across restarts in `data/connectome/connectome_state.json`
+- Live visualization in dashboard: SVG brain map, activation levels, connection weights, drift from biological baseline
+
 ### Autonomous Agency Modules (v1.3)
 
 Three modules transform the agent from a reactive tool-executor into a proactive autonomous agent:
@@ -758,12 +791,14 @@ Three modules transform the agent from a reactive tool-executor into a proactive
 | **ReAct Executor** | ReAct (Yao et al. 2022) | Multi-step Thought→Action→Observation loop — chains tool calls with intermediate reasoning until task is complete |
 | **GitHub Skill** | Developer workflow automation | 13 tools: issues, PRs, branches, code search, releases, workflows — PyGithub + `gh` CLI fallback |
 
-All modules plug into the **9-phase tick pipeline** (`autonomous_mode.py`):
+All modules plug into the **10-phase tick pipeline** (`autonomous_mode.py`):
 
 ```
-tick start → discover → plan → execute → sub-agents → self-improve
+tick start → connectome signal routing (AL/OL/PI/LPC/LH stimulation → 3-cycle propagation → routing bias)
+          → discover → plan → execute → sub-agents → self-improve
           → proactive_tick (survey state → propose actions → inject tasks)
           → cognitive_tick (memory decay → reflection → evolution → patterns → git episode → inner life)
+          → Hebbian learning (every 5 ticks: performance → weight mutation → persist)
           → maintenance → tick end
 ```
 

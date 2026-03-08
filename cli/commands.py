@@ -337,5 +337,122 @@ def sessions(format):
         sys.exit(1)
 
 
+# ── Connectome Brain Monitor ─────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--host", default="127.0.0.1", help="Gateway host")
+@click.option("--port", default=18789, help="Gateway port")
+@click.option("--watch", "-w", is_flag=True, help="Live refresh every 3s")
+@click.option("--json", "as_json", is_flag=True, help="Raw JSON output")
+def brain(host, port, watch, as_json):
+    """Monitor the connectome neural colony in real-time"""
+    import json as _json
+    import time
+    try:
+        import urllib.request
+    except ImportError:
+        click.echo("❌ urllib not available", err=True)
+        sys.exit(1)
+
+    url = f"http://{host}:{port}/api/connectome"
+
+    def _fetch():
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return _json.loads(resp.read())
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _render(data):
+        if "error" in data:
+            click.echo(f"  ⚠  {data['error']}")
+            return
+
+        stats = data.get("stats", {})
+        nodes = data.get("nodes", [])
+        edges = data.get("edges", [])
+
+        # Header
+        gen = stats.get("generation", 0)
+        mutated = stats.get("mutated_connections", 0)
+        max_drift = stats.get("max_drift", 0)
+        total_fire = stats.get("total_firings", 0)
+        total_prop = stats.get("total_propagations", 0)
+
+        click.echo(f"  Gen {click.style(str(gen), fg='magenta', bold=True)}"
+                   f"  │  Mutations {click.style(str(mutated), fg='yellow')}/{len(edges)}"
+                   f"  │  Max drift {click.style(f'{max_drift:.4f}', fg='red' if max_drift > 0.3 else 'green')}"
+                   f"  │  Fires {total_fire}  │  Propagations {total_prop}")
+        click.echo()
+
+        # Region table
+        click.echo("  ┌──────┬──────────────────┬───────────┬───────┬───────┐")
+        click.echo("  │ Region │ Module           │ Activation│ Fires │ Thr   │")
+        click.echo("  ├──────┼──────────────────┼───────────┼───────┼───────┤")
+        for n in sorted(nodes, key=lambda x: x.get("activation", 0), reverse=True):
+            act = n.get("activation", 0)
+            bar_len = int(act * 10)
+            bar = "█" * bar_len + "░" * (10 - bar_len)
+            act_color = "magenta" if act > 0.5 else ("cyan" if act > 0.1 else "white")
+            region = n.get("region", "?").ljust(4)
+            module = n.get("module", "?").ljust(16)
+            fires = str(n.get("fire_count", 0)).rjust(5)
+            thr = f"{n.get('threshold', 0):.2f}"
+            click.echo(f"  │ {click.style(region, fg='cyan', bold=True)}"
+                       f" │ {module}"
+                       f" │ {click.style(bar, fg=act_color)} "
+                       f"│{fires} │ {thr} │")
+        click.echo("  └──────┴──────────────────┴───────────┴───────┴───────┘")
+        click.echo()
+
+        # Top connections by weight
+        sorted_edges = sorted(edges, key=lambda e: e.get("weight", 0), reverse=True)
+        click.echo("  Top connections:")
+        for e in sorted_edges[:12]:
+            src = e.get("src", "?")
+            dst = e.get("dst", "?")
+            w = e.get("weight", 0)
+            drift = e.get("drift", 0)
+            muts = e.get("mutations", 0)
+            w_bar = "▓" * int(w * 15) + "░" * (15 - int(w * 15))
+            drift_s = ""
+            if abs(drift) > 0.005:
+                d_color = "yellow" if abs(drift) < 0.2 else "red"
+                sign = "+" if drift > 0 else ""
+                drift_s = click.style(f" Δ{sign}{drift:.3f}", fg=d_color)
+            mut_s = click.style(f" m{muts}", fg="yellow") if muts > 0 else ""
+            click.echo(f"    {click.style(src.ljust(4), fg='magenta')}"
+                       f" → {click.style(dst.ljust(4), fg='cyan')}"
+                       f"  {w_bar} {w:.3f}{drift_s}{mut_s}")
+
+    def _display():
+        data = _fetch()
+        if as_json:
+            click.echo(_json.dumps(data, indent=2))
+            return
+        click.clear()
+        ts = time.strftime("%H:%M:%S")
+        click.echo()
+        click.echo(f"  🧠 {click.style('CONNECTOME NEURAL COLONY', bold=True)}"
+                   f"  {click.style(f'[{ts}]', fg='bright_black')}"
+                   f"  {click.style(url, fg='bright_black')}")
+        click.echo(f"  {click.style('FlyWire FAFB v783 — Drosophila melanogaster connectome', fg='bright_black')}")
+        click.echo()
+        _render(data)
+        if watch:
+            click.echo(f"\n  {click.style('Ctrl+C to exit  •  Refreshing every 3s', fg='bright_black')}")
+
+    try:
+        if watch:
+            while True:
+                _display()
+                time.sleep(3)
+        else:
+            _display()
+    except KeyboardInterrupt:
+        click.echo("\n  Stopped.")
+
+
 if __name__ == "__main__":
     cli()
