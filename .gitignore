@@ -155,3 +155,8 @@ agents/*/profile.env
 .sable-sable.pid
 .dev-studio.pid
 _reference_external_DO_NOT_SHIP/
+episodes/tick_0004.md
+data/inner_life/inner_state.json
+/episodes
+data/proactive/proactive_state.json
+data/autonomous_state.json
