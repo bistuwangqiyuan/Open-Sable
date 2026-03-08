@@ -1576,6 +1576,90 @@ class Gateway:
             else:
                 result["x_reflections"] = []
 
+            # 18. Journal (consciousness diary)
+            journal_file = _data_dir / "x_consciousness" / "journal.jsonl"
+            if journal_file.exists():
+                try:
+                    entries = []
+                    with open(journal_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    entries.append(json.loads(line))
+                                except Exception:
+                                    pass
+                    result["journal"] = entries[-20:]
+                except Exception:
+                    result["journal"] = []
+            else:
+                result["journal"] = []
+
+            # 19. Calendar
+            calendar_file = _data_dir / "calendar.json"
+            if not calendar_file.exists():
+                calendar_file = Path("data") / "calendar.json"
+            if calendar_file.exists():
+                try:
+                    result["calendar"] = json.loads(calendar_file.read_text())
+                except Exception:
+                    result["calendar"] = []
+            else:
+                result["calendar"] = []
+
+            # 20. Conversations (summaries per user)
+            convos_dir = _data_dir / "conversations"
+            if not convos_dir.exists():
+                convos_dir = Path("data") / "conversations"
+            result["conversations"] = []
+            if convos_dir.exists() and convos_dir.is_dir():
+                try:
+                    for cf in sorted(convos_dir.glob("*.jsonl")):
+                        user_id = cf.stem
+                        lines = []
+                        with open(cf) as f:
+                            for line in f:
+                                line = line.strip()
+                                if line:
+                                    try:
+                                        lines.append(json.loads(line))
+                                    except Exception:
+                                        pass
+                        result["conversations"].append({
+                            "user_id": user_id,
+                            "total_messages": len(lines),
+                            "last_messages": lines[-5:],
+                        })
+                except Exception:
+                    pass
+
+            # 21. Benchmarks
+            bench_dir = _data_dir / "benchmarks"
+            if not bench_dir.exists():
+                bench_dir = Path("data") / "benchmarks"
+            result["benchmarks"] = []
+            if bench_dir.exists() and bench_dir.is_dir():
+                try:
+                    for bf in sorted(bench_dir.glob("*.json")):
+                        try:
+                            bd = json.loads(bf.read_text())
+                            result["benchmarks"].append({
+                                "suite": bd.get("suite", bf.stem),
+                                "total": bd.get("total", 0),
+                                "passed": bd.get("passed", 0),
+                                "failed": bd.get("failed", 0),
+                                "pass_rate": bd.get("pass_rate", 0),
+                                "avg_score": bd.get("avg_score", 0),
+                                "avg_duration_ms": bd.get("avg_duration_ms", 0),
+                                "model": bd.get("model", ""),
+                                "agent_version": bd.get("agent_version", ""),
+                                "started_at": bd.get("started_at", ""),
+                            })
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")
             result["error"] = str(e)

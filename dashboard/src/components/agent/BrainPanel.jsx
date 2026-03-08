@@ -3,7 +3,8 @@ import {
   Brain, Zap, Target, RefreshCw, Activity, Cpu, Layers,
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
   User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
-  AlertTriangle, ArrowUpRight, GitBranch,
+  AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
+  BookMarked,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -800,6 +801,235 @@ function ProactiveStateSummary({ state }) {
 }
 
 
+// ── Journal Feed (x_consciousness/journal.jsonl) ─────────────────────
+function JournalFeed({ entries }) {
+  if (!entries || !entries.length) return <div style={s.empty}>No journal entries</div>;
+  const [expanded, setExpanded] = useState(null);
+  const sorted = [...entries].reverse();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
+      {sorted.map((entry, i) => {
+        const isOpen = expanded === i;
+        const d = entry.data || {};
+        const thought = d.thought || '';
+        const situation = d.situation || '';
+        const num = d.thought_number ?? entry.thought_number ?? null;
+        const preview = thought.replace(/^#.*\n/gm, '').trim();
+        return (
+          <div key={i} style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: isOpen ? 'rgba(59,130,246,0.06)' : 'var(--bg-tertiary)',
+            border: `1px solid ${isOpen ? 'rgba(59,130,246,0.25)' : 'var(--border)'}`,
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
+            onClick={() => setExpanded(isOpen ? null : i)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <BookMarked size={11} style={{ color: '#3b82f6', flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: '#60a5fa', fontWeight: 600 }}>
+                {num != null ? `Thought #${num}` : (entry.type || 'thought')}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
+                {ago(entry.ts)}
+              </span>
+            </div>
+            {situation && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontStyle: 'italic' }}>
+                {situation.length > 120 ? situation.slice(0, 120) + '…' : situation}
+              </div>
+            )}
+            <div style={{
+              fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6,
+              maxHeight: isOpen ? 'none' : 48, overflow: 'hidden',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}>
+              {isOpen ? thought : (preview.length > 200 ? preview.slice(0, 200) + '…' : preview)}
+            </div>
+            {!isOpen && thought.length > 200 && (
+              <div style={{ fontSize: 9, color: '#3b82f6', marginTop: 4 }}>Click to expand…</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Calendar View ────────────────────────────────────────────────────
+function CalendarView({ events }) {
+  if (!events || !events.length) return <div style={s.empty}>No scheduled events</div>;
+  const sorted = [...events].sort((a, b) => {
+    const ta = new Date(a.date || a.start || a.ts || 0).getTime();
+    const tb = new Date(b.date || b.start || b.ts || 0).getTime();
+    return ta - tb;
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+      {sorted.map((ev, i) => {
+        const dt = ev.date || ev.start || ev.ts || '';
+        const isPast = dt && new Date(dt).getTime() < Date.now();
+        const color = isPast ? '#6b7280' : '#22c55e';
+        return (
+          <div key={i} style={{
+            padding: '6px 10px', borderRadius: 6,
+            borderLeft: `3px solid ${color}`,
+            background: isPast ? 'transparent' : 'rgba(34,197,94,0.04)',
+            opacity: isPast ? 0.6 : 1,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Calendar size={10} style={{ color, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: 'var(--text)', flex: 1 }}>
+                {ev.title || ev.summary || ev.description || JSON.stringify(ev).slice(0, 80)}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
+                {dt ? new Date(dt).toLocaleDateString() : ''}
+              </span>
+            </div>
+            {ev.description && ev.title && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, marginLeft: 18 }}>
+                {ev.description.length > 100 ? ev.description.slice(0, 100) + '…' : ev.description}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Conversations Summary ────────────────────────────────────────────
+function ConversationsView({ conversations }) {
+  if (!conversations || !conversations.length) return <div style={s.empty}>No conversation history</div>;
+  const [openUser, setOpenUser] = useState(null);
+
+  const totalMsgs = conversations.reduce((s, c) => s + (c.total_messages || 0), 0);
+  const userColors = ['#7c3aed', '#22c55e', '#00cec9', '#f59e0b', '#ec4899', '#3b82f6', '#ef4444', '#a78bfa'];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          <Users size={11} style={{ verticalAlign: 'middle', marginRight: 4, color: '#00cec9' }} />
+          <span style={{ color: '#00cec9', fontWeight: 600 }}>{conversations.length}</span> users · <span style={{ color: '#7c3aed', fontWeight: 600 }}>{totalMsgs}</span> messages
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 350, overflowY: 'auto' }}>
+        {conversations.map((conv, i) => {
+          const isOpen = openUser === i;
+          const uColor = userColors[i % userColors.length];
+          const msgs = conv.last_messages || [];
+          return (
+            <div key={i} style={{
+              padding: '8px 12px', borderRadius: 8,
+              background: isOpen ? `${uColor}08` : 'var(--bg-tertiary)',
+              border: `1px solid ${isOpen ? `${uColor}33` : 'var(--border)'}`,
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+              onClick={() => setOpenUser(isOpen ? null : i)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: 12,
+                  background: `linear-gradient(135deg, ${uColor} 0%, ${uColor}88 100%)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0,
+                }}>
+                  {(conv.user_id || '?')[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600 }}>{conv.user_id || 'unknown'}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                    {conv.total_messages || 0} messages
+                  </div>
+                </div>
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                  {msgs.length > 0 ? ago(msgs[msgs.length - 1]?.ts) : ''}
+                </span>
+              </div>
+              {isOpen && msgs.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {msgs.map((m, j) => (
+                    <div key={j} style={{
+                      padding: '4px 8px', borderRadius: 6, fontSize: 10,
+                      borderLeft: `2px solid ${m.user_message ? uColor : '#22c55e'}`,
+                      background: m.user_message ? 'rgba(124,58,237,0.04)' : 'rgba(34,197,94,0.04)',
+                    }}>
+                      <div style={{ color: m.user_message ? uColor : '#22c55e', fontSize: 9, fontWeight: 600, marginBottom: 2 }}>
+                        {m.user_message ? 'User' : 'Agent'}
+                      </div>
+                      <div style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        {(m.user_message || m.agent_response || '').slice(0, 150)}
+                        {((m.user_message || m.agent_response || '').length > 150) ? '…' : ''}
+                      </div>
+                      <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginTop: 2 }}>
+                        {ago(m.ts)}{m.duration_ms ? ` · ${(m.duration_ms / 1000).toFixed(1)}s` : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Benchmark Cards ──────────────────────────────────────────────────
+function BenchmarkCards({ benchmarks }) {
+  if (!benchmarks || !benchmarks.length) return <div style={s.empty}>No benchmark data</div>;
+
+  const suiteColors = {
+    Reasoning: '#7c3aed', GAIA: '#3b82f6', Coding: '#22c55e',
+    Knowledge: '#f59e0b', Safety: '#ef4444', default: '#00cec9',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {benchmarks.map((b, i) => {
+        const color = suiteColors[b.suite] || suiteColors.default;
+        return (
+          <div key={i} style={{
+            ...s.card, overflow: 'hidden',
+            borderColor: `${color}33`,
+            background: `linear-gradient(135deg, ${color}0a 0%, transparent 100%)`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <SuccessRing total={b.total || 0} success={b.passed || 0} size={54} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color }}>
+                  {b.suite || 'Benchmark'}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {b.passed ?? 0}/{b.total ?? 0} passed · avg {(b.avg_duration_ms / 1000).toFixed(1)}s
+                </div>
+                {b.model && (
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginTop: 2 }}>
+                    {b.model}
+                  </div>
+                )}
+              </div>
+            </div>
+            <BarChart items={[
+              { label: 'Pass Rate', value: b.pass_rate || 0, color },
+              { label: 'Avg Score', value: (b.avg_score || 0) * 100, color: `${color}cc` },
+            ]} maxVal={100} />
+            {b.started_at && (
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--mono)' }}>
+                Run: {new Date(b.started_at).toLocaleString()}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 // ══════════════════════════════════════════════════════════════════════
 //  MAIN: BrainPanel
 // ══════════════════════════════════════════════════════════════════════
@@ -850,6 +1080,12 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const xAgentState    = data?.x_agent_state || null;
   const proactiveState = data?.proactive_state || null;
   const xReflections   = data?.x_reflections || [];
+
+  // Sources 18-21
+  const journal        = data?.journal || [];
+  const calendar       = data?.calendar || [];
+  const conversations  = data?.conversations || [];
+  const benchmarks     = data?.benchmarks || [];
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -972,7 +1208,7 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
                   <BarChart items={Object.entries(personalityTraits).map(([k, v]) => ({
                     label: k.replace(/_/g, ' '),
                     value: v,
-                    color: v > 0.7 ? 'var(--accent)' : v > 0.4 ? 'var(--teal)' : 'var(--text-muted)',
+                    color: v > 0.7 ? '#7c3aed' : v > 0.4 ? '#00cec9' : '#6b7280',
                   }))} maxVal={1} />
                 </div>
               </div>
@@ -1018,8 +1254,8 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
               <SuccessRing total={reactTotal} success={reactSuccess} />
               <div style={{ flex: 1 }}>
                 <BarChart items={[
-                  { label: 'Success', value: reactSuccess, color: 'var(--green)' },
-                  { label: 'Failed', value: reactTotal - reactSuccess, color: 'var(--red)' },
+                  { label: 'Success', value: reactSuccess, color: '#22c55e' },
+                  { label: 'Failed', value: reactTotal - reactSuccess, color: '#ef4444' },
                 ]} />
               </div>
             </div>
@@ -1100,6 +1336,38 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* ── Journal (Consciousness Diary) ──────────────────────── */}
+          {journal.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><BookMarked size={12} /> Consciousness Journal ({journal.length})</div>
+              <JournalFeed entries={journal} />
+            </div>
+          )}
+
+          {/* ── Calendar ────────────────────────────────────────── */}
+          {calendar.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Calendar size={12} /> Calendar ({calendar.length})</div>
+              <CalendarView events={calendar} />
+            </div>
+          )}
+
+          {/* ── Conversations ───────────────────────────────────── */}
+          {conversations.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Users size={12} /> Conversations ({conversations.length} users)</div>
+              <ConversationsView conversations={conversations} />
+            </div>
+          )}
+
+          {/* ── Benchmarks ──────────────────────────────────────── */}
+          {benchmarks.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Award size={12} /> Benchmarks ({benchmarks.length} suites)</div>
+              <BenchmarkCards benchmarks={benchmarks} />
             </div>
           )}
 
