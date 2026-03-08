@@ -1457,6 +1457,125 @@ class Gateway:
             else:
                 result["trace_files"] = []
 
+            # 10. Identity (personality traits, voice, core_directive)
+            identity_file = _data_dir / "x_consciousness" / "identity.json"
+            if identity_file.exists():
+                try:
+                    result["identity"] = json.loads(identity_file.read_text())
+                except Exception:
+                    result["identity"] = None
+            else:
+                result["identity"] = None
+
+            # 11. Evolution log (personality changes over time)
+            evo_file = _data_dir / "x_consciousness" / "evolution_log.json"
+            if evo_file.exists():
+                try:
+                    evo = json.loads(evo_file.read_text())
+                    result["evolution_log"] = evo[-10:] if isinstance(evo, list) else []
+                except Exception:
+                    result["evolution_log"] = []
+            else:
+                result["evolution_log"] = []
+
+            # 12. Mood history timeline
+            mood_file = _data_dir / "x_consciousness" / "mood_history.jsonl"
+            if mood_file.exists():
+                try:
+                    moods = []
+                    with open(mood_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    moods.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["mood_history"] = moods[-40:]
+                except Exception:
+                    result["mood_history"] = []
+            else:
+                result["mood_history"] = []
+
+            # 13. Inner monologue
+            mono_file = _data_dir / "x_consciousness" / "inner_monologue.jsonl"
+            if mono_file.exists():
+                try:
+                    monos = []
+                    with open(mono_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    monos.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["inner_monologue"] = monos[-15:]
+                except Exception:
+                    result["inner_monologue"] = []
+            else:
+                result["inner_monologue"] = []
+
+            # 14. Self-heal log
+            heal_file = _data_dir / "x_consciousness" / "heal_log.jsonl"
+            if heal_file.exists():
+                try:
+                    heals = []
+                    with open(heal_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    heals.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["heal_log"] = heals[-20:]
+                except Exception:
+                    result["heal_log"] = []
+            else:
+                result["heal_log"] = []
+
+            # 15. X agent state (posts/engagements today)
+            x_state_file = _data_dir / "x_agent_state.json"
+            if x_state_file.exists():
+                try:
+                    xs = json.loads(x_state_file.read_text())
+                    result["x_agent_state"] = {
+                        "posts_today": xs.get("posts_today", 0),
+                        "engagements_today": xs.get("engagements_today", 0),
+                        "last_reset": xs.get("last_reset"),
+                        "posted_count": len(xs.get("posted_urls", [])),
+                        "engaged_count": len(xs.get("engaged_ids", [])),
+                    }
+                except Exception:
+                    result["x_agent_state"] = None
+            else:
+                result["x_agent_state"] = None
+
+            # 16. Proactive state (summary)
+            proactive_state_file = _data_dir / "proactive" / "proactive_state.json"
+            if proactive_state_file.exists():
+                try:
+                    result["proactive_state"] = json.loads(proactive_state_file.read_text())
+                except Exception:
+                    result["proactive_state"] = None
+            else:
+                result["proactive_state"] = None
+
+            # 17. X consciousness reflections
+            xc_ref_file = _data_dir / "x_consciousness" / "reflections.json"
+            if xc_ref_file.exists():
+                try:
+                    xc_refs = json.loads(xc_ref_file.read_text())
+                    if isinstance(xc_refs, list):
+                        result["x_reflections"] = xc_refs[-5:]
+                    else:
+                        result["x_reflections"] = [xc_refs]
+                except Exception:
+                    result["x_reflections"] = []
+            else:
+                result["x_reflections"] = []
+
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")
             result["error"] = str(e)

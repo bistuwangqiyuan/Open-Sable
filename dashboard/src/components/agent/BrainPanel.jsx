@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Brain, Zap, Target, RefreshCw, Activity, Cpu, Layers,
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
+  User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
+  AlertTriangle, ArrowUpRight, GitBranch,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -9,10 +11,13 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const pct   = (v) => `${clamp(v * 100, 0, 100).toFixed(0)}%`;
 const ago   = (ts) => {
   if (!ts) return '—';
-  const d = (Date.now() / 1000) - ts;
+  const t = typeof ts === 'string' ? new Date(ts).getTime() / 1000 : ts;
+  const d = (Date.now() / 1000) - t;
+  if (d < 0) return 'just now';
   if (d < 60)   return `${Math.floor(d)}s ago`;
   if (d < 3600) return `${Math.floor(d / 60)}m ago`;
-  return `${Math.floor(d / 3600)}h ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  return `${Math.floor(d / 86400)}d ago`;
 };
 
 const EMOTION_COLORS = {
@@ -24,11 +29,12 @@ const EMOTION_COLORS = {
   anger: '#dc2626', fear: '#f97316', surprise: '#8b5cf6',
   love: '#ec4899', hope: '#22d3ee', contentment: '#10b981',
   nostalgia: '#a78bfa', loneliness: '#64748b', empathy: '#f472b6',
-  awe: '#06b6d4',
+  awe: '#06b6d4', contemplative: '#818cf8', amused: '#34d399',
+  analytical: '#60a5fa', playful: '#fbbf24', confused: '#fb923c',
 };
 
 const getEmotionColor = (e) => {
-  const key = typeof e === 'string' ? e.toLowerCase() : '';
+  const key = typeof e === 'string' ? e.toLowerCase().split(' ')[0] : '';
   return EMOTION_COLORS[key] || 'var(--accent)';
 };
 
@@ -74,7 +80,7 @@ function BarChart({ items, maxVal }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {items.map((it, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', width: 70, textAlign: 'right', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', width: 90, textAlign: 'right', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {it.label}
           </span>
           <div style={{ flex: 1, height: 14, borderRadius: 7, background: 'var(--bg-tertiary)', overflow: 'hidden', position: 'relative' }}>
@@ -86,7 +92,7 @@ function BarChart({ items, maxVal }) {
               transition: 'width 0.6s ease',
             }} />
             <span style={{ position: 'absolute', right: 6, top: 0, fontSize: 9, lineHeight: '14px', color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
-              {it.value}
+              {typeof it.value === 'number' ? it.value.toFixed(2) : it.value}
             </span>
           </div>
         </div>
@@ -95,7 +101,7 @@ function BarChart({ items, maxVal }) {
   );
 }
 
-// ── Circumplex (Valence × Arousal) ─────────────────────────────────
+// ── Circumplex (Valence x Arousal) ─────────────────────────────────
 function EmotionCircumplex({ valence = 0, arousal = 0, emotion = '', history = [] }) {
   const size = 160;
   const cx = size / 2, cy = size / 2;
@@ -105,19 +111,14 @@ function EmotionCircumplex({ valence = 0, arousal = 0, emotion = '', history = [
 
   return (
     <svg width={size} height={size} style={{ display: 'block' }}>
-      {/* Grid */}
       <circle cx={cx} cy={cy} r={cx - 12} fill="none" stroke="var(--border)" strokeWidth="0.5" />
       <circle cx={cx} cy={cy} r={(cx - 12) * 0.5} fill="none" stroke="var(--border)" strokeWidth="0.3" strokeDasharray="3 3" />
       <line x1={12} y1={cy} x2={size - 12} y2={cy} stroke="var(--border)" strokeWidth="0.4" />
       <line x1={cx} y1={12} x2={cx} y2={size - 12} stroke="var(--border)" strokeWidth="0.4" />
-
-      {/* Axis labels */}
       <text x={size - 8} y={cy - 4} fontSize={7} fill="var(--text-muted)" textAnchor="end">+V</text>
-      <text x={8} y={cy - 4} fontSize={7} fill="var(--text-muted)">−V</text>
+      <text x={8} y={cy - 4} fontSize={7} fill="var(--text-muted)">-V</text>
       <text x={cx + 4} y={16} fontSize={7} fill="var(--text-muted)">+A</text>
-      <text x={cx + 4} y={size - 8} fontSize={7} fill="var(--text-muted)">−A</text>
-
-      {/* History trail */}
+      <text x={cx + 4} y={size - 8} fontSize={7} fill="var(--text-muted)">-A</text>
       {history.slice(-12).map((h, i, arr) => {
         const opacity = 0.15 + (i / arr.length) * 0.4;
         return (
@@ -125,8 +126,6 @@ function EmotionCircumplex({ valence = 0, arousal = 0, emotion = '', history = [
             r={2} fill={color} opacity={opacity} />
         );
       })}
-
-      {/* Current point */}
       <circle cx={toX(valence)} cy={toY(arousal)} r={7} fill={color} opacity={0.25}>
         <animate attributeName="r" values="7;11;7" dur="2s" repeatCount="indefinite" />
       </circle>
@@ -167,7 +166,7 @@ function LandscapeCard({ landscape }) {
         <Eye size={12} /> Inner Landscape
       </div>
       <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>
-        "{landscape}"
+        &ldquo;{landscape}&rdquo;
       </div>
     </div>
   );
@@ -186,7 +185,7 @@ function FantasyCard({ fantasy }) {
         <Sparkles size={12} /> Current Fantasy
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic' }}>
-        "{fantasy}"
+        &ldquo;{fantasy}&rdquo;
       </div>
     </div>
   );
@@ -220,7 +219,7 @@ function TaskTimeline({ tasks }) {
   );
 }
 
-// ── ReAct Execution Ring  ────────────────────────────────────────────
+// ── ReAct Execution Ring ─────────────────────────────────────────────
 function SuccessRing({ total, success, size = 72 }) {
   const r = (size - 10) / 2;
   const c = Math.PI * 2 * r;
@@ -325,6 +324,483 @@ function ReflectionFeed({ reflections }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+//  NEW: Personality Radar, Identity, Mood, Monologue, Evolution, Heal
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Personality Radar (SVG spider chart) ─────────────────────────────
+function PersonalityRadar({ traits }) {
+  if (!traits || typeof traits !== 'object') return <div style={s.empty}>No personality data</div>;
+  const entries = Object.entries(traits);
+  if (!entries.length) return <div style={s.empty}>No traits</div>;
+
+  const size = 240;
+  const cx = size / 2, cy = size / 2;
+  const maxR = cx - 36;
+  const n = entries.length;
+  const angleStep = (Math.PI * 2) / n;
+
+  const rings = [0.25, 0.5, 0.75, 1.0];
+  const toXY = (angle, r) => ({
+    x: cx + Math.cos(angle - Math.PI / 2) * r,
+    y: cy + Math.sin(angle - Math.PI / 2) * r,
+  });
+
+  const dataPoints = entries.map(([, val], i) => {
+    const angle = i * angleStep;
+    return toXY(angle, val * maxR);
+  });
+  const polygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const traitColors = [
+    '#7c3aed', '#22c55e', '#00cec9', '#f59e0b', '#ef4444',
+    '#ec4899', '#3b82f6', '#a78bfa', '#06b6d4', '#eab308',
+    '#10b981', '#f472b6', '#8b5cf6', '#22d3ee', '#34d399',
+  ];
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+      style={{ display: 'block', margin: '0 auto' }}>
+      {rings.map((r, i) => {
+        const pts = Array.from({ length: n }, (_, j) => {
+          const p = toXY(j * angleStep, r * maxR);
+          return `${p.x},${p.y}`;
+        }).join(' ');
+        return <polygon key={i} points={pts} fill="none" stroke="var(--border)" strokeWidth="0.5" opacity={0.5} />;
+      })}
+      {entries.map(([,], i) => {
+        const p = toXY(i * angleStep, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth="0.3" />;
+      })}
+      <polygon points={polygon} fill="rgba(124,58,237,0.15)" stroke="var(--accent)" strokeWidth="1.5"
+        style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.3))' }} />
+      {entries.map(([name, val], i) => {
+        const p = dataPoints[i];
+        const lp = toXY(i * angleStep, maxR + 18);
+        const shortName = name.replace(/_/g, ' ').replace(/^(.)/, (_, c) => c.toUpperCase());
+        const displayName = shortName.length > 12 ? shortName.slice(0, 11) + '…' : shortName;
+        return (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3} fill={traitColors[i % traitColors.length]}
+              style={{ filter: `drop-shadow(0 0 3px ${traitColors[i % traitColors.length]})` }} />
+            <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="central"
+              fontSize={7} fill="var(--text-muted)" fontFamily="var(--mono)">
+              {displayName}
+            </text>
+            <title>{`${name}: ${val.toFixed(2)}`}</title>
+          </g>
+        );
+      })}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+        fontSize={8} fill="var(--text-muted)" fontFamily="var(--mono)">TRAITS</text>
+    </svg>
+  );
+}
+
+// ── Identity Card ────────────────────────────────────────────────────
+function IdentityCard({ identity }) {
+  if (!identity) return null;
+  const voice = identity.voice || {};
+  return (
+    <div style={{
+      ...s.card, overflow: 'hidden',
+      background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(6,182,212,0.04) 100%)',
+      borderColor: 'rgba(124,58,237,0.3)',
+      boxShadow: '0 0 24px rgba(124,58,237,0.08), inset 0 1px 0 rgba(124,58,237,0.12)',
+    }}>
+      <div style={{ fontSize: 10, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <User size={12} /> Identity Core
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4,
+        textShadow: '0 0 20px rgba(124,58,237,0.3)' }}>
+        {identity.name || '—'}
+      </div>
+      {identity.core_directive && (
+        <div style={{ fontSize: 11, color: 'var(--teal)', fontFamily: 'var(--mono)', marginBottom: 12, fontStyle: 'italic' }}>
+          &ldquo;{identity.core_directive}&rdquo;
+        </div>
+      )}
+      {voice.description && (
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 10 }}>
+          {voice.description}
+        </div>
+      )}
+      {voice.preferred_tones && voice.preferred_tones.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+          {voice.preferred_tones.map((t, i) => (
+            <span key={i} style={{
+              padding: '2px 8px', borderRadius: 10, fontSize: 9,
+              background: 'rgba(0,206,201,0.12)', color: 'var(--teal)',
+              border: '1px solid rgba(0,206,201,0.2)', textTransform: 'capitalize',
+            }}>{t}</span>
+          ))}
+        </div>
+      )}
+      {voice.rules && voice.rules.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+            Voice Rules
+          </div>
+          {voice.rules.slice(0, 5).map((r, i) => (
+            <div key={i} style={{ fontSize: 10, color: 'var(--text-secondary)', padding: '2px 0', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ color: 'var(--green)', fontSize: 8 }}>▸</span> {r}
+            </div>
+          ))}
+        </div>
+      )}
+      {voice.forbidden && voice.forbidden.length > 0 && (
+        <div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+            Forbidden
+          </div>
+          {voice.forbidden.slice(0, 4).map((f, i) => (
+            <div key={i} style={{ fontSize: 10, color: 'var(--red)', opacity: 0.7, padding: '2px 0', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 8 }}>✗</span> {f}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Mood Timeline ────────────────────────────────────────────────────
+function MoodTimeline({ moods }) {
+  if (!moods || !moods.length) return <div style={s.empty}>No mood history</div>;
+  const sorted = [...moods].reverse().slice(0, 25);
+  const intensities = moods.slice(-30).map(m => m.intensity || 0.5);
+
+  return (
+    <div>
+      {intensities.length > 2 && (
+        <div style={{ marginBottom: 12 }}>
+          <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Intensity Trend</span>
+          <Sparkline data={intensities} width={280} height={36} color="#ec4899" label="mood-int" />
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
+        {sorted.map((m, i) => {
+          const eColor = getEmotionColor(m.emotion);
+          return (
+            <div key={i} style={{
+              padding: '6px 10px', borderRadius: 6,
+              borderLeft: `3px solid ${eColor}`,
+              background: i === 0 ? `${eColor}0a` : 'transparent',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: eColor, textTransform: 'capitalize' }}>
+                  {m.emotion || '—'}
+                </span>
+                {m.intensity != null && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 2, width: `${(m.intensity || 0) * 100}%`, background: eColor }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                      {(m.intensity || 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
+                  {ago(m.ts)}
+                </span>
+              </div>
+              {m.reason && (
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.4, marginTop: 2 }}>
+                  {m.reason.length > 120 ? m.reason.slice(0, 120) + '…' : m.reason}
+                </div>
+              )}
+              {m.trigger_text && !m.reason && (
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 2, fontStyle: 'italic' }}>
+                  trigger: {m.trigger_text.length > 80 ? m.trigger_text.slice(0, 80) + '…' : m.trigger_text}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Inner Monologue Feed ─────────────────────────────────────────────
+function InnerMonologueFeed({ entries }) {
+  if (!entries || !entries.length) return <div style={s.empty}>No inner monologue yet</div>;
+  const [expanded, setExpanded] = useState(null);
+  const sorted = [...entries].reverse();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
+      {sorted.map((m, i) => {
+        const isOpen = expanded === i;
+        const thought = m.thought || '';
+        const preview = thought.replace(/^#.*\n/gm, '').trim();
+        return (
+          <div key={i} style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: isOpen ? 'rgba(124,58,237,0.06)' : 'var(--bg-tertiary)',
+            border: `1px solid ${isOpen ? 'rgba(124,58,237,0.25)' : 'var(--border)'}`,
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
+            onClick={() => setExpanded(isOpen ? null : i)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <MessageCircle size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: 'var(--accent-light)', fontWeight: 600 }}>
+                Session #{m.n || i + 1}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
+                {ago(m.ts)}
+              </span>
+            </div>
+            {m.situation && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontStyle: 'italic' }}>
+                {m.situation.length > 100 ? m.situation.slice(0, 100) + '…' : m.situation}
+              </div>
+            )}
+            <div style={{
+              fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6,
+              maxHeight: isOpen ? 'none' : 48, overflow: 'hidden',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}>
+              {isOpen ? thought : (preview.length > 200 ? preview.slice(0, 200) + '…' : preview)}
+            </div>
+            {!isOpen && thought.length > 200 && (
+              <div style={{ fontSize: 9, color: 'var(--accent)', marginTop: 4 }}>Click to expand…</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Evolution Timeline ───────────────────────────────────────────────
+function EvolutionTimeline({ entries }) {
+  if (!entries || !entries.length) return <div style={s.empty}>No evolution history</div>;
+  const sorted = [...entries].reverse();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+      {sorted.map((evo, i) => {
+        const changes = evo.changes || {};
+        const traitChanges = changes.personality_traits || {};
+        const voiceChanges = changes.voice || {};
+        const changedTraits = Object.entries(traitChanges);
+        return (
+          <div key={i} style={{
+            padding: '8px 12px', borderRadius: 8,
+            borderLeft: `3px solid ${i === 0 ? 'var(--accent)' : 'var(--border)'}`,
+            background: i === 0 ? 'rgba(124,58,237,0.04)' : 'transparent',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <GitBranch size={11} style={{ color: i === 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                {ago(evo.ts)}
+              </span>
+              {evo.reason && (
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: 'auto' }}>
+                  {evo.reason}
+                </span>
+              )}
+            </div>
+            {changedTraits.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+                {changedTraits.map(([trait, val], j) => (
+                  <span key={j} style={{
+                    padding: '2px 8px', borderRadius: 10, fontSize: 9,
+                    background: 'rgba(124,58,237,0.1)', color: 'var(--accent-light)',
+                    fontFamily: 'var(--mono)',
+                  }}>
+                    {trait.replace(/_/g, ' ')}: {typeof val === 'number' ? val.toFixed(2) : val}
+                  </span>
+                ))}
+              </div>
+            )}
+            {voiceChanges.description && (
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.4, fontStyle: 'italic' }}>
+                Voice: {voiceChanges.description.length > 100 ? voiceChanges.description.slice(0, 100) + '…' : voiceChanges.description}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Heal Log ─────────────────────────────────────────────────────────
+function HealLog({ entries }) {
+  if (!entries || !entries.length) return <div style={s.empty}>No self-repair events</div>;
+  const sorted = [...entries].reverse();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+      {sorted.map((h, i) => {
+        const result = h.result || {};
+        const applied = result.applied;
+        const color = applied ? 'var(--green)' : 'var(--yellow)';
+        return (
+          <div key={i} style={{
+            padding: '6px 10px', borderRadius: 6,
+            borderLeft: `3px solid ${color}`,
+            background: i === 0 ? `${color}08` : 'transparent',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Wrench size={10} style={{ color, flexShrink: 0 }} />
+              <span style={{ fontSize: 10, fontWeight: 600, color }}>
+                {result.remedy || h.remedy || 'unknown'}
+              </span>
+              <span style={{ fontSize: 9, color: applied ? 'var(--green)' : 'var(--yellow)',
+                fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
+                {applied ? 'APPLIED' : 'PENDING'}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                {ago(h.ts)}
+              </span>
+            </div>
+            {h.context_snippet && (
+              <div style={{
+                fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)',
+                background: 'var(--bg-primary)', borderRadius: 4, padding: '4px 8px',
+                marginBottom: 4, maxHeight: 40, overflow: 'hidden',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+              }}>
+                {h.context_snippet.slice(0, 200)}
+              </div>
+            )}
+            {result.advice && (
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {result.advice.length > 150 ? result.advice.slice(0, 150) + '…' : result.advice}
+              </div>
+            )}
+            {result.actions_taken && result.actions_taken.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                {result.actions_taken.map((a, j) => (
+                  <span key={j} style={{
+                    padding: '1px 6px', borderRadius: 8, fontSize: 8,
+                    background: 'rgba(234,179,8,0.12)', color: 'var(--yellow)',
+                    fontFamily: 'var(--mono)',
+                  }}>{a}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── X Activity Stats ─────────────────────────────────────────────────
+function XActivityStats({ xState }) {
+  if (!xState) return null;
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{
+        ...s.card, flex: 1, minWidth: 110, textAlign: 'center',
+        background: 'linear-gradient(135deg, rgba(29,155,240,0.08) 0%, transparent 100%)',
+        borderColor: 'rgba(29,155,240,0.2)',
+      }}>
+        <Globe size={14} style={{ color: '#1d9bf0', marginBottom: 6 }} />
+        <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--mono)', color: '#1d9bf0' }}>
+          {xState.posts_today ?? 0}
+        </div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Posts Today</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>
+          {xState.posted_count ?? 0} total
+        </div>
+      </div>
+      <div style={{
+        ...s.card, flex: 1, minWidth: 110, textAlign: 'center',
+        background: 'linear-gradient(135deg, rgba(0,206,201,0.06) 0%, transparent 100%)',
+        borderColor: 'rgba(0,206,201,0.2)',
+      }}>
+        <ArrowUpRight size={14} style={{ color: 'var(--teal)', marginBottom: 6 }} />
+        <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--teal)' }}>
+          {xState.engagements_today ?? 0}
+        </div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Engagements</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>
+          {xState.engaged_count ?? 0} total
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── X Reflections (Consciousness) ────────────────────────────────────
+function XReflectionsFeed({ reflections }) {
+  if (!reflections || !reflections.length) return <div style={s.empty}>No consciousness reflections</div>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+      {[...reflections].reverse().map((r, i) => {
+        const content = typeof r === 'string' ? r
+          : (r.reflection || r.analysis || r.summary || JSON.stringify(r));
+        const ts = typeof r === 'object' ? (r.ts || r.timestamp) : null;
+        return (
+          <div key={i} style={{
+            padding: '6px 10px', borderRadius: 6,
+            borderLeft: `2px solid ${i === 0 ? 'var(--teal)' : 'var(--border)'}`,
+            background: i === 0 ? 'rgba(0,206,201,0.04)' : 'transparent',
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {typeof content === 'string' && content.length > 200 ? content.slice(0, 200) + '…' : content}
+            </div>
+            {ts && (
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>
+                {ago(ts)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Proactive State Summary ──────────────────────────────────────────
+function ProactiveStateSummary({ state }) {
+  if (!state) return null;
+  const recentActions = state.recent_actions || state.actions || [];
+  const total = state.total_proposals ?? state.proposals_count ?? 0;
+  const accepted = state.total_accepted ?? state.accepted_count ?? 0;
+  const ratio = total > 0 ? accepted / total : 0;
+
+  return (
+    <div>
+      {total > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+          <SuccessRing total={total} success={accepted} size={60} />
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+              {accepted}/{total} accepted
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              Acceptance rate: {pct(ratio)}
+            </div>
+          </div>
+        </div>
+      )}
+      {recentActions.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 150, overflowY: 'auto' }}>
+          {[...recentActions].reverse().slice(0, 8).map((a, i) => (
+            <div key={i} style={{
+              fontSize: 10, color: 'var(--text-secondary)', padding: '4px 8px',
+              borderRadius: 4, background: i === 0 ? 'rgba(0,206,201,0.04)' : 'transparent',
+              borderLeft: `2px solid ${a.accepted !== false ? 'var(--teal)' : 'var(--border)'}`,
+            }}>
+              {a.action || a.description || a.proposal || JSON.stringify(a).slice(0, 80)}
+              {a.ts && <span style={{ fontSize: 8, color: 'var(--text-muted)', marginLeft: 6, fontFamily: 'var(--mono)' }}>{ago(a.ts)}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
 //  MAIN: BrainPanel
 // ══════════════════════════════════════════════════════════════════════
 export default function BrainPanel({ ws, brainData, connected, profile, isLocal }) {
@@ -332,11 +808,9 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef(null);
 
-  // ── Fetch brain data via WebSocket ─────────────────────────────────
   const fetchBrain = useCallback(() => {
     const sock = ws?.current;
     if (!sock || sock.readyState !== WebSocket.OPEN) return;
-    // For remote agents, proxy through agents.brain.data
     if (!isLocal && profile) {
       sock.send(JSON.stringify({ type: 'agents.brain.data', profile }));
     } else {
@@ -345,12 +819,10 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
     setLoading(true);
   }, [ws, isLocal, profile]);
 
-  // When external brainData is pushed, adopt it
   useEffect(() => {
     if (brainData) { setData(brainData); setLoading(false); }
   }, [brainData]);
 
-  // Auto-refresh every 8 seconds
   useEffect(() => {
     fetchBrain();
     intervalRef.current = setInterval(fetchBrain, 8000);
@@ -368,6 +840,16 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const traces   = data?.trace_files || [];
   const liveStats = data?.inner_life_stats || {};
   const autoLive = data?.autonomous_live || {};
+
+  // New data sources
+  const identity       = data?.identity || null;
+  const evolutionLog   = data?.evolution_log || [];
+  const moodHistory    = data?.mood_history || [];
+  const innerMonologue = data?.inner_monologue || [];
+  const healLog        = data?.heal_log || [];
+  const xAgentState    = data?.x_agent_state || null;
+  const proactiveState = data?.proactive_state || null;
+  const xReflections   = data?.x_reflections || [];
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -387,14 +869,14 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const reactSuccess = reacts.filter(r => r.success || r.status === 'success').length;
   const reactTotal = reacts.length;
 
-  // valence / arousal history for sparklines
-  // emotion_history can be strings or objects — extract numeric values if available
   const vHistory = emotionHistory
     .map(h => typeof h === 'object' ? (h.valence ?? 0) : 0)
-    .filter((_, i, a) => a.some(v => v !== 0)); // skip if all zeros
+    .filter((_, i, a) => a.some(v => v !== 0));
   const aHistory = emotionHistory
     .map(h => typeof h === 'object' ? (h.arousal ?? 0) : 0)
     .filter((_, i, a) => a.some(v => v !== 0));
+
+  const personalityTraits = identity?.personality_traits || null;
 
   // ── Render ─────────────────────────────────────────────────────────
   if (!connected) {
@@ -413,6 +895,11 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
         <Brain size={18} style={{ color: 'var(--accent-light)' }} />
         <span style={s.title}>Cognitive Brain</span>
         <div style={s.headerRight}>
+          {identity?.name && (
+            <span style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 600, marginRight: 8 }}>
+              {identity.name}
+            </span>
+          )}
           <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
             TICK {tick}
           </span>
@@ -426,17 +913,14 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
       <div style={s.scrollArea}>
         <div style={s.grid}>
 
-          {/* ── Row 1: Emotion core ─────────────────────────────── */}
+          {/* ── Emotion core ────────────────────────────────────── */}
           <div style={{ ...s.section, gridColumn: '1 / -1' }}>
             <div style={s.sectionTitle}><Heart size={12} /> Emotional Core</div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              {/* Circumplex */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <EmotionCircumplex valence={valence} arousal={arousal} emotion={emotion} history={emotionHistory} />
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Valence × Arousal</span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Valence x Arousal</span>
               </div>
-
-              {/* Emotion info */}
               <div style={{ flex: 1, minWidth: 160 }}>
                 <div style={{
                   fontSize: 20, fontWeight: 700, color: getEmotionColor(emotion),
@@ -456,8 +940,6 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
                   </div>
                 )}
               </div>
-
-              {/* Sparklines */}
               {vHistory.length > 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div>
@@ -473,6 +955,30 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
             </div>
           </div>
 
+          {/* ── Identity Card ───────────────────────────────────── */}
+          {identity && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <IdentityCard identity={identity} />
+            </div>
+          )}
+
+          {/* ── Personality Radar ───────────────────────────────── */}
+          {personalityTraits && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Radio size={12} /> Personality Radar</div>
+              <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <PersonalityRadar traits={personalityTraits} />
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <BarChart items={Object.entries(personalityTraits).map(([k, v]) => ({
+                    label: k.replace(/_/g, ' '),
+                    value: v,
+                    color: v > 0.7 ? 'var(--accent)' : v > 0.4 ? 'var(--teal)' : 'var(--text-muted)',
+                  }))} maxVal={1} />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Landscape & Fantasy ─────────────────────────────── */}
           <LandscapeCard landscape={landscape} />
           <FantasyCard fantasy={fantasy} />
@@ -482,6 +988,22 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           <StatCard icon={Database} label="Memories" value={cogMem} sub="cognitive entries" color="var(--blue)" glow />
           <StatCard icon={Zap} label="ReAct Runs" value={reactTotal} sub={`${reactSuccess} successful`} color="var(--green)" glow />
           <StatCard icon={Activity} label="Errors" value={consErrors} sub="consecutive" color={consErrors > 2 ? 'var(--red)' : 'var(--text-muted)'} glow={consErrors > 0} />
+
+          {/* ── X Activity Stats ────────────────────────────────── */}
+          {xAgentState && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Globe size={12} /> X Activity</div>
+              <XActivityStats xState={xAgentState} />
+            </div>
+          )}
+
+          {/* ── Mood Timeline ───────────────────────────────────── */}
+          {moodHistory.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Activity size={12} /> Mood Timeline ({moodHistory.length})</div>
+              <MoodTimeline moods={moodHistory} />
+            </div>
+          )}
 
           {/* ── Goals ───────────────────────────────────────────── */}
           <div style={{ ...s.section, gridColumn: '1 / -1' }}>
@@ -509,17 +1031,57 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
             <TaskTimeline tasks={auto.completed_tasks || []} />
           </div>
 
+          {/* ── Inner Monologue ──────────────────────────────────── */}
+          {innerMonologue.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><MessageCircle size={12} /> Inner Monologue ({innerMonologue.length})</div>
+              <InnerMonologueFeed entries={innerMonologue} />
+            </div>
+          )}
+
           {/* ── Proactive Proposals ──────────────────────────────── */}
           <div style={s.section}>
             <div style={s.sectionTitle}><Sparkles size={12} /> Proactive Proposals ({proposals.length})</div>
             <ProposalList proposals={proposals} />
           </div>
 
+          {/* ── Proactive State Summary ─────────────────────────── */}
+          {proactiveState && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}><TrendingUp size={12} /> Proactive State</div>
+              <ProactiveStateSummary state={proactiveState} />
+            </div>
+          )}
+
           {/* ── Reflections ──────────────────────────────────────── */}
           <div style={s.section}>
             <div style={s.sectionTitle}><Eye size={12} /> Self-Reflection ({refs.length})</div>
             <ReflectionFeed reflections={refs} />
           </div>
+
+          {/* ── X Consciousness Reflections ──────────────────────── */}
+          {xReflections.length > 0 && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}><BookOpen size={12} /> X Consciousness ({xReflections.length})</div>
+              <XReflectionsFeed reflections={xReflections} />
+            </div>
+          )}
+
+          {/* ── Evolution Timeline ───────────────────────────────── */}
+          {evolutionLog.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><GitBranch size={12} /> Personality Evolution ({evolutionLog.length})</div>
+              <EvolutionTimeline entries={evolutionLog} />
+            </div>
+          )}
+
+          {/* ── Self-Healing Log ─────────────────────────────────── */}
+          {healLog.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Wrench size={12} /> Self-Repair Log ({healLog.length})</div>
+              <HealLog entries={healLog} />
+            </div>
+          )}
 
           {/* ── Places visited ───────────────────────────────────── */}
           {places.length > 0 && (

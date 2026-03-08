@@ -92,7 +92,7 @@ export default function App() {
       tasks:    { streaming: rs.streaming || false, messages: rs.messages || [], activity: rs.activity || [], sendMessage: sendToRemote },
       history:  { messages: rs.messages || [], sessions: rs.sessions || [] },
       thoughts: { ws: { current: null }, thoughts: rs.thoughts, connected: rs.connected || false },
-      brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: rs.connected || false, profile: ma.currentAgent, isLocal: false },
+      brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: ws.connected, profile: ma.currentAgent, isLocal: false },
       qr:       {},
       agent:    {},
       devices:  {},
