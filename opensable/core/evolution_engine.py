@@ -136,13 +136,27 @@ def _hash_source(source: str) -> str:
 
 # ─── Skill Discovery ──────────────────────────────────────────────────────────
 
+def _is_inside_project(path: Path, base_dir: Path) -> bool:
+    """Verify a resolved path is inside the project directory.
+
+    Prevents symlink escapes and path traversal.
+    """
+    try:
+        path.resolve().relative_to(base_dir.resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def _find_skill_file(skill_name: str, base_dir: Path) -> Optional[Path]:
     """Locate a skill file by name.
 
-    Searches:
+    Searches ONLY inside the project:
       1. opensable/skills/**/<skill_name>.py
       2. opensable/skills/**/*<skill_name>*.py   (fuzzy)
       3. opensable/core/<skill_name>.py
+
+    All results are validated to be inside base_dir (no symlink escapes).
     """
     skills_dir = base_dir / "opensable" / "skills"
     core_dir = base_dir / "opensable" / "core"
@@ -153,16 +167,18 @@ def _find_skill_file(skill_name: str, base_dir: Path) -> Optional[Path]:
     # Exact match in skills tree
     for candidate in skills_dir.rglob(f"{safe_name}.py"):
         if candidate.is_file() and "__pycache__" not in str(candidate):
-            return candidate
+            if _is_inside_project(candidate, base_dir):
+                return candidate
 
     # Fuzzy match (skill_ prefix)
     for candidate in skills_dir.rglob(f"*{safe_name}*.py"):
         if candidate.is_file() and "__pycache__" not in str(candidate):
-            return candidate
+            if _is_inside_project(candidate, base_dir):
+                return candidate
 
     # Core module
     core_file = core_dir / f"{safe_name}.py"
-    if core_file.is_file():
+    if core_file.is_file() and _is_inside_project(core_file, base_dir):
         return core_file
 
     return None
@@ -578,6 +594,16 @@ class EvolutionEngine:
                 mutation_type=mutation_type, reason=reason,
                 original_hash="", success=False,
                 error=f"Skill file not found: {skill_name}",
+            )
+
+        # Safety: verify path is inside the project (belt-and-suspenders)
+        if not _is_inside_project(skill_path, self.base_dir):
+            return MutationRecord(
+                tick=tick, timestamp=time.time(),
+                skill_name=skill_name, skill_path=str(skill_path),
+                mutation_type=mutation_type, reason=reason,
+                original_hash="", success=False,
+                error=f"BLOCKED: path escapes project dir: {skill_path}",
             )
 
         # Read source
