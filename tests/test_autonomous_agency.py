@@ -850,7 +850,7 @@ class TestOutcomeLearning:
         am._execute_single_task = AsyncMock(side_effect=RuntimeError("boom"))
 
         am.task_queue = [
-            {"id": "t7", "type": "goal", "description": "Will fail"}
+            {"id": "t7", "type": "goal", "description": "Will fail", "max_retries": 0}
         ]
 
         await am._execute_tasks()

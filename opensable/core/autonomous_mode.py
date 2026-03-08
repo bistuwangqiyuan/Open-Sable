@@ -17,7 +17,7 @@ from pathlib import Path
 import json
 
 from .agent import SableAgent
-from .goal_system import GoalManager
+from .goal_system import GoalManager, GoalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,23 @@ def _parse_priority(value) -> int:
         except ValueError:
             return 5
     return 5
+
+
+def _init_sub_agents(agent):
+    """Create and populate a SubAgentManager."""
+    from opensable.core.sub_agents import SubAgentManager, DEFAULT_SUB_AGENTS
+    mgr = SubAgentManager(agent)
+    for spec in DEFAULT_SUB_AGENTS:
+        mgr.register(spec)
+    return mgr
+
+
+async def _init_git_brain():
+    """Create and initialise a GitBrain."""
+    from opensable.core.git_brain import GitBrain
+    gb = GitBrain(repo_dir=Path("."))
+    await gb.initialize()
+    return gb
 
 
 class AutonomousMode:
@@ -89,129 +106,110 @@ class AutonomousMode:
         """Start autonomous operation"""
         logger.info("🤖 Starting autonomous mode...")
 
-        # ── Initialize tick-based modules ───────────────────────────────
+        # ── Inherit modules from agent (single source of truth) ───────────
         data_dir = Path(getattr(self.config, "data_dir", "./data"))
 
-        try:
-            from opensable.core.trace_exporter import TraceExporter
-            self.trace_exporter = TraceExporter(directory=data_dir / "traces")
-            logger.info("📝 Trace exporter initialized")
-        except Exception as e:
-            logger.warning(f"Trace exporter unavailable: {e}")
+        # Helper: reuse agent's instance when available, else create fresh
+        def _inherit(attr_name, factory, label):
+            """Reuse self.agent.<attr_name> if available, else call factory()."""
+            existing = getattr(self.agent, attr_name, None)
+            if existing:
+                logger.info(f"♻️  {label} (shared with agent)")
+                return existing
+            try:
+                instance = factory()
+                logger.info(f"📦 {label} (new instance)")
+                return instance
+            except Exception as e:
+                logger.warning(f"{label} unavailable: {e}")
+                return None
 
-        try:
-            from opensable.core.sub_agents import SubAgentManager, DEFAULT_SUB_AGENTS
-            self.sub_agent_manager = SubAgentManager(self.agent)
-            for spec in DEFAULT_SUB_AGENTS:
-                self.sub_agent_manager.register(spec)
-            logger.info(f"🤖 Sub-agent manager: {len(DEFAULT_SUB_AGENTS)} agents registered")
-        except Exception as e:
-            logger.warning(f"Sub-agent manager unavailable: {e}")
+        async def _inherit_async(attr_name, factory, label):
+            existing = getattr(self.agent, attr_name, None)
+            if existing:
+                logger.info(f"♻️  {label} (shared with agent)")
+                return existing
+            try:
+                instance = await factory()
+                logger.info(f"📦 {label} (new instance)")
+                return instance
+            except Exception as e:
+                logger.warning(f"{label} unavailable: {e}")
+                return None
 
-        try:
-            from opensable.core.skill_fitness import SkillFitnessTracker
-            self.skill_fitness = SkillFitnessTracker(directory=data_dir / "fitness")
-            logger.info("🏋️ Skill fitness tracker initialized")
-        except Exception as e:
-            logger.warning(f"Skill fitness tracker unavailable: {e}")
+        self.trace_exporter = _inherit("trace_exporter", lambda: __import__(
+            "opensable.core.trace_exporter", fromlist=["TraceExporter"]
+        ).TraceExporter(directory=data_dir / "traces"), "Trace exporter")
 
-        try:
-            from opensable.core.conversation_log import ConversationLogger
-            self.conversation_logger = ConversationLogger(directory=data_dir / "conversations")
-            logger.info("💬 Conversation logger initialized")
-        except Exception as e:
-            logger.warning(f"Conversation logger unavailable: {e}")
+        self.sub_agent_manager = _inherit("sub_agent_manager", lambda: _init_sub_agents(self.agent), "Sub-agent manager")
 
-        try:
-            from opensable.core.cognitive_memory import CognitiveMemoryManager
-            self.cognitive_memory = CognitiveMemoryManager(directory=data_dir / "cognitive_memory")
-            logger.info("🧠 Cognitive memory initialized")
-        except Exception as e:
-            logger.warning(f"Cognitive memory unavailable: {e}")
+        self.skill_fitness = _inherit("skill_fitness", lambda: __import__(
+            "opensable.core.skill_fitness", fromlist=["SkillFitnessTracker"]
+        ).SkillFitnessTracker(directory=data_dir / "fitness"), "Skill fitness")
 
-        try:
-            from opensable.core.self_reflection import ReflectionEngine
-            self.self_reflection = ReflectionEngine(directory=data_dir / "reflection")
-            logger.info("🪞 Self-reflection engine initialized")
-        except Exception as e:
-            logger.warning(f"Self-reflection unavailable: {e}")
+        self.conversation_logger = _inherit("conversation_logger", lambda: __import__(
+            "opensable.core.conversation_log", fromlist=["ConversationLogger"]
+        ).ConversationLogger(directory=data_dir / "conversations"), "Conversation logger")
 
-        try:
-            from opensable.core.skill_evolution import SkillEvolutionManager
-            self.skill_evolution = SkillEvolutionManager(directory=data_dir / "skill_evolution")
-            logger.info("🧬 Skill evolution manager initialized")
-        except Exception as e:
-            logger.warning(f"Skill evolution unavailable: {e}")
+        self.cognitive_memory = _inherit("cognitive_memory", lambda: __import__(
+            "opensable.core.cognitive_memory", fromlist=["CognitiveMemoryManager"]
+        ).CognitiveMemoryManager(directory=data_dir / "cognitive_memory"), "Cognitive memory")
 
-        try:
-            from opensable.core.git_brain import GitBrain
-            self.git_brain = GitBrain(repo_dir=Path("."))
-            await self.git_brain.initialize()
-            logger.info("📓 Git brain initialized")
-        except Exception as e:
-            logger.warning(f"Git brain unavailable: {e}")
+        self.self_reflection = _inherit("self_reflection", lambda: __import__(
+            "opensable.core.self_reflection", fromlist=["ReflectionEngine"]
+        ).ReflectionEngine(directory=data_dir / "reflection"), "Self-reflection")
 
-        try:
-            from opensable.core.inner_life import InnerLifeProcessor
-            self.inner_life = InnerLifeProcessor(data_dir=data_dir / "inner_life")
-            logger.info("💭 Inner life processor initialized")
-        except Exception as e:
-            logger.warning(f"Inner life unavailable: {e}")
+        self.skill_evolution = _inherit("skill_evolution", lambda: __import__(
+            "opensable.core.skill_evolution", fromlist=["SkillEvolutionManager"]
+        ).SkillEvolutionManager(directory=data_dir / "skill_evolution"), "Skill evolution")
 
-        try:
-            from opensable.core.pattern_learner import PatternLearningManager
-            self.pattern_learner = PatternLearningManager(directory=data_dir / "patterns")
-            logger.info("🔍 Pattern learner initialized")
-        except Exception as e:
-            logger.warning(f"Pattern learner unavailable: {e}")
+        self.git_brain = await _inherit_async("git_brain", _init_git_brain, "Git brain")
 
-        try:
-            from opensable.core.proactive_reasoning import ProactiveReasoningEngine
-            think_interval = getattr(self.config, "proactive_think_every_n_ticks", 5)
-            max_risk = getattr(self.config, "proactive_max_risk", "medium")
-            self.proactive_engine = ProactiveReasoningEngine(
-                directory=data_dir / "proactive",
-                think_every_n_ticks=think_interval,
-                max_risk_level=max_risk,
-            )
-            logger.info(f"🧠 Proactive reasoning initialized (every {think_interval} ticks)")
-        except Exception as e:
-            logger.warning(f"Proactive reasoning unavailable: {e}")
+        self.inner_life = _inherit("inner_life", lambda: __import__(
+            "opensable.core.inner_life", fromlist=["InnerLifeProcessor"]
+        ).InnerLifeProcessor(data_dir=data_dir / "inner_life"), "Inner life")
 
-        try:
-            from opensable.core.react_executor import ReActExecutor
-            self.react_executor = ReActExecutor(
-                max_steps=getattr(self.config, "react_max_steps", 8),
-                timeout_s=getattr(self.config, "react_timeout_s", 180.0),
-                log_dir=data_dir / "react_logs",
-            )
-            logger.info("⚡ ReAct executor initialized")
-        except Exception as e:
-            logger.warning(f"ReAct executor unavailable: {e}")
+        self.pattern_learner = _inherit("pattern_learner", lambda: __import__(
+            "opensable.core.pattern_learner", fromlist=["PatternLearningManager"]
+        ).PatternLearningManager(directory=data_dir / "patterns"), "Pattern learner")
 
-        try:
-            from opensable.skills.automation.github_skill import GitHubSkill
-            self.github_skill = GitHubSkill(self.config)
-            gh_ok = await self.github_skill.initialize()
-            if gh_ok:
-                logger.info("🐙 GitHub skill initialized")
-            else:
-                self.github_skill = None
-        except Exception as e:
-            logger.warning(f"GitHub skill unavailable: {e}")
+        think_interval = getattr(self.config, "proactive_think_every_n_ticks", 5)
+        max_risk = getattr(self.config, "proactive_max_risk", "medium")
+        self.proactive_engine = _inherit("proactive_engine", lambda: __import__(
+            "opensable.core.proactive_reasoning", fromlist=["ProactiveReasoningEngine"]
+        ).ProactiveReasoningEngine(
+            directory=data_dir / "proactive",
+            think_every_n_ticks=think_interval,
+            max_risk_level=max_risk,
+        ), "Proactive reasoning")
+
+        self.react_executor = _inherit("react_executor", lambda: __import__(
+            "opensable.core.react_executor", fromlist=["ReActExecutor"]
+        ).ReActExecutor(
+            max_steps=getattr(self.config, "react_max_steps", 8),
+            timeout_s=getattr(self.config, "react_timeout_s", 180.0),
+            log_dir=data_dir / "react_logs",
+        ), "ReAct executor")
+
+        self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
+        if not self.github_skill:
+            try:
+                from opensable.skills.automation.github_skill import GitHubSkill
+                skill = GitHubSkill(self.config)
+                # GitHub skill needs async init — we'll do it inline
+                self.github_skill = skill
+            except Exception as e:
+                logger.warning(f"GitHub skill unavailable: {e}")
 
         # Load persisted tick counter
         await self._load_state()
 
-        # Initialize goal manager if Agentic AI is available
-        try:
-            from opensable.core.agi_integration import AGIAgent
-
-            if hasattr(self.agent, "agi"):
-                self.goal_manager = self.agent.agi.goals
-                logger.info("Agentic AI goal system available")
-        except ImportError:
-            logger.warning("Agentic AI not available, using basic autonomous mode")
+        # Connect goal manager from the agent
+        self.goal_manager = getattr(self.agent, "goals", None)
+        if self.goal_manager:
+            logger.info("Goal system connected")
+        else:
+            logger.warning("Goal system not available")
 
         # Initialize X Autoposter if enabled and not already running
         if (
@@ -265,6 +263,10 @@ class AutonomousMode:
             f"Autonomous loop started — tick {self.tick} "
             f"(interval: {self.check_interval}s)"
         )
+
+        consecutive_errors = 0
+        _MAX_CONSECUTIVE_ERRORS = 10
+        _BACKOFF_MULTIPLIER = 2  # double interval after many failures
 
         while self.running:
             self.tick_start = time.monotonic()
@@ -325,19 +327,31 @@ class AutonomousMode:
                     f"{len(self.completed_tasks)} completed)"
                 )
                 self.tick += 1
+                consecutive_errors = 0  # Reset on success
 
                 # Wait before next tick
                 await asyncio.sleep(self.check_interval)
 
             except Exception as e:
-                logger.error(f"Error in tick {self.tick}: {e}")
+                consecutive_errors += 1
+                logger.error(f"Error in tick {self.tick}: {e} (consecutive: {consecutive_errors})")
                 if self.trace_exporter:
                     self.trace_exporter.record_event(
                         "tick_error",
                         summary=str(e),
                         tick=self.tick,
                     )
-                await asyncio.sleep(self.check_interval)
+
+                # Circuit breaker: back off when many consecutive failures
+                if consecutive_errors >= _MAX_CONSECUTIVE_ERRORS:
+                    backoff = self.check_interval * _BACKOFF_MULTIPLIER
+                    logger.warning(
+                        f"⚠️ Circuit breaker: {consecutive_errors} consecutive failures. "
+                        f"Backing off to {backoff}s interval."
+                    )
+                    await asyncio.sleep(backoff)
+                else:
+                    await asyncio.sleep(self.check_interval)
 
     async def _discover_tasks(self):
         """Discover tasks from various sources"""
@@ -588,7 +602,7 @@ class AutonomousMode:
 
         try:
             # Get active goals
-            active_goals = [g for g in self.goal_manager.goals.values() if g.status == "active"]
+            active_goals = [g for g in self.goal_manager.goals.values() if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS)]
 
             # Add to task queue if not already there
             for goal in active_goals:
@@ -638,6 +652,7 @@ class AutonomousMode:
                 task["result"] = str(result)[:500] if result else ""
                 task["status"] = "done"
                 task["duration_ms"] = duration_ms
+                task["retries"] = task.get("retries", 0)
                 self.completed_tasks.append(task)
 
                 logger.info(
@@ -650,20 +665,34 @@ class AutonomousMode:
 
             except Exception as e:
                 duration_ms = (time.monotonic() - start_time) * 1000
+                retries = task.get("retries", 0)
+                max_retries = task.get("max_retries", 2)
 
-                # ── Failure: record for learning ──
-                self.task_queue.remove(task)
-                task["completed_at"] = datetime.now()
-                task["result"] = str(e)[:500]
-                task["status"] = "error"
-                task["duration_ms"] = duration_ms
-                self.completed_tasks.append(task)
+                if retries < max_retries:
+                    # ── Retry: re-enqueue with incremented retry count ──
+                    task["retries"] = retries + 1
+                    task["last_error"] = str(e)[:200]
+                    # Move to end of queue for later retry
+                    self.task_queue.remove(task)
+                    self.task_queue.append(task)
+                    logger.warning(
+                        f"🔄 Task {task['id']} retry {retries + 1}/{max_retries}: {e}"
+                    )
+                else:
+                    # ── Final failure: record for learning ──
+                    self.task_queue.remove(task)
+                    task["completed_at"] = datetime.now()
+                    task["result"] = str(e)[:500]
+                    task["status"] = "error"
+                    task["duration_ms"] = duration_ms
+                    task["retries"] = retries
+                    self.completed_tasks.append(task)
 
-                logger.error(
-                    f"❌ Task {task['id']} failed ({duration_ms:.0f}ms): {e}"
-                )
+                    logger.error(
+                        f"❌ Task {task['id']} failed after {retries + 1} attempts ({duration_ms:.0f}ms): {e}"
+                    )
 
-                self._record_outcome(task, success=False, result=e)
+                    self._record_outcome(task, success=False, result=e)
 
     def _record_outcome(self, task: Dict, success: bool, result: Any):
         """Record task outcome for learning — feeds cognitive memory + proactive reasoning."""
@@ -736,7 +765,7 @@ class AutonomousMode:
                         try:
                             goal_id = task["id"]
                             if goal_id in self.goal_manager.goals:
-                                self.goal_manager.goals[goal_id].status = "completed"
+                                self.goal_manager.goals[goal_id].status = GoalStatus.COMPLETED
                         except Exception:
                             pass
                     return result
@@ -927,7 +956,7 @@ class AutonomousMode:
             if self.goal_manager:
                 try:
                     for g in self.goal_manager.goals.values():
-                        if g.status == "active":
+                        if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS):
                             goals.append(g.description)
                 except Exception:
                     pass
@@ -1075,7 +1104,7 @@ class AutonomousMode:
                     goals = []
                     if self.goal_manager:
                         for g in self.goal_manager.goals.values():
-                            if g.status == "active":
+                            if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS):
                                 goals.append(g.description[:60])
 
                     from .self_reflection import TickOutcome
@@ -1154,7 +1183,7 @@ class AutonomousMode:
                     active_goal = ""
                     if self.goal_manager:
                         for g in self.goal_manager.goals.values():
-                            if g.status == "active":
+                            if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS):
                                 active_goal = g.description[:100]
                                 break
 
@@ -1187,9 +1216,11 @@ class AutonomousMode:
         """Perform system maintenance tasks"""
         try:
             # Memory consolidation
-            if hasattr(self.agent, "memory"):
-                # This would be handled by the advanced memory system
-                pass
+            if self.cognitive_memory and hasattr(self.cognitive_memory, "consolidate"):
+                try:
+                    self.cognitive_memory.consolidate()
+                except Exception:
+                    pass
 
             # Clean up old completed tasks (keep last 100)
             if len(self.completed_tasks) > 100:
@@ -1229,6 +1260,18 @@ class AutonomousMode:
                 self.tick = state.get("tick", 0)
                 self.task_queue = state.get("task_queue", [])
                 self.completed_tasks = state.get("completed_tasks", [])
+
+                # Restore datetime objects from ISO strings
+                for task_list in (self.task_queue, self.completed_tasks):
+                    for task in task_list:
+                        for dt_key in ("created_at", "completed_at"):
+                            val = task.get(dt_key)
+                            if isinstance(val, str):
+                                try:
+                                    task[dt_key] = datetime.fromisoformat(val)
+                                except (ValueError, TypeError):
+                                    task[dt_key] = datetime.now()
+
                 logger.info(f"Loaded autonomous state — resuming at tick {self.tick}")
 
         except Exception as e:

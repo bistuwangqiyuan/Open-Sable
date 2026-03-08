@@ -13,6 +13,7 @@ Features:
 import asyncio
 import logging
 import os
+import re
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -510,6 +511,10 @@ class GoalManager:
 
         return goals
 
+    def get_active_goals(self) -> List[Goal]:
+        """Get all active/in-progress goals, sorted by priority."""
+        return self.list_goals(status=GoalStatus.ACTIVE) + self.list_goals(status=GoalStatus.IN_PROGRESS)
+
     def get_goal_hierarchy(self, goal_id: str) -> Dict[str, Any]:
         """
         Get goal and all its sub-goals as hierarchy.
@@ -622,10 +627,6 @@ class GoalManager:
 
         except Exception as e:
             logger.error(f"Failed to load goals: {e}")
-
-
-# Missing import
-import re
 
 
 # Example usage

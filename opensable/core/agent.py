@@ -300,7 +300,37 @@ class SableAgent:
     async def _init_goals(self):
         from .goal_system import GoalManager
 
-        self.goals = GoalManager()
+        async def _llm_function(prompt: str) -> str:
+            """Wrapper to expose agent LLM as a simple prompt→string function."""
+            if not self.llm:
+                return ""
+            messages = [{"role": "user", "content": prompt}]
+            result = await self.llm.invoke_with_tools(messages, [])
+            return result.get("text", "") or "" if isinstance(result, dict) else str(result)
+
+        async def _action_executor(action: dict) -> dict:
+            """Execute a goal action using the tool registry."""
+            action_name = action.get("action", "")
+            try:
+                if action_name == "execute_sub_goal":
+                    goal_id = action.get("goal_id")
+                    if self.goals and goal_id:
+                        return await self.goals.execute_goal(goal_id)
+                    return {"success": False, "error": "No goal manager"}
+
+                # Try to execute as a tool
+                if hasattr(self, "tools") and self.tools:
+                    result = await self.tools.execute(action_name, action)
+                    return {"success": True, "result": str(result)[:500]}
+
+                return {"success": True, "action": action_name, "note": "simulated"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        self.goals = GoalManager(
+            llm_function=_llm_function,
+            action_executor=_action_executor,
+        )
         await self.goals.initialize()
 
     async def _init_plugins(self):
