@@ -9,6 +9,21 @@ import os
 import sys
 from pathlib import Path
 
+# ── Patch the `overrides` library BEFORE chromadb is imported ────────────────
+# chromadb 0.5.x uses @override from the `overrides` package, which performs
+# strict signature validation at class-definition time. The Posthog telemetry
+# subclass has a signature mismatch that crashes on import.
+# Fix: disable signature checking in overrides.
+try:
+    import overrides.signature as _ovr_sig
+    _ovr_sig.ensure_all_kwargs_defined_in_sub = lambda *a, **kw: None
+    _ovr_sig.ensure_all_positional_args_defined_in_sub = lambda *a, **kw: None
+except Exception:
+    pass
+# Also disable telemetry at the Settings level so no posthog calls are made
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+# ─────────────────────────────────────────────────────────────────────────────
+
 from rich.console import Console
 from rich.logging import RichHandler
 

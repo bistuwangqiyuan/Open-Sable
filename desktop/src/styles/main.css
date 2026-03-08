@@ -611,20 +611,38 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
   font-size: 11px;
   color: var(--accent);
   opacity: 0.85;
-  max-width: 260px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   animation: fadeIn 0.2s ease;
 }
 
+/* When the model is actively streaming tokens */
+.agent-progress.responding {
+  color: #4ade80;
+}
+
 .agent-progress-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent);
+  background: currentColor;
   flex-shrink: 0;
   animation: pulse 1s ease-in-out infinite;
+}
+
+/* Elapsed time counter shown inline next to the phase label */
+.elapsed-counter {
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  opacity: 0.75;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  margin-left: 2px;
 }
 
 /* ─── Messages ──────────────────────────────────────────────────────────── */
@@ -698,8 +716,6 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
 .message-row.user { align-items: flex-start; gap: 10px; flex-direction: row-reverse; }
 
 .msg-copy-btn {
-  position: absolute;
-  top: 6px; right: 6px;
   opacity: 0;
   background: var(--bg-raised);
   border: 1px solid var(--border-mid);
@@ -709,10 +725,31 @@ html.light-theme .message-bubble.system { color: var(--text-muted); }
   border-radius: var(--radius-xs);
   font-size: 11px;
   transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
 
 .message-bubble:hover .msg-copy-btn { opacity: 1; }
 .msg-copy-btn:hover { color: var(--text); }
+
+/* ─── Message footer (duration + copy) ─────────────────────────────────── */
+.msg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.msg-response-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  transition: opacity 0.2s;
+}
+.message-bubble:hover .msg-response-time { opacity: 0.85; }
+.message-bubble:hover .msg-copy-btn { opacity: 1; }
 
 /* Streaming cursor */
 .streaming-cursor {
