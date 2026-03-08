@@ -4,6 +4,7 @@ Core tools — file system, commands, browser, voice, image, database, RAG, code
 
 import json
 import logging
+from datetime import datetime
 from typing import Dict
 
 logger = logging.getLogger(__name__)
