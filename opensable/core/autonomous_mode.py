@@ -622,9 +622,70 @@ class AutonomousMode:
             logger.error(f"Failed to check goals: {e}")
 
     async def _prioritize_tasks(self):
-        """Prioritize tasks in queue"""
-        # Sort by priority (higher first)
-        self.task_queue.sort(key=lambda t: t.get("priority", 0), reverse=True)
+        """Prioritize tasks in queue — modulated by inner emotional state.
+
+        Emotion influences:
+          • High arousal → urgent/reactive tasks get boosted
+          • Negative valence → defensive/maintenance tasks prioritized
+          • Frustration → improvement/learning tasks boosted
+          • Boredom → creative/proactive tasks boosted
+          • Positive valence → ambitious goals get a nudge
+        """
+        if not self.task_queue:
+            return
+
+        # Get emotional modulation factors
+        emotion_boost = {}  # type → priority delta
+        if self.inner_life:
+            try:
+                e = self.inner_life.emotion
+                arousal = getattr(e, "arousal", 0.3)
+                valence = getattr(e, "valence", 0.0)
+                primary = getattr(e, "primary", "neutral")
+
+                # High arousal → boost urgent/system tasks
+                if arousal > 0.6:
+                    emotion_boost["system_maintenance"] = 2
+                    emotion_boost["command"] = 1
+                    emotion_boost["trading_alert"] = 2
+
+                # Negative valence → boost defensive tasks
+                if valence < -0.3:
+                    emotion_boost["system_maintenance"] = emotion_boost.get("system_maintenance", 0) + 2
+                    emotion_boost["email_action"] = 1
+
+                # Frustration → boost self-improvement
+                if primary == "frustration":
+                    emotion_boost["goal"] = 2
+                    emotion_boost["self_improve"] = 3
+
+                # Boredom → boost creative/proactive
+                if primary == "boredom":
+                    emotion_boost["proactive"] = 3
+                    emotion_boost["creative"] = 2
+                    emotion_boost["research"] = 2
+
+                # Positive valence → boost ambitious goals
+                if valence > 0.3:
+                    emotion_boost["goal"] = emotion_boost.get("goal", 0) + 1
+                    emotion_boost["proactive"] = emotion_boost.get("proactive", 0) + 1
+
+                if emotion_boost:
+                    logger.debug(
+                        f"Emotion modulation: {primary} (v={valence:+.1f}, a={arousal:.1f}) "
+                        f"→ boosts: {emotion_boost}"
+                    )
+            except Exception as e:
+                logger.debug(f"Emotion modulation skipped: {e}")
+
+        # Apply emotional modulation to priority scores
+        for task in self.task_queue:
+            base = task.get("priority", 5)
+            boost = emotion_boost.get(task.get("type", ""), 0)
+            task["_effective_priority"] = base + boost
+
+        # Sort by effective priority (higher first)
+        self.task_queue.sort(key=lambda t: t.get("_effective_priority", t.get("priority", 0)), reverse=True)
 
     async def _execute_tasks(self):
         """Execute tasks from queue — ONE AT A TIME (sequential).
@@ -701,9 +762,19 @@ class AutonomousMode:
         duration_ms = task.get("duration_ms", 0)
 
         # 1. Store in cognitive memory (if available)
+        #    Use emotion modulation: high arousal → memories stored with higher importance
         if self.cognitive_memory:
             try:
                 importance = 0.7 if success else 0.9  # Failures are more memorable
+
+                # Apply inner life emotion modulation (amygdala effect)
+                if self.inner_life:
+                    try:
+                        modulation = self.inner_life.get_emotion_modulation()
+                        importance = min(1.0, importance * modulation)
+                    except Exception:
+                        pass
+
                 category = "success" if success else "failure"
                 self.cognitive_memory.add_memory(
                     f"Task [{task_type}] {'succeeded' if success else 'FAILED'}: {description}. "
@@ -886,6 +957,21 @@ class AutonomousMode:
                 except Exception:
                     pass
 
+            # Emotion-driven evolution pressure
+            if self.inner_life:
+                try:
+                    pressures = self.inner_life.get_evolution_pressure()
+                    for p in pressures:
+                        summaries.append(f"Evolution pressure: {p}")
+                    if pressures:
+                        summaries.append(
+                            f"Current emotion: {self.inner_life.emotion.primary} "
+                            f"(valence={self.inner_life.emotion.valence:+.1f}, "
+                            f"arousal={self.inner_life.emotion.arousal:.1f})"
+                        )
+                except Exception:
+                    pass
+
             evidence = "\n".join(summaries)
 
             messages = [
@@ -941,9 +1027,18 @@ class AutonomousMode:
                 pass
 
             cognitive_state = {}
-            if self.inner_life and hasattr(self.inner_life, "state"):
+            if self.inner_life:
                 try:
-                    cognitive_state["emotion"] = str(self.inner_life.state.emotion.trigger)
+                    e = self.inner_life.emotion
+                    cognitive_state["emotion"] = {
+                        "primary": e.primary,
+                        "valence": e.valence,
+                        "arousal": e.arousal,
+                        "trigger": e.trigger,
+                    }
+                    pressures = self.inner_life.get_evolution_pressure()
+                    if pressures:
+                        cognitive_state["evolution_pressures"] = pressures
                 except Exception:
                     pass
             if self.self_reflection:

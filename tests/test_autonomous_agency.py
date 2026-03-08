@@ -1214,3 +1214,225 @@ class TestCognitiveTick:
         am.inner_life = None
 
         await am._cognitive_tick()  # Should not raise
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Emotion → Behavior wiring tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _make_emotion(primary="curiosity", valence=0.0, arousal=0.3, trigger=""):
+    """Create a mock EmotionalState."""
+    e = MagicMock()
+    e.primary = primary
+    e.valence = valence
+    e.arousal = arousal
+    e.trigger = trigger
+    return e
+
+
+def _make_am_with_emotion(primary="curiosity", valence=0.0, arousal=0.3):
+    """Create AutonomousMode with a wired inner_life emotion."""
+    am = _make_autonomous_mode()
+    am.inner_life = MagicMock()
+    am.inner_life.emotion = _make_emotion(primary, valence, arousal)
+    am.inner_life.get_emotion_modulation = MagicMock(return_value=1.0 + max(0, arousal - 0.5) * 0.4)
+    am.inner_life.get_evolution_pressure = MagicMock(return_value=[])
+    return am
+
+
+class TestEmotionPriorityModulation:
+    """Tests for emotion-driven task prioritization."""
+
+    @pytest.mark.asyncio
+    async def test_high_arousal_boosts_system_tasks(self):
+        am = _make_am_with_emotion(arousal=0.8)
+        am.task_queue = [
+            {"id": "t1", "type": "goal", "description": "Write docs", "priority": 5},
+            {"id": "t2", "type": "system_maintenance", "description": "Disk cleanup", "priority": 5},
+        ]
+
+        await am._prioritize_tasks()
+
+        # system_maintenance should be first due to arousal boost
+        assert am.task_queue[0]["id"] == "t2"
+        assert am.task_queue[0]["_effective_priority"] > am.task_queue[1]["_effective_priority"]
+
+    @pytest.mark.asyncio
+    async def test_negative_valence_boosts_defensive_tasks(self):
+        am = _make_am_with_emotion(valence=-0.5)
+        am.task_queue = [
+            {"id": "t1", "type": "proactive", "description": "Explore new idea", "priority": 5},
+            {"id": "t2", "type": "system_maintenance", "description": "Check logs", "priority": 5},
+        ]
+
+        await am._prioritize_tasks()
+
+        assert am.task_queue[0]["id"] == "t2"
+
+    @pytest.mark.asyncio
+    async def test_frustration_boosts_improvement_tasks(self):
+        am = _make_am_with_emotion(primary="frustration", valence=-0.3, arousal=0.7)
+        am.task_queue = [
+            {"id": "t1", "type": "reminder", "description": "Coffee break", "priority": 5},
+            {"id": "t2", "type": "goal", "description": "Fix error handling", "priority": 5},
+        ]
+
+        await am._prioritize_tasks()
+
+        assert am.task_queue[0]["id"] == "t2"
+
+    @pytest.mark.asyncio
+    async def test_boredom_boosts_proactive_tasks(self):
+        am = _make_am_with_emotion(primary="boredom", valence=-0.1, arousal=0.2)
+        am.task_queue = [
+            {"id": "t1", "type": "command", "description": "Run cleanup", "priority": 5},
+            {"id": "t2", "type": "proactive", "description": "Research new APIs", "priority": 5},
+        ]
+
+        await am._prioritize_tasks()
+
+        assert am.task_queue[0]["id"] == "t2"
+
+    @pytest.mark.asyncio
+    async def test_positive_valence_boosts_goals(self):
+        am = _make_am_with_emotion(valence=0.6, arousal=0.3)
+        am.task_queue = [
+            {"id": "t1", "type": "reminder", "description": "Standup", "priority": 5},
+            {"id": "t2", "type": "goal", "description": "Build new feature", "priority": 5},
+        ]
+
+        await am._prioritize_tasks()
+
+        assert am.task_queue[0]["id"] == "t2"
+
+    @pytest.mark.asyncio
+    async def test_no_inner_life_no_crash(self):
+        am = _make_autonomous_mode()
+        am.inner_life = None
+        am.task_queue = [
+            {"id": "t1", "type": "goal", "description": "A", "priority": 3},
+            {"id": "t2", "type": "goal", "description": "B", "priority": 7},
+        ]
+
+        await am._prioritize_tasks()
+
+        # Still sorted by base priority
+        assert am.task_queue[0]["id"] == "t2"
+
+    @pytest.mark.asyncio
+    async def test_empty_queue_no_crash(self):
+        am = _make_am_with_emotion(arousal=0.9)
+        am.task_queue = []
+
+        await am._prioritize_tasks()  # Should not raise
+
+        assert am.task_queue == []
+
+
+class TestEmotionMemoryModulation:
+    """Tests for emotion-modulated cognitive memory importance."""
+
+    def test_high_arousal_boosts_memory_importance(self):
+        am = _make_am_with_emotion(arousal=0.8)
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t1", "type": "goal", "description": "Test", "tools_used": []}
+        am._record_outcome(task, success=True, result="done")
+
+        call_args = am.cognitive_memory.add_memory.call_args
+        importance = call_args[1]["importance"]
+        # Base: 0.7, modulation: 1.12 (arousal 0.8) → 0.784
+        assert importance > 0.7
+        assert importance <= 1.0
+
+    def test_low_arousal_no_modulation(self):
+        am = _make_am_with_emotion(arousal=0.2)
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t1", "type": "goal", "description": "Test", "tools_used": []}
+        am._record_outcome(task, success=True, result="done")
+
+        call_args = am.cognitive_memory.add_memory.call_args
+        importance = call_args[1]["importance"]
+        # Modulation: 1.0 (arousal < 0.5) → no change
+        assert importance == 0.7
+
+    def test_failure_with_high_arousal_capped_at_1(self):
+        am = _make_am_with_emotion(arousal=1.0)
+        am.inner_life.get_emotion_modulation = MagicMock(return_value=1.2)
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t1", "type": "goal", "description": "Test", "tools_used": []}
+        am._record_outcome(task, success=False, result="error")
+
+        call_args = am.cognitive_memory.add_memory.call_args
+        importance = call_args[1]["importance"]
+        # Base 0.9 * 1.2 = 1.08 → capped at 1.0
+        assert importance == 1.0
+
+
+class TestEvolutionPressureInSelfImprove:
+    """Tests for emotion-driven evolution pressure in _self_improve."""
+
+    @pytest.mark.asyncio
+    async def test_evolution_pressure_included_in_evidence(self):
+        am = _make_am_with_emotion(primary="frustration", valence=-0.6, arousal=0.7)
+        am.inner_life.get_evolution_pressure = MagicMock(
+            return_value=["inner_life:frustration_high_arousal", "inner_life:negative_valence=-0.60"]
+        )
+        am.self_reflection = None
+        am.pattern_learner = None
+        am.skill_fitness = None
+
+        # Force the improvement to run (bypass 24h check)
+        am._last_improvement = datetime.now() - timedelta(hours=25)
+
+        # Mock LLM
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={
+            "text": '[{"type":"goal","description":"Fix frustrating error patterns","priority":"high"}]'
+        })
+
+        am.completed_tasks = [
+            {"id": "c1", "type": "goal", "description": "A", "status": "done"},
+        ]
+
+        await am._self_improve()
+
+        # Verify LLM was called and received evolution pressure data
+        call_args = am.agent.llm.invoke_with_tools.call_args[0][0]
+        user_msg = call_args[1]["content"]
+        assert "frustration_high_arousal" in user_msg
+        assert "negative_valence" in user_msg
+
+
+class TestProactiveEmotionContext:
+    """Tests for structured emotion data in proactive reasoning."""
+
+    @pytest.mark.asyncio
+    async def test_proactive_gets_structured_emotion(self):
+        am = _make_am_with_emotion(primary="excitement", valence=0.7, arousal=0.6)
+        am.inner_life.get_evolution_pressure = MagicMock(return_value=[])
+
+        # Set up proactive engine
+        am.proactive_engine = MagicMock()
+        am.proactive_engine.should_think = MagicMock(return_value=True)
+        am.proactive_engine.build_context = MagicMock(return_value="context")
+        am.proactive_engine.think = AsyncMock(return_value=[])
+        am.self_reflection = None
+        am.goal_manager = None
+
+        await am._proactive_tick()
+
+        # Verify build_context received structured emotion
+        call_kwargs = am.proactive_engine.build_context.call_args[1]
+        cog = call_kwargs["cognitive_state"]
+        assert cog["emotion"]["primary"] == "excitement"
+        assert cog["emotion"]["valence"] == 0.7
+        assert cog["emotion"]["arousal"] == 0.6
