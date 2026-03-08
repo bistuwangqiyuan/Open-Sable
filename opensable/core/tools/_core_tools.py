@@ -2,6 +2,7 @@
 Core tools — file system, commands, browser, voice, image, database, RAG, code execution, API, skills
 """
 
+import json
 import logging
 from typing import Dict
 
