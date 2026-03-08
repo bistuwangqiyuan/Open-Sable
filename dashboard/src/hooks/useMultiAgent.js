@@ -151,6 +151,10 @@ export function useMultiAgent(wsRef, connected) {
           newState.thoughts = msg;
           break;
 
+        case 'brain.data.result':
+          newState.brainData = msg;
+          break;
+
         case 'monitor.subscribed':
           break;
 

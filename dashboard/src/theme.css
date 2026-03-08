@@ -54,6 +54,10 @@ body {
   100% { width: 0; margin-left: 100%; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(124,58,237,0.15); }
+  50% { box-shadow: 0 0 20px rgba(124,58,237,0.35); }
+}
 
 .typing-dots span {
   display: inline-block; width: 5px; height: 5px; border-radius: 50%;

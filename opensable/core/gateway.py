@@ -628,6 +628,10 @@ class Gateway:
             await self._on_agents_unsubscribe(client, msg)
         elif t == "agents.chat":
             await self._on_agents_chat(client, msg)
+        elif t == "agents.brain.data":
+            await self._on_agents_brain_data(client, msg)
+        elif t == "brain.data":
+            await self._on_brain_data(client, msg)
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
@@ -1032,6 +1036,54 @@ class Gateway:
             except Exception:
                 pass
 
+    async def _on_agents_brain_data(self, client: _Client, msg: dict):
+        """Proxy brain.data request to a remote agent via Unix socket."""
+        profile = msg.get("profile", "")
+        if not profile:
+            await client.send({"type": "error", "text": "agents.brain.data requires 'profile'"})
+            return
+
+        # If targeting the current agent, just handle locally
+        if profile == _profile_name:
+            await self._on_brain_data(client, msg)
+            return
+
+        socket_path = f"/tmp/sable-{profile}.sock"
+        if not Path(socket_path).exists():
+            await client.send({
+                "type": "brain.data.result",
+                "_profile": profile,
+                "error": f"Agent '{profile}' is not running",
+            })
+            return
+
+        try:
+            conn = aiohttp.UnixConnector(path=socket_path)
+            async with aiohttp.ClientSession(connector=conn) as session:
+                async with session.ws_connect("http://localhost/") as ws:
+                    await ws.send_json({"type": "brain.data"})
+                    async for frame in ws:
+                        if client.closed:
+                            break
+                        if frame.type == aiohttp.WSMsgType.TEXT:
+                            try:
+                                data = json.loads(frame.data)
+                            except json.JSONDecodeError:
+                                continue
+                            if data.get("type") == "brain.data.result":
+                                data["_profile"] = profile
+                                await client.send(data)
+                                break
+                        elif frame.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.ERROR):
+                            break
+        except Exception as exc:
+            logger.warning(f"[Gateway] agents.brain.data proxy to {profile} failed: {exc}")
+            await client.send({
+                "type": "brain.data.result",
+                "_profile": profile,
+                "error": str(exc),
+            })
+
     async def _on_agents_chat(self, client: _Client, msg: dict):
         """Proxy a chat message to a remote agent via Unix socket and stream the response back."""
         profile = msg.get("profile", "")
@@ -1266,6 +1318,150 @@ class Gateway:
         if hasattr(self.agent, "get_monitor_snapshot"):
             snapshot = self.agent.get_monitor_snapshot()
             await client.send(snapshot)
+
+    # ── Brain / Cognitive Dashboard ───────────────────────────────────────────
+
+    async def _on_brain_data(self, client: _Client, msg: dict):
+        """Return comprehensive cognitive state for the Brain dashboard."""
+        result: dict = {"type": "brain.data.result"}
+
+        try:
+            # 1. Inner life / emotional state
+            inner_life_file = _data_dir / "inner_life" / "inner_state.json"
+            if inner_life_file.exists():
+                try:
+                    result["inner_life"] = json.loads(inner_life_file.read_text())
+                except Exception:
+                    result["inner_life"] = None
+            else:
+                result["inner_life"] = None
+
+            # 2. Autonomous state (tick, tasks, etc.)
+            auto_state_file = _data_dir / "autonomous_state.json"
+            if auto_state_file.exists():
+                try:
+                    auto = json.loads(auto_state_file.read_text())
+                    result["autonomous"] = {
+                        "tick": auto.get("tick", 0),
+                        "last_update": auto.get("last_update"),
+                        "pending_tasks": len(auto.get("task_queue", [])),
+                        "completed_tasks_count": len(auto.get("completed_tasks", [])),
+                        "task_queue": auto.get("task_queue", [])[:10],
+                        "completed_tasks": auto.get("completed_tasks", [])[-20:],
+                    }
+                except Exception:
+                    result["autonomous"] = None
+            else:
+                result["autonomous"] = None
+
+            # 3. Goals
+            goals_file = _data_dir / "goals.json"
+            if goals_file.exists():
+                try:
+                    result["goals"] = json.loads(goals_file.read_text())
+                except Exception:
+                    result["goals"] = {}
+            else:
+                result["goals"] = {}
+
+            # 4. ReAct execution log
+            react_file = _data_dir / "react_logs" / "react_executions.jsonl"
+            if react_file.exists():
+                try:
+                    execs = []
+                    with open(react_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    execs.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["react_executions"] = execs[-50:]
+                except Exception:
+                    result["react_executions"] = []
+            else:
+                result["react_executions"] = []
+
+            # 5. Self-reflection / tick outcomes
+            reflection_file = _data_dir / "reflection" / "tick_outcomes.jsonl"
+            if reflection_file.exists():
+                try:
+                    outcomes = []
+                    with open(reflection_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    outcomes.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["reflections"] = outcomes[-30:]
+                except Exception:
+                    result["reflections"] = []
+            else:
+                result["reflections"] = []
+
+            # 6. Cognitive memory stats
+            cog_mem_file = _data_dir / "cognitive_memory" / "cognitive_memories.jsonl"
+            if cog_mem_file.exists():
+                try:
+                    count = 0
+                    with open(cog_mem_file) as f:
+                        for _ in f:
+                            count += 1
+                    result["cognitive_memory_count"] = count
+                except Exception:
+                    result["cognitive_memory_count"] = 0
+            else:
+                result["cognitive_memory_count"] = 0
+
+            # 7. Proactive reasoning proposals
+            proactive_file = _data_dir / "proactive" / "proposals.jsonl"
+            if proactive_file.exists():
+                try:
+                    proposals = []
+                    with open(proactive_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    proposals.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass
+                    result["proactive_proposals"] = proposals[-20:]
+                except Exception:
+                    result["proactive_proposals"] = []
+            else:
+                result["proactive_proposals"] = []
+
+            # 8. Live module stats from agent
+            if hasattr(self.agent, "inner_life") and self.agent.inner_life:
+                result["inner_life_stats"] = self.agent.inner_life.get_stats()
+            if hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                result["autonomous_live"] = {
+                    "tick": getattr(self.agent.autonomous, "tick", 0),
+                    "queue_size": len(getattr(self.agent.autonomous, "task_queue", [])),
+                    "completed_count": len(getattr(self.agent.autonomous, "completed_tasks", [])),
+                    "consecutive_errors": getattr(self.agent.autonomous, "consecutive_errors", 0),
+                }
+
+            # 9. Trace file stats
+            traces_dir = _data_dir / "traces"
+            if traces_dir.exists():
+                trace_files = sorted(traces_dir.glob("trace-*.jsonl"))
+                result["trace_files"] = [
+                    {"name": f.name, "size_kb": round(f.stat().st_size / 1024, 1)}
+                    for f in trace_files[-7:]
+                ]
+            else:
+                result["trace_files"] = []
+
+        except Exception as e:
+            logger.warning(f"[Gateway] brain.data error: {e}")
+            result["error"] = str(e)
+
+        await client.send(result)
 
     # ── Thoughts / Consciousness stream ───────────────────────────────────────
 

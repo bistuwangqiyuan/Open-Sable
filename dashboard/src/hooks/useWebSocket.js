@@ -19,6 +19,7 @@ export function useWebSocket(onExternalMessage) {
   const [sessions, setSessions] = useState([]);
   const [model, setModel] = useState('');
   const [thoughts, setThoughts] = useState(null);
+  const [brainData, setBrainData] = useState(null);
 
   const wsRef = useRef(null);
   const streamBuf = useRef('');
@@ -137,6 +138,9 @@ export function useWebSocket(onExternalMessage) {
       case 'thoughts.list.result':
         setThoughts(msg);
         break;
+      case 'brain.data.result':
+        setBrainData(msg);
+        break;
       default:
         break;
     }
@@ -192,7 +196,7 @@ export function useWebSocket(onExternalMessage) {
   const clearTerminal = useCallback(() => setTerminal([]), []);
 
   return {
-    connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts,
+    connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts, brainData,
     sendMessage, clearMessages, clearActivity, clearTerminal, wsRef,
   };
 }

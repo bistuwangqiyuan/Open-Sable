@@ -14,6 +14,7 @@ import QRPanel from './components/agent/QRPanel';
 import AgentPanel from './components/agent/AgentPanel';
 import DevicesPanel from './components/agent/DevicesPanel';
 import ThoughtsPanel from './components/agent/ThoughtsPanel';
+import BrainPanel from './components/agent/BrainPanel';
 import SettingsPanel from './components/settings/SettingsPanel';
 
 const panels = {
@@ -25,6 +26,7 @@ const panels = {
   tasks: TaskPanel,
   history: HistoryPanel,
   thoughts: ThoughtsPanel,
+  brain: BrainPanel,
   qr: QRPanel,
   agent: AgentPanel,
   devices: DevicesPanel,
@@ -70,6 +72,7 @@ export default function App() {
       tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
       history:  { messages: ws.messages, sessions: ws.sessions },
       thoughts: { ws: ws.wsRef, thoughts: ws.thoughts, connected: ws.connected },
+      brain:    { ws: ws.wsRef, brainData: ws.brainData, connected: ws.connected, profile: null, isLocal: true },
       qr:       {},
       agent:    {},
       devices:  {},
@@ -89,6 +92,7 @@ export default function App() {
       tasks:    { streaming: rs.streaming || false, messages: rs.messages || [], activity: rs.activity || [], sendMessage: sendToRemote },
       history:  { messages: rs.messages || [], sessions: rs.sessions || [] },
       thoughts: { ws: { current: null }, thoughts: rs.thoughts, connected: rs.connected || false },
+      brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: rs.connected || false, profile: ma.currentAgent, isLocal: false },
       qr:       {},
       agent:    {},
       devices:  {},

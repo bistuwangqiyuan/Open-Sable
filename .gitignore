@@ -161,3 +161,5 @@ data/inner_life/inner_state.json
 data/proactive/proactive_state.json
 data/autonomous_state.json
 data/goals.json
+system_check.service
+system_check.timer
