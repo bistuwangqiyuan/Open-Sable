@@ -10,6 +10,7 @@ records every phase of every tick for post-hoc observability.
 
 import asyncio
 import logging
+import os
 import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
@@ -107,7 +108,12 @@ class AutonomousMode:
         logger.info("🤖 Starting autonomous mode...")
 
         # ── Inherit modules from agent (single source of truth) ───────────
-        data_dir = Path(getattr(self.config, "data_dir", "./data"))
+        # Use agent's profile-aware data dir, falling back to _SABLE_DATA_DIR env
+        data_dir = Path(
+            getattr(self.agent, "_data_dir", None)
+            or os.environ.get("_SABLE_DATA_DIR")
+            or "./data"
+        )
 
         # Helper: reuse agent's instance when available, else create fresh
         def _inherit(attr_name, factory, label):
@@ -1387,7 +1393,11 @@ class AutonomousMode:
     async def _save_state(self):
         """Save autonomous agent state including tick counter"""
         try:
-            state_file = Path(getattr(self.config, "data_dir", "./data")) / "autonomous_state.json"
+            state_file = Path(
+                getattr(self.agent, "_data_dir", None)
+                or os.environ.get("_SABLE_DATA_DIR")
+                or "./data"
+            ) / "autonomous_state.json"
             state_file.parent.mkdir(parents=True, exist_ok=True)
 
             state = {
@@ -1405,7 +1415,11 @@ class AutonomousMode:
     async def _load_state(self):
         """Load autonomous agent state including tick counter"""
         try:
-            state_file = Path(getattr(self.config, "data_dir", "./data")) / "autonomous_state.json"
+            state_file = Path(
+                getattr(self.agent, "_data_dir", None)
+                or os.environ.get("_SABLE_DATA_DIR")
+                or "./data"
+            ) / "autonomous_state.json"
 
             if state_file.exists():
                 state = json.loads(state_file.read_text())

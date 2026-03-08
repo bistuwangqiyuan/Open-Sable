@@ -160,3 +160,4 @@ data/inner_life/inner_state.json
 /episodes
 data/proactive/proactive_state.json
 data/autonomous_state.json
+data/goals.json
