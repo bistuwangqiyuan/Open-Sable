@@ -24,6 +24,7 @@ Setup:
 """
 
 import asyncio
+import json
 import logging
 import os
 from pathlib import Path
@@ -114,35 +115,113 @@ class InstagramSkill:
             except Exception as e:
                 logger.debug(f"Instagram: Could not set mobile device: {e}")
 
-            # Try loading saved session first
+            # ── Login strategy ──
+            # 1. Try saved session (cookie-based, no password needed)
+            # 2. Fresh login  3. Retry fresh on JSON errors
+            logged_in = False
+
+            # Attempt 1: Saved session with cookies
             if self._session_path.exists():
                 try:
                     await loop.run_in_executor(
                         None, self._client.load_settings, str(self._session_path)
                     )
+                    # If we have a sessionid in the saved data, try cookie-based login
+                    # This avoids triggering a challenge on the same IP
+                    auth = {}
+                    try:
+                        with open(self._session_path) as f:
+                            saved = json.load(f)
+                        auth = saved.get("authorization_data", {})
+                    except Exception:
+                        pass
+
+                    session_id = auth.get("sessionid", "")
+                    if session_id:
+                        logger.info("Instagram: Attempting cookie-based session restore...")
+                        try:
+                            ok = await loop.run_in_executor(
+                                None, self._client.login_by_sessionid, session_id
+                            )
+                            if ok:
+                                logged_in = True
+                                logger.info("✅ Instagram: Logged in via saved session cookies")
+                        except Exception as e:
+                            logger.info(f"Instagram: Cookie login failed ({e}), trying password...")
+
+                    # Fallback: password login with loaded settings
+                    if not logged_in:
+                        await loop.run_in_executor(
+                            None, self._client.login, username, password
+                        )
+                        logged_in = True
+                        logger.info("✅ Instagram: Logged in via saved session + password")
+
+                    # Verify session is valid
+                    if logged_in:
+                        try:
+                            await loop.run_in_executor(None, self._client.get_timeline_feed)
+                        except Exception as e:
+                            logger.warning(f"Instagram: Timeline check failed ({e}), but login OK")
+
+                except (LoginRequired, Exception) as e:
+                    logger.info(f"Instagram session expired, re-logging: {e}")
+                    logged_in = False
+                    # Delete stale session
+                    try:
+                        self._session_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    self._client = InstaClient()
+
+            # Attempt 2: Fresh login
+            if not logged_in:
+                try:
                     await loop.run_in_executor(
                         None, self._client.login, username, password
                     )
-                    # Verify session is valid
-                    await loop.run_in_executor(None, self._client.get_timeline_feed)
-                    self._initialized = True
-                    logger.info("✅ Instagram: Logged in via saved session")
-                    return True
-                except (LoginRequired, Exception) as e:
-                    logger.info(f"Instagram session expired, re-logging: {e}")
-                    self._client = InstaClient()
+                    logged_in = True
+                    logger.info("✅ Instagram: Fresh login successful")
+                except (json.JSONDecodeError, ChallengeRequired) as e:
+                    # Challenge flow — Instagram wants verification.
+                    # Try relogin first, then browser fallback.
+                    logger.warning(f"Instagram: Challenge/JSON error on login: {e}")
+                    await asyncio.sleep(3)
+                    try:
+                        self._client = InstaClient()
+                        await loop.run_in_executor(
+                            None, self._client.login, username, password, True
+                        )
+                        logged_in = True
+                        logger.info("✅ Instagram: Relogin successful after challenge")
+                    except Exception as e2:
+                        logger.warning(
+                            f"Instagram: Relogin also failed: {e2}. "
+                            "Attempting browser-based login..."
+                        )
+                        # Attempt 3: Browser-based login (extracts cookies)
+                        browser_ok = await self._browser_login_fallback(username, password)
+                        if browser_ok:
+                            logged_in = True
+                        else:
+                            logger.error(
+                                "Instagram: All login methods failed. "
+                                "Run manually: python scripts/ig_browser_login.py"
+                            )
+                            return False
 
-            # Fresh login
-            await loop.run_in_executor(
-                None, self._client.login, username, password
-            )
-            # Save session for next time
-            await loop.run_in_executor(
-                None, self._client.dump_settings, str(self._session_path)
-            )
-            self._initialized = True
-            logger.info("✅ Instagram: Fresh login successful")
-            return True
+            if logged_in:
+                # Save session for next time
+                try:
+                    await loop.run_in_executor(
+                        None, self._client.dump_settings, str(self._session_path)
+                    )
+                except Exception as e:
+                    logger.debug(f"Instagram: Could not save session: {e}")
+                self._initialized = True
+                return True
+
+            return False
 
         except ChallengeRequired:
             logger.error(
@@ -154,8 +233,177 @@ class InstagramSkill:
                 "Instagram: 2FA required — set INSTAGRAM_2FA_CODE or disable 2FA"
             )
             return False
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"Instagram: JSON error ({e}). Attempting browser login..."
+            )
+            browser_ok = await self._browser_login_fallback(username, password)
+            if browser_ok:
+                return True
+            logger.error(
+                "Instagram: All login methods failed. "
+                "Run manually: python scripts/ig_browser_login.py"
+            )
+            return False
         except Exception as e:
             logger.error(f"Instagram initialization failed: {e}")
+            return False
+
+    async def _browser_login_fallback(self, username: str, password: str) -> bool:
+        """Open a browser for manual Instagram login, extract cookies, and save session.
+
+        This is the automatic fallback when Instagram requires a challenge
+        (device verification, 2FA confirmation, etc). A Chromium window
+        opens so the user can complete the challenge, then the cookies
+        are extracted and saved as an instagrapi session.
+
+        Returns True if the session was saved successfully.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            logger.error(
+                "Instagram: playwright not installed — cannot open browser login. "
+                "Install with: pip install playwright && playwright install chromium"
+            )
+            return False
+
+        loop = asyncio.get_event_loop()
+        logger.info(
+            "📸 Instagram: Opening browser for manual login — "
+            "please log in and handle any verification..."
+        )
+
+        def _do_browser_login() -> bool:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=False,
+                    args=["--disable-blink-features=AutomationControlled"],
+                )
+                context = browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Mobile Safari/537.36"
+                    ),
+                    viewport={"width": 412, "height": 915},
+                    is_mobile=True,
+                    has_touch=True,
+                )
+                page = context.new_page()
+                page.goto("https://www.instagram.com/accounts/login/", wait_until="networkidle")
+
+                import time as _time
+                _time.sleep(2)
+
+                # Accept cookies dialog if present
+                try:
+                    accept_btn = page.locator(
+                        "button:has-text('Allow'), "
+                        "button:has-text('Accept'), "
+                        "button:has-text('Permitir'), "
+                        "button:has-text('Aceptar')"
+                    )
+                    if accept_btn.count() > 0:
+                        accept_btn.first.click()
+                        _time.sleep(1)
+                except Exception:
+                    pass
+
+                # Pre-fill username if we can
+                try:
+                    user_input = page.locator('input[name="username"]')
+                    if user_input.count() > 0:
+                        user_input.fill(username)
+                    pass_input = page.locator('input[name="password"]')
+                    if pass_input.count() > 0:
+                        pass_input.fill(password)
+                except Exception:
+                    pass
+
+                # Wait for sessionid cookie — poll every 3 seconds for up to 5 min
+                max_wait = 300  # 5 minutes
+                elapsed = 0
+                while elapsed < max_wait:
+                    _time.sleep(3)
+                    elapsed += 3
+                    cookies = context.cookies("https://www.instagram.com")
+                    cookie_dict = {c["name"]: c["value"] for c in cookies}
+                    if "sessionid" in cookie_dict:
+                        logger.info("✅ Instagram: Browser login successful — sessionid obtained!")
+                        # Build and save session
+                        import os as _os
+                        session_data = {
+                            "uuids": {
+                                "phone_id": f"android-{_os.urandom(8).hex()}",
+                                "uuid": f"{_os.urandom(4).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(6).hex()}",
+                                "client_session_id": f"{_os.urandom(4).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(6).hex()}",
+                                "advertising_id": f"{_os.urandom(4).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(6).hex()}",
+                                "android_device_id": f"android-{_os.urandom(8).hex()}",
+                                "request_id": f"{_os.urandom(4).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(6).hex()}",
+                                "tray_session_id": f"{_os.urandom(4).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(2).hex()}-{_os.urandom(6).hex()}",
+                            },
+                            "cookies": cookie_dict,
+                            "last_login": _time.time(),
+                            "device_settings": {
+                                "app_version": "269.0.0.18.75",
+                                "android_version": 34,
+                                "android_release": "14",
+                                "dpi": "560dpi",
+                                "resolution": "1440x3120",
+                                "manufacturer": "Google",
+                                "device": "husky",
+                                "model": "Pixel 8 Pro",
+                                "cpu": "qcom",
+                                "version_code": "314665256",
+                            },
+                            "user_agent": (
+                                "Instagram 269.0.0.18.75 Android "
+                                "(34/14; 560dpi; 1440x3120; Google; Pixel 8 Pro; "
+                                "husky; qcom; en_US; 314665256)"
+                            ),
+                            "authorization_data": {
+                                "ds_user_id": cookie_dict.get("ds_user_id", ""),
+                                "sessionid": cookie_dict.get("sessionid", ""),
+                                "mid": cookie_dict.get("mid", ""),
+                                "ig_did": cookie_dict.get("ig_did", ""),
+                                "csrftoken": cookie_dict.get("csrftoken", ""),
+                                "rur": cookie_dict.get("rur", ""),
+                            },
+                        }
+                        self._session_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(self._session_path, "w") as f:
+                            json.dump(session_data, f, indent=2)
+                        browser.close()
+                        return True
+
+                # Timeout
+                logger.warning("Instagram: Browser login timed out (5 min) — no sessionid obtained")
+                browser.close()
+                return False
+
+        try:
+            ok = await loop.run_in_executor(None, _do_browser_login)
+            if ok:
+                # Reload session into client
+                self._client = InstaClient()
+                try:
+                    with open(self._session_path) as f:
+                        saved = json.load(f)
+                    session_id = saved.get("authorization_data", {}).get("sessionid", "")
+                    if session_id:
+                        await loop.run_in_executor(
+                            None, self._client.login_by_sessionid, session_id
+                        )
+                        self._initialized = True
+                        logger.info("✅ Instagram: Initialized with browser session")
+                        return True
+                except Exception as e:
+                    logger.error(f"Instagram: Session reload failed: {e}")
+                    return False
+            return False
+        except Exception as e:
+            logger.error(f"Instagram: Browser login error: {e}")
             return False
 
     def _ensure_initialized(self):

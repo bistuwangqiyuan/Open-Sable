@@ -176,6 +176,18 @@ class IGAutoposter:
             logger.warning("📸 IG Autoposter: Instagram skill not available — skipping")
             return
 
+        # Ensure Instagram skill is initialized (may have failed at startup)
+        if ig_skill and not getattr(ig_skill, "_initialized", False) and not self.dry_run:
+            logger.info("📸 IG Autoposter: Instagram skill not initialized — attempting init...")
+            try:
+                ok = await ig_skill.initialize()
+                if not ok:
+                    logger.warning("📸 IG Autoposter: Instagram init returned False — skipping")
+                    return
+            except Exception as e:
+                logger.error(f"📸 IG Autoposter: Instagram init failed: {e}")
+                return
+
         # Step 1: Generate creative concept via LLM
         concept = await self._brainstorm_concept()
         if not concept:
@@ -234,6 +246,17 @@ class IGAutoposter:
                 caption=caption,
             )
         except Exception as e:
+            err_str = str(e).lower()
+            if "challenge_required" in err_str or "429" in err_str or "too many" in err_str:
+                logger.error(
+                    f"📸 IG posting blocked (rate-limited or challenge): {e}. "
+                    "Backing off for 2 hours."
+                )
+                self._consecutive_failures = getattr(self, "_consecutive_failures", 0) + 1
+                # Exponential backoff: 2h, 4h, 8h...
+                backoff = min(7200 * (2 ** (self._consecutive_failures - 1)), 28800)
+                await asyncio.sleep(backoff)
+                return
             logger.error(f"📸 IG posting failed: {e}")
             return
 
@@ -243,9 +266,19 @@ class IGAutoposter:
             self._posts_today += 1
             self._total_posted += 1
             self._last_post_time = datetime.now()
+            self._consecutive_failures = 0  # Reset on success
             self._record_post(img, caption, url=url)
         else:
-            logger.error(f"📸 IG upload failed: {ig_result.get('error')}")
+            error = ig_result.get("error", "")
+            if "challenge" in str(error).lower() or "429" in str(error):
+                logger.error(
+                    f"📸 IG upload blocked: {error}. Backing off for 2 hours."
+                )
+                self._consecutive_failures = getattr(self, "_consecutive_failures", 0) + 1
+                backoff = min(7200 * (2 ** (self._consecutive_failures - 1)), 28800)
+                await asyncio.sleep(backoff)
+            else:
+                logger.error(f"📸 IG upload failed: {error}")
 
     # ── LLM Creative Engine ──────────────────────────────────────────────────
 
