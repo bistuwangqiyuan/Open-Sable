@@ -4,7 +4,7 @@ import {
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
   User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
   AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
-  BookMarked, Newspaper, Network,
+  BookMarked, Newspaper, Network, Route, Share2, Archive, BarChart3,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1158,6 +1158,12 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   // Source 23 – Connectome (FlyWire neural colony)
   const connectome     = data?.connectome || null;
 
+  // Source 24-27 – New cognitive modules
+  const deepPlanner    = data?.deep_planner || null;
+  const interAgent     = data?.inter_agent_bridge || null;
+  const ultraLtm       = data?.ultra_ltm || null;
+  const selfBenchmark  = data?.self_benchmark || null;
+
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
   const valence = (typeof rawEmotion === 'object' ? rawEmotion.valence : null) ?? il.valence ?? liveStats.valence ?? 0;
@@ -1453,6 +1459,18 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           {/* ── Connectome – Neural Colony ──────────────────────── */}
           {connectome && <ConnectomeMonitor connectome={connectome} />}
 
+          {/* ── Self-Benchmark – Autonomy Score ────────────────── */}
+          {selfBenchmark && <SelfBenchmarkPanel benchmark={selfBenchmark} />}
+
+          {/* ── Deep Planner – Multi-Step Plans ────────────────── */}
+          {deepPlanner && <DeepPlannerPanel planner={deepPlanner} />}
+
+          {/* ── Inter-Agent Bridge ──────────────────────────────── */}
+          {interAgent && <InterAgentPanel bridge={interAgent} />}
+
+          {/* ── Ultra Long-Term Memory ──────────────────────────── */}
+          {ultraLtm && <UltraLtmPanel ltm={ultraLtm} />}
+
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (
             <div style={{ ...s.section, gridColumn: '1 / -1' }}>
@@ -1472,6 +1490,261 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Self-Benchmark Panel ─────────────────────────────────────────────
+function SelfBenchmarkPanel({ benchmark }) {
+  const score = benchmark.autonomy_score ?? 0;
+  const suites = benchmark.suites || {};
+  const trend = benchmark.trend_direction || 'stable';
+  const runs = benchmark.total_runs || 0;
+  const snapshots = benchmark.recent_snapshots || [];
+
+  const trendIcon = trend === 'improving' ? '📈' : trend === 'declining' ? '📉' : '➡️';
+  const scoreColor = score >= 80 ? '#00b894' : score >= 60 ? '#f39c12' : '#e17055';
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><BarChart3 size={12} /> Self-Benchmark — Autonomy Score</div>
+
+      {/* Big score */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16 }}>
+        <div style={{
+          fontSize: 42, fontWeight: 800, fontFamily: 'var(--mono)', color: scoreColor,
+          lineHeight: 1, textShadow: `0 0 20px ${scoreColor}33`,
+        }}>{score.toFixed(1)}</div>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ 100</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{trendIcon} {trend} · {runs} runs</div>
+        </div>
+      </div>
+
+      {/* Suite breakdown */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {Object.entries(suites).map(([id, suite]) => {
+          const sc = suite.score ?? 0;
+          const col = sc >= 80 ? '#00b894' : sc >= 60 ? '#f39c12' : sc >= 40 ? '#e17055' : '#d63031';
+          const tr = suite.trend || 'stable';
+          return (
+            <div key={id} style={{
+              flex: '1 1 180px', padding: '8px 10px', borderRadius: 8,
+              background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{suite.name || id}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <div style={{
+                  width: 60, height: 5, borderRadius: 3, background: 'var(--bg-primary)', overflow: 'hidden',
+                }}>
+                  <div style={{ height: '100%', width: `${sc}%`, borderRadius: 3, background: col, transition: 'width 0.5s' }} />
+                </div>
+                <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 700, color: col }}>{sc.toFixed(0)}</span>
+                <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>{tr === 'improving' ? '↑' : tr === 'declining' ? '↓' : '—'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Deep Planner Panel ───────────────────────────────────────────────
+function DeepPlannerPanel({ planner }) {
+  const plans = planner.plans || [];
+  const totalPlans = planner.total_plans || 0;
+  const totalReplans = planner.total_replans || 0;
+  const totalSteps = planner.total_steps_executed || 0;
+  const cached = planner.cached_templates || 0;
+
+  const statusColor = { active: '#7c3aed', completed: '#00b894', failed: '#e17055', replanned: '#f39c12' };
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Route size={12} /> Deep Planner — Multi-Step Plans</div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Plans" value={totalPlans} color="#7c3aed" />
+        <_Stat label="Replans" value={totalReplans} color="#f39c12" />
+        <_Stat label="Steps done" value={totalSteps} color="#00b894" />
+        <_Stat label="Cached" value={cached} color="#00cec9" />
+      </div>
+
+      {plans.length === 0 && <div style={s.empty}>No plans created yet</div>}
+
+      {plans.map((plan, i) => {
+        const pct = ((plan.progress || 0) * 100).toFixed(0);
+        const col = statusColor[plan.status] || '#6c7a89';
+        const steps = plan.step_details || [];
+        return (
+          <div key={i} style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {plan.goal}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 9, color: col, fontWeight: 600, textTransform: 'uppercase' }}>{plan.status}</span>
+                <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text-muted)' }}>{pct}%</span>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'var(--bg-primary)', overflow: 'hidden', marginBottom: 6 }}>
+              <div style={{ height: '100%', width: `${pct}%`, borderRadius: 2, background: col, transition: 'width 0.4s' }} />
+            </div>
+            {/* Steps */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {steps.map((st, j) => {
+                const stCol = st.status === 'done' ? '#00b894' : st.status === 'running' ? '#7c3aed' : st.status === 'failed' ? '#e17055' : '#3a3f47';
+                return (
+                  <div key={j} title={st.description} style={{
+                    width: 14, height: 14, borderRadius: 3, background: stCol,
+                    opacity: st.status === 'pending' ? 0.3 : 0.9,
+                    cursor: 'help', transition: 'opacity 0.2s',
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Inter-Agent Bridge Panel ─────────────────────────────────────────
+function InterAgentPanel({ bridge }) {
+  const exported = bridge.total_exported || 0;
+  const imported = bridge.total_imported || 0;
+  const syncs = bridge.total_syncs || 0;
+  const vaultSize = bridge.vault_size || 0;
+  const agents = bridge.agents_in_vault || [];
+  const pending = bridge.pending_imports || 0;
+  const applied = bridge.applied_count || 0;
+  const avgBenefit = bridge.avg_benefit || 0;
+  const recentExports = bridge.recent_exports || [];
+  const recentImports = bridge.recent_imports || [];
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Share2 size={12} /> Inter-Agent Learning Bridge</div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Exported" value={exported} color="#7c3aed" />
+        <_Stat label="Imported" value={imported} color="#00cec9" />
+        <_Stat label="Applied" value={applied} color="#00b894" />
+        <_Stat label="Vault" value={vaultSize} color="#f39c12" />
+        <_Stat label="Pending" value={pending} color="#e17055" />
+        <_Stat label="Syncs" value={syncs} color="#6c7a89" />
+        <_Stat label="Benefit" value={avgBenefit.toFixed(2)} color="#fdcb6e" />
+      </div>
+
+      {/* Connected agents */}
+      {agents.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Connected Agents</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {agents.map((a, i) => (
+              <span key={i} style={{
+                padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600,
+                background: a === bridge.profile ? 'rgba(124,58,237,0.15)' : 'var(--bg-tertiary)',
+                color: a === bridge.profile ? '#7c3aed' : 'var(--text-secondary)',
+                border: `1px solid ${a === bridge.profile ? 'rgba(124,58,237,0.3)' : 'var(--border)'}`,
+              }}>{a} {a === bridge.profile && '(self)'}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {/* Recent exports */}
+        {recentExports.length > 0 && (
+          <div style={{ flex: '1 1 200px' }}>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Recent Exports</div>
+            {recentExports.map((e, i) => (
+              <div key={i} style={{ fontSize: 9, color: 'var(--text-secondary)', padding: '2px 0', display: 'flex', gap: 6 }}>
+                <span style={{ color: '#7c3aed', fontSize: 8, textTransform: 'uppercase' }}>{e.category}</span>
+                <span>{e.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Recent imports */}
+        {recentImports.length > 0 && (
+          <div style={{ flex: '1 1 200px' }}>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Recent Imports</div>
+            {recentImports.map((imp, i) => (
+              <div key={i} style={{ fontSize: 9, color: 'var(--text-secondary)', padding: '2px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ color: '#00cec9' }}>from {imp.source}</span>
+                {imp.applied && <span style={{ color: '#00b894', fontSize: 7 }}>✓ applied</span>}
+                <span style={{ fontSize: 8, color: 'var(--text-muted)', marginLeft: 'auto' }}>benefit: {imp.benefit?.toFixed(1) ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Ultra Long-Term Memory Panel ─────────────────────────────────────
+function UltraLtmPanel({ ltm }) {
+  const totalConsolidations = ltm.total_consolidations || 0;
+  const totalPatterns = ltm.total_patterns || 0;
+  const avgConf = ltm.avg_confidence || 0;
+  const strongest = ltm.strongest_patterns || [];
+  const summary = ltm.wisdom_summary || null;
+  const lastConsolidation = ltm.last_consolidation || null;
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Archive size={12} /> Ultra Long-Term Memory</div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Consolidations" value={totalConsolidations} color="#7c3aed" />
+        <_Stat label="Patterns" value={totalPatterns} color="#00cec9" />
+        <_Stat label="Avg confidence" value={avgConf.toFixed(2)} color={avgConf > 0.6 ? '#00b894' : '#f39c12'} />
+        {lastConsolidation && (
+          <span style={{ marginLeft: 'auto', fontSize: 8, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Last: {ago(lastConsolidation)}
+          </span>
+        )}
+      </div>
+
+      {/* Wisdom summary */}
+      {summary && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 8, marginBottom: 10,
+          background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)',
+          fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.5, fontStyle: 'italic',
+        }}>
+          {summary}
+        </div>
+      )}
+
+      {/* Strongest patterns */}
+      {strongest.length > 0 && (
+        <div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Strongest Patterns</div>
+          {strongest.map((p, i) => {
+            const confCol = p.confidence > 0.7 ? '#00b894' : p.confidence > 0.4 ? '#f39c12' : '#e17055';
+            return (
+              <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</div>
+                  <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>{p.category} · {p.reinforcements}× reinforced</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 2 }}>{p.insight}</div>
+                </div>
+                <div style={{ fontSize: 11, fontFamily: 'var(--mono)', fontWeight: 700, color: confCol, flexShrink: 0 }}>
+                  {(p.confidence * 100).toFixed(0)}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {totalPatterns === 0 && <div style={s.empty}>No patterns consolidated yet — needs more operating time</div>}
     </div>
   );
 }

@@ -93,8 +93,13 @@ class AutonomousMode:
         self.inner_life = None          # InnerLifeProcessor
         self.pattern_learner = None     # PatternLearningManager
         self.proactive_engine = None    # ProactiveReasoningEngine
+        self._connectome_biases = {}     # routing biases from last connectome propagation
         self.react_executor = None      # ReActExecutor
         self.github_skill = None        # GitHubSkill
+        self.deep_planner = None        # DeepPlanner (10+ step DAG planning)
+        self.inter_agent_bridge = None  # InterAgentBridge (shared learning vault)
+        self.ultra_ltm = None           # UltraLongTermMemory (weeks/months consolidation)
+        self.self_benchmark = None      # SelfBenchmark (quantified self-assessment)
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -209,6 +214,27 @@ class AutonomousMode:
             timeout_s=getattr(self.config, "react_timeout_s", 180.0),
             log_dir=data_dir / "react_logs",
         ), "ReAct executor")
+
+        self.deep_planner = _inherit("deep_planner", lambda: __import__(
+            "opensable.core.deep_planner", fromlist=["DeepPlanner"]
+        ).DeepPlanner(data_dir=data_dir / "deep_planner"), "Deep planner")
+
+        _profile = getattr(self.config, "profile_name", None) or os.environ.get("SABLE_PROFILE", "sable")
+        self.inter_agent_bridge = _inherit("inter_agent_bridge", lambda: __import__(
+            "opensable.core.inter_agent_bridge", fromlist=["InterAgentBridge"]
+        ).InterAgentBridge(
+            profile=_profile,
+            shared_dir=Path("data") / "shared_learnings",
+            local_dir=data_dir / "inter_agent",
+        ), "Inter-agent bridge")
+
+        self.ultra_ltm = _inherit("ultra_ltm", lambda: __import__(
+            "opensable.core.ultra_ltm", fromlist=["UltraLongTermMemory"]
+        ).UltraLongTermMemory(data_dir=data_dir / "ultra_ltm"), "Ultra long-term memory")
+
+        self.self_benchmark = _inherit("self_benchmark", lambda: __import__(
+            "opensable.core.self_benchmark", fromlist=["SelfBenchmark"]
+        ).SelfBenchmark(data_dir=data_dir / "self_benchmark"), "Self benchmark")
 
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
@@ -818,11 +844,38 @@ class AutonomousMode:
             except Exception as e:
                 logger.debug(f"Emotion modulation skipped: {e}")
 
-        # Apply emotional modulation to priority scores
+        # Connectome routing bias — map module biases to task types
+        connectome_boost = {}
+        cb = getattr(self, "_connectome_biases", {})
+        if cb:
+            # decision bias → goal/proactive tasks
+            if cb.get("decision", 0) > 0.5:
+                connectome_boost["goal"] = connectome_boost.get("goal", 0) + int(cb["decision"] * 3)
+                connectome_boost["proactive"] = connectome_boost.get("proactive", 0) + int(cb["decision"] * 2)
+            # reflex bias → maintenance/urgent tasks
+            if cb.get("reflex", 0) > 0.3:
+                connectome_boost["system_maintenance"] = connectome_boost.get("system_maintenance", 0) + int(cb["reflex"] * 3)
+                connectome_boost["trading_alert"] = connectome_boost.get("trading_alert", 0) + int(cb["reflex"] * 2)
+            # memory bias → research/learning tasks
+            if cb.get("memory", 0) > 0.5:
+                connectome_boost["research"] = connectome_boost.get("research", 0) + int(cb["memory"] * 2)
+                connectome_boost["self_improve"] = connectome_boost.get("self_improve", 0) + int(cb["memory"] * 2)
+            # action bias → execute immediately
+            if cb.get("action", 0) > 0.4:
+                connectome_boost["command"] = connectome_boost.get("command", 0) + int(cb["action"] * 3)
+            # emotion bias → creative tasks
+            if cb.get("emotion", 0) > 0.5:
+                connectome_boost["creative"] = connectome_boost.get("creative", 0) + int(cb["emotion"] * 2)
+                connectome_boost["proactive"] = connectome_boost.get("proactive", 0) + 1
+            if connectome_boost:
+                logger.debug(f"Connectome priority modulation: {connectome_boost}")
+
+        # Apply emotional + connectome modulation to priority scores
         for task in self.task_queue:
             base = task.get("priority", 5)
             boost = emotion_boost.get(task.get("type", ""), 0)
-            task["_effective_priority"] = base + boost
+            c_boost = connectome_boost.get(task.get("type", ""), 0)
+            task["_effective_priority"] = base + boost + c_boost
 
         # Sort by effective priority (higher first)
         self.task_queue.sort(key=lambda t: t.get("_effective_priority", t.get("priority", 0)), reverse=True)
@@ -1322,14 +1375,18 @@ class AutonomousMode:
         """Run all cognitive modules for the current tick.
 
         Order:
-          0. Connectome — propagate signals through FlyWire-derived neural colony
-          1. Cognitive memory — decay + consolidation + attention filter
-          2. Self-reflection — pattern detection + stagnation check (with real data)
-          3. Skill evolution — natural selection + mutation + niche
-          4. Pattern learner — windowed analysis + snapshots + rules
-          5. Git brain — write episode + optional auto-commit
-          6. Inner life — System 1 LLM pass (emotion, impulse, fantasy, landscape)
-          7. Connectome Hebbian learning — update wiring from task outcomes
+          0.  Connectome — propagate signals through FlyWire-derived neural colony
+          1.  Cognitive memory — decay + consolidation + attention filter
+          2.  Self-reflection — pattern detection + stagnation check (with real data)
+          3.  Skill evolution — natural selection + mutation + niche
+          4.  Pattern learner — windowed analysis + snapshots + rules
+          5.  Git brain — write episode + optional auto-commit
+          6.  Inner life — System 1 LLM pass (emotion, impulse, fantasy, landscape)
+          7.  Connectome Hebbian learning — update wiring from task outcomes
+          8.  Deep planner — execute ready plan steps + re-plan on failure
+          9.  Inter-agent bridge — export learnings + import sibling knowledge
+          10. Ultra-LTM — consolidate weeks of memories into durable patterns
+          11. Self-benchmark — quantified internal performance assessment
         """
         try:
             # ── 0. Connectome — bio-inspired signal routing ──
@@ -1371,6 +1428,7 @@ class AutonomousMode:
                     # Propagate through the connectome
                     results = connectome.propagate(max_cycles=3)
                     connectome_biases = connectome.compute_routing_bias(results)
+                    self._connectome_biases = connectome_biases
 
                     if results:
                         fired_modules = connectome.get_firing_modules(results)
@@ -1618,6 +1676,157 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Connectome learning failed: {e}")
 
+            # ── 8. Deep planner — execute ready plan steps ──
+            if self.deep_planner:
+                try:
+                    ready_steps = self.deep_planner.get_next_steps(max_total=2)
+                    for plan_id, step in ready_steps:
+                        self.deep_planner.mark_step_running(plan_id, step.step_id)
+                        try:
+                            start_t = time.monotonic()
+                            result = await self._execute_via_react(step.description)
+                            dur = (time.monotonic() - start_t) * 1000
+                            self.deep_planner.mark_step_done(
+                                plan_id, step.step_id,
+                                result=str(result)[:500] if result else "",
+                                duration_ms=dur,
+                            )
+                        except Exception as step_err:
+                            self.deep_planner.mark_step_failed(
+                                plan_id, step.step_id, error=str(step_err)[:300]
+                            )
+                            # Check if plan needs replanning
+                            plan = self.deep_planner.get_plan(plan_id)
+                            if plan and plan.has_failed_blocking() and plan.replan_count < 3:
+                                await self.deep_planner.replan(plan_id, self.agent.llm)
+
+                    # Create plans for complex goal tasks in queue
+                    if self.agent.llm and self.tick % 10 == 0:
+                        for task in self.task_queue:
+                            if (
+                                task.get("type") == "goal"
+                                and not task.get("_has_plan")
+                                and len(task.get("description", "")) > 50
+                            ):
+                                plan = await self.deep_planner.create_plan(
+                                    goal=task["description"],
+                                    llm=self.agent.llm,
+                                    context=f"Tick {self.tick}, queue={len(self.task_queue)}",
+                                )
+                                if plan:
+                                    task["_has_plan"] = True
+                                    task["_plan_id"] = plan.plan_id
+                                break  # One plan per tick to avoid LLM overload
+                except Exception as e:
+                    logger.debug(f"Deep planner tick failed: {e}")
+
+            # ── 9. Inter-agent bridge — sync learnings ──
+            if self.inter_agent_bridge:
+                try:
+                    # Build activity summary for export
+                    recent_summary_parts = []
+                    for t in self.completed_tasks[-10:]:
+                        status = "OK" if t.get("status") == "done" else "FAIL"
+                        recent_summary_parts.append(
+                            f"[{status}] {t.get('type', '')}: {t.get('description', '')[:100]}"
+                        )
+                    activity = "\n".join(recent_summary_parts) if recent_summary_parts else ""
+
+                    # Build context for import relevance
+                    context_parts = []
+                    if self.goal_manager:
+                        for g in self.goal_manager.goals.values():
+                            if g.status in (GoalStatus.ACTIVE, GoalStatus.IN_PROGRESS):
+                                context_parts.append(f"Goal: {g.description[:100]}")
+                    context_parts.append(f"Tick: {self.tick}, Queue: {len(self.task_queue)}")
+                    context = "\n".join(context_parts)
+
+                    imported = await self.inter_agent_bridge.sync(
+                        llm=self.agent.llm,
+                        tick=self.tick,
+                        recent_activity=activity,
+                        current_context=context,
+                    )
+
+                    # Inject imported learnings as task hints in cognitive memory
+                    if imported and self.cognitive_memory:
+                        for l in imported:
+                            self.cognitive_memory.add_memory(
+                                f"[IMPORTED from {l.source_agent}] {l.title}: {l.content[:200]}",
+                                category="inter_agent",
+                                importance=l.confidence * 0.8,
+                            )
+                except Exception as e:
+                    logger.debug(f"Inter-agent bridge tick failed: {e}")
+
+            # ── 10. Ultra-LTM — consolidate long-term patterns ──
+            if self.ultra_ltm and self.agent.llm:
+                try:
+                    # Gather raw memories for consolidation
+                    raw_memories = []
+                    for t in self.completed_tasks:
+                        raw_memories.append(
+                            f"[{t.get('status','?')}] {t.get('type', '')}: "
+                            f"{t.get('description', '')[:150]} → {t.get('result', '')[:100]}"
+                        )
+                    # Add cognitive memories if available
+                    if self.cognitive_memory and hasattr(self.cognitive_memory, "get_recent"):
+                        try:
+                            cog_mems = self.cognitive_memory.get_recent(limit=50)
+                            for cm in cog_mems:
+                                if isinstance(cm, dict):
+                                    raw_memories.append(cm.get("text", str(cm))[:200])
+                                else:
+                                    raw_memories.append(str(cm)[:200])
+                        except Exception:
+                            pass
+
+                    new_patterns = await self.ultra_ltm.consolidate(
+                        llm=self.agent.llm,
+                        raw_memories=raw_memories,
+                        tick=self.tick,
+                    )
+
+                    # Generate wisdom summary periodically
+                    if new_patterns > 0 or self.tick % 100 == 0:
+                        await self.ultra_ltm.generate_wisdom_summary(self.agent.llm)
+                except Exception as e:
+                    logger.debug(f"Ultra-LTM tick failed: {e}")
+
+            # ── 11. Self-benchmark — quantified assessment ──
+            if self.self_benchmark:
+                try:
+                    agent_state = {
+                        "completed_tasks": self.completed_tasks,
+                        "task_queue": self.task_queue,
+                        "inner_life": self.inner_life,
+                        "cognitive_memory_count": (
+                            getattr(self.cognitive_memory, "count", 0)
+                            if self.cognitive_memory else 0
+                        ),
+                        "deep_planner": self.deep_planner,
+                        "ultra_ltm": self.ultra_ltm,
+                        "inter_agent_bridge": self.inter_agent_bridge,
+                        "connectome": connectome,
+                        "tick": self.tick,
+                    }
+                    snapshot = await self.self_benchmark.run_benchmarks(
+                        tick=self.tick,
+                        agent_state=agent_state,
+                    )
+                    if snapshot and self.trace_exporter:
+                        self.trace_exporter.record_event(
+                            "self_benchmark",
+                            summary=(
+                                f"Autonomy={snapshot.autonomy_score}/100 "
+                                f"regressions={snapshot.regressions}"
+                            ),
+                            tick=self.tick,
+                            data=snapshot.results,
+                        )
+                except Exception as e:
+                    logger.debug(f"Self-benchmark tick failed: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -1722,6 +1931,14 @@ class AutonomousMode:
         connectome = getattr(self.agent, "connectome", None)
         if connectome:
             status["connectome"] = connectome.get_stats()
+        if self.deep_planner:
+            status["deep_planner"] = self.deep_planner.get_stats()
+        if self.inter_agent_bridge:
+            status["inter_agent_bridge"] = self.inter_agent_bridge.get_stats()
+        if self.ultra_ltm:
+            status["ultra_ltm"] = self.ultra_ltm.get_stats()
+        if self.self_benchmark:
+            status["self_benchmark"] = self.self_benchmark.get_stats()
         return status
 
     def add_task(self, task: Dict):

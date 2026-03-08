@@ -19,17 +19,21 @@
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**, **deep multi-step planner (10+ step DAG planning with replanning)**, **inter-agent learning bridge (shared knowledge vault between agents)**, **ultra-long-term memory (weeks/months pattern consolidation)**, **quantified self-benchmarking (8-suite autonomy scoring)**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
 ### 🆕 What's new in v1.3.0
 - **Connectome Neural Colony**, agent cognitive modules wired following the real *Drosophila melanogaster* brain connectome (FlyWire FAFB v783, 139K neurons, 3.7M synapses). Signals propagate through 8 brain regions with Hebbian learning — connections that produce good outcomes strengthen over time. Each agent evolves a unique cognitive profile. Dashboard visualization with live SVG brain map
+- **Deep Multi-Step Planner**, LLM decomposes complex goals into DAGs of 5–15 ordered steps with dependency tracking. Steps execute in dependency order, failed steps trigger automatic re-planning (up to 3x). Plan templates are cached for similar goals. Dashboard shows step-by-step progress with color-coded status blocks
+- **Inter-Agent Learning Bridge**, shared knowledge vault between Sable and Nexus Erebus. Each agent exports strategies, patterns, and insights to a shared JSONL vault; sibling agents import relevant learnings scored by LLM relevance filtering. Tracks provenance, apply rate, and benefit scores
+- **Ultra-Long-Term Memory**, periodic LLM consolidation of weeks/months of task outcomes into durable high-level patterns (behavioral patterns, task strategies, error patterns, capability maps). Temporal decay removes weak patterns; reinforcement strengthens recurring insights. Generates a “wisdom summary” of accumulated knowledge
+- **Quantified Self-Benchmarking**, 8 internal benchmark suites the agent runs on itself every 25 ticks: task success rate, planning depth, error recovery, memory utilization, emotional stability, decision speed, learning rate, inter-agent synergy. Computes a weighted autonomy score (0–100) with regression detection and trend tracking
 - **Proactive Reasoning Engine**, LLM-driven autonomous task generation — every N ticks the agent surveys world state and proposes what to do next, with risk filtering, dedup, and JSONL audit trail
 - **ReAct Executor**, Reasoning + Acting loop (Yao et al. 2022) for multi-step task execution — the agent chains tool calls with intermediate reasoning until the task is complete
 - **GitHub Integration**, full GitHub API skill with 13 tools — create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
-- **Expanded Autonomous Pipeline**, proactive tick phase, proactive task execution, ReAct bridge for unknown task types, 9-phase tick loop
+- **Expanded Autonomous Pipeline**, 14-phase tick loop with deep planning, inter-agent sync, LTM consolidation, and self-benchmarking
 - **518 tests**, comprehensive test suite (up from 463)
 
 <details>
@@ -686,6 +690,13 @@ graph LR
     subgraph "Neural Architecture"
         NC[Connectome Colony]
     end
+
+    subgraph "Deep Autonomy"
+        DP[Deep Planner]
+        IAB[Inter-Agent Bridge]
+        ULTM[Ultra-LTM]
+        SB[Self-Benchmark]
+    end
     
     subgraph "Integration Layer"
         AGENT[Agentic AI Core]
@@ -721,6 +732,11 @@ graph LR
     AGENT --> GH
     AGENT --> NC
 
+    AGENT --> DP
+    AGENT --> IAB
+    AGENT --> ULTM
+    AGENT --> SB
+
     NC --> AGENT
     IL --> NC
     NC --> G
@@ -740,6 +756,11 @@ graph LR
     RE --> T
     GH --> GITHUB
     PR --> G
+
+    DP --> RE
+    IAB -.-> IAB
+    ULTM --> CM
+    SB --> AGENT
     
     T --> TASKS
     G --> ENV
@@ -791,14 +812,36 @@ Three modules transform the agent from a reactive tool-executor into a proactive
 | **ReAct Executor** | ReAct (Yao et al. 2022) | Multi-step Thought→Action→Observation loop — chains tool calls with intermediate reasoning until task is complete |
 | **GitHub Skill** | Developer workflow automation | 13 tools: issues, PRs, branches, code search, releases, workflows — PyGithub + `gh` CLI fallback |
 
-All modules plug into the **10-phase tick pipeline** (`autonomous_mode.py`):
+### Deep Autonomy Modules (v1.3+)
+
+Four modules close the gap to full autonomy:
+
+| Module | File | What It Does |
+|--------|------|---------------|
+| **Deep Planner** | `deep_planner.py` | LLM decomposes goals into 5–15 step DAGs with dependency tracking. Executes steps in dependency order, re-plans on failure (up to 3x). Caches plan templates for efficiency |
+| **Inter-Agent Bridge** | `inter_agent_bridge.py` | Shared JSONL knowledge vault at `data/shared_learnings/`. Agents export strategies/patterns/insights; siblings import with LLM relevance scoring. Tracks provenance and benefit |
+| **Ultra-LTM** | `ultra_ltm.py` | Consolidates weeks of raw memories into durable patterns (behavioral, strategic, error, capability). Temporal decay forgets weak patterns; reinforcement strengthens recurring insights |
+| **Self-Benchmark** | `self_benchmark.py` | 8 benchmark suites (task success, planning depth, error recovery, memory utilization, emotional stability, decision speed, learning rate, inter-agent synergy). Weighted autonomy score 0–100 with regression detection |
+
+All modules plug into the **14-phase tick pipeline** (`autonomous_mode.py`):
 
 ```
 tick start → connectome signal routing (AL/OL/PI/LPC/LH stimulation → 3-cycle propagation → routing bias)
           → discover → plan → execute → sub-agents → self-improve
           → proactive_tick (survey state → propose actions → inject tasks)
-          → cognitive_tick (memory decay → reflection → evolution → patterns → git episode → inner life)
-          → Hebbian learning (every 5 ticks: performance → weight mutation → persist)
+          → cognitive_tick:
+              0. Connectome signal propagation
+              1. Cognitive memory decay + consolidation
+              2. Self-reflection + stagnation check
+              3. Skill evolution (natural selection + mutation)
+              4. Pattern learner (windowed analysis)
+              5. Git brain (episode write)
+              6. Inner life (System 1 LLM pass)
+              7. Connectome Hebbian learning (every 5 ticks)
+              8. Deep planner (execute ready steps + re-plan on failure)
+              9. Inter-agent bridge (export learnings + import sibling knowledge)
+             10. Ultra-LTM (consolidate long-term patterns)
+             11. Self-benchmark (quantified assessment every 25 ticks)
           → maintenance → tick end
 ```
 

@@ -223,6 +223,10 @@ class SableAgent:
         self.react_executor = None       # ReActExecutor
         self.github_skill = None         # GitHubSkill
         self.connectome = None           # NeuralColony (FlyWire connectome)
+        self.deep_planner = None         # DeepPlanner (10+ step DAG planning)
+        self.inter_agent_bridge = None   # InterAgentBridge (shared learning vault)
+        self.ultra_ltm = None            # UltraLongTermMemory (weeks/months consolidation)
+        self.self_benchmark = None       # SelfBenchmark (quantified self-assessment)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -292,6 +296,10 @@ class SableAgent:
             ("ReAct executor", self._init_react_executor),
             ("GitHub skill", self._init_github_skill),
             ("Connectome", self._init_connectome),
+            ("Deep planner", self._init_deep_planner),
+            ("Inter-agent bridge", self._init_inter_agent_bridge),
+            ("Ultra long-term memory", self._init_ultra_ltm),
+            ("Self benchmark", self._init_self_benchmark),
         ]:
             try:
                 await init_fn()
@@ -432,6 +440,34 @@ class SableAgent:
         from .connectome import NeuralColony
         self.connectome = NeuralColony(
             data_dir=Path(self._data_dir) / "connectome"
+        )
+
+    async def _init_deep_planner(self):
+        from .deep_planner import DeepPlanner
+        self.deep_planner = DeepPlanner(
+            data_dir=Path(self._data_dir) / "deep_planner"
+        )
+
+    async def _init_inter_agent_bridge(self):
+        from .inter_agent_bridge import InterAgentBridge
+        import os
+        _profile = getattr(self.config, "profile_name", None) or os.environ.get("SABLE_PROFILE", "sable")
+        self.inter_agent_bridge = InterAgentBridge(
+            profile=_profile,
+            shared_dir=Path("data") / "shared_learnings",
+            local_dir=Path(self._data_dir) / "inter_agent",
+        )
+
+    async def _init_ultra_ltm(self):
+        from .ultra_ltm import UltraLongTermMemory
+        self.ultra_ltm = UltraLongTermMemory(
+            data_dir=Path(self._data_dir) / "ultra_ltm"
+        )
+
+    async def _init_self_benchmark(self):
+        from .self_benchmark import SelfBenchmark
+        self.self_benchmark = SelfBenchmark(
+            data_dir=Path(self._data_dir) / "self_benchmark"
         )
 
     async def _init_inner_life(self):

@@ -263,6 +263,12 @@ class Gateway:
         # Connectome REST endpoint
         app.router.add_get("/api/connectome", self._connectome_handler)
 
+        # New cognitive module endpoints
+        app.router.add_get("/api/deep-planner", self._deep_planner_handler)
+        app.router.add_get("/api/inter-agent", self._inter_agent_handler)
+        app.router.add_get("/api/ultra-ltm", self._ultra_ltm_handler)
+        app.router.add_get("/api/self-benchmark", self._self_benchmark_handler)
+
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
         app.router.add_get("/monitor", self._monitor_page_handler)
@@ -295,7 +301,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -413,6 +419,54 @@ class Gateway:
             return web.json_response(data, headers={"Access-Control-Allow-Origin": "*"})
         except Exception as e:
             logger.error(f"Connectome endpoint error: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _deep_planner_handler(self, request: web.Request) -> web.Response:
+        """Return deep planner stats as JSON."""
+        try:
+            planner = getattr(self.agent, "deep_planner", None)
+            if not planner and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                planner = getattr(self.agent.autonomous, "deep_planner", None)
+            if not planner:
+                return web.json_response({"error": "Deep planner not initialised"}, status=404)
+            return web.json_response(planner.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _inter_agent_handler(self, request: web.Request) -> web.Response:
+        """Return inter-agent bridge stats as JSON."""
+        try:
+            bridge = getattr(self.agent, "inter_agent_bridge", None)
+            if not bridge and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                bridge = getattr(self.agent.autonomous, "inter_agent_bridge", None)
+            if not bridge:
+                return web.json_response({"error": "Inter-agent bridge not initialised"}, status=404)
+            return web.json_response(bridge.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _ultra_ltm_handler(self, request: web.Request) -> web.Response:
+        """Return ultra-LTM stats as JSON."""
+        try:
+            ltm = getattr(self.agent, "ultra_ltm", None)
+            if not ltm and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                ltm = getattr(self.agent.autonomous, "ultra_ltm", None)
+            if not ltm:
+                return web.json_response({"error": "Ultra-LTM not initialised"}, status=404)
+            return web.json_response(ltm.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _self_benchmark_handler(self, request: web.Request) -> web.Response:
+        """Return self-benchmark stats as JSON."""
+        try:
+            bench = getattr(self.agent, "self_benchmark", None)
+            if not bench and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                bench = getattr(self.agent.autonomous, "self_benchmark", None)
+            if not bench:
+                return web.json_response({"error": "Self benchmark not initialised"}, status=404)
+            return web.json_response(bench.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
     # ── Generated files ──────────────────────────────────────────────────────
@@ -1734,6 +1788,54 @@ class Gateway:
                     result["connectome"] = None
             else:
                 result["connectome"] = None
+
+            # ── 24. Deep planner ──────────────────────────────────────────
+            deep_planner = getattr(self.agent, "deep_planner", None)
+            if not deep_planner and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                deep_planner = getattr(self.agent.autonomous, "deep_planner", None)
+            if deep_planner:
+                try:
+                    result["deep_planner"] = deep_planner.get_stats()
+                except Exception:
+                    result["deep_planner"] = None
+            else:
+                result["deep_planner"] = None
+
+            # ── 25. Inter-agent bridge ────────────────────────────────────
+            bridge = getattr(self.agent, "inter_agent_bridge", None)
+            if not bridge and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                bridge = getattr(self.agent.autonomous, "inter_agent_bridge", None)
+            if bridge:
+                try:
+                    result["inter_agent_bridge"] = bridge.get_stats()
+                except Exception:
+                    result["inter_agent_bridge"] = None
+            else:
+                result["inter_agent_bridge"] = None
+
+            # ── 26. Ultra-LTM ─────────────────────────────────────────────
+            ltm = getattr(self.agent, "ultra_ltm", None)
+            if not ltm and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                ltm = getattr(self.agent.autonomous, "ultra_ltm", None)
+            if ltm:
+                try:
+                    result["ultra_ltm"] = ltm.get_stats()
+                except Exception:
+                    result["ultra_ltm"] = None
+            else:
+                result["ultra_ltm"] = None
+
+            # ── 27. Self-benchmark ────────────────────────────────────────
+            bench = getattr(self.agent, "self_benchmark", None)
+            if not bench and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                bench = getattr(self.agent.autonomous, "self_benchmark", None)
+            if bench:
+                try:
+                    result["self_benchmark"] = bench.get_stats()
+                except Exception:
+                    result["self_benchmark"] = None
+            else:
+                result["self_benchmark"] = None
 
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")
