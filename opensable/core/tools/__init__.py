@@ -153,12 +153,14 @@ class ToolRegistry(
         from ...skills.media.ocr_skill import OCRSkill
         from ...skills.automation.calendar_skill import CalendarSkill as GoogleCalendarSkill
         from ...skills.automation.email_skill import EmailSkill
+        from ...skills.automation.news_reader_skill import NewsReaderSkill
 
         self.document_skill = DocumentSkill(config)
         self.clipboard_skill = ClipboardSkill(config)
         self.ocr_skill = OCRSkill(config)
         self.google_calendar_skill = GoogleCalendarSkill(config)
         self.email_skill = EmailSkill(config)
+        self.news_reader_skill = NewsReaderSkill(config)
 
         # Trading skill (conditional)
         self.trading_skill = None
@@ -229,6 +231,16 @@ class ToolRegistry(
         self.register("calendar_list_events", self._calendar_list_events_tool)
         self.register("calendar_add_event", self._calendar_add_event_tool)
         self.register("calendar_delete_event", self._calendar_delete_event_tool)
+
+        # ── News Reader ───────────────────────────────────────────────────
+        self.register("news_get_world_news", self._news_get_world_news_tool)
+        self.register("news_search", self._news_search_tool)
+        self.register("news_country_brief", self._news_country_brief_tool)
+        self.register("news_get_conflicts", self._news_get_conflicts_tool)
+        self.register("news_get_macro_signals", self._news_get_macro_signals_tool)
+        self.register("news_get_market_quotes", self._news_get_market_quotes_tool)
+        self.register("news_get_crypto_quotes", self._news_get_crypto_quotes_tool)
+        self.register("news_digest", self._news_digest_tool)
 
         # ── Clipboard ─────────────────────────────────────────────────────────
         self.register("clipboard_copy", self._clipboard_copy_tool)
@@ -405,6 +417,7 @@ class ToolRegistry(
             ("OCR", self.ocr_skill),
             ("Google Calendar", self.google_calendar_skill),
             ("Email", self.email_skill),
+            ("News Reader", self.news_reader_skill),
         ]
         for name, skill in _productivity_skills:
             try:

@@ -3,6 +3,7 @@ Productivity tools — documents, email, calendar, clipboard, OCR
 """
 
 import asyncio
+import json
 import logging
 import os
 import subprocess
@@ -488,6 +489,145 @@ class ProductivityToolsMixin:
 
         # Fall back to local
         return await self._calendar_tool({"action": "delete", "id": event_id})
+
+    # ========== NEWS READER TOOLS (WorldMonitor) ==========
+
+    async def _news_get_world_news_tool(self, params: Dict) -> str:
+        """Get world news headlines from multiple RSS sources."""
+        max_items = int(params.get("max_items", 15))
+        try:
+            items = await self.news_reader_skill.get_world_news(max_items=max_items)
+            if not items:
+                return "📰 No news headlines available right now."
+            result = f"📰 **Top {len(items)} Headlines:**\n\n"
+            for i, h in enumerate(items, 1):
+                result += f"{i}. **[{h.get('source', '')}]** {h.get('title', '')}\n"
+                if h.get("link"):
+                    result += f"   🔗 {h['link']}\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ Failed to fetch news: {e}"
+
+    async def _news_search_tool(self, params: Dict) -> str:
+        """Search for news on a specific topic via GDELT."""
+        query = params.get("query", "")
+        if not query:
+            return "⚠️ Please provide a search query."
+        max_items = int(params.get("max_items", 15))
+        try:
+            items = await self.news_reader_skill.search_news(query=query, max_items=max_items)
+            if not items:
+                return f"📰 No news found for: {query}"
+            result = f"🔍 **News for '{query}' ({len(items)} results):**\n\n"
+            for i, a in enumerate(items, 1):
+                result += f"{i}. **{a.get('title', '')}**\n"
+                if a.get("source"):
+                    result += f"   Source: {a['source']}\n"
+                if a.get("link"):
+                    result += f"   🔗 {a['link']}\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ News search failed: {e}"
+
+    async def _news_country_brief_tool(self, params: Dict) -> str:
+        """Get an intelligence brief for a specific country."""
+        code = params.get("country_code", "")
+        if not code:
+            return "⚠️ Please provide a country_code (e.g. 'US', 'CN', 'UA')."
+        try:
+            brief = await self.news_reader_skill.get_country_brief(code)
+            if brief.get("error"):
+                return f"❌ Country brief failed: {brief['error']}"
+            return f"🌍 **Intel Brief — {code.upper()}:**\n\n```json\n{json.dumps(brief, indent=2, default=str)[:3000]}\n```"
+        except Exception as e:
+            return f"❌ Country brief failed: {e}"
+
+    async def _news_get_conflicts_tool(self, params: Dict) -> str:
+        """Get recent armed conflict events."""
+        max_items = int(params.get("max_items", 20))
+        try:
+            events = await self.news_reader_skill.get_conflicts(max_items=max_items)
+            if not events:
+                return "⚔️ No recent conflict events."
+            result = f"⚔️ **Recent Conflicts ({len(events)}):**\n\n"
+            for ev in events:
+                result += f"• **{ev.get('country', '?')}** — {ev.get('type', '')}\n"
+                if ev.get("location"):
+                    result += f"  📍 {ev['location']}\n"
+                if ev.get("fatalities"):
+                    result += f"  💀 {ev['fatalities']} fatalities\n"
+                if ev.get("notes"):
+                    result += f"  {ev['notes'][:100]}\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ Conflict data failed: {e}"
+
+    async def _news_get_macro_signals_tool(self, params: Dict) -> str:
+        """Get macroeconomic signals."""
+        try:
+            data = await self.news_reader_skill.get_macro_signals()
+            if not data or data.get("error"):
+                return "📊 No macro signals available."
+            result = "📊 **Macroeconomic Signals:**\n\n"
+            for k, v in list(data.items())[:15]:
+                if k.startswith("_"):
+                    continue
+                result += f"• **{k}:** {v}\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ Macro signals failed: {e}"
+
+    async def _news_get_market_quotes_tool(self, params: Dict) -> str:
+        """Get stock market quotes."""
+        symbols = params.get("symbols")
+        if isinstance(symbols, str):
+            symbols = [s.strip() for s in symbols.split(",")]
+        try:
+            quotes = await self.news_reader_skill.get_market_quotes(symbols=symbols)
+            if not quotes:
+                return "📈 No market data available."
+            result = "📈 **Market Quotes:**\n\n"
+            for q in quotes:
+                sym = q.get("symbol", q.get("ticker", "?"))
+                price = q.get("price", q.get("regularMarketPrice", "?"))
+                change = q.get("change", q.get("regularMarketChange", ""))
+                result += f"• **{sym}:** ${price}"
+                if change:
+                    result += f" ({'+' if float(str(change).replace('%','')) > 0 else ''}{change})"
+                result += "\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ Market quotes failed: {e}"
+
+    async def _news_get_crypto_quotes_tool(self, params: Dict) -> str:
+        """Get cryptocurrency quotes."""
+        symbols = params.get("symbols")
+        if isinstance(symbols, str):
+            symbols = [s.strip() for s in symbols.split(",")]
+        try:
+            quotes = await self.news_reader_skill.get_crypto_quotes(symbols=symbols)
+            if not quotes:
+                return "🪙 No crypto data available."
+            result = "🪙 **Crypto Quotes:**\n\n"
+            for q in quotes:
+                name = q.get("name", q.get("id", "?"))
+                price = q.get("price", q.get("current_price", "?"))
+                change24 = q.get("change_24h", q.get("price_change_percentage_24h", ""))
+                result += f"• **{name}:** ${price}"
+                if change24:
+                    result += f" ({'+' if float(str(change24).replace('%','')) > 0 else ''}{change24}%)"
+                result += "\n"
+            return result.strip()
+        except Exception as e:
+            return f"❌ Crypto quotes failed: {e}"
+
+    async def _news_digest_tool(self, params: Dict) -> str:
+        """Get a complete news digest."""
+        try:
+            digest = await self.news_reader_skill.get_news_digest()
+            return f"📰 **World News Digest**\n\n{digest}"
+        except Exception as e:
+            return f"❌ News digest failed: {e}"
 
     # ========== CLIPBOARD TOOLS ==========
 

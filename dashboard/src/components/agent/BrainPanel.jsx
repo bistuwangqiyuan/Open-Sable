@@ -4,7 +4,7 @@ import {
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
   User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
   AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
-  BookMarked,
+  BookMarked, Newspaper,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1030,6 +1030,71 @@ function BenchmarkCards({ benchmarks }) {
 }
 
 
+// ── News Headlines ───────────────────────────────────────────────────
+function NewsHeadlines({ articles }) {
+  if (!articles || !articles.length) return <div style={s.empty}>No news data</div>;
+  const CATEGORY_COLORS = {
+    politics: '#ef4444', tech: '#7c3aed', business: '#f59e0b',
+    science: '#06b6d4', health: '#22c55e', sports: '#3b82f6',
+    entertainment: '#ec4899', world: '#8b5cf6', war: '#dc2626',
+    economy: '#eab308', crypto: '#a78bfa',
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
+      {articles.slice(0, 20).map((a, i) => {
+        const cat = (a.category || a.section || '').toLowerCase();
+        const catColor = CATEGORY_COLORS[cat] || 'var(--text-muted)';
+        const source = a.source || a.provider || '';
+        const title = a.title || a.headline || '(no title)';
+        const ts = a.published_at || a.timestamp || a.date;
+        return (
+          <div key={i} style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+            display: 'flex', flexDirection: 'column', gap: 3,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {cat && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                  color: catColor, letterSpacing: '0.5px',
+                  padding: '1px 6px', borderRadius: 4,
+                  background: `${catColor}18`,
+                }}>{cat}</span>
+              )}
+              {source && (
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                  {source}
+                </span>
+              )}
+              {ts && (
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                  {ago(ts)}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+              {a.url ? (
+                <a href={a.url} target="_blank" rel="noopener noreferrer" style={{
+                  color: 'var(--text-primary)', textDecoration: 'none',
+                }}>
+                  {title}
+                </a>
+              ) : title}
+            </div>
+            {a.summary && (
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                {a.summary.slice(0, 120)}{a.summary.length > 120 ? '…' : ''}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 // ══════════════════════════════════════════════════════════════════════
 //  MAIN: BrainPanel
 // ══════════════════════════════════════════════════════════════════════
@@ -1086,6 +1151,9 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const calendar       = data?.calendar || [];
   const conversations  = data?.conversations || [];
   const benchmarks     = data?.benchmarks || [];
+
+  // Source 22 – News
+  const newsCache      = data?.news_cache || [];
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -1368,6 +1436,14 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
             <div style={{ ...s.section, gridColumn: '1 / -1' }}>
               <div style={s.sectionTitle}><Award size={12} /> Benchmarks ({benchmarks.length} suites)</div>
               <BenchmarkCards benchmarks={benchmarks} />
+            </div>
+          )}
+
+          {/* ── News Headlines ──────────────────────────────────── */}
+          {newsCache.length > 0 && (
+            <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+              <div style={s.sectionTitle}><Newspaper size={12} /> News Headlines ({newsCache.length})</div>
+              <NewsHeadlines articles={newsCache} />
             </div>
           )}
 

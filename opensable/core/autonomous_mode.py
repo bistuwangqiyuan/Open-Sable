@@ -378,6 +378,10 @@ class AutonomousMode:
         if "trading" in self.enabled_sources:
             await self._check_trading()
 
+        # Check world news for situational awareness
+        if "news" in self.enabled_sources:
+            await self._check_news()
+
         # Check for scheduled goals (if Agentic AI available)
         if self.goal_manager:
             await self._check_goals()
@@ -649,6 +653,43 @@ class AutonomousMode:
 
         except Exception as e:
             logger.error(f"Failed to check trading: {e}")
+
+    async def _check_news(self):
+        """Check world news for situational awareness and actionable events."""
+        try:
+            news_skill = getattr(self.agent.tools, "news_reader_skill", None)
+            if not news_skill or not news_skill._ready:
+                return
+
+            digest = await news_skill.get_news_digest()
+            if not digest or "(no news available)" in digest:
+                logger.debug("News: no digest available")
+                return
+
+            # Use LLM to extract actionable items from the news digest
+            if self.agent.llm:
+                messages = [
+                    {"role": "system", "content": (
+                        "You are an autonomous agent's world-news analyst. "
+                        "Review the news digest and extract items that are actionable, "
+                        "noteworthy, or worth following up on. Think about: breaking events, "
+                        "geopolitical shifts, market-moving news, tech breakthroughs, "
+                        "security threats. Output ONLY valid JSON array. Each item: "
+                        '{"description": "what happened and why it matters", "priority": 1-10, '
+                        '"type": "news_followup"}. If nothing actionable, return [].'
+                    )},
+                    {"role": "user", "content": f"News digest:\n{digest[:3000]}"},
+                ]
+                try:
+                    response = await self.agent.llm.invoke_with_tools(messages, [])
+                    self._inject_llm_tasks(response.get("text", ""), source="news")
+                except Exception as e:
+                    logger.debug(f"News LLM analysis failed: {e}")
+            else:
+                logger.debug("Checked news (no LLM for analysis)")
+
+        except Exception as e:
+            logger.debug(f"News check skipped: {e}")
 
     async def _check_goals(self):
         """Check for pending goals (Agentic AI mode)"""

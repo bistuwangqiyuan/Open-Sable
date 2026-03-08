@@ -104,6 +104,10 @@ class OpenSableConfig(BaseModel):
     slack_signing_secret: Optional[str] = None
     slack_allowed_users: Optional[list] = None
 
+    # News Reader (WorldMonitor)
+    news_enabled: bool = True
+    news_cache_ttl: int = 1800  # seconds (30 min)
+
     # Email & Calendar
     gmail_enabled: bool = True
     gmail_credentials_path: Path = Path("./config/gmail_credentials.json")
@@ -224,7 +228,7 @@ class OpenSableConfig(BaseModel):
     autonomous_mode: bool = False  # Enable autonomous tick loop
     autonomous_check_interval: int = 60  # Seconds between ticks
     autonomous_max_tasks: int = 3  # Max tasks per tick
-    autonomous_sources: str = "calendar,email,system_monitoring"  # comma-separated
+    autonomous_sources: str = "calendar,email,system_monitoring,news"  # comma-separated
 
     # ── Proactive Reasoning ─────────────────────────────────────
     proactive_think_every_n_ticks: int = 5  # LLM reasoning every N ticks
@@ -452,6 +456,9 @@ def load_config() -> OpenSableConfig:
         "imap_port": int(os.getenv("IMAP_PORT", "993")),
         "imap_user": os.getenv("IMAP_USER") or os.getenv("SMTP_USER"),
         "imap_password": os.getenv("IMAP_PASSWORD") or os.getenv("SMTP_PASSWORD"),
+        # News Reader
+        "news_enabled": os.getenv("NEWS_ENABLED", "true").lower() == "true",
+        "news_cache_ttl": int(os.getenv("NEWS_CACHE_TTL", "1800")),
         "calendar_enabled": os.getenv("CALENDAR_ENABLED", "true").lower() == "true",
         "calendar_credentials_path": Path(
             os.getenv("CALENDAR_CREDENTIALS_PATH", "./config/calendar_credentials.json")
@@ -532,7 +539,7 @@ def load_config() -> OpenSableConfig:
         "autonomous_mode": os.getenv("AUTONOMOUS_MODE", "false").lower() == "true",
         "autonomous_check_interval": int(os.getenv("AUTONOMOUS_CHECK_INTERVAL", "60")),
         "autonomous_max_tasks": int(os.getenv("AUTONOMOUS_MAX_TASKS", "3")),
-        "autonomous_sources": os.getenv("AUTONOMOUS_SOURCES", "calendar,email,system_monitoring"),
+        "autonomous_sources": os.getenv("AUTONOMOUS_SOURCES", "calendar,email,system_monitoring,news"),
         # ── Proactive Reasoning ─────────────────────────────────
         "proactive_think_every_n_ticks": int(os.getenv("PROACTIVE_THINK_EVERY_N_TICKS", "5")),
         "proactive_max_risk": os.getenv("PROACTIVE_MAX_RISK", "medium"),

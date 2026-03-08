@@ -183,4 +183,13 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "github_search_code": ("github_search_code", _p),
     "github_get_file": ("github_get_file", _p),
     "github_create_release": ("github_create_release", _p),
+    # News Reader (WorldMonitor)
+    "news_get_world_news": ("news_get_world_news", _p),
+    "news_search": ("news_search", _p),
+    "news_country_brief": ("news_country_brief", _p),
+    "news_get_conflicts": ("news_get_conflicts", _p),
+    "news_get_macro_signals": ("news_get_macro_signals", _p),
+    "news_get_market_quotes": ("news_get_market_quotes", _p),
+    "news_get_crypto_quotes": ("news_get_crypto_quotes", _p),
+    "news_digest": ("news_digest", _p),
 }

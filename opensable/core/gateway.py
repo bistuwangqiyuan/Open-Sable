@@ -1660,6 +1660,25 @@ class Gateway:
                 except Exception:
                     pass
 
+            # ── 22. News cache (news_cache.json) ──────────────────────────────
+            news_file = _data_dir / "news_cache.json"
+            if not news_file.exists():
+                news_file = Path("data") / "news_cache.json"
+            try:
+                if news_file.exists():
+                    nc = json.loads(news_file.read_text("utf-8"))
+                    # Flatten: cache is {key: {data: [...], _ts: float}}
+                    news_items = []
+                    for k, v in nc.items():
+                        d = v.get("data") if isinstance(v, dict) else v
+                        if isinstance(d, list):
+                            news_items.extend(d[:10])
+                        elif isinstance(d, dict) and not d.get("error"):
+                            news_items.append({"key": k, **d})
+                    result["news_cache"] = news_items[:30]
+            except Exception:
+                pass
+
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")
             result["error"] = str(e)
