@@ -19,6 +19,21 @@ function stripThinkBlocks(text) {
 // Tracks whether we're currently inside a <think> block while streaming
 const thinkState = {} // { [sessionId]: { inThink: boolean, buffer: string } }
 
+// ─── Elapsed timer (global interval handle) ───────────────────────────────
+let _elapsedInterval = null
+function _startElapsedTimer(store) {
+  if (_elapsedInterval) return
+  _elapsedInterval = setInterval(() => {
+    const { streaming, streamingSince } = store.getState()
+    if (!streaming || !streamingSince) {
+      clearInterval(_elapsedInterval)
+      _elapsedInterval = null
+      return
+    }
+    store.setState({ elapsed: Math.floor((Date.now() - streamingSince) / 1000) })
+  }, 500)
+}
+
 // ─── Store ─────────────────────────────────────────────────────────────────
 export const useSableStore = create((set, get) => ({
   // Connection
@@ -38,6 +53,13 @@ export const useSableStore = create((set, get) => ({
   // Streaming state
   streaming: false,
   streamingSessionId: null,
+  // 'thinking' = model is processing, no tokens yet
+  // 'responding' = first token received, streaming words
+  streamingPhase: 'thinking',
+  // Timestamp when sendMessage was called (for elapsed counter)
+  streamingSince: null,
+  // Current elapsed seconds (updated every 500ms)
+  elapsed: 0,
 
   // Settings modal
   settingsOpen: false,
@@ -141,8 +163,10 @@ export const useSableStore = create((set, get) => ({
     // Add user message locally
     get()._addMessage(sessionId, { id: uid(), role: 'user', content: text, ts: Date.now() })
 
-    // Show typing indicator
-    set({ streaming: true, streamingSessionId: sessionId })
+    // Show typing indicator + start elapsed timer
+    const now = Date.now()
+    set({ streaming: true, streamingSessionId: sessionId, streamingPhase: 'thinking', streamingSince: now, elapsed: 0 })
+    _startElapsedTimer({ getState: get, setState: set })
 
     // If chatting with a remote agent, use agents.chat proxy
     const isRemote = activeAgent && !agents.find(a => a.is_current && a.name === activeAgent)
@@ -302,6 +326,10 @@ export const useSableStore = create((set, get) => ({
     // Clear think-block state for this session
     delete thinkState[sessionId]
 
+    // Calculate total response duration
+    const { streamingSince } = get()
+    const responseDurationMs = streamingSince ? Date.now() - streamingSince : null
+
     // Strip any remaining think blocks from the final text
     const cleanText = finalText ? stripThinkBlocks(finalText) : null
 
@@ -317,15 +345,16 @@ export const useSableStore = create((set, get) => ({
         ...last,
         content: stripThinkBlocks(finalContent),
         streaming: false,
+        responseDurationMs,
       }
-      set({ messages: { ...messages, [sessionId]: updated }, streaming: false, streamingSessionId: null })
+      set({ messages: { ...messages, [sessionId]: updated }, streaming: false, streamingSessionId: null, streamingSince: null, elapsed: 0, streamingPhase: 'thinking' })
     } else {
       if (cleanText) {
         get()._addMessage(sessionId, {
-          id: uid(), role: 'assistant', content: cleanText, ts: Date.now(), streaming: false,
+          id: uid(), role: 'assistant', content: cleanText, ts: Date.now(), streaming: false, responseDurationMs,
         })
       }
-      set({ streaming: false, streamingSessionId: null })
+      set({ streaming: false, streamingSessionId: null, streamingSince: null, elapsed: 0, streamingPhase: 'thinking' })
     }
   },
 
@@ -339,13 +368,17 @@ export const useSableStore = create((set, get) => ({
       case 'message.start':
         if (msg.session_id) {
           _ensureSession(msg.session_id)
-          set({ streaming: true, streamingSessionId: msg.session_id, agentProgress: 'Thinking…' })
+          set({ streaming: true, streamingSessionId: msg.session_id, streamingPhase: 'thinking', agentProgress: 'Thinking…' })
         }
         break
 
       case 'message.chunk':
         if (msg.session_id && msg.text) {
           _ensureSession(msg.session_id)
+          // Switch phase on first chunk
+          if (get().streamingPhase !== 'responding') {
+            set({ streamingPhase: 'responding', agentProgress: 'Responding…' })
+          }
           _appendChunk(msg.session_id, msg.text)
         }
         break
@@ -396,7 +429,7 @@ export const useSableStore = create((set, get) => ({
 
       case 'error':
         get().showToast(msg.text || 'Gateway error')
-        set({ streaming: false, agentProgress: null })
+        set({ streaming: false, agentProgress: null, streamingSince: null, elapsed: 0, streamingPhase: 'thinking' })
         break
 
       case 'code.result': {

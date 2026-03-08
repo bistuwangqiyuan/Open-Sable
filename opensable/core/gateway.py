@@ -1551,6 +1551,19 @@ class Gateway:
             except Exception:
                 pass
 
+        # Streaming chunk callback — emits tokens word-by-word in real time
+        _first_chunk_sent = []  # use list as mutable flag (avoids nonlocal in all Pythons)
+
+        async def _stream_chunk(token: str):
+            try:
+                # Signal to the frontend that the model has started responding
+                if not _first_chunk_sent:
+                    _first_chunk_sent.append(True)
+                    await client.send({"type": "progress", "session_id": sid, "text": "Responding…"})
+                await client.send({"type": "message.chunk", "session_id": sid, "text": token})
+            except Exception:
+                pass
+
         try:
             sm = SessionManager()
             session = sm.get_session(sid)
@@ -1564,7 +1577,9 @@ class Gateway:
             ]
 
             reply = await self.agent.process_message(
-                user_id, text, history=history, progress_callback=_progress
+                user_id, text, history=history,
+                progress_callback=_progress,
+                stream_chunk_callback=_stream_chunk,
             )
             raw_reply = reply
             reply = _clean_gateway_reply(reply or "")

@@ -11,7 +11,34 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+
+# ── Patch overrides signature check before chromadb import ───────────────────
+# chromadb 0.5.x Posthog subclass has a signature mismatch that crashes on import
+try:
+    import overrides.signature as _ovr_sig
+    _ovr_sig.ensure_all_kwargs_defined_in_sub = lambda *a, **kw: None
+    _ovr_sig.ensure_all_positional_args_defined_in_sub = lambda *a, **kw: None
+except Exception:
+    pass
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+os.environ["ANONYMIZED_TELEMETRY"] = "False"  # force override
+# ─────────────────────────────────────────────────────────────────────────────
+
 import chromadb
+from chromadb.config import Settings as ChromaSettings
+
+# ── Silence runtime telemetry capture errors ─────────────────────────────────
+try:
+    import chromadb.telemetry.product as _ct
+    _ct.ProductTelemetryClient.capture = lambda self, *a, **kw: None
+except Exception:
+    pass
+try:
+    from chromadb.telemetry.product.posthog import Posthog as _Posthog
+    _Posthog.capture = lambda self, *a, **kw: None
+except Exception:
+    pass
+# ─────────────────────────────────────────────────────────────────────────────
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +79,10 @@ class MemoryManager:
         self.config.vector_db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Initialize ChromaDB with new API
-        self.vector_db = chromadb.PersistentClient(path=str(self.config.vector_db_path))
+        self.vector_db = chromadb.PersistentClient(
+            path=str(self.config.vector_db_path),
+            settings=ChromaSettings(anonymized_telemetry=False),
+        )
 
         self.collection = self.vector_db.get_or_create_collection(
             name="opensable_memory", metadata={"description": "User interactions and context"}

@@ -190,6 +190,15 @@ export default function MessageBubble({ message }) {
 
   const isUser = message.role === 'user'
 
+  // Format response duration: < 1min → "47s", >= 1min → "1m 12s"
+  const durationLabel = (() => {
+    const ms = message.responseDurationMs
+    if (!ms || ms < 500) return null
+    const s = Math.round(ms / 1000)
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${s % 60}s`
+  })()
+
   return (
     <div className={`message-row ${isUser ? 'user' : 'assistant'}`}>
       {!isUser && (
@@ -243,9 +252,16 @@ export default function MessageBubble({ message }) {
           </>
         )}
         {!isUser && !message.streaming && message.content && (
-          <button className="msg-copy-btn" onClick={handleCopy} title="Copy">
-            {copied ? '✓' : '⎘'}
-          </button>
+          <div className="msg-footer">
+            {durationLabel && (
+              <span className="msg-response-time" title="Time to complete response">
+                ⏱ {durationLabel}
+              </span>
+            )}
+            <button className="msg-copy-btn" onClick={handleCopy} title="Copy">
+              {copied ? '✓' : '⎘'}
+            </button>
+          </div>
         )}
       </div>
     </div>

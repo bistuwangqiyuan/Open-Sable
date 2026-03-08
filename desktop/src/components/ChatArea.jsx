@@ -9,6 +9,8 @@ export default function ChatArea() {
   const messages = useSableStore(s => s.messages)
   const streaming = useSableStore(s => s.streaming)
   const streamingSessionId = useSableStore(s => s.streamingSessionId)
+  const streamingPhase = useSableStore(s => s.streamingPhase)
+  const elapsed = useSableStore(s => s.elapsed)
   const agentProgress = useSableStore(s => s.agentProgress)
   const sessions = useSableStore(s => s.sessions)
   const wsStatus = useSableStore(s => s.wsStatus)
@@ -35,15 +37,23 @@ export default function ChatArea() {
     )
   }
 
+  // Elapsed counter label: "⏳ 12s · Thinking…" or "⚡ 47s · Responding…"
+  const elapsedLabel = isWaiting
+    ? `${streamingPhase === 'responding' ? '⚡' : '⏳'} ${elapsed}s`
+    : null
+
   return (
     <div className="chat-area">
       <div className="chat-topbar">
         <span style={{ fontSize: 14, opacity: 0.5 }}>💬</span>
         <span className="chat-topbar-title">{session?.title || 'Chat'}</span>
-        {isWaiting && agentProgress && (
-          <span className="agent-progress">
+        {isWaiting && (
+          <span className={`agent-progress${streamingPhase === 'responding' ? ' responding' : ''}`}>
             <span className="agent-progress-dot" />
-            {agentProgress}
+            {agentProgress || (streamingPhase === 'responding' ? 'Responding…' : 'Thinking…')}
+            {elapsed > 0 && (
+              <span className="elapsed-counter">{elapsedLabel}</span>
+            )}
           </span>
         )}
       </div>
@@ -58,7 +68,7 @@ export default function ChatArea() {
         {currentMessages.map(msg => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
-        {isWaiting && currentMessages[currentMessages.length - 1]?.role !== 'assistant' && (
+        {isWaiting && currentMessages[currentMessages.length - 1]?.role !== 'assistant' && streamingPhase === 'thinking' && (
           <div className="message-row assistant">
             <div className="message-avatar assistant">S</div>
             <div className="typing-indicator">
@@ -82,4 +92,3 @@ export default function ChatArea() {
     </div>
   )
 }
-
