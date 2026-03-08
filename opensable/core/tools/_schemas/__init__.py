@@ -30,6 +30,7 @@ try:
     from .genelia import SCHEMAS as GENELIA_SCHEMAS
 except ImportError:
     GENELIA_SCHEMAS = []
+from .arena import SCHEMAS as ARENA_SCHEMAS
 
 
 def get_all_schemas() -> List[Dict[str, Any]]:
@@ -58,4 +59,5 @@ def get_all_schemas() -> List[Dict[str, Any]]:
     all_schemas.extend(GITHUB_SCHEMAS)
     all_schemas.extend(NEWS_READER_SCHEMAS)
     all_schemas.extend(GENELIA_SCHEMAS)
+    all_schemas.extend(ARENA_SCHEMAS)
     return all_schemas

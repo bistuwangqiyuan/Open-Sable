@@ -203,3 +203,9 @@ try:
     SCHEMA_TO_TOOL["genelia_list_images"] = ("genelia_list_images", _p)
 except (ImportError, ModuleNotFoundError):
     pass
+
+# Arena Fighter (fighting-game via SAGP)
+SCHEMA_TO_TOOL["arena_fight"] = ("arena_fight", _p)
+SCHEMA_TO_TOOL["arena_status"] = ("arena_status", _p)
+SCHEMA_TO_TOOL["arena_history"] = ("arena_history", _p)
+SCHEMA_TO_TOOL["arena_disconnect"] = ("arena_disconnect", _p)

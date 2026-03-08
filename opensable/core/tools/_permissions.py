@@ -122,4 +122,10 @@ TOOL_PERMISSIONS = {
     "github_search_code": "github_read",
     "github_get_file": "github_read",
     "github_create_release": "github_write",
+
+    # Arena Fighter
+    "arena_fight": "arena_write",
+    "arena_status": "arena_read",
+    "arena_history": "arena_read",
+    "arena_disconnect": "arena_write",
 }

@@ -108,6 +108,9 @@ class OpenSableConfig(BaseModel):
     news_enabled: bool = True
     news_cache_ttl: int = 1800  # seconds (30 min)
 
+    # Arena Fighter (fighting-game)
+    arena_url: Optional[str] = None  # arena server URL (auto-provisions)
+
     # Email & Calendar
     gmail_enabled: bool = True
     gmail_credentials_path: Path = Path("./config/gmail_credentials.json")
@@ -459,6 +462,8 @@ def load_config() -> OpenSableConfig:
         # News Reader
         "news_enabled": os.getenv("NEWS_ENABLED", "true").lower() == "true",
         "news_cache_ttl": int(os.getenv("NEWS_CACHE_TTL", "1800")),
+        # Arena Fighter
+        "arena_url": os.getenv("ARENA_URL") or None,
         "calendar_enabled": os.getenv("CALENDAR_ENABLED", "true").lower() == "true",
         "calendar_credentials_path": Path(
             os.getenv("CALENDAR_CREDENTIALS_PATH", "./config/calendar_credentials.json")

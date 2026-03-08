@@ -155,7 +155,6 @@ agents/*/profile.env
 .sable-sable.pid
 .dev-studio.pid
 _reference_external_DO_NOT_SHIP/
-episodes/tick_0004.md
 data/inner_life/inner_state.json
 /episodes
 data/proactive/proactive_state.json
@@ -173,3 +172,7 @@ data/genelia_images/
 q4_planning_meeting_materials.md
 team_meeting_presentation.md
 data/.last_restart_nexus_erebus
+cognitive_state.md
+technical_debt_inventory.md
+technical_debt.html
+.technical_debt_inventory.md

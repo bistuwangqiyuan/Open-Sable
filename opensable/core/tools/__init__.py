@@ -57,6 +57,7 @@ from ._trading import TradingToolsMixin
 from ._marketplace import MarketplaceToolsMixin
 from ._mobile import MobileToolsMixin
 from ._github import GitHubToolsMixin
+from ._arena import ArenaToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
 from ._dispatch import SCHEMA_TO_TOOL
@@ -72,6 +73,7 @@ class ToolRegistry(
     MarketplaceToolsMixin,
     MobileToolsMixin,
     GitHubToolsMixin,
+    ArenaToolsMixin,
 ):
     """Registry of all available tools/actions.
 
@@ -84,6 +86,7 @@ class ToolRegistry(
     - MarketplaceToolsMixin: skills marketplace (SAGP)
     - MobileToolsMixin: phone notification, reminders, geofence, location, device status
     - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
+    - ArenaToolsMixin: fighting-game arena (SAGP auth + WebSocket combat)
     """
 
     # RBAC permissions (imported from _permissions.py)
@@ -182,6 +185,14 @@ class ToolRegistry(
             self.github_skill = GitHubSkill(config)
         except Exception as e:
             logger.debug(f"GitHub skill not available: {e}")
+
+        # Arena Fighter skill (conditional)
+        self.arena_skill = None
+        try:
+            from ...skills.gaming.arena_fighter import ArenaFighterSkill
+            self.arena_skill = ArenaFighterSkill(config)
+        except Exception as e:
+            logger.debug(f"Arena skill not available: {e}")
 
     # ── Initialization ────────────────────────────────────────────────────────
 
@@ -300,6 +311,20 @@ class ToolRegistry(
                 await self.github_skill.initialize()
             except Exception as e:
                 logger.debug(f"GitHub skill init failed: {e}")
+
+        # ── Arena Fighter ─────────────────────────────────────────────────────
+        self.register("arena_fight", self._arena_fight_tool)
+        self.register("arena_status", self._arena_status_tool)
+        self.register("arena_history", self._arena_history_tool)
+        self.register("arena_disconnect", self._arena_disconnect_tool)
+
+        # Initialize arena skill
+        if self.arena_skill:
+            try:
+                await self.arena_skill.initialize()
+            except Exception as e:
+                logger.debug(f"Arena skill init failed: {e}")
+
         # ── X (Twitter) ──────────────────────────────────────────────────────
         self.register("x_post_tweet", self._x_post_tweet_tool)
         self.register("x_post_thread", self._x_post_thread_tool)
