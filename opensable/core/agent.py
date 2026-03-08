@@ -227,6 +227,16 @@ class SableAgent:
         self.inter_agent_bridge = None   # InterAgentBridge (shared learning vault)
         self.ultra_ltm = None            # UltraLongTermMemory (weeks/months consolidation)
         self.self_benchmark = None       # SelfBenchmark (quantified self-assessment)
+        self.meta_learner = None         # MetaLearner (learning-to-learn)
+        self.causal_engine = None        # CausalEngine (why, not just what)
+        self.goal_synthesis = None       # GoalSynthesis (autonomous goal generation)
+        self.skill_composer = None       # SkillComposer (compound skill creation)
+        self.world_predictor = None      # WorldPredictor (anticipatory reasoning)
+        self.cognitive_optimizer = None  # CognitiveOptimizer (self-tuning pipeline)
+        self.adversarial_tester = None   # AdversarialTester (red-team self-testing)
+        self.resource_governor = None    # ResourceGovernor (token/compute budgets)
+        self.theory_of_mind = None       # TheoryOfMind (user modeling)
+        self.ethical_reasoner = None     # EthicalReasoner (consequence analysis)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -300,6 +310,16 @@ class SableAgent:
             ("Inter-agent bridge", self._init_inter_agent_bridge),
             ("Ultra long-term memory", self._init_ultra_ltm),
             ("Self benchmark", self._init_self_benchmark),
+            ("Meta learner", self._init_meta_learner),
+            ("Causal engine", self._init_causal_engine),
+            ("Goal synthesis", self._init_goal_synthesis),
+            ("Skill composer", self._init_skill_composer),
+            ("World predictor", self._init_world_predictor),
+            ("Cognitive optimizer", self._init_cognitive_optimizer),
+            ("Adversarial tester", self._init_adversarial_tester),
+            ("Resource governor", self._init_resource_governor),
+            ("Theory of mind", self._init_theory_of_mind),
+            ("Ethical reasoner", self._init_ethical_reasoner),
         ]:
             try:
                 await init_fn()
@@ -468,6 +488,66 @@ class SableAgent:
         from .self_benchmark import SelfBenchmark
         self.self_benchmark = SelfBenchmark(
             data_dir=Path(self._data_dir) / "self_benchmark"
+        )
+
+    async def _init_meta_learner(self):
+        from .meta_learner import MetaLearner
+        self.meta_learner = MetaLearner(
+            data_dir=Path(self._data_dir) / "meta_learner"
+        )
+
+    async def _init_causal_engine(self):
+        from .causal_engine import CausalEngine
+        self.causal_engine = CausalEngine(
+            data_dir=Path(self._data_dir) / "causal_engine"
+        )
+
+    async def _init_goal_synthesis(self):
+        from .goal_synthesis import GoalSynthesis
+        self.goal_synthesis = GoalSynthesis(
+            data_dir=Path(self._data_dir) / "goal_synthesis"
+        )
+
+    async def _init_skill_composer(self):
+        from .skill_composer import SkillComposer
+        self.skill_composer = SkillComposer(
+            data_dir=Path(self._data_dir) / "skill_composer"
+        )
+
+    async def _init_world_predictor(self):
+        from .world_predictor import WorldPredictor
+        self.world_predictor = WorldPredictor(
+            data_dir=Path(self._data_dir) / "world_predictor"
+        )
+
+    async def _init_cognitive_optimizer(self):
+        from .cognitive_optimizer import CognitiveOptimizer
+        self.cognitive_optimizer = CognitiveOptimizer(
+            data_dir=Path(self._data_dir) / "cognitive_optimizer"
+        )
+
+    async def _init_adversarial_tester(self):
+        from .adversarial_tester import AdversarialTester
+        self.adversarial_tester = AdversarialTester(
+            data_dir=Path(self._data_dir) / "adversarial_tester"
+        )
+
+    async def _init_resource_governor(self):
+        from .resource_governor import ResourceGovernor
+        self.resource_governor = ResourceGovernor(
+            data_dir=Path(self._data_dir) / "resource_governor"
+        )
+
+    async def _init_theory_of_mind(self):
+        from .theory_of_mind import TheoryOfMind
+        self.theory_of_mind = TheoryOfMind(
+            data_dir=Path(self._data_dir) / "theory_of_mind"
+        )
+
+    async def _init_ethical_reasoner(self):
+        from .ethical_reasoner import EthicalReasoner
+        self.ethical_reasoner = EthicalReasoner(
+            data_dir=Path(self._data_dir) / "ethical_reasoner"
         )
 
     async def _init_inner_life(self):

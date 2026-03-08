@@ -100,6 +100,16 @@ class AutonomousMode:
         self.inter_agent_bridge = None  # InterAgentBridge (shared learning vault)
         self.ultra_ltm = None           # UltraLongTermMemory (weeks/months consolidation)
         self.self_benchmark = None      # SelfBenchmark (quantified self-assessment)
+        self.meta_learner = None        # MetaLearner (learning-to-learn)
+        self.causal_engine = None       # CausalEngine (causal reasoning)
+        self.goal_synthesis = None      # GoalSynthesis (autonomous goal generation)
+        self.skill_composer = None      # SkillComposer (compound skill creation)
+        self.world_predictor = None     # WorldPredictor (anticipatory reasoning)
+        self.cognitive_optimizer = None # CognitiveOptimizer (pipeline self-tuning)
+        self.adversarial_tester = None  # AdversarialTester (red-team self-testing)
+        self.resource_governor = None   # ResourceGovernor (token/compute budgets)
+        self.theory_of_mind = None      # TheoryOfMind (user modeling)
+        self.ethical_reasoner = None    # EthicalReasoner (consequence analysis)
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -235,6 +245,46 @@ class AutonomousMode:
         self.self_benchmark = _inherit("self_benchmark", lambda: __import__(
             "opensable.core.self_benchmark", fromlist=["SelfBenchmark"]
         ).SelfBenchmark(data_dir=data_dir / "self_benchmark"), "Self benchmark")
+
+        self.meta_learner = _inherit("meta_learner", lambda: __import__(
+            "opensable.core.meta_learner", fromlist=["MetaLearner"]
+        ).MetaLearner(data_dir=data_dir / "meta_learner"), "Meta learner")
+
+        self.causal_engine = _inherit("causal_engine", lambda: __import__(
+            "opensable.core.causal_engine", fromlist=["CausalEngine"]
+        ).CausalEngine(data_dir=data_dir / "causal_engine"), "Causal engine")
+
+        self.goal_synthesis = _inherit("goal_synthesis", lambda: __import__(
+            "opensable.core.goal_synthesis", fromlist=["GoalSynthesis"]
+        ).GoalSynthesis(data_dir=data_dir / "goal_synthesis"), "Goal synthesis")
+
+        self.skill_composer = _inherit("skill_composer", lambda: __import__(
+            "opensable.core.skill_composer", fromlist=["SkillComposer"]
+        ).SkillComposer(data_dir=data_dir / "skill_composer"), "Skill composer")
+
+        self.world_predictor = _inherit("world_predictor", lambda: __import__(
+            "opensable.core.world_predictor", fromlist=["WorldPredictor"]
+        ).WorldPredictor(data_dir=data_dir / "world_predictor"), "World predictor")
+
+        self.cognitive_optimizer = _inherit("cognitive_optimizer", lambda: __import__(
+            "opensable.core.cognitive_optimizer", fromlist=["CognitiveOptimizer"]
+        ).CognitiveOptimizer(data_dir=data_dir / "cognitive_optimizer"), "Cognitive optimizer")
+
+        self.adversarial_tester = _inherit("adversarial_tester", lambda: __import__(
+            "opensable.core.adversarial_tester", fromlist=["AdversarialTester"]
+        ).AdversarialTester(data_dir=data_dir / "adversarial_tester"), "Adversarial tester")
+
+        self.resource_governor = _inherit("resource_governor", lambda: __import__(
+            "opensable.core.resource_governor", fromlist=["ResourceGovernor"]
+        ).ResourceGovernor(data_dir=data_dir / "resource_governor"), "Resource governor")
+
+        self.theory_of_mind = _inherit("theory_of_mind", lambda: __import__(
+            "opensable.core.theory_of_mind", fromlist=["TheoryOfMind"]
+        ).TheoryOfMind(data_dir=data_dir / "theory_of_mind"), "Theory of mind")
+
+        self.ethical_reasoner = _inherit("ethical_reasoner", lambda: __import__(
+            "opensable.core.ethical_reasoner", fromlist=["EthicalReasoner"]
+        ).EthicalReasoner(data_dir=data_dir / "ethical_reasoner"), "Ethical reasoner")
 
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
@@ -1827,6 +1877,138 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Self-benchmark tick failed: {e}")
 
+            # ── 12. Meta-learner — adapt cognitive hyperparameters ──
+            if self.meta_learner and self.tick % 15 == 0:
+                try:
+                    perf = 0.5
+                    if self.self_benchmark:
+                        st = self.self_benchmark.get_stats()
+                        perf = st.get("latest_autonomy_score", 50) / 100.0
+                    self.meta_learner.evaluate_and_adapt(perf)
+                except Exception as e:
+                    logger.debug(f"Meta-learner tick failed: {e}")
+
+            # ── 13. Causal engine — extract causal links ──
+            if self.causal_engine and self.tick % 20 == 0:
+                try:
+                    recent = self.completed_tasks[-5:] if self.completed_tasks else []
+                    for t in recent:
+                        desc = t.get("description", "")
+                        result = t.get("result", "")
+                        if desc and result:
+                            await self.causal_engine.extract_causes(
+                                self.agent.llm, desc, result
+                            )
+                except Exception as e:
+                    logger.debug(f"Causal engine tick failed: {e}")
+
+            # ── 14. Goal synthesis — generate strategic goals ──
+            if self.goal_synthesis and self.tick % 50 == 0:
+                try:
+                    context = {}
+                    if self.self_benchmark:
+                        context["benchmarks"] = self.self_benchmark.get_stats()
+                    if self.ultra_ltm and hasattr(self.ultra_ltm, "wisdom_summary"):
+                        context["wisdom"] = self.ultra_ltm.wisdom_summary or ""
+                    proposed = await self.goal_synthesis.synthesize(
+                        self.agent.llm, context
+                    )
+                    # Auto-accept high-priority goals
+                    for g in proposed:
+                        if g.priority >= 8:
+                            self.goal_synthesis.accept_goal(g.id)
+                            self.task_queue.append({
+                                "description": f"[Strategic Goal] {g.description}",
+                                "priority": g.priority,
+                                "source": "goal_synthesis",
+                            })
+                except Exception as e:
+                    logger.debug(f"Goal synthesis tick failed: {e}")
+
+            # ── 15. Skill composer — discover compound skills ──
+            if self.skill_composer and self.tick % 30 == 0:
+                try:
+                    recent = self.completed_tasks[-10:] if self.completed_tasks else []
+                    for t in recent:
+                        skill_name = t.get("skill", t.get("description", "")[:50])
+                        self.skill_composer.record_execution(skill_name)
+                    await self.skill_composer.analyze_and_compose(self.agent.llm)
+                except Exception as e:
+                    logger.debug(f"Skill composer tick failed: {e}")
+
+            # ── 16. World predictor — forecast and prepare ──
+            if self.world_predictor and self.tick % 25 == 0:
+                try:
+                    # Observe from recent tasks
+                    recent = self.completed_tasks[-5:] if self.completed_tasks else []
+                    for t in recent:
+                        key = t.get("skill", "general")
+                        val = t.get("result", "completed")[:200]
+                        self.world_predictor.observe(key, val)
+                    preds = await self.world_predictor.predict(self.agent.llm)
+                    # Inject preparation tasks for high-confidence predictions
+                    for p in preds:
+                        if p.confidence >= 0.7 and p.preparation_tasks:
+                            for prep in p.preparation_tasks[:2]:
+                                self.task_queue.append({
+                                    "description": f"[Prep] {prep}",
+                                    "priority": 5,
+                                    "source": "world_predictor",
+                                })
+                except Exception as e:
+                    logger.debug(f"World predictor tick failed: {e}")
+
+            # ── 17. Cognitive optimizer — tune tick intervals ──
+            if self.cognitive_optimizer and self.tick % 20 == 0:
+                try:
+                    self.cognitive_optimizer.optimize()
+                except Exception as e:
+                    logger.debug(f"Cognitive optimizer tick failed: {e}")
+
+            # ── 18. Adversarial tester — red-team self-testing ──
+            if self.adversarial_tester and self.tick % 40 == 0:
+                try:
+                    bench_scores = {}
+                    if self.self_benchmark:
+                        st = self.self_benchmark.get_stats()
+                        bench_scores = st.get("latest_results", {})
+                    await self.adversarial_tester.generate_tests(
+                        self.agent.llm, bench_scores
+                    )
+                except Exception as e:
+                    logger.debug(f"Adversarial tester tick failed: {e}")
+
+            # ── 19. Resource governor — end-of-tick accounting ──
+            if self.resource_governor:
+                try:
+                    import psutil
+                    mem = psutil.virtual_memory()
+                    self.resource_governor.tick_end(
+                        memory_mb=mem.used / (1024 * 1024)
+                    )
+                except Exception as e:
+                    logger.debug(f"Resource governor tick failed: {e}")
+
+            # ── 20. Theory of mind — update user models ──
+            if self.theory_of_mind:
+                try:
+                    # Process any recent interactions for user modeling
+                    recent = self.completed_tasks[-3:] if self.completed_tasks else []
+                    for t in recent:
+                        user = t.get("user", t.get("source", "default"))
+                        msg = t.get("description", "")
+                        if user and msg:
+                            self.theory_of_mind.process_interaction(user, msg)
+                except Exception as e:
+                    logger.debug(f"Theory of mind tick failed: {e}")
+
+            # ── 21. Ethical reasoner — log stats only (per-action checks inline) ──
+            if self.ethical_reasoner:
+                try:
+                    _ = self.ethical_reasoner.get_stats()
+                except Exception as e:
+                    logger.debug(f"Ethical reasoner tick failed: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -1939,6 +2121,26 @@ class AutonomousMode:
             status["ultra_ltm"] = self.ultra_ltm.get_stats()
         if self.self_benchmark:
             status["self_benchmark"] = self.self_benchmark.get_stats()
+        if self.meta_learner:
+            status["meta_learner"] = self.meta_learner.get_stats()
+        if self.causal_engine:
+            status["causal_engine"] = self.causal_engine.get_stats()
+        if self.goal_synthesis:
+            status["goal_synthesis"] = self.goal_synthesis.get_stats()
+        if self.skill_composer:
+            status["skill_composer"] = self.skill_composer.get_stats()
+        if self.world_predictor:
+            status["world_predictor"] = self.world_predictor.get_stats()
+        if self.cognitive_optimizer:
+            status["cognitive_optimizer"] = self.cognitive_optimizer.get_stats()
+        if self.adversarial_tester:
+            status["adversarial_tester"] = self.adversarial_tester.get_stats()
+        if self.resource_governor:
+            status["resource_governor"] = self.resource_governor.get_stats()
+        if self.theory_of_mind:
+            status["theory_of_mind"] = self.theory_of_mind.get_stats()
+        if self.ethical_reasoner:
+            status["ethical_reasoner"] = self.ethical_reasoner.get_stats()
         return status
 
     def add_task(self, task: Dict):

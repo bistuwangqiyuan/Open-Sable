@@ -268,6 +268,16 @@ class Gateway:
         app.router.add_get("/api/inter-agent", self._inter_agent_handler)
         app.router.add_get("/api/ultra-ltm", self._ultra_ltm_handler)
         app.router.add_get("/api/self-benchmark", self._self_benchmark_handler)
+        app.router.add_get("/api/meta-learner", self._meta_learner_handler)
+        app.router.add_get("/api/causal-engine", self._causal_engine_handler)
+        app.router.add_get("/api/goal-synthesis", self._goal_synthesis_handler)
+        app.router.add_get("/api/skill-composer", self._skill_composer_handler)
+        app.router.add_get("/api/world-predictor", self._world_predictor_handler)
+        app.router.add_get("/api/cognitive-optimizer", self._cognitive_optimizer_handler)
+        app.router.add_get("/api/adversarial-tester", self._adversarial_tester_handler)
+        app.router.add_get("/api/resource-governor", self._resource_governor_handler)
+        app.router.add_get("/api/theory-of-mind", self._theory_of_mind_handler)
+        app.router.add_get("/api/ethical-reasoner", self._ethical_reasoner_handler)
 
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
@@ -301,7 +311,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -466,6 +476,48 @@ class Gateway:
             if not bench:
                 return web.json_response({"error": "Self benchmark not initialised"}, status=404)
             return web.json_response(bench.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _meta_learner_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("meta_learner", "Meta learner", request)
+
+    async def _causal_engine_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("causal_engine", "Causal engine", request)
+
+    async def _goal_synthesis_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("goal_synthesis", "Goal synthesis", request)
+
+    async def _skill_composer_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("skill_composer", "Skill composer", request)
+
+    async def _world_predictor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("world_predictor", "World predictor", request)
+
+    async def _cognitive_optimizer_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_optimizer", "Cognitive optimizer", request)
+
+    async def _adversarial_tester_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("adversarial_tester", "Adversarial tester", request)
+
+    async def _resource_governor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("resource_governor", "Resource governor", request)
+
+    async def _theory_of_mind_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("theory_of_mind", "Theory of mind", request)
+
+    async def _ethical_reasoner_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("ethical_reasoner", "Ethical reasoner", request)
+
+    async def _generic_module_handler(self, attr: str, label: str, request: web.Request) -> web.Response:
+        """Generic handler for cognitive module stats endpoints."""
+        try:
+            mod = getattr(self.agent, attr, None)
+            if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                mod = getattr(self.agent.autonomous, attr, None)
+            if not mod:
+                return web.json_response({"error": f"{label} not initialised"}, status=404)
+            return web.json_response(mod.get_stats(), headers={"Access-Control-Allow-Origin": "*"})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
@@ -1836,6 +1888,24 @@ class Gateway:
                     result["self_benchmark"] = None
             else:
                 result["self_benchmark"] = None
+
+            # ── 28-37. New cognitive modules ──────────────────────────────
+            for _mod_attr in (
+                "meta_learner", "causal_engine", "goal_synthesis",
+                "skill_composer", "world_predictor", "cognitive_optimizer",
+                "adversarial_tester", "resource_governor", "theory_of_mind",
+                "ethical_reasoner",
+            ):
+                mod = getattr(self.agent, _mod_attr, None)
+                if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                    mod = getattr(self.agent.autonomous, _mod_attr, None)
+                if mod:
+                    try:
+                        result[_mod_attr] = mod.get_stats()
+                    except Exception:
+                        result[_mod_attr] = None
+                else:
+                    result[_mod_attr] = None
 
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")

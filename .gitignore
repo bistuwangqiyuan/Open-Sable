@@ -178,3 +178,6 @@ technical_debt.html
 .technical_debt_inventory.md
 data/connectome_state.json
 data/.last_restart_sable
+data/self_benchmark/self_benchmark_state.json
+data/ultra_ltm/ultra_ltm_state.json
+data/connectome/connectome_state.json

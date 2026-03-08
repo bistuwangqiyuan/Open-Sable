@@ -5,6 +5,8 @@ import {
   User, Shield, MessageCircle, Wrench, Globe, Radio, BookOpen,
   AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
   BookMarked, Newspaper, Network, Route, Share2, Archive, BarChart3,
+  Lightbulb, Search, Crosshair, Puzzle, Compass, Settings2,
+  Bug, Gauge, UserCheck, Scale,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1164,6 +1166,18 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const ultraLtm       = data?.ultra_ltm || null;
   const selfBenchmark  = data?.self_benchmark || null;
 
+  // Source 28-37 – Advanced cognitive modules
+  const metaLearner      = data?.meta_learner || null;
+  const causalEngine     = data?.causal_engine || null;
+  const goalSynthesis    = data?.goal_synthesis || null;
+  const skillComposer    = data?.skill_composer || null;
+  const worldPredictor   = data?.world_predictor || null;
+  const cognitiveOptimizer = data?.cognitive_optimizer || null;
+  const adversarialTester = data?.adversarial_tester || null;
+  const resourceGovernor = data?.resource_governor || null;
+  const theoryOfMind     = data?.theory_of_mind || null;
+  const ethicalReasoner  = data?.ethical_reasoner || null;
+
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
   const valence = (typeof rawEmotion === 'object' ? rawEmotion.valence : null) ?? il.valence ?? liveStats.valence ?? 0;
@@ -1470,6 +1484,36 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
 
           {/* ── Ultra Long-Term Memory ──────────────────────────── */}
           {ultraLtm && <UltraLtmPanel ltm={ultraLtm} />}
+
+          {/* ── Meta-Learner ────────────────────────────────────── */}
+          {metaLearner && <MetaLearnerPanel data={metaLearner} />}
+
+          {/* ── Causal Engine ───────────────────────────────────── */}
+          {causalEngine && <CausalEnginePanel data={causalEngine} />}
+
+          {/* ── Goal Synthesis ──────────────────────────────────── */}
+          {goalSynthesis && <GoalSynthesisPanel data={goalSynthesis} />}
+
+          {/* ── Skill Composer ──────────────────────────────────── */}
+          {skillComposer && <SkillComposerPanel data={skillComposer} />}
+
+          {/* ── World Predictor ─────────────────────────────────── */}
+          {worldPredictor && <WorldPredictorPanel data={worldPredictor} />}
+
+          {/* ── Cognitive Optimizer ─────────────────────────────── */}
+          {cognitiveOptimizer && <CognitiveOptimizerPanel data={cognitiveOptimizer} />}
+
+          {/* ── Adversarial Tester ──────────────────────────────── */}
+          {adversarialTester && <AdversarialTesterPanel data={adversarialTester} />}
+
+          {/* ── Resource Governor ───────────────────────────────── */}
+          {resourceGovernor && <ResourceGovernorPanel data={resourceGovernor} />}
+
+          {/* ── Theory of Mind ──────────────────────────────────── */}
+          {theoryOfMind && <TheoryOfMindPanel data={theoryOfMind} />}
+
+          {/* ── Ethical Reasoner ────────────────────────────────── */}
+          {ethicalReasoner && <EthicalReasonerPanel data={ethicalReasoner} />}
 
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (
@@ -1966,6 +2010,258 @@ function ConnectomeMonitor({ connectome }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Meta-Learner Panel ───────────────────────────────────────────────
+function MetaLearnerPanel({ data }) {
+  const profiles = data.total_profiles || 0;
+  const evaluations = data.total_evaluations || 0;
+  const activeProfile = data.active_profile || '—';
+  const bestPerf = data.best_performance || 0;
+  const params = data.active_params || {};
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Lightbulb size={12} /> Meta-Learner</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Profiles" value={profiles} color="#e17055" />
+        <_Stat label="Evaluations" value={evaluations} color="#00cec9" />
+        <_Stat label="Active" value={activeProfile} color="#7c3aed" />
+        <_Stat label="Best" value={(bestPerf * 100).toFixed(0) + '%'} color="#00b894" />
+      </div>
+      {Object.keys(params).length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {Object.entries(params).map(([k, v]) => (
+            <span key={k} style={{ padding: '2px 8px', borderRadius: 6, fontSize: 9, background: 'rgba(124,58,237,0.08)', color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
+              {k}: <strong>{typeof v === 'number' ? v.toFixed(3) : v}</strong>
+            </span>
+          ))}
+        </div>
+      )}
+      {profiles === 0 && <div style={s.empty}>No meta-learning data yet</div>}
+    </div>
+  );
+}
+
+// ── Causal Engine Panel ──────────────────────────────────────────────
+function CausalEnginePanel({ data }) {
+  const totalLinks = data.total_links || 0;
+  const analyses = data.total_analyses || 0;
+  const topLinks = data.top_links || [];
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Search size={12} /> Causal Engine</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Causal Links" value={totalLinks} color="#e17055" />
+        <_Stat label="Analyses" value={analyses} color="#00cec9" />
+      </div>
+      {topLinks.length > 0 && (
+        <div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Top Causal Links</div>
+          {topLinks.slice(0, 5).map((l, i) => (
+            <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 10 }}>
+              <span style={{ color: '#e17055' }}>{l.cause}</span>
+              <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span>
+              <span style={{ color: '#00cec9' }}>{l.effect}</span>
+              <span style={{ float: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: '#7c3aed' }}>{(l.weight || 0).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {totalLinks === 0 && <div style={s.empty}>No causal links discovered yet</div>}
+    </div>
+  );
+}
+
+// ── Goal Synthesis Panel ─────────────────────────────────────────────
+function GoalSynthesisPanel({ data }) {
+  const proposed = data.proposed_count || 0;
+  const accepted = data.accepted_count || 0;
+  const rejected = data.rejected_count || 0;
+  const goals = data.recent_goals || [];
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={s.sectionTitle}><Crosshair size={12} /> Goal Synthesis</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Proposed" value={proposed} color="#f39c12" />
+        <_Stat label="Accepted" value={accepted} color="#00b894" />
+        <_Stat label="Rejected" value={rejected} color="#e17055" />
+      </div>
+      {goals.length > 0 && goals.slice(0, 5).map((g, i) => (
+        <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+          <span style={{ fontSize: 10, flex: 1, color: 'var(--text-primary)' }}>{g.description || g}</span>
+          <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: g.status === 'accepted' ? '#00b894' : '#f39c12' }}>{g.status || 'proposed'}</span>
+        </div>
+      ))}
+      {proposed === 0 && <div style={s.empty}>No goals synthesized yet</div>}
+    </div>
+  );
+}
+
+// ── Skill Composer Panel ─────────────────────────────────────────────
+function SkillComposerPanel({ data }) {
+  const compounds = data.compound_skills || 0;
+  const chains = data.frequent_chains || 0;
+  const recentSkills = data.recent_compounds || [];
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Puzzle size={12} /> Skill Composer</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Compounds" value={compounds} color="#7c3aed" />
+        <_Stat label="Chains" value={chains} color="#00cec9" />
+      </div>
+      {recentSkills.length > 0 && recentSkills.slice(0, 5).map((sk, i) => (
+        <div key={i} style={{ padding: '3px 0', fontSize: 10, color: 'var(--text-secondary)' }}>
+          {sk.name || sk}
+        </div>
+      ))}
+      {compounds === 0 && <div style={s.empty}>No compound skills yet</div>}
+    </div>
+  );
+}
+
+// ── World Predictor Panel ────────────────────────────────────────────
+function WorldPredictorPanel({ data }) {
+  const predictions = data.total_predictions || 0;
+  const accuracy = data.accuracy || 0;
+  const observations = data.total_observations || 0;
+  const recentPreds = data.recent_predictions || [];
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Compass size={12} /> World Predictor</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Predictions" value={predictions} color="#e17055" />
+        <_Stat label="Accuracy" value={(accuracy * 100).toFixed(0) + '%'} color={accuracy > 0.6 ? '#00b894' : '#f39c12'} />
+        <_Stat label="Observations" value={observations} color="#00cec9" />
+      </div>
+      {recentPreds.length > 0 && recentPreds.slice(0, 3).map((p, i) => (
+        <div key={i} style={{ padding: '3px 0', fontSize: 10, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ color: '#7c3aed', fontWeight: 600 }}>[{p.timeframe || '?'}]</span> {p.description || p}
+        </div>
+      ))}
+      {predictions === 0 && <div style={s.empty}>No predictions yet</div>}
+    </div>
+  );
+}
+
+// ── Cognitive Optimizer Panel ────────────────────────────────────────
+function CognitiveOptimizerPanel({ data }) {
+  const optimizations = data.total_optimizations || 0;
+  const phases = data.phase_count || 0;
+  const events = data.recent_events || [];
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Settings2 size={12} /> Cognitive Optimizer</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Optimizations" value={optimizations} color="#7c3aed" />
+        <_Stat label="Phases" value={phases} color="#00cec9" />
+      </div>
+      {events.length > 0 && events.slice(0, 3).map((e, i) => (
+        <div key={i} style={{ padding: '3px 0', fontSize: 9, color: 'var(--text-muted)' }}>
+          Phase {e.phase}: interval {e.old_interval}→{e.new_interval}
+        </div>
+      ))}
+      {optimizations === 0 && <div style={s.empty}>No optimizations yet</div>}
+    </div>
+  );
+}
+
+// ── Adversarial Tester Panel ─────────────────────────────────────────
+function AdversarialTesterPanel({ data }) {
+  const totalTests = data.total_tests || 0;
+  const weaknesses = data.weaknesses_found || 0;
+  const recentTests = data.recent_tests || [];
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Bug size={12} /> Adversarial Tester</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Tests" value={totalTests} color="#e17055" />
+        <_Stat label="Weaknesses" value={weaknesses} color={weaknesses > 0 ? '#f39c12' : '#00b894'} />
+      </div>
+      {recentTests.length > 0 && recentTests.slice(0, 3).map((t, i) => (
+        <div key={i} style={{ padding: '3px 0', fontSize: 10, color: 'var(--text-secondary)' }}>
+          <span style={{ color: t.severity === 'high' ? '#e17055' : '#f39c12', fontWeight: 600 }}>[{t.severity || '?'}]</span> {t.description || t}
+        </div>
+      ))}
+      {totalTests === 0 && <div style={s.empty}>No adversarial tests yet</div>}
+    </div>
+  );
+}
+
+// ── Resource Governor Panel ──────────────────────────────────────────
+function ResourceGovernorPanel({ data }) {
+  const tokensUsed = data.tokens_used_today || 0;
+  const tokenBudget = data.token_budget_daily || 500000;
+  const throttle = data.throttle_level || 'none';
+  const callsThisTick = data.calls_this_tick || 0;
+
+  const usage = tokenBudget > 0 ? tokensUsed / tokenBudget : 0;
+  const usageCol = usage > 0.8 ? '#e17055' : usage > 0.5 ? '#f39c12' : '#00b894';
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Gauge size={12} /> Resource Governor</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Tokens Today" value={tokensUsed.toLocaleString()} color={usageCol} />
+        <_Stat label="Budget" value={tokenBudget.toLocaleString()} color="#00cec9" />
+        <_Stat label="Throttle" value={throttle} color={throttle === 'none' ? '#00b894' : '#e17055'} />
+        <_Stat label="LLM Calls" value={callsThisTick} color="#7c3aed" />
+      </div>
+      <MiniGauge label="Daily usage" value={usage} color={usageCol} />
+    </div>
+  );
+}
+
+// ── Theory of Mind Panel ─────────────────────────────────────────────
+function TheoryOfMindPanel({ data }) {
+  const totalUsers = data.total_users || 0;
+  const interactions = data.total_interactions || 0;
+  const users = data.user_summaries || [];
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><UserCheck size={12} /> Theory of Mind</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Users" value={totalUsers} color="#7c3aed" />
+        <_Stat label="Interactions" value={interactions} color="#00cec9" />
+      </div>
+      {users.length > 0 && users.slice(0, 5).map((u, i) => (
+        <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', fontSize: 10 }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{u.user_id || u.name || 'user'}</span>
+          <span style={{ color: 'var(--text-muted)' }}>sat: {(u.satisfaction || 0).toFixed(1)}</span>
+          <span style={{ color: 'var(--text-muted)' }}>lang: {u.language || '?'}</span>
+        </div>
+      ))}
+      {totalUsers === 0 && <div style={s.empty}>No user models yet</div>}
+    </div>
+  );
+}
+
+// ── Ethical Reasoner Panel ───────────────────────────────────────────
+function EthicalReasonerPanel({ data }) {
+  const totalChecks = data.total_checks || 0;
+  const blocked = data.blocked_count || 0;
+  const cautions = data.caution_count || 0;
+  const approved = data.approved_count || 0;
+
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Scale size={12} /> Ethical Reasoner</div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <_Stat label="Checks" value={totalChecks} color="#00cec9" />
+        <_Stat label="Approved" value={approved} color="#00b894" />
+        <_Stat label="Cautions" value={cautions} color="#f39c12" />
+        <_Stat label="Blocked" value={blocked} color={blocked > 0 ? '#e17055' : '#00b894'} />
+      </div>
+      {totalChecks === 0 && <div style={s.empty}>No ethical checks performed yet</div>}
     </div>
   );
 }

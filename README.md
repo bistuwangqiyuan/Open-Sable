@@ -19,12 +19,26 @@
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**, **deep multi-step planner (10+ step DAG planning with replanning)**, **inter-agent learning bridge (shared knowledge vault between agents)**, **ultra-long-term memory (weeks/months pattern consolidation)**, **quantified self-benchmarking (8-suite autonomy scoring)**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**, **deep multi-step planner (10+ step DAG planning with replanning)**, **inter-agent learning bridge (shared knowledge vault between agents)**, **ultra-long-term memory (weeks/months pattern consolidation)**, **quantified self-benchmarking (8-suite autonomy scoring)**, **meta-learner (learning-to-learn)**, **causal reasoning engine**, **autonomous goal synthesis**, **compound skill composer**, **predictive world model**, **cognitive architecture optimizer**, **adversarial self-tester**, **resource governor**, **theory of mind (user modeling)**, **ethical reasoner**.
 
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync, multimodal (vision/audio).
 
-### 🆕 What's new in v1.3.0
+### 🆕 What's new in v1.4.0
+- **Meta-Learner**, learning-to-learn — auto-tunes 10 cognitive hyperparameters (tick interval, memory decay, exploration rate, etc.) using epsilon-greedy strategy profiles with EMA performance scoring
+- **Causal Reasoning Engine**, builds cause→effect weighted graphs from task outcomes via LLM extraction. Root cause analysis and counterfactual reasoning for understanding *why* things happen
+- **Autonomous Goal Synthesis**, LLM proposes strategic long-term goals from benchmark data + accumulated wisdom. Risk-weighted, impact-scored, de-duplicated with auto-accept for high-priority goals
+- **Compound Skill Composer**, n-gram sequence mining discovers frequent skill chains, LLM composes compound skills from atomic sequences. Self-expanding skill repertoire
+- **Predictive World Model**, key-value state observations with LLM forecasting across 4 timeframes (next_tick, next_hour, next_day, next_week). Accuracy tracking and automatic preparation task injection
+- **Cognitive Architecture Optimizer**, self-tuning tick pipeline — measures impact per phase, dynamically adjusts intervals (high impact → run more, low → run less), error-rate backoff
+- **Adversarial Self-Tester**, red-team testing — LLM generates adversarial test cases targeting weak benchmark areas. Weakness cataloging with severity levels
+- **Resource Governor**, token/compute budget management with 4-level adaptive throttling (none/light/moderate/heavy). Per-tick and daily token accounting
+- **Theory of Mind**, user preference and intention modeling — detects language, verbosity, formality preferences. Satisfaction tracking and rapport scoring per user
+- **Ethical Reasoner**, 8 hard guardrail rules with keyword-based risk scoring. Consequence analysis yields 3 verdicts: approved/caution/blocked
+- **Expanded Autonomous Pipeline**, 22-phase tick loop (up from 14) with all 10 new cognitive modules
+
+<details>
+<summary>What was new in v1.3.0</summary>
 - **Connectome Neural Colony**, agent cognitive modules wired following the real *Drosophila melanogaster* brain connectome (FlyWire FAFB v783, 139K neurons, 3.7M synapses). Signals propagate through 8 brain regions with Hebbian learning — connections that produce good outcomes strengthen over time. Each agent evolves a unique cognitive profile. Dashboard visualization with live SVG brain map
 - **Deep Multi-Step Planner**, LLM decomposes complex goals into DAGs of 5–15 ordered steps with dependency tracking. Steps execute in dependency order, failed steps trigger automatic re-planning (up to 3x). Plan templates are cached for similar goals. Dashboard shows step-by-step progress with color-coded status blocks
 - **Inter-Agent Learning Bridge**, shared knowledge vault between Sable and Nexus Erebus. Each agent exports strategies, patterns, and insights to a shared JSONL vault; sibling agents import relevant learnings scored by LLM relevance filtering. Tracks provenance, apply rate, and benefit scores
@@ -35,6 +49,8 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 - **GitHub Integration**, full GitHub API skill with 13 tools — create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
 - **Expanded Autonomous Pipeline**, 14-phase tick loop with deep planning, inter-agent sync, LTM consolidation, and self-benchmarking
 - **518 tests**, comprehensive test suite (up from 463)
+
+</details>
 
 <details>
 <summary>What was new in v1.2.0</summary>
@@ -657,7 +673,7 @@ graph TD
 
 ## 🧠 Cognitive Subsystems (Agentic AI)
 
-Open-Sable includes fifteen core subsystems that work together to provide autonomous, self-improving intelligence.
+Open-Sable includes twenty-five core subsystems that work together to provide autonomous, self-improving, hyperautonomous intelligence.
 
 ### Agentic AI Architecture
 
@@ -696,6 +712,19 @@ graph LR
         IAB[Inter-Agent Bridge]
         ULTM[Ultra-LTM]
         SB[Self-Benchmark]
+    end
+
+    subgraph "Hyperautonomous (v1.4)"
+        MLE[Meta-Learner]
+        CAU[Causal Engine]
+        GOS[Goal Synthesis]
+        SKC[Skill Composer]
+        WPR[World Predictor]
+        COG[Cognitive Optimizer]
+        ADV[Adversarial Tester]
+        RGV[Resource Governor]
+        TOM[Theory of Mind]
+        ETH[Ethical Reasoner]
     end
     
     subgraph "Integration Layer"
@@ -737,6 +766,17 @@ graph LR
     AGENT --> ULTM
     AGENT --> SB
 
+    AGENT --> MLE
+    AGENT --> CAU
+    AGENT --> GOS
+    AGENT --> SKC
+    AGENT --> WPR
+    AGENT --> COG
+    AGENT --> ADV
+    AGENT --> RGV
+    AGENT --> TOM
+    AGENT --> ETH
+
     NC --> AGENT
     IL --> NC
     NC --> G
@@ -761,6 +801,17 @@ graph LR
     IAB -.-> IAB
     ULTM --> CM
     SB --> AGENT
+
+    MLE --> MC
+    CAU --> SR
+    GOS --> G
+    SKC --> SE
+    WPR --> W
+    COG --> AGENT
+    ADV --> SB
+    RGV --> AGENT
+    TOM --> M
+    ETH --> AGENT
     
     T --> TASKS
     G --> ENV
@@ -823,7 +874,24 @@ Four modules close the gap to full autonomy:
 | **Ultra-LTM** | `ultra_ltm.py` | Consolidates weeks of raw memories into durable patterns (behavioral, strategic, error, capability). Temporal decay forgets weak patterns; reinforcement strengthens recurring insights |
 | **Self-Benchmark** | `self_benchmark.py` | 8 benchmark suites (task success, planning depth, error recovery, memory utilization, emotional stability, decision speed, learning rate, inter-agent synergy). Weighted autonomy score 0–100 with regression detection |
 
-All modules plug into the **14-phase tick pipeline** (`autonomous_mode.py`):
+### Hyperautonomous Modules (v1.4+)
+
+Ten modules that elevate the agent from autonomous to hyperautonomous:
+
+| Module | File | What It Does |
+|--------|------|---------------|
+| **Meta-Learner** | `meta_learner.py` | Epsilon-greedy strategy profiles, hyperparameter mutation, EMA scoring. Auto-tunes 10 cognitive parameters |
+| **Causal Engine** | `causal_engine.py` | LLM causal link extraction, root cause analysis, counterfactual reasoning. Weighted cause→effect graph |
+| **Goal Synthesis** | `goal_synthesis.py` | Autonomous strategic goal generation from wisdom + benchmarks. Risk-weighted, de-duplicated, auto-accepted |
+| **Skill Composer** | `skill_composer.py` | N-gram sequence mining of execution chains. LLM composes compound skills from frequent atomic sequences |
+| **World Predictor** | `world_predictor.py` | State observations → LLM forecasting across 4 timeframes. Accuracy tracking + preparation task injection |
+| **Cognitive Optimizer** | `cognitive_optimizer.py` | Phase impact scoring, dynamic interval adjustment, error-rate backoff. Self-tuning tick pipeline |
+| **Adversarial Tester** | `adversarial_tester.py` | LLM red-team test generation targeting weak benchmark areas. Weakness catalog with severity levels |
+| **Resource Governor** | `resource_governor.py` | Token budgets (per-tick + daily), 4-level throttle, compute tracking. Prevents runaway resource usage |
+| **Theory of Mind** | `theory_of_mind.py` | Per-user models (language, verbosity, formality, satisfaction, rapport). Auto-detects preferences from interactions |
+| **Ethical Reasoner** | `ethical_reasoner.py` | 8 guardrail rules, keyword risk scoring, consequence analysis. 3 verdicts: approved/caution/blocked |
+
+All modules plug into the **22-phase tick pipeline** (`autonomous_mode.py`):
 
 ```
 tick start → connectome signal routing (AL/OL/PI/LPC/LH stimulation → 3-cycle propagation → routing bias)
@@ -842,6 +910,16 @@ tick start → connectome signal routing (AL/OL/PI/LPC/LH stimulation → 3-cycl
               9. Inter-agent bridge (export learnings + import sibling knowledge)
              10. Ultra-LTM (consolidate long-term patterns)
              11. Self-benchmark (quantified assessment every 25 ticks)
+             12. Meta-learner (adapt cognitive hyperparameters)
+             13. Causal engine (extract causal links from outcomes)
+             14. Goal synthesis (generate strategic goals)
+             15. Skill composer (discover compound skills)
+             16. World predictor (forecast + prepare)
+             17. Cognitive optimizer (tune tick intervals)
+             18. Adversarial tester (red-team self-testing)
+             19. Resource governor (end-of-tick accounting)
+             20. Theory of mind (update user models)
+             21. Ethical reasoner (stats + per-action checks)
           → maintenance → tick end
 ```
 
@@ -2223,7 +2301,7 @@ python3 examples/workflow_examples.py
 
 ## 📊 Project Statistics
 
-**Current Version**: 1.3.0
+**Current Version**: 1.4.0
 
 | Component | Files | Lines | Status |
 |-----------|-------|-------|--------|
@@ -2231,6 +2309,7 @@ python3 examples/workflow_examples.py
 | Agentic AI Systems | 6 | 5,500+ | ✅ Complete |
 | Deep Cognition (v1.2) | 6 | 3,100+ | ✅ Complete |
 | Autonomous Agency (v1.3) | 3 | 1,400+ | ✅ Complete |
+| Hyperautonomous (v1.4) | 10 | 2,900+ | ✅ Complete |
 | Phase 3 Engines | 5 | 3,000+ | ✅ Complete |
 | Voice & Multimodal | 4 | 3,000+ | 🧪 Experimental |
 | Interfaces | 13 | 7,000+ | ✅ Complete |
@@ -2239,9 +2318,9 @@ python3 examples/workflow_examples.py
 | Tests | 18 | 5,000+ | ✅ 518 Passing |
 | Documentation | 10 | 2,000+ | ✅ Complete |
 | Kubernetes | 7 | 500+ | 📝 Templates |
-| **Total** | **194** | **90,000+** | **✅ Core Complete** |
+| **Total** | **204** | **93,000+** | **✅ Core Complete** |
 
-### Module Inventory (65 Core Modules)
+### Module Inventory (80 Core Modules)
 
 **Agentic AI Core** (6):
 `goal_system` · `advanced_memory` · `meta_learning` · `tool_synthesis` · `world_model` · `metacognition`
@@ -2251,6 +2330,15 @@ python3 examples/workflow_examples.py
 
 **Autonomous Agency** (3):
 `proactive_reasoning` · `react_executor` · `github_skill`
+
+**Deep Autonomy** (4):
+`deep_planner` · `inter_agent_bridge` · `ultra_ltm` · `self_benchmark`
+
+**Hyperautonomous** (10):
+`meta_learner` · `causal_engine` · `goal_synthesis` · `skill_composer` · `world_predictor` · `cognitive_optimizer` · `adversarial_tester` · `resource_governor` · `theory_of_mind` · `ethical_reasoner`
+
+**Neural Architecture** (1):
+`connectome`
 
 **Phase 3 Engines** (5):
 `skill_factory` · `rag` · `workflow` · `self_modify` · `image_gen`
@@ -2319,6 +2407,19 @@ graph TB
         WF[Workflow Engine]
         SELFMOD[Self-Modifier]
     end
+
+    subgraph "Hyperautonomous v1.4"
+        MLR[Meta-Learner]
+        CE[Causal Engine]
+        GS[Goal Synthesis]
+        SC[Skill Composer]
+        WP[World Predictor]
+        CO[Cognitive Optimizer]
+        AT[Adversarial Tester]
+        RG[Resource Governor]
+        TM[Theory of Mind]
+        ER[Ethical Reasoner]
+    end
     
     subgraph "AI/ML"
         LLM[Ollama, Llama 3.1 Local]
@@ -2360,6 +2461,25 @@ graph TB
     VISION --> FILES
     AUDIO --> FILES
     
+    LANG --> MLR
+    LANG --> CE
+    LANG --> GS
+    LANG --> SC
+    LANG --> WP
+    LANG --> CO
+    LANG --> AT
+    LANG --> RG
+    LANG --> TM
+    LANG --> ER
+    MLR --> JSON
+    CE --> LLM
+    GS --> LLM
+    SC --> LLM
+    WP --> LLM
+    AT --> LLM
+    TM --> JSON
+    ER --> JSON
+
     LANG --> DOCKER
     DOCKER --> K8S
     K8S --> MONITOR
@@ -2370,6 +2490,7 @@ graph TB
 - **LLM**: Ollama (Llama 3.1), fully local
 - **Memory**: ChromaDB (vector) + Advanced multi-layer system
 - **Agentic AI**: Custom implementations (5,500+ lines)
+- **Hyperautonomous**: 10 cognitive modules (2,900+ lines) — meta-learning, causal reasoning, goal synthesis, skill composition, world prediction, architecture optimization, adversarial testing, resource governance, theory of mind, ethical reasoning
 - **RAG**: ChromaDB + sentence chunking + PDF/TXT/MD ingestion
 - **Voice**: faster-whisper (STT), Piper (TTS)
 - **Vision**: BLIP, CLIP, YOLOv8, EasyOCR, ViLT
