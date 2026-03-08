@@ -897,11 +897,19 @@ class SkillManager:
         finally:
             Path(tmp_path).unlink()
 
-        # Install dependencies
+        # Install dependencies into the active venv
         if metadata.dependencies:
             logger.info(f"Installing {len(metadata.dependencies)} dependencies")
-            # In production, would use pip
-            # await self._install_dependencies(metadata.dependencies)
+            import sys, subprocess as _sp
+            for dep in metadata.dependencies:
+                try:
+                    _sp.check_call(
+                        [sys.executable, "-m", "pip", "install", dep],
+                        stdout=_sp.DEVNULL,
+                        stderr=_sp.PIPE,
+                    )
+                except _sp.CalledProcessError as e:
+                    logger.warning(f"Failed to install dependency {dep}: {e}")
 
         # Create installed skill record
         skill = InstalledSkill(

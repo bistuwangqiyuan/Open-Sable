@@ -15,6 +15,7 @@ import logging
 import re
 import ast
 import subprocess
+import sys
 import tempfile
 import os
 from pathlib import Path
@@ -488,7 +489,7 @@ class SkillValidator:
             f.flush()
             try:
                 result = subprocess.run(
-                    ["python3", f.name],
+                    [sys.executable, f.name],
                     capture_output=True,
                     text=True,
                     timeout=timeout,

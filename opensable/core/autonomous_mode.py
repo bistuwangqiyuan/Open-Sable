@@ -88,6 +88,7 @@ class AutonomousMode:
         self.cognitive_memory = None    # CognitiveMemoryManager
         self.self_reflection = None     # ReflectionEngine
         self.skill_evolution = None     # SkillEvolutionManager
+        self.evolution_engine = None    # EvolutionEngine (code mutation + self-restart)
         self.git_brain = None           # GitBrain
         self.inner_life = None          # InnerLifeProcessor
         self.pattern_learner = None     # PatternLearningManager
@@ -169,6 +170,17 @@ class AutonomousMode:
         self.skill_evolution = _inherit("skill_evolution", lambda: __import__(
             "opensable.core.skill_evolution", fromlist=["SkillEvolutionManager"]
         ).SkillEvolutionManager(directory=data_dir / "skill_evolution"), "Skill evolution")
+
+        # Evolution engine — autonomous code mutation + self-restart
+        _profile = getattr(self.config, "profile_name", None) or os.environ.get("SABLE_PROFILE", "sable")
+        _base_dir = Path(__file__).resolve().parent.parent.parent  # repo root
+        self.evolution_engine = _inherit("evolution_engine", lambda: __import__(
+            "opensable.core.evolution_engine", fromlist=["EvolutionEngine"]
+        ).EvolutionEngine(
+            base_dir=_base_dir,
+            data_dir=data_dir / "evolution",
+            profile=_profile,
+        ), "Evolution engine")
 
         self.git_brain = await _inherit_async("git_brain", _init_git_brain, "Git brain")
 
@@ -586,6 +598,13 @@ class AutonomousMode:
                 continue
             desc = item.get("description", "").strip()
             if not desc or len(desc) < 5:
+                continue
+
+            # Handle restart requests from self-improve
+            if item.get("type") == "restart" and self.evolution_engine:
+                logger.info(f"🔄 Self-improve requested restart: {desc}")
+                self.evolution_engine.request_restart(reason=f"self-improve: {desc}")
+                self.running = False
                 continue
 
             # Dedup: exact match OR high substring overlap with existing
@@ -1093,6 +1112,19 @@ class AutonomousMode:
                 except Exception:
                     pass
 
+            # Evolution engine stats
+            if self.evolution_engine:
+                try:
+                    evo_stats = self.evolution_engine.get_stats()
+                    summaries.append(
+                        f"Evolution engine: {evo_stats.get('total_mutations', 0)} mutations total "
+                        f"({evo_stats.get('successful', 0)} ok, "
+                        f"{evo_stats.get('failed', 0)} failed), "
+                        f"can_restart={evo_stats.get('can_restart', False)}"
+                    )
+                except Exception:
+                    pass
+
             evidence = "\n".join(summaries)
 
             messages = [
@@ -1104,6 +1136,8 @@ class AutonomousMode:
                         "improvement actions the agent can take RIGHT NOW.\n"
                         "For each action, output JSON:\n"
                         '[{"type":"goal","description":"...","priority":"high|medium|low"}]\n'
+                        "Special action types:\n"
+                        '  {"type":"restart","description":"reason..."} — request agent restart\n'
                         "Focus on: fixing recurring errors, improving slow tasks, learning new skills, "
                         "automating manual patterns. Be specific and actionable."
                     ),
@@ -1339,7 +1373,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Self-reflection tick failed: {e}")
 
-            # ── 3. Skill evolution ──
+            # ── 3. Skill evolution + autonomous mutation ──
             if self.skill_evolution:
                 try:
                     evolution_result = self.skill_evolution.evaluate_tick(self.tick)
@@ -1347,6 +1381,59 @@ class AutonomousMode:
                         logger.info(
                             f"🧬 Evolution condemned {len(evolution_result['condemned'])} skills"
                         )
+
+                    # Autonomous code mutation — if evolution engine and LLM available
+                    has_targets = (
+                        evolution_result.get("condemned")
+                        or evolution_result.get("error_driven")
+                        or evolution_result.get("stagnant")
+                    )
+                    if has_targets and self.evolution_engine and self.agent.llm:
+                        try:
+                            # Gather recent error samples per skill
+                            error_samples: Dict[str, List[str]] = {}
+                            for t in self.completed_tasks[-50:]:
+                                if t.get("status") == "error":
+                                    skill = t.get("skill", t.get("type", ""))
+                                    err = str(t.get("result", ""))[:200]
+                                    if skill:
+                                        error_samples.setdefault(skill, []).append(err)
+
+                            mutation_result = await self.evolution_engine.evaluate_and_mutate(
+                                tick=self.tick,
+                                evolution_result=evolution_result,
+                                llm=self.agent.llm,
+                                error_samples=error_samples,
+                            )
+
+                            action = mutation_result.get("action", "none")
+                            if action == "mutated":
+                                sc = mutation_result.get("success_count", 0)
+                                fc = mutation_result.get("fail_count", 0)
+                                logger.info(
+                                    f"🧬 Evolution engine: {sc} mutations succeeded, "
+                                    f"{fc} failed"
+                                )
+                                if mutation_result.get("restart_initiated"):
+                                    logger.warning(
+                                        "🔄 Self-restart initiated by evolution engine"
+                                    )
+                                    self.running = False  # graceful stop
+
+                                # Record evolution events
+                                for m in mutation_result.get("mutations", []):
+                                    if m.get("success"):
+                                        self.skill_evolution.record_event(
+                                            "cap_evolved",
+                                            m["skill_name"],
+                                            tick=self.tick,
+                                            details=m.get("changes_summary", ""),
+                                        )
+                            elif action in ("cooldown", "backoff"):
+                                pass  # normal, silently skip
+                        except Exception as e:
+                            logger.debug(f"Evolution engine mutation failed: {e}")
+
                 except Exception as e:
                     logger.debug(f"Skill evolution tick failed: {e}")
 
@@ -1532,6 +1619,8 @@ class AutonomousMode:
             status["react"] = self.react_executor.get_stats()
         if self.github_skill and self.github_skill.is_available():
             status["github"] = True
+        if self.evolution_engine:
+            status["evolution_engine"] = self.evolution_engine.get_stats()
         return status
 
     def add_task(self, task: Dict):

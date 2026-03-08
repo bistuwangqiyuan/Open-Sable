@@ -332,11 +332,18 @@ Version: {skill.version}
 {skill.code}
 ''')
 
-            # Install dependencies
+            # Install dependencies into the active venv
             if skill.dependencies:
                 logger.info(f"Installing dependencies: {', '.join(skill.dependencies)}")
-                # In production, use pip to install dependencies
-                # subprocess.run(['pip', 'install'] + skill.dependencies)
+                import sys, subprocess
+                try:
+                    subprocess.check_call(
+                        [sys.executable, "-m", "pip", "install"] + skill.dependencies,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                    )
+                except subprocess.CalledProcessError as dep_err:
+                    logger.warning(f"Dependency install failed: {dep_err}")
 
             # Update download count
             skill.downloads += 1
