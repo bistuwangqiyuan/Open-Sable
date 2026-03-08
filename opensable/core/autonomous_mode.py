@@ -163,6 +163,11 @@ class AutonomousMode:
         self.social_presence = None
         self.self_replicator = None
         self.continuous_learner = None
+        self.nl_automation = None
+        self.video_understanding = None
+        self.knowledge_graph = None
+        self.iot_controller = None
+        self.distributed_task_queue = None
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -537,6 +542,26 @@ class AutonomousMode:
         self.continuous_learner = _inherit("continuous_learner", lambda: __import__(
             "opensable.core.continuous_learner", fromlist=["ContinuousLearner"]
         ).ContinuousLearner(data_dir=data_dir / "continuous_learner"), "Continuous learner")
+
+        self.nl_automation = _inherit("nl_automation", lambda: __import__(
+            "opensable.core.nl_automation", fromlist=["NLAutomationEngine"]
+        ).NLAutomationEngine(data_dir=data_dir / "nl_automation"), "NL automation")
+
+        self.video_understanding = _inherit("video_understanding", lambda: __import__(
+            "opensable.core.video_understanding", fromlist=["VideoUnderstandingEngine"]
+        ).VideoUnderstandingEngine(data_dir=data_dir / "video_understanding"), "Video understanding")
+
+        self.knowledge_graph = _inherit("knowledge_graph", lambda: __import__(
+            "opensable.core.knowledge_graph", fromlist=["KnowledgeGraphEngine"]
+        ).KnowledgeGraphEngine(data_dir=data_dir / "knowledge_graph"), "Knowledge graph")
+
+        self.iot_controller = _inherit("iot_controller", lambda: __import__(
+            "opensable.core.iot_controller", fromlist=["IoTController"]
+        ).IoTController(data_dir=data_dir / "iot_controller"), "IoT controller")
+
+        self.distributed_task_queue = _inherit("distributed_task_queue", lambda: __import__(
+            "opensable.core.distributed_task_queue", fromlist=["DistributedTaskQueue"]
+        ).DistributedTaskQueue(data_dir=data_dir / "distributed_tasks"), "Distributed task queue")
 
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
@@ -2634,6 +2659,41 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Continuous learner tick: {e}")
 
+            # ── 71. NL automation — evaluate trigger rules ──
+            if self.nl_automation:
+                try:
+                    await self.nl_automation.evaluate_triggers()
+                except Exception as e:
+                    logger.debug(f"NL automation tick: {e}")
+
+            # ── 72. Knowledge graph — passive extraction ──
+            if self.knowledge_graph:
+                try:
+                    _ = self.knowledge_graph.get_stats()
+                except Exception as e:
+                    logger.debug(f"Knowledge graph tick: {e}")
+
+            # ── 73. Video understanding — stats ──
+            if self.video_understanding:
+                try:
+                    _ = self.video_understanding.get_stats()
+                except Exception as e:
+                    logger.debug(f"Video understanding tick: {e}")
+
+            # ── 74. IoT controller — monitor devices ──
+            if self.iot_controller:
+                try:
+                    _ = self.iot_controller.get_stats()
+                except Exception as e:
+                    logger.debug(f"IoT controller tick: {e}")
+
+            # ── 75. Distributed task queue — process ──
+            if self.distributed_task_queue:
+                try:
+                    _ = self.distributed_task_queue.get_stats()
+                except Exception as e:
+                    logger.debug(f"Distributed task queue tick: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -2789,6 +2849,9 @@ class AutonomousMode:
             "web_agent", "self_healer", "dynamic_skill_factory",
             "multimodal_engine", "internet_monitor", "financial_autonomy",
             "social_presence", "self_replicator", "continuous_learner",
+            # ── v1.8 Final Gap Closers ──
+            "nl_automation", "video_understanding", "knowledge_graph",
+            "iot_controller", "distributed_task_queue",
         ]:
             mod = getattr(self, attr, None)
             if mod:

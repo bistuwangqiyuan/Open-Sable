@@ -290,6 +290,11 @@ class SableAgent:
         self.social_presence = None          # SocialPresenceBuilder (audience growth)
         self.self_replicator = None          # SelfReplicator (clone + horizontal scaling)
         self.continuous_learner = None       # ContinuousLearner (permanent evolution)
+        self.nl_automation = None               # NLAutomationEngine (IFTTT-style NL rules)
+        self.video_understanding = None         # VideoUnderstandingEngine (video analysis)
+        self.knowledge_graph = None             # KnowledgeGraphEngine (NetworkX graph)
+        self.iot_controller = None              # IoTController (smart home)
+        self.distributed_task_queue = None      # DistributedTaskQueue (Redis workers)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -422,6 +427,11 @@ class SableAgent:
             ("Social presence", self._init_social_presence),
             ("Self replicator", self._init_self_replicator),
             ("Continuous learner", self._init_continuous_learner),
+            ("NL automation", self._init_nl_automation),
+            ("Video understanding", self._init_video_understanding),
+            ("Knowledge graph", self._init_knowledge_graph),
+            ("IoT controller", self._init_iot_controller),
+            ("Distributed task queue", self._init_distributed_task_queue),
         ]:
             try:
                 await init_fn()
@@ -852,6 +862,45 @@ class SableAgent:
     async def _init_continuous_learner(self):
         from .continuous_learner import ContinuousLearner
         self.continuous_learner = ContinuousLearner(data_dir=Path(self._data_dir) / "continuous_learner")
+
+    async def _init_nl_automation(self):
+        from .nl_automation import NLAutomationEngine
+        self.nl_automation = NLAutomationEngine(data_dir=Path(self._data_dir) / "nl_automation")
+        if self.llm:
+            self.nl_automation.set_llm(self.llm)
+
+    async def _init_video_understanding(self):
+        from .video_understanding import VideoUnderstandingEngine
+        self.video_understanding = VideoUnderstandingEngine(data_dir=Path(self._data_dir) / "video_understanding")
+        if self.llm:
+            self.video_understanding.set_llm(self.llm)
+
+    async def _init_knowledge_graph(self):
+        from .knowledge_graph import KnowledgeGraphEngine
+        self.knowledge_graph = KnowledgeGraphEngine(data_dir=Path(self._data_dir) / "knowledge_graph")
+        if self.llm:
+            self.knowledge_graph.set_llm(self.llm)
+
+    async def _init_iot_controller(self):
+        from .iot_controller import IoTController
+        import os
+        self.iot_controller = IoTController(
+            data_dir=Path(self._data_dir) / "iot_controller",
+            ha_url=os.getenv("HA_URL", ""),
+            ha_token=os.getenv("HA_TOKEN", ""),
+        )
+        if self.llm:
+            self.iot_controller.set_llm(self.llm)
+
+    async def _init_distributed_task_queue(self):
+        from .distributed_task_queue import DistributedTaskQueue
+        import os
+        self.distributed_task_queue = DistributedTaskQueue(
+            data_dir=Path(self._data_dir) / "distributed_tasks",
+            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
+        )
+        await self.distributed_task_queue.initialize()
+        self.distributed_task_queue.register_builtins()
 
     async def _init_inner_life(self):
         from .inner_life import InnerLifeProcessor

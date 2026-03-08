@@ -8,6 +8,7 @@ import {
   Lightbulb, Search, Crosshair, Puzzle, Compass, Settings2,
   Bug, Gauge, UserCheck, Scale, Atom, Moon, FastForward, Flower, Shuffle,
   Wifi, Hammer, Factory, Camera, Radar, DollarSign, Megaphone, Copy, GraduationCap,
+  PlayCircle, Video, GitMerge, Home, Server,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1234,6 +1235,11 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const socialPresence         = data?.social_presence || null;
   const selfReplicator         = data?.self_replicator || null;
   const continuousLearner      = data?.continuous_learner || null;
+  const nlAutomation           = data?.nl_automation || null;
+  const videoUnderstanding     = data?.video_understanding || null;
+  const knowledgeGraph         = data?.knowledge_graph || null;
+  const iotController          = data?.iot_controller || null;
+  const distributedTaskQueue   = data?.distributed_task_queue || null;
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -1629,6 +1635,11 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           {socialPresence && <GenericModulePanel icon={Megaphone} title="Social Presence" color="var(--pink)" data={socialPresence} fields={['platforms','total_content','published_posts','total_engagement','total_followers','avg_engagement_rate']} />}
           {selfReplicator && <GenericModulePanel icon={Copy} title="Self Replicator" color="var(--teal)" data={selfReplicator} fields={['total_replicas','running_replicas','total_clones','total_deployments','total_syncs','max_replicas']} />}
           {continuousLearner && <GenericModulePanel icon={GraduationCap} title="Continuous Learner" color="var(--blue)" data={continuousLearner} fields={['total_lessons','interaction_count','behavior_rules','knowledge_nodes','total_adaptations','avg_confidence']} />}
+          {nlAutomation && <GenericModulePanel icon={PlayCircle} title="NL Automation" color="var(--green)" data={nlAutomation} fields={['total_rules','active_rules','total_activations','total_evaluations','pending_actions','trigger_types']} />}
+          {videoUnderstanding && <GenericModulePanel icon={Video} title="Video Understanding" color="var(--orange)" data={videoUnderstanding} fields={['total_analyzed','total_frames_extracted','total_transcriptions','total_questions','avg_scenes_per_video','total_processing_time_s']} />}
+          {knowledgeGraph && <GenericModulePanel icon={GitMerge} title="Knowledge Graph" color="var(--purple)" data={knowledgeGraph} fields={['total_entities','total_relationships','total_queries','total_extractions','total_traversals','communities']} />}
+          {iotController && <GenericModulePanel icon={Home} title="IoT Controller" color="var(--teal)" data={iotController} fields={['configured','total_devices','total_routines','total_commands','total_discoveries','errors']} />}
+          {distributedTaskQueue && <GenericModulePanel icon={Server} title="Distributed Tasks" color="var(--gold)" data={distributedTaskQueue} fields={['backend','workers_active','total_submitted','total_completed','total_failed','success_rate']} />}
 
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (

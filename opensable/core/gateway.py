@@ -329,6 +329,12 @@ class Gateway:
         app.router.add_get("/api/social-presence", self._social_presence_handler)
         app.router.add_get("/api/self-replicator", self._self_replicator_handler)
         app.router.add_get("/api/continuous-learner", self._continuous_learner_handler)
+        # ── v1.8 Final Gap Closers ──
+        app.router.add_get("/api/nl-automation", self._nl_automation_handler)
+        app.router.add_get("/api/video-understanding", self._video_understanding_handler)
+        app.router.add_get("/api/knowledge-graph", self._knowledge_graph_handler)
+        app.router.add_get("/api/iot-controller", self._iot_controller_handler)
+        app.router.add_get("/api/distributed-tasks", self._distributed_task_queue_handler)
 
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
@@ -362,7 +368,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path.startswith("/api/nl-automation") or path.startswith("/api/video-understanding") or path.startswith("/api/knowledge-graph") or path.startswith("/api/iot-controller") or path.startswith("/api/distributed-tasks") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -710,6 +716,21 @@ class Gateway:
 
     async def _continuous_learner_handler(self, request: web.Request) -> web.Response:
         return await self._generic_module_handler("continuous_learner", "Continuous learner", request)
+
+    async def _nl_automation_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("nl_automation", "NL automation", request)
+
+    async def _video_understanding_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("video_understanding", "Video understanding", request)
+
+    async def _knowledge_graph_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("knowledge_graph", "Knowledge graph", request)
+
+    async def _iot_controller_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("iot_controller", "IoT controller", request)
+
+    async def _distributed_task_queue_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("distributed_task_queue", "Distributed task queue", request)
 
     async def _generic_module_handler(self, attr: str, label: str, request: web.Request) -> web.Response:
         """Generic handler for cognitive module stats endpoints."""
@@ -2145,6 +2166,22 @@ class Gateway:
                 "web_agent", "self_healer", "dynamic_skill_factory",
                 "multimodal_engine", "internet_monitor", "financial_autonomy",
                 "social_presence", "self_replicator", "continuous_learner",
+            ):
+                mod = getattr(self.agent, _mod_attr, None)
+                if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                    mod = getattr(self.agent.autonomous, _mod_attr, None)
+                if mod:
+                    try:
+                        result[_mod_attr] = mod.get_stats()
+                    except Exception:
+                        result[_mod_attr] = None
+                else:
+                    result[_mod_attr] = None
+
+            # ── v1.8 Final Gap Closers ────────────────────────────
+            for _mod_attr in (
+                "nl_automation", "video_understanding", "knowledge_graph",
+                "iot_controller", "distributed_task_queue",
             ):
                 mod = getattr(self.agent, _mod_attr, None)
                 if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
