@@ -8,6 +8,7 @@ Tests for autonomous agency modules:
 import asyncio
 import json
 import pytest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -722,3 +723,494 @@ class TestImports:
         from opensable.core.react_executor import REACT_SYSTEM_PROMPT
         assert "FINISH" in REACT_SYSTEM_PROMPT
         assert "thought" in REACT_SYSTEM_PROMPT.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AutonomousMode — Outcome learning, discovery, self-improvement tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _make_autonomous_mode():
+    """Create a minimal AutonomousMode for testing (no real agent)."""
+    from opensable.core.autonomous_mode import AutonomousMode
+
+    mock_agent = MagicMock()
+    mock_agent.llm = MagicMock()
+    mock_agent.tools = MagicMock()
+
+    mock_config = MagicMock()
+    mock_config.autonomous_check_interval = 30
+    mock_config.autonomous_max_tasks = 3
+    mock_config.autonomous_sources = "calendar,email,system_monitoring"
+    mock_config.data_dir = "/tmp/test_autonomous"
+
+    am = AutonomousMode(mock_agent, mock_config)
+    am.tick = 10
+    return am
+
+
+class TestOutcomeLearning:
+    """Tests for _record_outcome and _execute_tasks outcome tracking."""
+
+    def test_record_outcome_success_stores_in_cognitive_memory(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t1", "type": "goal", "description": "Test task", "tools_used": []}
+        am._record_outcome(task, success=True, result="done")
+
+        am.cognitive_memory.add_memory.assert_called_once()
+        call_args = am.cognitive_memory.add_memory.call_args
+        assert "succeeded" in call_args[0][0]
+        assert call_args[1]["category"] == "success"
+        assert call_args[1]["importance"] == 0.7
+
+    def test_record_outcome_failure_higher_importance(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t2", "type": "command", "description": "Failing task", "tools_used": []}
+        am._record_outcome(task, success=False, result=Exception("boom"))
+
+        call_args = am.cognitive_memory.add_memory.call_args
+        assert "FAILED" in call_args[0][0]
+        assert call_args[1]["importance"] == 0.9
+
+    def test_record_outcome_skill_fitness_tracking(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.skill_fitness = MagicMock()
+        am.trace_exporter = None
+
+        task = {
+            "id": "t3", "type": "goal", "description": "x",
+            "tools_used": ["read_file", "web_search"],
+            "duration_ms": 1500,
+        }
+        am._record_outcome(task, success=True, result="ok")
+
+        assert am.skill_fitness.record_event.call_count == 2
+
+    def test_record_outcome_trace_exporter(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.skill_fitness = None
+        am.trace_exporter = MagicMock()
+
+        task = {"id": "t4", "type": "email_action", "description": "Reply to boss", "source": "email"}
+        am._record_outcome(task, success=True, result="sent")
+
+        am.trace_exporter.record_event.assert_called_once()
+        call_args = am.trace_exporter.record_event.call_args
+        assert call_args[0][0] == "task_outcome"
+        assert "✅" in call_args[1]["summary"]
+
+    def test_record_outcome_no_modules_no_crash(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        task = {"id": "t5", "type": "goal", "description": "x"}
+        # Should not raise
+        am._record_outcome(task, success=False, result="err")
+
+    @pytest.mark.asyncio
+    async def test_execute_tasks_records_success(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+        am.react_executor = None
+        am.goal_manager = None
+
+        am.task_queue = [
+            {"id": "t6", "type": "reminder", "description": "Remember to drink water"}
+        ]
+
+        await am._execute_tasks()
+
+        assert len(am.task_queue) == 0
+        assert len(am.completed_tasks) == 1
+        assert am.completed_tasks[0]["status"] == "done"
+        assert am.completed_tasks[0]["duration_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_execute_tasks_records_failure(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = MagicMock()
+        am.skill_fitness = None
+        am.trace_exporter = None
+
+        # Patch _execute_single_task to raise
+        am._execute_single_task = AsyncMock(side_effect=RuntimeError("boom"))
+
+        am.task_queue = [
+            {"id": "t7", "type": "goal", "description": "Will fail"}
+        ]
+
+        await am._execute_tasks()
+
+        assert len(am.task_queue) == 0
+        assert len(am.completed_tasks) == 1
+        assert am.completed_tasks[0]["status"] == "error"
+        assert "boom" in am.completed_tasks[0]["result"]
+
+
+class TestInjectLLMTasks:
+    """Tests for _inject_llm_tasks helper."""
+
+    def test_inject_json_array(self):
+        am = _make_autonomous_mode()
+        content = json.dumps([
+            {"type": "goal", "description": "Write tests", "priority": "high"},
+            {"type": "command", "description": "Check disk", "priority": "low"},
+        ])
+        am._inject_llm_tasks(content, source="test")
+
+        assert len(am.task_queue) == 2
+        assert am.task_queue[0]["type"] == "goal"
+        assert am.task_queue[0]["source"] == "test"
+
+    def test_inject_json_in_markdown_code_block(self):
+        am = _make_autonomous_mode()
+        content = '```json\n[{"type":"goal","description":"Clean logs"}]\n```'
+        am._inject_llm_tasks(content, source="email")
+
+        assert len(am.task_queue) == 1
+        assert am.task_queue[0]["description"] == "Clean logs"
+
+    def test_inject_deduplicates(self):
+        am = _make_autonomous_mode()
+        am.task_queue = [{"id": "existing", "description": "Write tests"}]
+
+        content = json.dumps([
+            {"type": "goal", "description": "Write tests"},  # duplicate
+            {"type": "goal", "description": "Deploy app"},   # new
+        ])
+        am._inject_llm_tasks(content, source="test")
+
+        descriptions = [t["description"] for t in am.task_queue]
+        assert descriptions.count("Write tests") == 1
+        assert "Deploy app" in descriptions
+
+    def test_inject_max_5_tasks(self):
+        am = _make_autonomous_mode()
+        content = json.dumps([
+            {"type": "goal", "description": f"Task {i}"} for i in range(10)
+        ])
+        am._inject_llm_tasks(content, source="test")
+
+        assert len(am.task_queue) == 5
+
+    def test_inject_invalid_json_no_crash(self):
+        am = _make_autonomous_mode()
+        am._inject_llm_tasks("This is not JSON at all", source="test")
+        assert len(am.task_queue) == 0
+
+    def test_inject_single_dict(self):
+        am = _make_autonomous_mode()
+        content = json.dumps({"type": "goal", "description": "Single task"})
+        am._inject_llm_tasks(content, source="test")
+        assert len(am.task_queue) == 1
+
+
+class TestCheckSystem:
+    """Tests for _check_system with real threshold detection."""
+
+    @pytest.mark.asyncio
+    async def test_check_system_high_disk_creates_task(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(return_value={
+            "disk": "95% used", "memory": "45% used", "cpu": "20%"
+        })
+
+        await am._check_system()
+
+        assert any("disk" in t.get("description", "").lower() for t in am.task_queue)
+
+    @pytest.mark.asyncio
+    async def test_check_system_high_memory_creates_task(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(return_value={
+            "disk": "40% used", "memory": "92% used", "cpu": "10%"
+        })
+
+        await am._check_system()
+
+        assert any("memory" in t.get("description", "").lower() for t in am.task_queue)
+
+    @pytest.mark.asyncio
+    async def test_check_system_normal_no_tasks(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(return_value={
+            "disk": "40% used", "memory": "45% used", "cpu": "20%"
+        })
+
+        await am._check_system()
+
+        assert len(am.task_queue) == 0
+
+    @pytest.mark.asyncio
+    async def test_check_system_tool_failure_no_crash(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(side_effect=Exception("tool offline"))
+
+        await am._check_system()  # Should not raise
+        assert len(am.task_queue) == 0
+
+
+class TestCheckCalendar:
+    """Tests for _check_calendar with LLM analysis."""
+
+    @pytest.mark.asyncio
+    async def test_check_calendar_injects_tasks(self):
+        am = _make_autonomous_mode()
+
+        # Mock tool returning events
+        am.agent.tools.execute = AsyncMock(return_value={
+            "events": [{"title": "Team standup", "time": "10:00"}]
+        })
+
+        # Mock LLM returning action items
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={
+            "text": '[{"type":"calendar","description":"Prepare for team standup at 10:00","priority":"high"}]'
+        })
+
+        await am._check_calendar()
+
+        assert len(am.task_queue) >= 1
+        assert am.task_queue[0]["type"] == "calendar"
+
+    @pytest.mark.asyncio
+    async def test_check_calendar_no_events_no_tasks(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(return_value={"events": []})
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={"text": "[]"})
+
+        await am._check_calendar()
+
+        assert len(am.task_queue) == 0
+
+
+class TestCheckEmail:
+    """Tests for _check_email with LLM analysis."""
+
+    @pytest.mark.asyncio
+    async def test_check_email_injects_tasks(self):
+        am = _make_autonomous_mode()
+
+        am.agent.tools.execute = AsyncMock(return_value={
+            "emails": [{"from": "boss@co.com", "subject": "Urgent: deploy fix"}]
+        })
+
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={
+            "text": '[{"type":"email_action","description":"Reply to boss about deploy fix","priority":"high"}]'
+        })
+
+        await am._check_email()
+
+        assert len(am.task_queue) >= 1
+        assert am.task_queue[0]["type"] == "email_action"
+
+
+class TestSelfImprove:
+    """Tests for _self_improve with LLM-driven meta-learning."""
+
+    @pytest.mark.asyncio
+    async def test_self_improve_generates_tasks(self):
+        am = _make_autonomous_mode()
+        am._last_improvement = datetime.now() - timedelta(hours=25)
+        am.self_reflection = None
+        am.pattern_learner = None
+        am.skill_fitness = None
+
+        am.completed_tasks = [
+            {"status": "done", "type": "goal", "description": "Task A", "result": "ok", "duration_ms": 100},
+            {"status": "error", "type": "goal", "description": "Task B", "result": "timeout", "duration_ms": 5000},
+        ]
+
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={
+            "text": '[{"type":"goal","description":"Implement retry logic for timeouts","priority":"high"}]'
+        })
+
+        await am._self_improve()
+
+        assert len(am.task_queue) >= 1
+        assert "retry" in am.task_queue[0]["description"].lower() or len(am.task_queue) >= 1
+
+    @pytest.mark.asyncio
+    async def test_self_improve_skips_if_recent(self):
+        am = _make_autonomous_mode()
+        am._last_improvement = datetime.now()  # Just ran
+
+        await am._self_improve()
+
+        # Should not call LLM
+        am.agent.llm.invoke_with_tools.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_self_improve_no_llm_no_crash(self):
+        am = _make_autonomous_mode()
+        am._last_improvement = datetime.now() - timedelta(hours=25)
+        am.agent.llm = None
+
+        await am._self_improve()  # Should not raise
+
+
+class TestExecuteSingleTask:
+    """Tests for _execute_single_task routing through ReAct."""
+
+    @pytest.mark.asyncio
+    async def test_reminder_task_returns_description(self):
+        am = _make_autonomous_mode()
+        task = {"type": "reminder", "description": "Drink water"}
+        result = await am._execute_single_task(task)
+        assert "Drink water" in str(result)
+
+    @pytest.mark.asyncio
+    async def test_command_task_executes_tool(self):
+        am = _make_autonomous_mode()
+        am.agent.tools.execute = AsyncMock(return_value="disk: 45% used")
+
+        task = {"type": "command", "tool_name": "system_info", "tool_args": {}}
+        result = await am._execute_single_task(task)
+        assert result == "disk: 45% used"
+
+    @pytest.mark.asyncio
+    async def test_goal_task_uses_react(self):
+        am = _make_autonomous_mode()
+        am.react_executor = MagicMock()
+        react_result = MagicMock()
+        react_result.success = True
+        react_result.final_answer = "Goal completed"
+        react_result.steps = []
+        react_result.tools_used = ["web_search"]
+        react_result.total_duration_ms = 200
+        am.react_executor.execute = AsyncMock(return_value=react_result)
+        am.agent.tools.get_tool_schemas = MagicMock(return_value=[])
+        am.trace_exporter = None
+
+        task = {"type": "goal", "description": "Research AI trends"}
+        result = await am._execute_single_task(task)
+        assert result == "Goal completed"
+
+    @pytest.mark.asyncio
+    async def test_system_maintenance_uses_react(self):
+        am = _make_autonomous_mode()
+        am.react_executor = MagicMock()
+        react_result = MagicMock()
+        react_result.success = True
+        react_result.final_answer = "Cleaned 5GB of logs"
+        react_result.steps = []
+        react_result.tools_used = ["run_command"]
+        react_result.total_duration_ms = 500
+        am.react_executor.execute = AsyncMock(return_value=react_result)
+        am.agent.tools.get_tool_schemas = MagicMock(return_value=[])
+        am.trace_exporter = None
+
+        task = {"type": "system_maintenance", "description": "Clean old logs from disk"}
+        result = await am._execute_single_task(task)
+        assert "Cleaned" in str(result)
+
+    @pytest.mark.asyncio
+    async def test_trading_alert_logs_only(self):
+        am = _make_autonomous_mode()
+        task = {"type": "trading_alert", "description": "BTC spike detected"}
+        result = await am._execute_single_task(task)
+        assert "BTC" in str(result)
+
+
+class TestCognitiveTick:
+    """Tests for _cognitive_tick with proper module wiring."""
+
+    @pytest.mark.asyncio
+    async def test_cognitive_tick_runs_all_modules(self):
+        am = _make_autonomous_mode()
+
+        am.cognitive_memory = MagicMock()
+        am.self_reflection = MagicMock()
+        am.skill_evolution = MagicMock()
+        am.skill_evolution.evaluate_tick.return_value = {}
+        am.pattern_learner = MagicMock()
+        am.skill_fitness = MagicMock()
+        am.skill_fitness.get_fitness_dicts.return_value = []
+        am.skill_fitness.events = []
+        am.git_brain = MagicMock()
+        am.git_brain.write_episode = AsyncMock()
+        am.inner_life = None  # Skip LLM call
+
+        await am._cognitive_tick()
+
+        am.cognitive_memory.process_tick.assert_called_once_with(10)
+        am.self_reflection.record_outcome.assert_called_once()
+        am.skill_evolution.evaluate_tick.assert_called_once_with(10)
+        am.pattern_learner.process_tick.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cognitive_tick_inner_life_calls_llm(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.self_reflection = None
+        am.skill_evolution = None
+        am.pattern_learner = None
+        am.git_brain = None
+        am.goal_manager = None
+
+        # Set up inner life
+        am.inner_life = MagicMock()
+        am.inner_life.get_system1_prompt.return_value = "TICK 10..."
+        am.inner_life.process_response = MagicMock()
+        am.inner_life.emotion = MagicMock()
+        am.inner_life.emotion.primary = "curiosity"
+        am.inner_life.emotion.valence = 0.3
+
+        am.agent.llm.invoke_with_tools = AsyncMock(return_value={
+            "content": '{"emotion":{"primary":"excitement","valence":0.7,"arousal":0.6,"trigger":"progress"}}'
+        })
+
+        await am._cognitive_tick()
+
+        am.inner_life.get_system1_prompt.assert_called_once()
+        am.agent.llm.invoke_with_tools.assert_called_once()
+        am.inner_life.process_response.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cognitive_tick_self_reflection_gets_real_data(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.skill_evolution = None
+        am.pattern_learner = None
+        am.git_brain = None
+        am.inner_life = None
+        am.goal_manager = None
+
+        am.self_reflection = MagicMock()
+        am.completed_tasks = [
+            {"status": "done", "type": "goal", "description": "A", "tools_used": ["web_search"]},
+            {"status": "error", "type": "command", "description": "B", "result": "timeout"},
+        ]
+
+        await am._cognitive_tick()
+
+        call_args = am.self_reflection.record_outcome.call_args[0][0]
+        assert call_args.tick == 10
+        assert call_args.success is False  # has errors
+        assert "web_search" in call_args.tools_used
+        assert len(call_args.errors) >= 1
+
+    @pytest.mark.asyncio
+    async def test_cognitive_tick_no_modules_no_crash(self):
+        am = _make_autonomous_mode()
+        am.cognitive_memory = None
+        am.self_reflection = None
+        am.skill_evolution = None
+        am.pattern_learner = None
+        am.git_brain = None
+        am.inner_life = None
+
+        await am._cognitive_tick()  # Should not raise

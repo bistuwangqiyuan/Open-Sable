@@ -21,6 +21,23 @@ from .goal_system import GoalManager
 
 logger = logging.getLogger(__name__)
 
+_PRIORITY_MAP = {"critical": 10, "high": 8, "medium": 5, "low": 3, "minimal": 1}
+
+
+def _parse_priority(value) -> int:
+    """Convert a priority value (int, str, or anything) to int 1-10."""
+    if isinstance(value, int):
+        return max(1, min(10, value))
+    if isinstance(value, str):
+        mapped = _PRIORITY_MAP.get(value.strip().lower())
+        if mapped is not None:
+            return mapped
+        try:
+            return max(1, min(10, int(value)))
+        except ValueError:
+            return 5
+    return 5
+
 
 class AutonomousMode:
     """
@@ -346,47 +363,183 @@ class AutonomousMode:
             await self._check_goals()
 
     async def _check_calendar(self):
-        """Check calendar for upcoming events requiring action"""
+        """Check calendar for upcoming events and create actionable tasks."""
         try:
-            # Get upcoming events in next 24 hours
             result = await self.agent.tools.execute(
                 "calendar", {"action": "list", "timeframe": "24h"}
             )
+            result_text = str(result).strip()
 
-            # Parse events and create tasks
-            # (This would parse the actual calendar data)
-            logger.debug("Checked calendar for tasks")
+            # Skip empty results
+            if not result_text or "no " in result_text.lower() or len(result_text) < 20:
+                logger.debug("Calendar: no upcoming events")
+                return
+
+            # Use LLM to extract actionable tasks from calendar events
+            if self.agent.llm:
+                messages = [
+                    {"role": "system", "content": (
+                        "You are an autonomous agent's calendar analyzer. "
+                        "Extract actionable tasks from calendar events. "
+                        "Output ONLY valid JSON array. Each item: "
+                        '{"description": "what to do", "priority": 1-10, "type": "reminder"}. '
+                        "If nothing actionable, return []."
+                    )},
+                    {"role": "user", "content": f"Calendar events:\n{result_text[:2000]}"},
+                ]
+                try:
+                    response = await self.agent.llm.invoke_with_tools(messages, [])
+                    self._inject_llm_tasks(response.get("text", ""), source="calendar")
+                except Exception as e:
+                    logger.debug(f"Calendar LLM analysis failed: {e}")
+            else:
+                logger.debug("Checked calendar (no LLM for analysis)")
 
         except Exception as e:
-            logger.error(f"Failed to check calendar: {e}")
+            logger.debug(f"Calendar check skipped: {e}")
 
     async def _check_email(self):
-        """Check email for action items"""
+        """Check email for action items and create tasks from them."""
         try:
-            # Check for unread emails with high priority
             result = await self.agent.tools.execute(
-                "email", {"action": "read", "filter": "unread", "limit": 10}
+                "email", {"action": "read", "filter": "unread", "limit": 5}
             )
+            result_text = str(result).strip()
 
-            # Analyze emails for tasks (using LLM)
-            # Example: "Meeting at 3pm tomorrow" -> Create reminder task
-            logger.debug("Checked email for tasks")
+            if not result_text or "no " in result_text.lower() or len(result_text) < 20:
+                logger.debug("Email: no unread messages")
+                return
+
+            # Use LLM to extract action items from emails
+            if self.agent.llm:
+                messages = [
+                    {"role": "system", "content": (
+                        "You are an autonomous agent's email analyzer. "
+                        "Extract actionable tasks from emails. "
+                        "Output ONLY valid JSON array. Each item: "
+                        '{"description": "what to do", "priority": 1-10, "type": "email_action"}. '
+                        "Ignore spam and newsletters. If nothing actionable, return []."
+                    )},
+                    {"role": "user", "content": f"Emails:\n{result_text[:3000]}"},
+                ]
+                try:
+                    response = await self.agent.llm.invoke_with_tools(messages, [])
+                    self._inject_llm_tasks(response.get("text", ""), source="email")
+                except Exception as e:
+                    logger.debug(f"Email LLM analysis failed: {e}")
+            else:
+                logger.debug("Checked email (no LLM for analysis)")
 
         except Exception as e:
-            logger.error(f"Failed to check email: {e}")
+            logger.debug(f"Email check skipped: {e}")
 
     async def _check_system(self):
-        """Monitor system resources and create maintenance tasks"""
+        """Monitor system resources and create maintenance tasks if needed."""
         try:
-            # Get system info
             result = await self.agent.tools.execute("system_info", {})
+            result_text = str(result).strip()
 
-            # Check if action needed (e.g., disk space low, high CPU)
-            # This would parse the system info and create tasks if needed
-            logger.debug("Checked system resources")
+            if not result_text or len(result_text) < 10:
+                return
+
+            # Parse common system thresholds directly (no LLM needed)
+            tasks_created = 0
+
+            # Check for disk space issues
+            import re
+            disk_matches = re.findall(r"(\d+(?:\.\d+)?)\s*%\s*(?:used|full|disk)", result_text, re.IGNORECASE)
+            for pct in disk_matches:
+                if float(pct) > 90:
+                    task_id = f"system_disk_{datetime.now().strftime('%Y%m%d')}"
+                    if not any(t.get("id") == task_id for t in self.task_queue):
+                        self.task_queue.append({
+                            "id": task_id,
+                            "type": "system_maintenance",
+                            "description": f"Disk usage at {pct}% — clean up temp files, old logs, caches",
+                            "priority": 8,
+                            "created_at": datetime.now(),
+                        })
+                        tasks_created += 1
+                        logger.warning(f"⚠️ Disk usage {pct}% — created cleanup task")
+
+            # Check for high memory usage
+            mem_matches = re.findall(r"(?:memory|ram|mem)[^0-9]*(\d+(?:\.\d+)?)\s*%", result_text, re.IGNORECASE)
+            for pct in mem_matches:
+                if float(pct) > 90:
+                    task_id = f"system_memory_{datetime.now().strftime('%Y%m%d_%H')}"
+                    if not any(t.get("id") == task_id for t in self.task_queue):
+                        self.task_queue.append({
+                            "id": task_id,
+                            "type": "system_maintenance",
+                            "description": f"Memory usage at {pct}% — identify memory-heavy processes",
+                            "priority": 7,
+                            "created_at": datetime.now(),
+                        })
+                        tasks_created += 1
+                        logger.warning(f"⚠️ Memory at {pct}%")
+
+            if tasks_created:
+                logger.info(f"🖥️ System check: created {tasks_created} maintenance task(s)")
+            else:
+                logger.debug("System check: all healthy")
 
         except Exception as e:
-            logger.error(f"Failed to check system: {e}")
+            logger.debug(f"System check skipped: {e}")
+
+    def _inject_llm_tasks(self, llm_text: str, source: str = "unknown"):
+        """Parse LLM JSON output and inject tasks into the queue."""
+        import re as _re
+
+        text = llm_text.strip()
+
+        # Extract JSON from potential markdown code block
+        if "```" in text:
+            match = _re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, _re.DOTALL)
+            if match:
+                text = match.group(1).strip()
+
+        try:
+            items = json.loads(text)
+        except json.JSONDecodeError:
+            start = text.find("[")
+            end = text.rfind("]")
+            if start >= 0 and end > start:
+                try:
+                    items = json.loads(text[start:end + 1])
+                except json.JSONDecodeError:
+                    return
+            else:
+                return
+
+        if isinstance(items, dict):
+            items = [items]
+        elif not isinstance(items, list):
+            return
+
+        injected = 0
+        for item in items[:5]:  # Max 5 tasks per source
+            if not isinstance(item, dict):
+                continue
+            desc = item.get("description", "").strip()
+            if not desc or len(desc) < 5:
+                continue
+
+            task_id = f"{source}_{self.tick}_{injected}"
+            if any(t.get("description") == desc for t in self.task_queue):
+                continue  # Dedup
+
+            self.task_queue.append({
+                "id": task_id,
+                "type": item.get("type", source),
+                "description": desc,
+                "priority": _parse_priority(item.get("priority", 5)),
+                "created_at": datetime.now(),
+                "source": source,
+            })
+            injected += 1
+
+        if injected:
+            logger.info(f"📋 Injected {injected} task(s) from {source}")
 
     async def _check_trading(self):
         """Check for trading opportunities and portfolio health"""
@@ -462,10 +615,10 @@ class AutonomousMode:
     async def _execute_tasks(self):
         """Execute tasks from queue — ONE AT A TIME (sequential).
         
+        After each task, record the outcome for learning.
         Concurrent task execution causes multiple simultaneous API calls,
         which gets detected as bot behavior. A real user does one thing at a time.
         """
-        # Get tasks to execute (up to max_concurrent)
         tasks_to_execute = self.task_queue[: self.max_concurrent_tasks]
 
         if not tasks_to_execute:
@@ -473,79 +626,266 @@ class AutonomousMode:
 
         logger.info(f"Executing {len(tasks_to_execute)} task(s) sequentially...")
 
-        # Execute tasks SEQUENTIALLY — never concurrent
-        results = []
-        for task in tasks_to_execute:
+        for task in list(tasks_to_execute):
+            start_time = time.monotonic()
             try:
                 result = await self._execute_single_task(task)
-                results.append(result)
-            except Exception as e:
-                results.append(e)
+                duration_ms = (time.monotonic() - start_time) * 1000
 
-        # Process results
-        for task, result in zip(tasks_to_execute, results):
-            if isinstance(result, Exception):
-                logger.error(f"Task {task['id']} failed: {result}")
-            else:
-                logger.info(f"Task {task['id']} completed successfully")
-
-                # Move to completed
+                # ── Success: record outcome ──
                 self.task_queue.remove(task)
                 task["completed_at"] = datetime.now()
-                task["result"] = result
+                task["result"] = str(result)[:500] if result else ""
+                task["status"] = "done"
+                task["duration_ms"] = duration_ms
                 self.completed_tasks.append(task)
 
+                logger.info(
+                    f"✅ Task {task['id']} done ({duration_ms:.0f}ms): "
+                    f"{task.get('description', '')[:60]}"
+                )
+
+                # Store outcome in cognitive memory for future reasoning
+                self._record_outcome(task, success=True, result=result)
+
+            except Exception as e:
+                duration_ms = (time.monotonic() - start_time) * 1000
+
+                # ── Failure: record for learning ──
+                self.task_queue.remove(task)
+                task["completed_at"] = datetime.now()
+                task["result"] = str(e)[:500]
+                task["status"] = "error"
+                task["duration_ms"] = duration_ms
+                self.completed_tasks.append(task)
+
+                logger.error(
+                    f"❌ Task {task['id']} failed ({duration_ms:.0f}ms): {e}"
+                )
+
+                self._record_outcome(task, success=False, result=e)
+
+    def _record_outcome(self, task: Dict, success: bool, result: Any):
+        """Record task outcome for learning — feeds cognitive memory + proactive reasoning."""
+        description = task.get("description", "")[:200]
+        task_type = task.get("type", "unknown")
+        duration_ms = task.get("duration_ms", 0)
+
+        # 1. Store in cognitive memory (if available)
+        if self.cognitive_memory:
+            try:
+                importance = 0.7 if success else 0.9  # Failures are more memorable
+                category = "success" if success else "failure"
+                self.cognitive_memory.add_memory(
+                    f"Task [{task_type}] {'succeeded' if success else 'FAILED'}: {description}. "
+                    f"Result: {str(result)[:200]}",
+                    category=category,
+                    importance=importance,
+                )
+            except Exception:
+                pass
+
+        # 2. Record in skill fitness tracker
+        if self.skill_fitness:
+            try:
+                # Track tools used in proactive/react tasks
+                tools_used = task.get("tools_used", [])
+                for tool_name in tools_used:
+                    self.skill_fitness.record_event(
+                        skill_name=tool_name,
+                        tick=self.tick,
+                        success=success,
+                        duration_ms=duration_ms,
+                    )
+            except Exception:
+                pass
+
+        # 3. Log to trace exporter
+        if self.trace_exporter:
+            try:
+                self.trace_exporter.record_event(
+                    "task_outcome",
+                    summary=f"{'✅' if success else '❌'} [{task_type}] {description[:60]}",
+                    tick=self.tick,
+                    data={
+                        "task_id": task.get("id"),
+                        "type": task_type,
+                        "success": success,
+                        "duration_ms": duration_ms,
+                        "source": task.get("source", ""),
+                    },
+                )
+            except Exception:
+                pass
+
     async def _execute_single_task(self, task: Dict) -> Any:
-        """Execute a single task"""
+        """Execute a single task using the best available method."""
         task_type = task.get("type")
 
         if task_type == "goal":
-            # Execute goal using Agentic AI
+            # Execute goal — try ReAct first for multi-step reasoning,
+            # fall back to GoalManager direct execution
+            if self.react_executor and self.agent.llm:
+                description = task.get("description", "")
+                result = await self._execute_via_react(
+                    f"Complete this goal: {description}"
+                )
+                if result:
+                    # Update goal status if GoalManager is available
+                    if self.goal_manager:
+                        try:
+                            goal_id = task["id"]
+                            if goal_id in self.goal_manager.goals:
+                                self.goal_manager.goals[goal_id].status = "completed"
+                        except Exception:
+                            pass
+                    return result
+            # Fallback to direct goal execution
             if self.goal_manager:
                 goal_id = task["id"]
                 return await self.goal_manager.execute_goal(goal_id)
 
         elif task_type == "command":
-            # Execute command
             command = task.get("command")
             return await self.agent.tools.execute("execute_command", {"command": command})
 
         elif task_type == "reminder":
-            # Send reminder
-            message = task.get("message")
-            logger.info(f"Reminder: {message}")
+            message = task.get("message", task.get("description", ""))
+            logger.info(f"⏰ Reminder: {message}")
             return message
 
         elif task_type == "proactive":
-            # Execute proactive task via ReAct loop
             return await self._execute_proactive_task(task)
 
+        elif task_type == "system_maintenance":
+            # System maintenance tasks are executed via ReAct
+            description = task.get("description", "")
+            return await self._execute_via_react(
+                f"System maintenance: {description}. "
+                "Use execute_command to diagnose and fix the issue. "
+                "Be careful and non-destructive."
+            )
+
+        elif task_type in ("email_action", "calendar"):
+            # LLM-discovered tasks from email/calendar
+            description = task.get("description", "")
+            return await self._execute_via_react(description)
+
+        elif task_type == "trading":
+            # Trading tasks — execute via trading skill
+            description = task.get("description", "")
+            if self.react_executor and self.agent.llm:
+                return await self._execute_via_react(
+                    f"Trading task: {description}. Use trading tools to handle this."
+                )
+            return description
+
+        elif task_type == "trading_alert":
+            description = task.get("description", "")
+            logger.warning(f"🚨 {description}")
+            return description
+
         else:
-            # Unknown type — try ReAct if available
+            # Unknown type — always try ReAct
             if self.react_executor and self.agent.llm:
                 return await self._execute_via_react(task.get("description", str(task)))
-            logger.warning(f"Unknown task type: {task_type}")
+            logger.warning(f"Unknown task type: {task_type} (no ReAct available)")
             return None
 
     async def _self_improve(self):
-        """Run self-improvement (Agentic AI meta-learning)"""
-        if not self.goal_manager:
-            return
+        """Run LLM-driven meta-learning: analyse past outcomes + inject improvements.
 
+        Runs every 24 hours.  The LLM receives:
+          • Recent completed tasks (successes + failures)
+          • Skill fitness summary
+          • Self-reflection summary
+          • Pattern learner rules
+
+        It then proposes concrete improvements as tasks injected into the queue.
+        """
         try:
-            # Run self-improvement every 24 hours
             if not hasattr(self, "_last_improvement"):
                 self._last_improvement = datetime.now() - timedelta(hours=25)
 
-            if datetime.now() - self._last_improvement >= timedelta(hours=24):
-                logger.info("Running self-improvement...")
+            if datetime.now() - self._last_improvement < timedelta(hours=24):
+                return
 
-                # Use Agentic AI meta-learning
-                if hasattr(self.agent, "agi"):
-                    improvement = await self.agent.agi.self_improve()
-                    logger.info(f"Self-improvement complete: {improvement}")
+            if not self.agent.llm:
+                return
 
-                self._last_improvement = datetime.now()
+            logger.info("🧬 Running self-improvement analysis...")
+
+            # ── Gather evidence ──
+            recent_tasks = self.completed_tasks[-30:]
+            successes = [t for t in recent_tasks if t.get("status") == "done"]
+            failures = [t for t in recent_tasks if t.get("status") == "error"]
+
+            summaries = []
+            summaries.append(f"Tasks completed: {len(successes)}, failed: {len(failures)}")
+
+            for t in failures[-5:]:
+                summaries.append(
+                    f"FAIL: [{t.get('type','')}] {t.get('description','')[:80]} → {t.get('result','')[:120]}"
+                )
+            for t in successes[-5:]:
+                summaries.append(
+                    f"OK: [{t.get('type','')}] {t.get('description','')[:80]} ({t.get('duration_ms',0):.0f}ms)"
+                )
+
+            if self.self_reflection:
+                try:
+                    summaries.append(f"Self-reflection: {self.self_reflection.get_summary()}")
+                except Exception:
+                    pass
+
+            if self.pattern_learner and hasattr(self.pattern_learner, "rules"):
+                try:
+                    rules = self.pattern_learner.rules[:5]
+                    for r in rules:
+                        summaries.append(f"Pattern rule: {r}")
+                except Exception:
+                    pass
+
+            if self.skill_fitness:
+                try:
+                    fitness = self.skill_fitness.get_fitness_dicts(self.tick, 200)
+                    low_fitness = [f for f in fitness if f.get("fitness", 1.0) < 0.5]
+                    for lf in low_fitness[:5]:
+                        summaries.append(
+                            f"Low-fitness skill: {lf.get('skill','')} fitness={lf.get('fitness',0):.2f}"
+                        )
+                except Exception:
+                    pass
+
+            evidence = "\n".join(summaries)
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an autonomous agent performing self-improvement analysis.\n"
+                        "Given evidence about your recent performance, propose 1-3 concrete "
+                        "improvement actions the agent can take RIGHT NOW.\n"
+                        "For each action, output JSON:\n"
+                        '[{"type":"goal","description":"...","priority":"high|medium|low"}]\n'
+                        "Focus on: fixing recurring errors, improving slow tasks, learning new skills, "
+                        "automating manual patterns. Be specific and actionable."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Performance evidence (last 24h):\n{evidence}\n\nPropose improvements:",
+                },
+            ]
+
+            result = await self.agent.llm.invoke_with_tools(messages, [])
+            content = result.get("text", "") or result.get("content", "") if isinstance(result, dict) else str(result)
+
+            if content:
+                self._inject_llm_tasks(content, source="self_improve")
+
+            self._last_improvement = datetime.now()
+            logger.info("🧬 Self-improvement analysis complete")
 
         except Exception as e:
             logger.error(f"Self-improvement failed: {e}")
@@ -704,42 +1044,57 @@ class AutonomousMode:
 
         Order:
           1. Cognitive memory — decay + consolidation + attention filter
-          2. Self-reflection — pattern detection + stagnation check
+          2. Self-reflection — pattern detection + stagnation check (with real data)
           3. Skill evolution — natural selection + mutation + niche
           4. Pattern learner — windowed analysis + snapshots + rules
           5. Git brain — write episode + optional auto-commit
-          6. Inner life — System 1 update
+          6. Inner life — System 1 LLM pass (emotion, impulse, fantasy, landscape)
         """
         try:
-            # 1. Cognitive memory
+            # ── 1. Cognitive memory ──
             if self.cognitive_memory:
                 try:
                     self.cognitive_memory.process_tick(self.tick)
                 except Exception as e:
                     logger.debug(f"Cognitive memory tick failed: {e}")
 
-            # 2. Self-reflection
+            # ── 2. Self-reflection — feed REAL outcome data ──
             if self.self_reflection:
                 try:
-                    completed_count = len(self.completed_tasks)
-                    errors_count = sum(
-                        1 for t in self.completed_tasks
-                        if t.get("status") == "error"
-                    )
+                    recent = self.completed_tasks[-10:]
+                    success_count = sum(1 for t in recent if t.get("status") == "done")
+                    error_count = sum(1 for t in recent if t.get("status") == "error")
+                    errors_list = [
+                        str(t.get("result", ""))[:100]
+                        for t in recent if t.get("status") == "error"
+                    ]
+                    tools = []
+                    for t in recent:
+                        if t.get("tools_used"):
+                            tools.extend(t["tools_used"])
+                    goals = []
+                    if self.goal_manager:
+                        for g in self.goal_manager.goals.values():
+                            if g.status == "active":
+                                goals.append(g.description[:60])
+
                     from .self_reflection import TickOutcome
                     outcome = TickOutcome(
                         tick=self.tick,
-                        success=errors_count == 0,
-                        summary=f"Tick {self.tick}: {completed_count} tasks",
-                        tools_used=[],
-                        errors=[],
-                        goals_progressed=[],
+                        success=error_count == 0,
+                        summary=(
+                            f"Tick {self.tick}: {success_count} ok, "
+                            f"{error_count} errors, {len(self.task_queue)} queued"
+                        ),
+                        tools_used=tools[:20],
+                        errors=errors_list[:5],
+                        goals_progressed=goals[:5],
                     )
                     self.self_reflection.record_outcome(outcome)
                 except Exception as e:
                     logger.debug(f"Self-reflection tick failed: {e}")
 
-            # 3. Skill evolution
+            # ── 3. Skill evolution ──
             if self.skill_evolution:
                 try:
                     evolution_result = self.skill_evolution.evaluate_tick(self.tick)
@@ -750,7 +1105,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Skill evolution tick failed: {e}")
 
-            # 4. Pattern learner + fitness snapshots
+            # ── 4. Pattern learner + fitness snapshots ──
             if self.pattern_learner:
                 try:
                     fitness_dicts = []
@@ -769,25 +1124,59 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Pattern learner tick failed: {e}")
 
-            # 5. Git brain — write episode
+            # ── 5. Git brain — write episode ──
             if self.git_brain:
                 try:
-                    await self.git_brain.write_episode(
-                        self.tick,
-                        summary=f"{len(self.completed_tasks)} tasks completed",
-                    )
+                    recent = self.completed_tasks[-5:]
+                    episode_parts = []
+                    for t in recent:
+                        status = "✅" if t.get("status") == "done" else "❌"
+                        episode_parts.append(
+                            f"{status} [{t.get('type','')}] {t.get('description','')[:60]}"
+                        )
+                    summary = "; ".join(episode_parts) if episode_parts else "idle tick"
+                    await self.git_brain.write_episode(self.tick, summary=summary)
                 except Exception as e:
                     logger.debug(f"Git brain tick failed: {e}")
 
-            # 6. Inner life — update emotional state
-            if self.inner_life:
+            # ── 6. Inner life — System 1 LLM pass ──
+            if self.inner_life and self.agent.llm:
                 try:
-                    self.inner_life.state.emotion.trigger = (
-                        f"tick_{self.tick}"
+                    # Build context from recent activity
+                    recent_ctx_parts = []
+                    for t in self.completed_tasks[-3:]:
+                        status = "ok" if t.get("status") == "done" else "fail"
+                        recent_ctx_parts.append(
+                            f"{status}: {t.get('description','')[:60]}"
+                        )
+                    recent_context = "; ".join(recent_ctx_parts) if recent_ctx_parts else "idle"
+
+                    active_goal = ""
+                    if self.goal_manager:
+                        for g in self.goal_manager.goals.values():
+                            if g.status == "active":
+                                active_goal = g.description[:100]
+                                break
+
+                    # Generate System 1 prompt and send to LLM
+                    from .inner_life import SYSTEM1_SYSTEM_PROMPT
+                    user_prompt = self.inner_life.get_system1_prompt(
+                        active_goal=active_goal,
+                        context=recent_context,
                     )
-                    # Save state using the module-level function
-                    from opensable.core.inner_life import save_inner_state
-                    save_inner_state(self.inner_life.state, self.inner_life.data_dir)
+                    messages = [
+                        {"role": "system", "content": SYSTEM1_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ]
+                    result = await self.agent.llm.invoke_with_tools(messages, [])
+                    content = result.get("text", "") or result.get("content", "") if isinstance(result, dict) else str(result)
+
+                    if content:
+                        self.inner_life.process_response(content, tick=self.tick)
+                        logger.debug(
+                            f"Inner life: emotion={self.inner_life.emotion.primary}, "
+                            f"valence={self.inner_life.emotion.valence:+.1f}"
+                        )
                 except Exception as e:
                     logger.debug(f"Inner life tick failed: {e}")
 
