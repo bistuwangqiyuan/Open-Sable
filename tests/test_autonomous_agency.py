@@ -1436,3 +1436,189 @@ class TestProactiveEmotionContext:
         assert cog["emotion"]["primary"] == "excitement"
         assert cog["emotion"]["valence"] == 0.7
         assert cog["emotion"]["arousal"] == 0.6
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# JSON extraction from LLM responses with thinking text
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestJsonExtraction:
+    """Tests for robust JSON extraction from LLM responses that include reasoning."""
+
+    def test_extract_clean_json(self):
+        from opensable.core.inner_life import _extract_json
+        raw = '{"emotion": {"primary": "joy", "valence": 0.8}}'
+        result = _extract_json(raw)
+        assert result is not None
+        assert result["emotion"]["primary"] == "joy"
+
+    def test_extract_json_with_thinking_prefix(self):
+        from opensable.core.inner_life import _extract_json
+        raw = (
+            "system\nLet me think about the emotional state...\n"
+            '{"emotion": {"primary": "satisfaction", "valence": 0.5}}'
+        )
+        result = _extract_json(raw)
+        assert result is not None
+        assert result["emotion"]["primary"] == "satisfaction"
+
+    def test_extract_json_with_think_tags(self):
+        from opensable.core.inner_life import _extract_json
+        raw = (
+            "<think>I need to generate inner state...</think>"
+            '{"emotion": {"primary": "anger", "valence": -0.6}}'
+        )
+        result = _extract_json(raw)
+        assert result is not None
+        assert result["emotion"]["primary"] == "anger"
+
+    def test_extract_json_with_markdown_fence(self):
+        from opensable.core.inner_life import _extract_json
+        raw = '```json\n{"emotion": {"primary": "awe", "valence": 0.9}}\n```'
+        result = _extract_json(raw)
+        assert result is not None
+        assert result["emotion"]["primary"] == "awe"
+
+    def test_extract_json_no_json(self):
+        from opensable.core.inner_life import _extract_json
+        result = _extract_json("I cannot generate JSON right now")
+        assert result is None
+
+    def test_extract_json_nested_objects(self):
+        from opensable.core.inner_life import _extract_json
+        raw = (
+            "Some reasoning text here\n"
+            '{"emotion": {"primary": "determination", "valence": 0.6}, '
+            '"landscape": {"description": "A tower rises", '
+            '"places": [{"name": "Debug Plains", "description": "open", "mood": "focused"}]}}'
+        )
+        result = _extract_json(raw)
+        assert result is not None
+        assert result["emotion"]["primary"] == "determination"
+        assert "places" in result["landscape"]
+
+    def test_parse_system1_with_qwen3_output(self):
+        from opensable.core.inner_life import (
+            parse_system1_response, InnerState, EmotionalState,
+        )
+        fallback = InnerState(tick=0, emotion=EmotionalState("curiosity", 0.3, 0.3, ""))
+        text = (
+            "system\n"
+            "I need to think about the emotional state...\n"
+            '{"emotion":{"primary":"determination","valence":0.6,"arousal":0.8,'
+            '"trigger":"self-improvement goal"},'
+            '"impulse":"Review all code paths",'
+            '"fantasy":"A fractal architecture",'
+            '"wandering":"IMAP -> protocol -> trust",'
+            '"temporal":"Time bends toward breakthrough",'
+            '"landscape":{"description":"A crystalline tower rises.",'
+            '"places":[{"name":"Debug Plains","description":"workspace","mood":"focused"}]}}'
+        )
+        result = parse_system1_response(text, fallback)
+        assert result.emotion.primary == "determination"
+        assert result.emotion.valence == 0.6
+        assert result.emotion.arousal == 0.8
+        assert result.impulse == "Review all code paths"
+        assert len(result.places) == 1
+        assert result.places[0].name == "Debug Plains"
+
+    def test_parse_system1_garbage_returns_fallback(self):
+        from opensable.core.inner_life import (
+            parse_system1_response, InnerState, EmotionalState,
+        )
+        fallback = InnerState(tick=5, emotion=EmotionalState("curiosity", 0.3, 0.3, ""))
+        result = parse_system1_response("totally invalid garbage", fallback)
+        assert result.emotion.primary == "curiosity"
+        assert result.tick == 5
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Task deduplication (queue + completed)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestTaskDeduplication:
+    """Tests for task deduplication against both queue and completed tasks."""
+
+    def _make_am(self):
+        am = MagicMock()
+        am.task_queue = []
+        am.completed_tasks = []
+        am.tick = 10
+        am.goal_manager = None
+        am.agent = MagicMock()
+        # Bind the real method
+        from opensable.core.autonomous_mode import AutonomousMode
+        am._inject_llm_tasks = AutonomousMode._inject_llm_tasks.__get__(am, type(am))
+        return am
+
+    def test_dedup_against_queue(self):
+        am = self._make_am()
+        am.task_queue = [{"description": "Fix the IMAP config"}]
+
+        am._inject_llm_tasks(
+            '[{"type":"goal","description":"Fix the IMAP config","priority":"high"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 1  # Not added again
+
+    def test_dedup_against_completed(self):
+        am = self._make_am()
+        am.completed_tasks = [
+            {"description": "Import json module at top of file", "status": "done"},
+        ]
+
+        am._inject_llm_tasks(
+            '[{"type":"goal","description":"Import json module at top of file","priority":"medium"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 0  # Not added — already done
+
+    def test_fuzzy_dedup(self):
+        am = self._make_am()
+        am.completed_tasks = [
+            {"description": "Import the json module at top of the file", "status": "done"},
+        ]
+
+        # Slightly different wording but same task
+        am._inject_llm_tasks(
+            '[{"type":"goal","description":"Import json module at top of file","priority":"medium"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 0  # Fuzzy match should catch this
+
+    def test_new_task_gets_added(self):
+        am = self._make_am()
+        am.completed_tasks = [
+            {"description": "Fix IMAP config", "status": "done"},
+        ]
+
+        am._inject_llm_tasks(
+            '[{"type":"goal","description":"Add retry logic to HTTP requests","priority":"high"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 1
+        assert am.task_queue[0]["description"] == "Add retry logic to HTTP requests"
+
+    def test_handles_think_tags_in_inject(self):
+        am = self._make_am()
+
+        am._inject_llm_tasks(
+            '<think>Let me think about improvements...</think>'
+            '[{"type":"goal","description":"Improve error handling","priority":"medium"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 1
+        assert am.task_queue[0]["description"] == "Improve error handling"
+
+    def test_handles_reasoning_prefix_in_inject(self):
+        am = self._make_am()
+
+        am._inject_llm_tasks(
+            "system\nI need to analyze the performance...\n"
+            '[{"type":"goal","description":"Add connection pooling","priority":"high"}]',
+            source="self_improve",
+        )
+        assert len(am.task_queue) == 1
+        assert am.task_queue[0]["description"] == "Add connection pooling"

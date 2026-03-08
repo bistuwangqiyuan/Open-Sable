@@ -501,10 +501,19 @@ class AutonomousMode:
             logger.debug(f"System check skipped: {e}")
 
     def _inject_llm_tasks(self, llm_text: str, source: str = "unknown"):
-        """Parse LLM JSON output and inject tasks into the queue."""
+        """Parse LLM JSON output and inject tasks into the queue.
+
+        Deduplicates against both pending queue AND recently completed tasks
+        to prevent the agent from endlessly re-creating already-done work.
+        """
         import re as _re
 
         text = llm_text.strip()
+
+        # Strip <think> blocks (Qwen3 / DeepSeek reasoning)
+        text = _re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
+        # Strip role prefix
+        text = _re.sub(r"^(?:system|assistant)\s*\n", "", text).strip()
 
         # Extract JSON from potential markdown code block
         if "```" in text:
@@ -530,6 +539,12 @@ class AutonomousMode:
         elif not isinstance(items, list):
             return
 
+        # Build dedup set: descriptions from queue + recent completed tasks
+        existing_descs = {t.get("description", "").strip().lower() for t in self.task_queue}
+        # Check completed tasks (last 50) for similarity
+        for ct in self.completed_tasks[-50:]:
+            existing_descs.add(ct.get("description", "").strip().lower())
+
         injected = 0
         for item in items[:5]:  # Max 5 tasks per source
             if not isinstance(item, dict):
@@ -538,9 +553,26 @@ class AutonomousMode:
             if not desc or len(desc) < 5:
                 continue
 
+            # Dedup: exact match OR high substring overlap with existing
+            desc_lower = desc.lower()
+            if desc_lower in existing_descs:
+                continue
+            # Fuzzy dedup: skip if >80% of words overlap with any existing
+            desc_words = set(desc_lower.split())
+            skip = False
+            for existing in existing_descs:
+                if not existing:
+                    continue
+                existing_words = set(existing.split())
+                if desc_words and existing_words:
+                    overlap = len(desc_words & existing_words) / max(len(desc_words), 1)
+                    if overlap > 0.8:
+                        skip = True
+                        break
+            if skip:
+                continue
+
             task_id = f"{source}_{self.tick}_{injected}"
-            if any(t.get("description") == desc for t in self.task_queue):
-                continue  # Dedup
 
             self.task_queue.append({
                 "id": task_id,
@@ -550,6 +582,23 @@ class AutonomousMode:
                 "created_at": datetime.now(),
                 "source": source,
             })
+            existing_descs.add(desc_lower)
+
+            # Also register in GoalManager if it's a goal-type task
+            if self.goal_manager and item.get("type") in ("goal", "self_improve"):
+                try:
+                    from .goal_system import GoalPriority
+                    priority_map = {"high": GoalPriority.HIGH, "medium": GoalPriority.MEDIUM, "low": GoalPriority.LOW}
+                    gp = priority_map.get(str(item.get("priority", "medium")).lower(), GoalPriority.MEDIUM)
+                    import asyncio
+                    asyncio.ensure_future(self.goal_manager.create_goal(
+                        description=desc,
+                        success_criteria=[f"Complete: {desc}"],
+                        priority=gp,
+                    ))
+                except Exception as e:
+                    logger.debug(f"Goal registration failed: {e}")
+
             injected += 1
 
         if injected:
@@ -1296,13 +1345,21 @@ class AutonomousMode:
                     content = result.get("text", "") or result.get("content", "") if isinstance(result, dict) else str(result)
 
                     if content:
+                        old_emotion = self.inner_life.emotion.primary
                         self.inner_life.process_response(content, tick=self.tick)
-                        logger.debug(
-                            f"Inner life: emotion={self.inner_life.emotion.primary}, "
-                            f"valence={self.inner_life.emotion.valence:+.1f}"
-                        )
+                        new_emotion = self.inner_life.emotion
+                        if new_emotion.primary != old_emotion:
+                            logger.info(
+                                f"🧠 Inner life: {old_emotion} → {new_emotion.primary} "
+                                f"(v={new_emotion.valence:+.1f}, a={new_emotion.arousal:.1f})"
+                            )
+                        else:
+                            logger.debug(
+                                f"Inner life: {new_emotion.primary} "
+                                f"(v={new_emotion.valence:+.1f}, a={new_emotion.arousal:.1f})"
+                            )
                 except Exception as e:
-                    logger.debug(f"Inner life tick failed: {e}")
+                    logger.warning(f"Inner life tick failed: {e}")
 
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")

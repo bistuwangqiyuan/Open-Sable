@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -262,19 +263,80 @@ def _clamp(value: Any, lo: float, hi: float) -> float:
         return (lo + hi) / 2
 
 
+def _extract_json(text: str) -> Optional[dict]:
+    """Extract a JSON object from text that may contain reasoning/thinking.
+
+    Handles LLMs that output thinking text (<think> tags, chain-of-thought,
+    role prefixes) before/around the actual JSON response.
+    """
+    cleaned = text.strip()
+
+    # Strip <think>...</think> blocks (Qwen3, DeepSeek, etc.)
+    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned).strip()
+
+    # Strip role prefix (e.g. "system\n" or "assistant\n")
+    cleaned = re.sub(r"^(?:system|assistant|user)\s*\n", "", cleaned).strip()
+
+    # Strip markdown code fences
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    # Try direct parse first (cheapest path)
+    try:
+        raw = json.loads(cleaned)
+        if isinstance(raw, dict):
+            return raw
+    except (json.JSONDecodeError, IndexError, ValueError):
+        pass
+
+    # Fallback: find the outermost { ... } in the text using bracket matching
+    start = cleaned.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(cleaned)):
+        c = cleaned[i]
+        if escape:
+            escape = False
+            continue
+        if c == "\\":
+            escape = True
+            continue
+        if c == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                candidate = cleaned[start : i + 1]
+                try:
+                    raw = json.loads(candidate)
+                    if isinstance(raw, dict):
+                        return raw
+                except (json.JSONDecodeError, ValueError):
+                    pass
+                break
+
+    return None
+
+
 def parse_system1_response(
     text: str, fallback: InnerState,
 ) -> InnerState:
-    """Parse System 1 JSON response into InnerState. Graceful fallback."""
-    try:
-        cleaned = text.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        raw = json.loads(cleaned)
-    except (json.JSONDecodeError, IndexError, ValueError):
-        return fallback
+    """Parse System 1 JSON response into InnerState. Graceful fallback.
 
-    if not isinstance(raw, dict):
+    Handles LLM responses that include reasoning/thinking text before
+    or around the JSON payload (e.g. Qwen3 <think> mode, chain-of-thought).
+    """
+    raw = _extract_json(text)
+    if raw is None:
         return fallback
 
     # Parse emotion
