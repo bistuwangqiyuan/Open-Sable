@@ -237,6 +237,49 @@ class SableAgent:
         self.resource_governor = None    # ResourceGovernor (token/compute budgets)
         self.theory_of_mind = None       # TheoryOfMind (user modeling)
         self.ethical_reasoner = None     # EthicalReasoner (consequence analysis)
+        # ── v1.5 World-First Modules (40/40) ──
+        self.dream_engine = None            # DreamEngine (REM-like creative replay)
+        self.cognitive_immunity = None      # CognitiveImmunity (antibody failure defense)
+        self.temporal_consciousness = None  # TemporalConsciousness (biological clock)
+        self.cognitive_fusion = None        # CognitiveFusion (cross-domain pollination)
+        self.memory_palace = None           # MemoryPalace (spatial Method of Loci)
+        self.narrative_identity = None      # NarrativeIdentity (autobiographical self)
+        self.curiosity_drive = None         # CuriosityDrive (intrinsic motivation)
+        self.collective_unconscious = None  # CollectiveUnconscious (shared archetypes)
+        self.cognitive_metabolism = None     # CognitiveMetabolism (energy budgeting)
+        self.synthetic_intuition = None     # SyntheticIntuition (gut-feel patterns)
+        self.phantom_limb = None            # PhantomLimb (missing capability detection)
+        self.cognitive_scar = None          # CognitiveScar (permanent failure markers)
+        self.time_crystal = None            # TimeCrystalMemory (temporal patterns)
+        self.holographic_context = None     # HolographicContext (fragment-to-whole)
+        self.swarm_cortex = None            # SwarmCortex (parallel mini-agents)
+        self.cognitive_archaeology = None   # CognitiveArchaeology (decision excavation)
+        self.emotional_contagion = None     # EmotionalContagion (cascading emotions)
+        self.predictive_empathy = None      # PredictiveEmpathy (frustration prediction)
+        self.autonomous_researcher = None   # AutonomousResearcher (scientific method)
+        self.empathy_synthesizer = None     # EmpathySynthesizer (user simulation)
+
+        # v1.6 — Godlike cognitive modules
+        self.cognitive_teleportation = None  # CognitiveTeleportation (instant domain transfer)
+        self.ontological_engine = None       # OntologicalEngine (reality model)
+        self.cognitive_gravity = None        # CognitiveGravity (idea mass & attraction)
+        self.temporal_paradox = None         # TemporalParadoxResolver (time contradictions)
+        self.synaesthetic_processor = None   # SynaestheticProcessor (cross-modal perception)
+        self.cognitive_mitosis = None        # CognitiveMitosis (thought thread splitting)
+        self.entropic_sentinel = None        # EntropicSentinel (fights cognitive entropy)
+        self.quantum_cognition = None        # QuantumCognition (superposition reasoning)
+        self.cognitive_placebo = None        # CognitivePlacebo (confidence boosts)
+        self.noospheric_interface = None     # NoosphericInterface (collective thought)
+        self.akashic_records = None          # AkashicRecords (immutable thought ledger)
+        self.deja_vu = None                  # DejaVuEngine (gestalt pattern matching)
+        self.morphogenetic_field = None      # MorphogeneticField (capability templates)
+        self.liminal_processor = None        # LiminalProcessor (ambiguity handling)
+        self.prescient_executor = None       # PrescientExecutor (pre-execution)
+        self.cognitive_dark_matter = None    # CognitiveDarkMatter (hidden variables)
+        self.ego_membrane = None             # EgoMembrane (self-environment boundary)
+        self.hyperstition_engine = None      # HyperstitionEngine (self-fulfilling ideas)
+        self.cognitive_chrysalis = None      # CognitiveChrysalis (metamorphosis)
+        self.existential_compass = None      # ExistentialCompass (purpose finding)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -320,6 +363,46 @@ class SableAgent:
             ("Resource governor", self._init_resource_governor),
             ("Theory of mind", self._init_theory_of_mind),
             ("Ethical reasoner", self._init_ethical_reasoner),
+            ("Dream engine", self._init_dream_engine),
+            ("Cognitive immunity", self._init_cognitive_immunity),
+            ("Temporal consciousness", self._init_temporal_consciousness),
+            ("Cognitive fusion", self._init_cognitive_fusion),
+            ("Memory palace", self._init_memory_palace),
+            ("Narrative identity", self._init_narrative_identity),
+            ("Curiosity drive", self._init_curiosity_drive),
+            ("Collective unconscious", self._init_collective_unconscious),
+            ("Cognitive metabolism", self._init_cognitive_metabolism),
+            ("Synthetic intuition", self._init_synthetic_intuition),
+            ("Phantom limb", self._init_phantom_limb),
+            ("Cognitive scar", self._init_cognitive_scar),
+            ("Time crystal", self._init_time_crystal),
+            ("Holographic context", self._init_holographic_context),
+            ("Swarm cortex", self._init_swarm_cortex),
+            ("Cognitive archaeology", self._init_cognitive_archaeology),
+            ("Emotional contagion", self._init_emotional_contagion),
+            ("Predictive empathy", self._init_predictive_empathy),
+            ("Autonomous researcher", self._init_autonomous_researcher),
+            ("Empathy synthesizer", self._init_empathy_synthesizer),
+            ("Cognitive teleportation", self._init_cognitive_teleportation),
+            ("Ontological engine", self._init_ontological_engine),
+            ("Cognitive gravity", self._init_cognitive_gravity),
+            ("Temporal paradox", self._init_temporal_paradox),
+            ("Synaesthetic processor", self._init_synaesthetic_processor),
+            ("Cognitive mitosis", self._init_cognitive_mitosis),
+            ("Entropic sentinel", self._init_entropic_sentinel),
+            ("Quantum cognition", self._init_quantum_cognition),
+            ("Cognitive placebo", self._init_cognitive_placebo),
+            ("Noospheric interface", self._init_noospheric_interface),
+            ("Akashic records", self._init_akashic_records),
+            ("Deja vu", self._init_deja_vu),
+            ("Morphogenetic field", self._init_morphogenetic_field),
+            ("Liminal processor", self._init_liminal_processor),
+            ("Prescient executor", self._init_prescient_executor),
+            ("Cognitive dark matter", self._init_cognitive_dark_matter),
+            ("Ego membrane", self._init_ego_membrane),
+            ("Hyperstition engine", self._init_hyperstition_engine),
+            ("Cognitive chrysalis", self._init_cognitive_chrysalis),
+            ("Existential compass", self._init_existential_compass),
         ]:
             try:
                 await init_fn()
@@ -549,6 +632,169 @@ class SableAgent:
         self.ethical_reasoner = EthicalReasoner(
             data_dir=Path(self._data_dir) / "ethical_reasoner"
         )
+
+    # ── v1.5 World-First Module Init Methods ──
+
+    async def _init_dream_engine(self):
+        from .dream_engine import DreamEngine
+        self.dream_engine = DreamEngine(data_dir=Path(self._data_dir) / "dream_engine")
+
+    async def _init_cognitive_immunity(self):
+        from .cognitive_immunity import CognitiveImmunity
+        self.cognitive_immunity = CognitiveImmunity(data_dir=Path(self._data_dir) / "cognitive_immunity")
+
+    async def _init_temporal_consciousness(self):
+        from .temporal_consciousness import TemporalConsciousness
+        self.temporal_consciousness = TemporalConsciousness(data_dir=Path(self._data_dir) / "temporal_consciousness")
+
+    async def _init_cognitive_fusion(self):
+        from .cognitive_fusion import CognitiveFusion
+        self.cognitive_fusion = CognitiveFusion(data_dir=Path(self._data_dir) / "cognitive_fusion")
+
+    async def _init_memory_palace(self):
+        from .memory_palace import MemoryPalace
+        self.memory_palace = MemoryPalace(data_dir=Path(self._data_dir) / "memory_palace")
+
+    async def _init_narrative_identity(self):
+        from .narrative_identity import NarrativeIdentity
+        self.narrative_identity = NarrativeIdentity(data_dir=Path(self._data_dir) / "narrative_identity")
+
+    async def _init_curiosity_drive(self):
+        from .curiosity_drive import CuriosityDrive
+        self.curiosity_drive = CuriosityDrive(data_dir=Path(self._data_dir) / "curiosity_drive")
+
+    async def _init_collective_unconscious(self):
+        from .collective_unconscious import CollectiveUnconscious
+        self.collective_unconscious = CollectiveUnconscious(data_dir=Path(self._data_dir) / "collective_unconscious")
+
+    async def _init_cognitive_metabolism(self):
+        from .cognitive_metabolism import CognitiveMetabolism
+        self.cognitive_metabolism = CognitiveMetabolism(data_dir=Path(self._data_dir) / "cognitive_metabolism")
+
+    async def _init_synthetic_intuition(self):
+        from .synthetic_intuition import SyntheticIntuition
+        self.synthetic_intuition = SyntheticIntuition(data_dir=Path(self._data_dir) / "synthetic_intuition")
+
+    async def _init_phantom_limb(self):
+        from .phantom_limb import PhantomLimb
+        self.phantom_limb = PhantomLimb(data_dir=Path(self._data_dir) / "phantom_limb")
+
+    async def _init_cognitive_scar(self):
+        from .cognitive_scar import CognitiveScar
+        self.cognitive_scar = CognitiveScar(data_dir=Path(self._data_dir) / "cognitive_scar")
+
+    async def _init_time_crystal(self):
+        from .time_crystal import TimeCrystalMemory
+        self.time_crystal = TimeCrystalMemory(data_dir=Path(self._data_dir) / "time_crystal")
+
+    async def _init_holographic_context(self):
+        from .holographic_context import HolographicContext
+        self.holographic_context = HolographicContext(data_dir=Path(self._data_dir) / "holographic_context")
+
+    async def _init_swarm_cortex(self):
+        from .swarm_cortex import SwarmCortex
+        self.swarm_cortex = SwarmCortex(data_dir=Path(self._data_dir) / "swarm_cortex")
+
+    async def _init_cognitive_archaeology(self):
+        from .cognitive_archaeology import CognitiveArchaeology
+        self.cognitive_archaeology = CognitiveArchaeology(data_dir=Path(self._data_dir) / "cognitive_archaeology")
+
+    async def _init_emotional_contagion(self):
+        from .emotional_contagion import EmotionalContagion
+        self.emotional_contagion = EmotionalContagion(data_dir=Path(self._data_dir) / "emotional_contagion")
+
+    async def _init_predictive_empathy(self):
+        from .predictive_empathy import PredictiveEmpathy
+        self.predictive_empathy = PredictiveEmpathy(data_dir=Path(self._data_dir) / "predictive_empathy")
+
+    async def _init_autonomous_researcher(self):
+        from .autonomous_researcher import AutonomousResearcher
+        self.autonomous_researcher = AutonomousResearcher(data_dir=Path(self._data_dir) / "autonomous_researcher")
+
+    async def _init_empathy_synthesizer(self):
+        from .empathy_synthesizer import EmpathySynthesizer
+        self.empathy_synthesizer = EmpathySynthesizer(data_dir=Path(self._data_dir) / "empathy_synthesizer")
+
+    # ── v1.6 Godlike modules ─────────────────────────────────────────
+    async def _init_cognitive_teleportation(self):
+        from .cognitive_teleportation import CognitiveTeleportation
+        self.cognitive_teleportation = CognitiveTeleportation(data_dir=Path(self._data_dir) / "cognitive_teleportation")
+
+    async def _init_ontological_engine(self):
+        from .ontological_engine import OntologicalEngine
+        self.ontological_engine = OntologicalEngine(data_dir=Path(self._data_dir) / "ontological_engine")
+
+    async def _init_cognitive_gravity(self):
+        from .cognitive_gravity import CognitiveGravity
+        self.cognitive_gravity = CognitiveGravity(data_dir=Path(self._data_dir) / "cognitive_gravity")
+
+    async def _init_temporal_paradox(self):
+        from .temporal_paradox import TemporalParadoxResolver
+        self.temporal_paradox = TemporalParadoxResolver(data_dir=Path(self._data_dir) / "temporal_paradox")
+
+    async def _init_synaesthetic_processor(self):
+        from .synaesthetic_processor import SynaestheticProcessor
+        self.synaesthetic_processor = SynaestheticProcessor(data_dir=Path(self._data_dir) / "synaesthetic_processor")
+
+    async def _init_cognitive_mitosis(self):
+        from .cognitive_mitosis import CognitiveMitosis
+        self.cognitive_mitosis = CognitiveMitosis(data_dir=Path(self._data_dir) / "cognitive_mitosis")
+
+    async def _init_entropic_sentinel(self):
+        from .entropic_sentinel import EntropicSentinel
+        self.entropic_sentinel = EntropicSentinel(data_dir=Path(self._data_dir) / "entropic_sentinel")
+
+    async def _init_quantum_cognition(self):
+        from .quantum_cognition import QuantumCognition
+        self.quantum_cognition = QuantumCognition(data_dir=Path(self._data_dir) / "quantum_cognition")
+
+    async def _init_cognitive_placebo(self):
+        from .cognitive_placebo import CognitivePlacebo
+        self.cognitive_placebo = CognitivePlacebo(data_dir=Path(self._data_dir) / "cognitive_placebo")
+
+    async def _init_noospheric_interface(self):
+        from .noospheric_interface import NoosphericInterface
+        self.noospheric_interface = NoosphericInterface(data_dir=Path(self._data_dir) / "noospheric_interface")
+
+    async def _init_akashic_records(self):
+        from .akashic_records import AkashicRecords
+        self.akashic_records = AkashicRecords(data_dir=Path(self._data_dir) / "akashic_records")
+
+    async def _init_deja_vu(self):
+        from .deja_vu import DejaVuEngine
+        self.deja_vu = DejaVuEngine(data_dir=Path(self._data_dir) / "deja_vu")
+
+    async def _init_morphogenetic_field(self):
+        from .morphogenetic_field import MorphogeneticField
+        self.morphogenetic_field = MorphogeneticField(data_dir=Path(self._data_dir) / "morphogenetic_field")
+
+    async def _init_liminal_processor(self):
+        from .liminal_processor import LiminalProcessor
+        self.liminal_processor = LiminalProcessor(data_dir=Path(self._data_dir) / "liminal_processor")
+
+    async def _init_prescient_executor(self):
+        from .prescient_executor import PrescientExecutor
+        self.prescient_executor = PrescientExecutor(data_dir=Path(self._data_dir) / "prescient_executor")
+
+    async def _init_cognitive_dark_matter(self):
+        from .cognitive_dark_matter import CognitiveDarkMatter
+        self.cognitive_dark_matter = CognitiveDarkMatter(data_dir=Path(self._data_dir) / "cognitive_dark_matter")
+
+    async def _init_ego_membrane(self):
+        from .ego_membrane import EgoMembrane
+        self.ego_membrane = EgoMembrane(data_dir=Path(self._data_dir) / "ego_membrane")
+
+    async def _init_hyperstition_engine(self):
+        from .hyperstition_engine import HyperstitionEngine
+        self.hyperstition_engine = HyperstitionEngine(data_dir=Path(self._data_dir) / "hyperstition_engine")
+
+    async def _init_cognitive_chrysalis(self):
+        from .cognitive_chrysalis import CognitiveChrysalis
+        self.cognitive_chrysalis = CognitiveChrysalis(data_dir=Path(self._data_dir) / "cognitive_chrysalis")
+
+    async def _init_existential_compass(self):
+        from .existential_compass import ExistentialCompass
+        self.existential_compass = ExistentialCompass(data_dir=Path(self._data_dir) / "existential_compass")
 
     async def _init_inner_life(self):
         from .inner_life import InnerLifeProcessor

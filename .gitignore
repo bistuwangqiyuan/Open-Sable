@@ -181,3 +181,9 @@ data/.last_restart_sable
 data/self_benchmark/self_benchmark_state.json
 data/ultra_ltm/ultra_ltm_state.json
 data/connectome/connectome_state.json
+data/inter_agent/bridge_state.json
+
+# Agent-generated files (prevent root clutter)
+decision_tree
+decision_tree.png
+*.dot

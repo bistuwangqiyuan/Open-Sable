@@ -278,6 +278,47 @@ class Gateway:
         app.router.add_get("/api/resource-governor", self._resource_governor_handler)
         app.router.add_get("/api/theory-of-mind", self._theory_of_mind_handler)
         app.router.add_get("/api/ethical-reasoner", self._ethical_reasoner_handler)
+        # v1.5 World-First Module endpoints
+        app.router.add_get("/api/dream-engine", self._dream_engine_handler)
+        app.router.add_get("/api/cognitive-immunity", self._cognitive_immunity_handler)
+        app.router.add_get("/api/temporal-consciousness", self._temporal_consciousness_handler)
+        app.router.add_get("/api/cognitive-fusion", self._cognitive_fusion_handler)
+        app.router.add_get("/api/memory-palace", self._memory_palace_handler)
+        app.router.add_get("/api/narrative-identity", self._narrative_identity_handler)
+        app.router.add_get("/api/curiosity-drive", self._curiosity_drive_handler)
+        app.router.add_get("/api/collective-unconscious", self._collective_unconscious_handler)
+        app.router.add_get("/api/cognitive-metabolism", self._cognitive_metabolism_handler)
+        app.router.add_get("/api/synthetic-intuition", self._synthetic_intuition_handler)
+        app.router.add_get("/api/phantom-limb", self._phantom_limb_handler)
+        app.router.add_get("/api/cognitive-scar", self._cognitive_scar_handler)
+        app.router.add_get("/api/time-crystal", self._time_crystal_handler)
+        app.router.add_get("/api/holographic-context", self._holographic_context_handler)
+        app.router.add_get("/api/swarm-cortex", self._swarm_cortex_handler)
+        app.router.add_get("/api/cognitive-archaeology", self._cognitive_archaeology_handler)
+        app.router.add_get("/api/emotional-contagion", self._emotional_contagion_handler)
+        app.router.add_get("/api/predictive-empathy", self._predictive_empathy_handler)
+        app.router.add_get("/api/autonomous-researcher", self._autonomous_researcher_handler)
+        app.router.add_get("/api/empathy-synthesizer", self._empathy_synthesizer_handler)
+        app.router.add_get("/api/cognitive-teleportation", self._cognitive_teleportation_handler)
+        app.router.add_get("/api/ontological-engine", self._ontological_engine_handler)
+        app.router.add_get("/api/cognitive-gravity", self._cognitive_gravity_handler)
+        app.router.add_get("/api/temporal-paradox", self._temporal_paradox_handler)
+        app.router.add_get("/api/synaesthetic-processor", self._synaesthetic_processor_handler)
+        app.router.add_get("/api/cognitive-mitosis", self._cognitive_mitosis_handler)
+        app.router.add_get("/api/entropic-sentinel", self._entropic_sentinel_handler)
+        app.router.add_get("/api/quantum-cognition", self._quantum_cognition_handler)
+        app.router.add_get("/api/cognitive-placebo", self._cognitive_placebo_handler)
+        app.router.add_get("/api/noospheric-interface", self._noospheric_interface_handler)
+        app.router.add_get("/api/akashic-records", self._akashic_records_handler)
+        app.router.add_get("/api/deja-vu", self._deja_vu_handler)
+        app.router.add_get("/api/morphogenetic-field", self._morphogenetic_field_handler)
+        app.router.add_get("/api/liminal-processor", self._liminal_processor_handler)
+        app.router.add_get("/api/prescient-executor", self._prescient_executor_handler)
+        app.router.add_get("/api/cognitive-dark-matter", self._cognitive_dark_matter_handler)
+        app.router.add_get("/api/ego-membrane", self._ego_membrane_handler)
+        app.router.add_get("/api/hyperstition-engine", self._hyperstition_engine_handler)
+        app.router.add_get("/api/cognitive-chrysalis", self._cognitive_chrysalis_handler)
+        app.router.add_get("/api/existential-compass", self._existential_compass_handler)
 
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
@@ -311,7 +352,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -508,6 +549,128 @@ class Gateway:
 
     async def _ethical_reasoner_handler(self, request: web.Request) -> web.Response:
         return await self._generic_module_handler("ethical_reasoner", "Ethical reasoner", request)
+
+    # ── v1.5 World-First Module Handlers ──
+
+    async def _dream_engine_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("dream_engine", "Dream engine", request)
+
+    async def _cognitive_immunity_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_immunity", "Cognitive immunity", request)
+
+    async def _temporal_consciousness_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("temporal_consciousness", "Temporal consciousness", request)
+
+    async def _cognitive_fusion_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_fusion", "Cognitive fusion", request)
+
+    async def _memory_palace_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("memory_palace", "Memory palace", request)
+
+    async def _narrative_identity_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("narrative_identity", "Narrative identity", request)
+
+    async def _curiosity_drive_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("curiosity_drive", "Curiosity drive", request)
+
+    async def _collective_unconscious_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("collective_unconscious", "Collective unconscious", request)
+
+    async def _cognitive_metabolism_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_metabolism", "Cognitive metabolism", request)
+
+    async def _synthetic_intuition_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("synthetic_intuition", "Synthetic intuition", request)
+
+    async def _phantom_limb_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("phantom_limb", "Phantom limb", request)
+
+    async def _cognitive_scar_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_scar", "Cognitive scar", request)
+
+    async def _time_crystal_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("time_crystal", "Time crystal", request)
+
+    async def _holographic_context_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("holographic_context", "Holographic context", request)
+
+    async def _swarm_cortex_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("swarm_cortex", "Swarm cortex", request)
+
+    async def _cognitive_archaeology_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_archaeology", "Cognitive archaeology", request)
+
+    async def _emotional_contagion_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("emotional_contagion", "Emotional contagion", request)
+
+    async def _predictive_empathy_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("predictive_empathy", "Predictive empathy", request)
+
+    async def _autonomous_researcher_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("autonomous_researcher", "Autonomous researcher", request)
+
+    async def _empathy_synthesizer_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("empathy_synthesizer", "Empathy synthesizer", request)
+
+    async def _cognitive_teleportation_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_teleportation", "Cognitive teleportation", request)
+
+    async def _ontological_engine_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("ontological_engine", "Ontological engine", request)
+
+    async def _cognitive_gravity_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_gravity", "Cognitive gravity", request)
+
+    async def _temporal_paradox_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("temporal_paradox", "Temporal paradox", request)
+
+    async def _synaesthetic_processor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("synaesthetic_processor", "Synaesthetic processor", request)
+
+    async def _cognitive_mitosis_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_mitosis", "Cognitive mitosis", request)
+
+    async def _entropic_sentinel_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("entropic_sentinel", "Entropic sentinel", request)
+
+    async def _quantum_cognition_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("quantum_cognition", "Quantum cognition", request)
+
+    async def _cognitive_placebo_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_placebo", "Cognitive placebo", request)
+
+    async def _noospheric_interface_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("noospheric_interface", "Noospheric interface", request)
+
+    async def _akashic_records_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("akashic_records", "Akashic records", request)
+
+    async def _deja_vu_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("deja_vu", "Deja vu", request)
+
+    async def _morphogenetic_field_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("morphogenetic_field", "Morphogenetic field", request)
+
+    async def _liminal_processor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("liminal_processor", "Liminal processor", request)
+
+    async def _prescient_executor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("prescient_executor", "Prescient executor", request)
+
+    async def _cognitive_dark_matter_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_dark_matter", "Cognitive dark matter", request)
+
+    async def _ego_membrane_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("ego_membrane", "Ego membrane", request)
+
+    async def _hyperstition_engine_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("hyperstition_engine", "Hyperstition engine", request)
+
+    async def _cognitive_chrysalis_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("cognitive_chrysalis", "Cognitive chrysalis", request)
+
+    async def _existential_compass_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("existential_compass", "Existential compass", request)
 
     async def _generic_module_handler(self, attr: str, label: str, request: web.Request) -> web.Response:
         """Generic handler for cognitive module stats endpoints."""
@@ -1895,6 +2058,37 @@ class Gateway:
                 "skill_composer", "world_predictor", "cognitive_optimizer",
                 "adversarial_tester", "resource_governor", "theory_of_mind",
                 "ethical_reasoner",
+            ):
+                mod = getattr(self.agent, _mod_attr, None)
+                if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                    mod = getattr(self.agent.autonomous, _mod_attr, None)
+                if mod:
+                    try:
+                        result[_mod_attr] = mod.get_stats()
+                    except Exception:
+                        result[_mod_attr] = None
+                else:
+                    result[_mod_attr] = None
+
+            # ── 38-57. v1.5 World-First Modules ──────────────────────────
+            for _mod_attr in (
+                "dream_engine", "cognitive_immunity", "temporal_consciousness",
+                "cognitive_fusion", "memory_palace", "narrative_identity",
+                "curiosity_drive", "collective_unconscious", "cognitive_metabolism",
+                "synthetic_intuition", "phantom_limb", "cognitive_scar",
+                "time_crystal", "holographic_context", "swarm_cortex",
+                "cognitive_archaeology", "emotional_contagion", "predictive_empathy",
+                "autonomous_researcher", "empathy_synthesizer",
+                "cognitive_teleportation", "ontological_engine",
+                "cognitive_gravity", "temporal_paradox",
+                "synaesthetic_processor", "cognitive_mitosis",
+                "entropic_sentinel", "quantum_cognition",
+                "cognitive_placebo", "noospheric_interface",
+                "akashic_records", "deja_vu",
+                "morphogenetic_field", "liminal_processor",
+                "prescient_executor", "cognitive_dark_matter",
+                "ego_membrane", "hyperstition_engine",
+                "cognitive_chrysalis", "existential_compass",
             ):
                 mod = getattr(self.agent, _mod_attr, None)
                 if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:

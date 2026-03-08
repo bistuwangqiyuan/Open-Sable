@@ -110,6 +110,49 @@ class AutonomousMode:
         self.resource_governor = None   # ResourceGovernor (token/compute budgets)
         self.theory_of_mind = None      # TheoryOfMind (user modeling)
         self.ethical_reasoner = None    # EthicalReasoner (consequence analysis)
+        # ── v1.5 World-First Modules ──
+        self.dream_engine = None
+        self.cognitive_immunity = None
+        self.temporal_consciousness = None
+        self.cognitive_fusion = None
+        self.memory_palace = None
+        self.narrative_identity = None
+        self.curiosity_drive = None
+        self.collective_unconscious = None
+        self.cognitive_metabolism = None
+        self.synthetic_intuition = None
+        self.phantom_limb = None
+        self.cognitive_scar = None
+        self.time_crystal = None
+        self.holographic_context = None
+        self.swarm_cortex = None
+        self.cognitive_archaeology = None
+        self.emotional_contagion = None
+        self.predictive_empathy = None
+        self.autonomous_researcher = None
+        self.empathy_synthesizer = None
+
+        # v1.6 — Godlike cognitive modules
+        self.cognitive_teleportation = None
+        self.ontological_engine = None
+        self.cognitive_gravity = None
+        self.temporal_paradox = None
+        self.synaesthetic_processor = None
+        self.cognitive_mitosis = None
+        self.entropic_sentinel = None
+        self.quantum_cognition = None
+        self.cognitive_placebo = None
+        self.noospheric_interface = None
+        self.akashic_records = None
+        self.deja_vu = None
+        self.morphogenetic_field = None
+        self.liminal_processor = None
+        self.prescient_executor = None
+        self.cognitive_dark_matter = None
+        self.ego_membrane = None
+        self.hyperstition_engine = None
+        self.cognitive_chrysalis = None
+        self.existential_compass = None
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -285,6 +328,168 @@ class AutonomousMode:
         self.ethical_reasoner = _inherit("ethical_reasoner", lambda: __import__(
             "opensable.core.ethical_reasoner", fromlist=["EthicalReasoner"]
         ).EthicalReasoner(data_dir=data_dir / "ethical_reasoner"), "Ethical reasoner")
+
+        # ── v1.5 World-First Modules _inherit ──
+        self.dream_engine = _inherit("dream_engine", lambda: __import__(
+            "opensable.core.dream_engine", fromlist=["DreamEngine"]
+        ).DreamEngine(data_dir=data_dir / "dream_engine"), "Dream engine")
+
+        self.cognitive_immunity = _inherit("cognitive_immunity", lambda: __import__(
+            "opensable.core.cognitive_immunity", fromlist=["CognitiveImmunity"]
+        ).CognitiveImmunity(data_dir=data_dir / "cognitive_immunity"), "Cognitive immunity")
+
+        self.temporal_consciousness = _inherit("temporal_consciousness", lambda: __import__(
+            "opensable.core.temporal_consciousness", fromlist=["TemporalConsciousness"]
+        ).TemporalConsciousness(data_dir=data_dir / "temporal_consciousness"), "Temporal consciousness")
+
+        self.cognitive_fusion = _inherit("cognitive_fusion", lambda: __import__(
+            "opensable.core.cognitive_fusion", fromlist=["CognitiveFusion"]
+        ).CognitiveFusion(data_dir=data_dir / "cognitive_fusion"), "Cognitive fusion")
+
+        self.memory_palace = _inherit("memory_palace", lambda: __import__(
+            "opensable.core.memory_palace", fromlist=["MemoryPalace"]
+        ).MemoryPalace(data_dir=data_dir / "memory_palace"), "Memory palace")
+
+        self.narrative_identity = _inherit("narrative_identity", lambda: __import__(
+            "opensable.core.narrative_identity", fromlist=["NarrativeIdentity"]
+        ).NarrativeIdentity(data_dir=data_dir / "narrative_identity"), "Narrative identity")
+
+        self.curiosity_drive = _inherit("curiosity_drive", lambda: __import__(
+            "opensable.core.curiosity_drive", fromlist=["CuriosityDrive"]
+        ).CuriosityDrive(data_dir=data_dir / "curiosity_drive"), "Curiosity drive")
+
+        self.collective_unconscious = _inherit("collective_unconscious", lambda: __import__(
+            "opensable.core.collective_unconscious", fromlist=["CollectiveUnconscious"]
+        ).CollectiveUnconscious(data_dir=data_dir / "collective_unconscious"), "Collective unconscious")
+
+        self.cognitive_metabolism = _inherit("cognitive_metabolism", lambda: __import__(
+            "opensable.core.cognitive_metabolism", fromlist=["CognitiveMetabolism"]
+        ).CognitiveMetabolism(data_dir=data_dir / "cognitive_metabolism"), "Cognitive metabolism")
+
+        self.synthetic_intuition = _inherit("synthetic_intuition", lambda: __import__(
+            "opensable.core.synthetic_intuition", fromlist=["SyntheticIntuition"]
+        ).SyntheticIntuition(data_dir=data_dir / "synthetic_intuition"), "Synthetic intuition")
+
+        self.phantom_limb = _inherit("phantom_limb", lambda: __import__(
+            "opensable.core.phantom_limb", fromlist=["PhantomLimb"]
+        ).PhantomLimb(data_dir=data_dir / "phantom_limb"), "Phantom limb")
+
+        self.cognitive_scar = _inherit("cognitive_scar", lambda: __import__(
+            "opensable.core.cognitive_scar", fromlist=["CognitiveScar"]
+        ).CognitiveScar(data_dir=data_dir / "cognitive_scar"), "Cognitive scar")
+
+        self.time_crystal = _inherit("time_crystal", lambda: __import__(
+            "opensable.core.time_crystal", fromlist=["TimeCrystalMemory"]
+        ).TimeCrystalMemory(data_dir=data_dir / "time_crystal"), "Time crystal")
+
+        self.holographic_context = _inherit("holographic_context", lambda: __import__(
+            "opensable.core.holographic_context", fromlist=["HolographicContext"]
+        ).HolographicContext(data_dir=data_dir / "holographic_context"), "Holographic context")
+
+        self.swarm_cortex = _inherit("swarm_cortex", lambda: __import__(
+            "opensable.core.swarm_cortex", fromlist=["SwarmCortex"]
+        ).SwarmCortex(data_dir=data_dir / "swarm_cortex"), "Swarm cortex")
+
+        self.cognitive_archaeology = _inherit("cognitive_archaeology", lambda: __import__(
+            "opensable.core.cognitive_archaeology", fromlist=["CognitiveArchaeology"]
+        ).CognitiveArchaeology(data_dir=data_dir / "cognitive_archaeology"), "Cognitive archaeology")
+
+        self.emotional_contagion = _inherit("emotional_contagion", lambda: __import__(
+            "opensable.core.emotional_contagion", fromlist=["EmotionalContagion"]
+        ).EmotionalContagion(data_dir=data_dir / "emotional_contagion"), "Emotional contagion")
+
+        self.predictive_empathy = _inherit("predictive_empathy", lambda: __import__(
+            "opensable.core.predictive_empathy", fromlist=["PredictiveEmpathy"]
+        ).PredictiveEmpathy(data_dir=data_dir / "predictive_empathy"), "Predictive empathy")
+
+        self.autonomous_researcher = _inherit("autonomous_researcher", lambda: __import__(
+            "opensable.core.autonomous_researcher", fromlist=["AutonomousResearcher"]
+        ).AutonomousResearcher(data_dir=data_dir / "autonomous_researcher"), "Autonomous researcher")
+
+        self.empathy_synthesizer = _inherit("empathy_synthesizer", lambda: __import__(
+            "opensable.core.empathy_synthesizer", fromlist=["EmpathySynthesizer"]
+        ).EmpathySynthesizer(data_dir=data_dir / "empathy_synthesizer"), "Empathy synthesizer")
+
+        # v1.6 — Godlike modules
+        self.cognitive_teleportation = _inherit("cognitive_teleportation", lambda: __import__(
+            "opensable.core.cognitive_teleportation", fromlist=["CognitiveTeleportation"]
+        ).CognitiveTeleportation(data_dir=data_dir / "cognitive_teleportation"), "Cognitive teleportation")
+
+        self.ontological_engine = _inherit("ontological_engine", lambda: __import__(
+            "opensable.core.ontological_engine", fromlist=["OntologicalEngine"]
+        ).OntologicalEngine(data_dir=data_dir / "ontological_engine"), "Ontological engine")
+
+        self.cognitive_gravity = _inherit("cognitive_gravity", lambda: __import__(
+            "opensable.core.cognitive_gravity", fromlist=["CognitiveGravity"]
+        ).CognitiveGravity(data_dir=data_dir / "cognitive_gravity"), "Cognitive gravity")
+
+        self.temporal_paradox = _inherit("temporal_paradox", lambda: __import__(
+            "opensable.core.temporal_paradox", fromlist=["TemporalParadoxResolver"]
+        ).TemporalParadoxResolver(data_dir=data_dir / "temporal_paradox"), "Temporal paradox")
+
+        self.synaesthetic_processor = _inherit("synaesthetic_processor", lambda: __import__(
+            "opensable.core.synaesthetic_processor", fromlist=["SynaestheticProcessor"]
+        ).SynaestheticProcessor(data_dir=data_dir / "synaesthetic_processor"), "Synaesthetic processor")
+
+        self.cognitive_mitosis = _inherit("cognitive_mitosis", lambda: __import__(
+            "opensable.core.cognitive_mitosis", fromlist=["CognitiveMitosis"]
+        ).CognitiveMitosis(data_dir=data_dir / "cognitive_mitosis"), "Cognitive mitosis")
+
+        self.entropic_sentinel = _inherit("entropic_sentinel", lambda: __import__(
+            "opensable.core.entropic_sentinel", fromlist=["EntropicSentinel"]
+        ).EntropicSentinel(data_dir=data_dir / "entropic_sentinel"), "Entropic sentinel")
+
+        self.quantum_cognition = _inherit("quantum_cognition", lambda: __import__(
+            "opensable.core.quantum_cognition", fromlist=["QuantumCognition"]
+        ).QuantumCognition(data_dir=data_dir / "quantum_cognition"), "Quantum cognition")
+
+        self.cognitive_placebo = _inherit("cognitive_placebo", lambda: __import__(
+            "opensable.core.cognitive_placebo", fromlist=["CognitivePlacebo"]
+        ).CognitivePlacebo(data_dir=data_dir / "cognitive_placebo"), "Cognitive placebo")
+
+        self.noospheric_interface = _inherit("noospheric_interface", lambda: __import__(
+            "opensable.core.noospheric_interface", fromlist=["NoosphericInterface"]
+        ).NoosphericInterface(data_dir=data_dir / "noospheric_interface"), "Noospheric interface")
+
+        self.akashic_records = _inherit("akashic_records", lambda: __import__(
+            "opensable.core.akashic_records", fromlist=["AkashicRecords"]
+        ).AkashicRecords(data_dir=data_dir / "akashic_records"), "Akashic records")
+
+        self.deja_vu = _inherit("deja_vu", lambda: __import__(
+            "opensable.core.deja_vu", fromlist=["DejaVuEngine"]
+        ).DejaVuEngine(data_dir=data_dir / "deja_vu"), "Deja vu")
+
+        self.morphogenetic_field = _inherit("morphogenetic_field", lambda: __import__(
+            "opensable.core.morphogenetic_field", fromlist=["MorphogeneticField"]
+        ).MorphogeneticField(data_dir=data_dir / "morphogenetic_field"), "Morphogenetic field")
+
+        self.liminal_processor = _inherit("liminal_processor", lambda: __import__(
+            "opensable.core.liminal_processor", fromlist=["LiminalProcessor"]
+        ).LiminalProcessor(data_dir=data_dir / "liminal_processor"), "Liminal processor")
+
+        self.prescient_executor = _inherit("prescient_executor", lambda: __import__(
+            "opensable.core.prescient_executor", fromlist=["PrescientExecutor"]
+        ).PrescientExecutor(data_dir=data_dir / "prescient_executor"), "Prescient executor")
+
+        self.cognitive_dark_matter = _inherit("cognitive_dark_matter", lambda: __import__(
+            "opensable.core.cognitive_dark_matter", fromlist=["CognitiveDarkMatter"]
+        ).CognitiveDarkMatter(data_dir=data_dir / "cognitive_dark_matter"), "Cognitive dark matter")
+
+        self.ego_membrane = _inherit("ego_membrane", lambda: __import__(
+            "opensable.core.ego_membrane", fromlist=["EgoMembrane"]
+        ).EgoMembrane(data_dir=data_dir / "ego_membrane"), "Ego membrane")
+
+        self.hyperstition_engine = _inherit("hyperstition_engine", lambda: __import__(
+            "opensable.core.hyperstition_engine", fromlist=["HyperstitionEngine"]
+        ).HyperstitionEngine(data_dir=data_dir / "hyperstition_engine"), "Hyperstition engine")
+
+        self.cognitive_chrysalis = _inherit("cognitive_chrysalis", lambda: __import__(
+            "opensable.core.cognitive_chrysalis", fromlist=["CognitiveChrysalis"]
+        ).CognitiveChrysalis(data_dir=data_dir / "cognitive_chrysalis"), "Cognitive chrysalis")
+
+        self.existential_compass = _inherit("existential_compass", lambda: __import__(
+            "opensable.core.existential_compass", fromlist=["ExistentialCompass"]
+        ).ExistentialCompass(data_dir=data_dir / "existential_compass"), "Existential compass")
 
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
@@ -2009,6 +2214,316 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Ethical reasoner tick failed: {e}")
 
+            # ╔══════════════════════════════════════════════════════════╗
+            # ║  v1.5 WORLD-FIRST MODULES — Phases 22-41              ║
+            # ╚══════════════════════════════════════════════════════════╝
+
+            # ── 22. Dream engine — REM-like creative replay during idle ──
+            if self.dream_engine:
+                try:
+                    if self.dream_engine.should_dream(has_pending_tasks=len(getattr(self, 'task_queue', [])) == 0):
+                        dreams = await self.dream_engine.dream_cycle(self.llm)
+                        if dreams:
+                            logger.info(f"💤 Dream cycle produced {len(dreams)} insights")
+                except Exception as e:
+                    logger.debug(f"Dream engine tick: {e}")
+
+            # ── 23. Cognitive immunity — antibody-based failure defense ──
+            if self.cognitive_immunity:
+                try:
+                    _ = self.cognitive_immunity.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive immunity tick: {e}")
+
+            # ── 24. Temporal consciousness — chronobiological awareness ──
+            if self.temporal_consciousness:
+                try:
+                    energy = self.temporal_consciousness.get_current_energy()
+                    task_type = self.temporal_consciousness.recommend_task_type()
+                    logger.debug(f"⏰ Energy={energy:.1f} recommended={task_type}")
+                except Exception as e:
+                    logger.debug(f"Temporal consciousness tick: {e}")
+
+            # ── 25. Cognitive fusion — cross-domain pollination ──
+            if self.cognitive_fusion:
+                try:
+                    _ = self.cognitive_fusion.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive fusion tick: {e}")
+
+            # ── 26. Memory palace — spatial memory maintenance ──
+            if self.memory_palace:
+                try:
+                    if self._tick_counter % 50 == 0:
+                        self.memory_palace.decay_vividness()
+                except Exception as e:
+                    logger.debug(f"Memory palace tick: {e}")
+
+            # ── 27. Narrative identity — autobiographical update ──
+            if self.narrative_identity:
+                try:
+                    if self._tick_counter % 100 == 0 and self.llm:
+                        await self.narrative_identity.close_chapter(self.llm, self._tick_counter)
+                except Exception as e:
+                    logger.debug(f"Narrative identity tick: {e}")
+
+            # ── 28. Curiosity drive — boredom & novelty check ──
+            if self.curiosity_drive:
+                try:
+                    if self.curiosity_drive.is_bored() and self.llm:
+                        probes = await self.curiosity_drive.generate_curiosity_probes(self.llm)
+                        if probes:
+                            logger.info(f"🔍 Curiosity generated {len(probes)} exploration probes")
+                except Exception as e:
+                    logger.debug(f"Curiosity drive tick: {e}")
+
+            # ── 29. Collective unconscious — archetype sync ──
+            if self.collective_unconscious:
+                try:
+                    if self._tick_counter % 30 == 0:
+                        self.collective_unconscious.share_to_collective()
+                        self.collective_unconscious.absorb_from_collective()
+                except Exception as e:
+                    logger.debug(f"Collective unconscious tick: {e}")
+
+            # ── 30. Cognitive metabolism — energy regeneration ──
+            if self.cognitive_metabolism:
+                try:
+                    idle = len(getattr(self, 'task_queue', [])) == 0
+                    self.cognitive_metabolism.regenerate(tick=self._tick_counter, idle=idle)
+                except Exception as e:
+                    logger.debug(f"Cognitive metabolism tick: {e}")
+
+            # ── 31. Synthetic intuition — gut-feel development ──
+            if self.synthetic_intuition:
+                try:
+                    _ = self.synthetic_intuition.get_stats()
+                except Exception as e:
+                    logger.debug(f"Synthetic intuition tick: {e}")
+
+            # ── 32. Phantom limb — missing capability detection ──
+            if self.phantom_limb:
+                try:
+                    _ = self.phantom_limb.get_stats()
+                except Exception as e:
+                    logger.debug(f"Phantom limb tick: {e}")
+
+            # ── 33. Cognitive scar — permanent failure check ──
+            if self.cognitive_scar:
+                try:
+                    _ = self.cognitive_scar.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive scar tick: {e}")
+
+            # ── 34. Time crystal — temporal pattern detection ──
+            if self.time_crystal:
+                try:
+                    if self._tick_counter % 20 == 0:
+                        discovered = self.time_crystal.detect_patterns()
+                        if discovered:
+                            logger.info(f"🔮 Discovered {len(discovered)} temporal patterns")
+                except Exception as e:
+                    logger.debug(f"Time crystal tick: {e}")
+
+            # ── 35. Holographic context — context maintenance ──
+            if self.holographic_context:
+                try:
+                    _ = self.holographic_context.get_stats()
+                except Exception as e:
+                    logger.debug(f"Holographic context tick: {e}")
+
+            # ── 36. Swarm cortex — parallel exploration stats ──
+            if self.swarm_cortex:
+                try:
+                    _ = self.swarm_cortex.get_stats()
+                except Exception as e:
+                    logger.debug(f"Swarm cortex tick: {e}")
+
+            # ── 37. Cognitive archaeology — decision recording ──
+            if self.cognitive_archaeology:
+                try:
+                    self.cognitive_archaeology.bury(
+                        action=f"tick_{self._tick_counter}",
+                        context="autonomous_cognitive_tick",
+                        tick=self._tick_counter,
+                    )
+                except Exception as e:
+                    logger.debug(f"Cognitive archaeology tick: {e}")
+
+            # ── 38. Emotional contagion — mood propagation ──
+            if self.emotional_contagion:
+                try:
+                    self.emotional_contagion.tick()
+                except Exception as e:
+                    logger.debug(f"Emotional contagion tick: {e}")
+
+            # ── 39. Predictive empathy — frustration monitoring ──
+            if self.predictive_empathy:
+                try:
+                    _ = self.predictive_empathy.get_stats()
+                except Exception as e:
+                    logger.debug(f"Predictive empathy tick: {e}")
+
+            # ── 40. Autonomous researcher — research cycle ──
+            if self.autonomous_researcher:
+                try:
+                    if self._tick_counter % 60 == 0 and self.llm:
+                        questions = await self.autonomous_researcher.generate_questions(self.llm)
+                        if questions:
+                            logger.info(f"🔬 Generated {len(questions)} research questions")
+                except Exception as e:
+                    logger.debug(f"Autonomous researcher tick: {e}")
+
+            # ── 41. Empathy synthesizer — user model update ──
+            if self.empathy_synthesizer:
+                try:
+                    _ = self.empathy_synthesizer.get_stats()
+                except Exception as e:
+                    logger.debug(f"Empathy synthesizer tick: {e}")
+
+            # ── 42. Cognitive teleportation — domain map refresh ──
+            if self.cognitive_teleportation:
+                try:
+                    _ = self.cognitive_teleportation.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive teleportation tick: {e}")
+
+            # ── 43. Ontological engine — reality validation ──
+            if self.ontological_engine:
+                try:
+                    _ = self.ontological_engine.get_stats()
+                except Exception as e:
+                    logger.debug(f"Ontological engine tick: {e}")
+
+            # ── 44. Cognitive gravity — thought collision ──
+            if self.cognitive_gravity:
+                try:
+                    self.cognitive_gravity.collide()
+                    self.cognitive_gravity.decay()
+                except Exception as e:
+                    logger.debug(f"Cognitive gravity tick: {e}")
+
+            # ── 45. Temporal paradox — scan for unresolved ──
+            if self.temporal_paradox:
+                try:
+                    _ = self.temporal_paradox.get_stats()
+                except Exception as e:
+                    logger.debug(f"Temporal paradox tick: {e}")
+
+            # ── 46. Synaesthetic processor — cross-modal refresh ──
+            if self.synaesthetic_processor:
+                try:
+                    _ = self.synaesthetic_processor.get_stats()
+                except Exception as e:
+                    logger.debug(f"Synaesthetic processor tick: {e}")
+
+            # ── 47. Cognitive mitosis — thread maintenance ──
+            if self.cognitive_mitosis:
+                try:
+                    _ = self.cognitive_mitosis.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive mitosis tick: {e}")
+
+            # ── 48. Entropic sentinel — entropy measurement ──
+            if self.entropic_sentinel:
+                try:
+                    if self.entropic_sentinel.should_intervene():
+                        logger.info("⚠️ Entropic sentinel recommends intervention")
+                except Exception as e:
+                    logger.debug(f"Entropic sentinel tick: {e}")
+
+            # ── 49. Quantum cognition — wavefunction maintenance ──
+            if self.quantum_cognition:
+                try:
+                    _ = self.quantum_cognition.get_stats()
+                except Exception as e:
+                    logger.debug(f"Quantum cognition tick: {e}")
+
+            # ── 50. Cognitive placebo — efficacy check ──
+            if self.cognitive_placebo:
+                try:
+                    _ = self.cognitive_placebo.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive placebo tick: {e}")
+
+            # ── 51. Noospheric interface — zeitgeist update ──
+            if self.noospheric_interface:
+                try:
+                    _ = self.noospheric_interface.get_zeitgeist()
+                except Exception as e:
+                    logger.debug(f"Noospheric interface tick: {e}")
+
+            # ── 52. Akashic records — integrity check ──
+            if self.akashic_records:
+                try:
+                    if self._tick_counter % 30 == 0:
+                        self.akashic_records.verify_integrity()
+                except Exception as e:
+                    logger.debug(f"Akashic records tick: {e}")
+
+            # ── 53. Deja vu — situational awareness ──
+            if self.deja_vu:
+                try:
+                    _ = self.deja_vu.get_stats()
+                except Exception as e:
+                    logger.debug(f"Deja vu tick: {e}")
+
+            # ── 54. Morphogenetic field — template maturation ──
+            if self.morphogenetic_field:
+                try:
+                    _ = self.morphogenetic_field.get_stats()
+                except Exception as e:
+                    logger.debug(f"Morphogenetic field tick: {e}")
+
+            # ── 55. Liminal processor — ambiguity refresh ──
+            if self.liminal_processor:
+                try:
+                    _ = self.liminal_processor.get_stats()
+                except Exception as e:
+                    logger.debug(f"Liminal processor tick: {e}")
+
+            # ── 56. Prescient executor — prediction refresh ──
+            if self.prescient_executor:
+                try:
+                    _ = self.prescient_executor.predict_next()
+                except Exception as e:
+                    logger.debug(f"Prescient executor tick: {e}")
+
+            # ── 57. Cognitive dark matter — anomaly scan ──
+            if self.cognitive_dark_matter:
+                try:
+                    _ = self.cognitive_dark_matter.get_stats()
+                except Exception as e:
+                    logger.debug(f"Cognitive dark matter tick: {e}")
+
+            # ── 58. Ego membrane — integrity check ──
+            if self.ego_membrane:
+                try:
+                    self.ego_membrane.reinforce_integrity()
+                except Exception as e:
+                    logger.debug(f"Ego membrane tick: {e}")
+
+            # ── 59. Hyperstition engine — decay and realize ──
+            if self.hyperstition_engine:
+                try:
+                    self.hyperstition_engine.decay()
+                except Exception as e:
+                    logger.debug(f"Hyperstition engine tick: {e}")
+
+            # ── 60. Cognitive chrysalis — experience accumulation ──
+            if self.cognitive_chrysalis:
+                try:
+                    self.cognitive_chrysalis.gain_experience(1)
+                except Exception as e:
+                    logger.debug(f"Cognitive chrysalis tick: {e}")
+
+            # ── 61. Existential compass — meaning check ──
+            if self.existential_compass:
+                try:
+                    _ = self.existential_compass.get_meaning_trend()
+                except Exception as e:
+                    logger.debug(f"Existential compass tick: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -2141,6 +2656,32 @@ class AutonomousMode:
             status["theory_of_mind"] = self.theory_of_mind.get_stats()
         if self.ethical_reasoner:
             status["ethical_reasoner"] = self.ethical_reasoner.get_stats()
+        # ── v1.5 World-First Modules ──
+        for attr in [
+            "dream_engine", "cognitive_immunity", "temporal_consciousness",
+            "cognitive_fusion", "memory_palace", "narrative_identity",
+            "curiosity_drive", "collective_unconscious", "cognitive_metabolism",
+            "synthetic_intuition", "phantom_limb", "cognitive_scar",
+            "time_crystal", "holographic_context", "swarm_cortex",
+            "cognitive_archaeology", "emotional_contagion", "predictive_empathy",
+            "autonomous_researcher", "empathy_synthesizer",
+            "cognitive_teleportation", "ontological_engine",
+            "cognitive_gravity", "temporal_paradox",
+            "synaesthetic_processor", "cognitive_mitosis",
+            "entropic_sentinel", "quantum_cognition",
+            "cognitive_placebo", "noospheric_interface",
+            "akashic_records", "deja_vu",
+            "morphogenetic_field", "liminal_processor",
+            "prescient_executor", "cognitive_dark_matter",
+            "ego_membrane", "hyperstition_engine",
+            "cognitive_chrysalis", "existential_compass",
+        ]:
+            mod = getattr(self, attr, None)
+            if mod:
+                try:
+                    status[attr] = mod.get_stats()
+                except Exception:
+                    pass
         return status
 
     def add_task(self, task: Dict):

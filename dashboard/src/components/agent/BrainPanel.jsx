@@ -6,7 +6,7 @@ import {
   AlertTriangle, ArrowUpRight, GitBranch, Calendar, Users, Award,
   BookMarked, Newspaper, Network, Route, Share2, Archive, BarChart3,
   Lightbulb, Search, Crosshair, Puzzle, Compass, Settings2,
-  Bug, Gauge, UserCheck, Scale,
+  Bug, Gauge, UserCheck, Scale, Atom, Moon, FastForward, Flower, Shuffle,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -27,13 +27,15 @@ const EMOTION_COLORS = {
   curiosity: '#7c3aed', joy: '#22c55e', serenity: '#00cec9',
   excitement: '#f59e0b', anxiety: '#ef4444', melancholy: '#3b82f6',
   determination: '#ec4899', pride: '#a78bfa', frustration: '#ef4444',
-  wonder: '#06b6d4', calm: '#00cec9', focus: '#7c3aed',
+  wonder: '#06b6d4', calm: '#00cec9', focus: '#0984e3',
   vigilance: '#eab308', boredom: '#6b7280', sadness: '#3b82f6',
   anger: '#dc2626', fear: '#f97316', surprise: '#8b5cf6',
   love: '#ec4899', hope: '#22d3ee', contentment: '#10b981',
   nostalgia: '#a78bfa', loneliness: '#64748b', empathy: '#f472b6',
   awe: '#06b6d4', contemplative: '#818cf8', amused: '#34d399',
   analytical: '#60a5fa', playful: '#fbbf24', confused: '#fb923c',
+  confidence: '#00b894', caution: '#fdcb6e', satisfaction: '#00cec9',
+  urgency: '#e17055', creativity: '#a29bfe',
 };
 
 const getEmotionColor = (e) => {
@@ -1178,6 +1180,50 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const theoryOfMind     = data?.theory_of_mind || null;
   const ethicalReasoner  = data?.ethical_reasoner || null;
 
+  // Source 38-57 – v1.5 World-First Modules
+  const dreamEngine          = data?.dream_engine || null;
+  const cognitiveImmunity    = data?.cognitive_immunity || null;
+  const temporalConsciousness = data?.temporal_consciousness || null;
+  const cognitiveFusion      = data?.cognitive_fusion || null;
+  const memoryPalace         = data?.memory_palace || null;
+  const narrativeIdentity    = data?.narrative_identity || null;
+  const curiosityDrive       = data?.curiosity_drive || null;
+  const collectiveUnconscious = data?.collective_unconscious || null;
+  const cognitiveMetabolism  = data?.cognitive_metabolism || null;
+  const syntheticIntuition   = data?.synthetic_intuition || null;
+  const phantomLimb          = data?.phantom_limb || null;
+  const cognitiveScar        = data?.cognitive_scar || null;
+  const timeCrystal          = data?.time_crystal || null;
+  const holographicContext   = data?.holographic_context || null;
+  const swarmCortex          = data?.swarm_cortex || null;
+  const cognitiveArchaeology = data?.cognitive_archaeology || null;
+  const emotionalContagion   = data?.emotional_contagion || null;
+  const predictiveEmpathy    = data?.predictive_empathy || null;
+  const autonomousResearcher = data?.autonomous_researcher || null;
+  const empathySynthesizer   = data?.empathy_synthesizer || null;
+
+  // v1.6 — Godlike cognitive modules
+  const cognitiveTeleportation = data?.cognitive_teleportation || null;
+  const ontologicalEngine      = data?.ontological_engine || null;
+  const cognitiveGravity       = data?.cognitive_gravity || null;
+  const temporalParadox        = data?.temporal_paradox || null;
+  const synaestheticProcessor  = data?.synaesthetic_processor || null;
+  const cognitiveMitosis       = data?.cognitive_mitosis || null;
+  const entropicSentinel       = data?.entropic_sentinel || null;
+  const quantumCognition       = data?.quantum_cognition || null;
+  const cognitivePlacebo       = data?.cognitive_placebo || null;
+  const noosphericInterface    = data?.noospheric_interface || null;
+  const akashicRecords         = data?.akashic_records || null;
+  const dejaVu                 = data?.deja_vu || null;
+  const morphogeneticField     = data?.morphogenetic_field || null;
+  const liminalProcessor       = data?.liminal_processor || null;
+  const prescientExecutor      = data?.prescient_executor || null;
+  const cognitiveDarkMatter    = data?.cognitive_dark_matter || null;
+  const egoMembrane            = data?.ego_membrane || null;
+  const hyperstitionEngine     = data?.hyperstition_engine || null;
+  const cognitiveChrysalis     = data?.cognitive_chrysalis || null;
+  const existentialCompass     = data?.existential_compass || null;
+
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
   const valence = (typeof rawEmotion === 'object' ? rawEmotion.valence : null) ?? il.valence ?? liveStats.valence ?? 0;
@@ -1514,6 +1560,53 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
 
           {/* ── Ethical Reasoner ────────────────────────────────── */}
           {ethicalReasoner && <EthicalReasonerPanel data={ethicalReasoner} />}
+
+          {/* ╔══════════════════════════════════════════════════════╗ */}
+          {/* ║  v1.5 WORLD-FIRST MODULES (40/40)                  ║ */}
+          {/* ╚══════════════════════════════════════════════════════╝ */}
+
+          {dreamEngine && <GenericModulePanel icon={Sparkles} title="Dream Engine" color="var(--purple)" data={dreamEngine} fields={['total_dreams','insights','dream_state','unapplied_insights']} />}
+          {cognitiveImmunity && <GenericModulePanel icon={Shield} title="Cognitive Immunity" color="var(--green)" data={cognitiveImmunity} fields={['total_antibodies','threats_neutralized','false_positives','autoimmune_suppressed']} />}
+          {temporalConsciousness && <GenericModulePanel icon={Clock} title="Temporal Consciousness" color="var(--orange)" data={temporalConsciousness} fields={['energy','chronotype','current_phase','recommended_task']} />}
+          {cognitiveFusion && <GenericModulePanel icon={Zap} title="Cognitive Fusion" color="var(--yellow)" data={cognitiveFusion} fields={['domains','total_fusions','unapplied','avg_novelty']} />}
+          {memoryPalace && <GenericModulePanel icon={Layers} title="Memory Palace" color="var(--teal)" data={memoryPalace} fields={['total_rooms','total_memories','avg_vividness','connections']} />}
+          {narrativeIdentity && <GenericModulePanel icon={BookOpen} title="Narrative Identity" color="var(--pink)" data={narrativeIdentity} fields={['chapters','defining_moments','core_beliefs','current_arc']} />}
+          {curiosityDrive && <GenericModulePanel icon={Search} title="Curiosity Drive" color="var(--cyan)" data={curiosityDrive} fields={['curiosity_level','boredom_level','explorations','probes_generated']} />}
+          {collectiveUnconscious && <GenericModulePanel icon={Users} title="Collective Unconscious" color="var(--indigo)" data={collectiveUnconscious} fields={['total_archetypes','dominant','activations','shared']} />}
+          {cognitiveMetabolism && <GenericModulePanel icon={Activity} title="Cognitive Metabolism" color="var(--red)" data={cognitiveMetabolism} fields={['energy','energy_pct','current_mode','recommended_level','burnout_count']} />}
+          {syntheticIntuition && <GenericModulePanel icon={Lightbulb} title="Synthetic Intuition" color="var(--amber)" data={syntheticIntuition} fields={['total_hunches','high_confidence','snap_judgments','accuracy']} />}
+          {phantomLimb && <GenericModulePanel icon={AlertTriangle} title="Phantom Limb" color="var(--orange)" data={phantomLimb} fields={['active_phantoms','resolved','total_failures','most_severe']} />}
+          {cognitiveScar && <GenericModulePanel icon={Shield} title="Cognitive Scar" color="var(--red)" data={cognitiveScar} fields={['total_scars','total_prevented','near_misses','most_protective']} />}
+          {timeCrystal && <GenericModulePanel icon={Clock} title="Time Crystal" color="var(--blue)" data={timeCrystal} fields={['total_crystals','active_crystals','events_logged','predictions_pending']} />}
+          {holographicContext && <GenericModulePanel icon={Eye} title="Holographic Context" color="var(--cyan)" data={holographicContext} fields={['total_holograms','association_links','total_reconstructions']} />}
+          {swarmCortex && <GenericModulePanel icon={Network} title="Swarm Cortex" color="var(--purple)" data={swarmCortex} fields={['total_sessions','total_explorations','consensus_reached','avg_agents_per_session']} />}
+          {cognitiveArchaeology && <GenericModulePanel icon={Archive} title="Cognitive Archaeology" color="var(--brown)" data={cognitiveArchaeology} fields={['total_fossils','excavations','deepest_chain']} />}
+          {emotionalContagion && <EmotionalContagionPanel data={emotionalContagion} />}
+          {predictiveEmpathy && <GenericModulePanel icon={UserCheck} title="Predictive Empathy" color="var(--teal)" data={predictiveEmpathy} fields={['frustration_level','interactions','interventions_made']} />}
+          {autonomousResearcher && <GenericModulePanel icon={Crosshair} title="Autonomous Researcher" color="var(--green)" data={autonomousResearcher} fields={['hypotheses','confirmed','rejected','experiments_run','findings']} />}
+          {empathySynthesizer && <GenericModulePanel icon={User} title="Empathy Synthesizer" color="var(--indigo)" data={empathySynthesizer} fields={['simulations_run','accuracy']} />}
+
+          {/* v1.6 — Godlike cognitive modules */}
+          {cognitiveTeleportation && <GenericModulePanel icon={Zap} title="Cognitive Teleportation" color="var(--cyan)" data={cognitiveTeleportation} fields={['total_teleports','domains_known','last_domain']} />}
+          {ontologicalEngine && <GenericModulePanel icon={Globe} title="Ontological Engine" color="var(--purple)" data={ontologicalEngine} fields={['total_entities','total_relations','impossible_declared','laws_discovered']} />}
+          {cognitiveGravity && <GenericModulePanel icon={Target} title="Cognitive Gravity" color="var(--orange)" data={cognitiveGravity} fields={['total_bodies','collisions','black_holes','nebulae']} />}
+          {temporalParadox && <GenericModulePanel icon={Clock} title="Temporal Paradox" color="var(--red)" data={temporalParadox} fields={['total_facts','paradoxes_detected','paradoxes_resolved']} />}
+          {synaestheticProcessor && <GenericModulePanel icon={Eye} title="Synaesthetic Processor" color="var(--pink)" data={synaestheticProcessor} fields={['total_perceptions','cross_modal_analyses','modalities']} />}
+          {cognitiveMitosis && <GenericModulePanel icon={GitBranch} title="Cognitive Mitosis" color="var(--green)" data={cognitiveMitosis} fields={['active_threads','total_sessions','merges_completed']} />}
+          {entropicSentinel && <GenericModulePanel icon={Shield} title="Entropic Sentinel" color="var(--yellow)" data={entropicSentinel} fields={['subsystems_monitored','avg_entropy','critical_count','defragmentations']} />}
+          {quantumCognition && <GenericModulePanel icon={Atom} title="Quantum Cognition" color="var(--blue)" data={quantumCognition} fields={['active_superpositions','entangled_pairs','observations','collapses']} />}
+          {cognitivePlacebo && <GenericModulePanel icon={Heart} title="Cognitive Placebo" color="var(--teal)" data={cognitivePlacebo} fields={['total_administered','success_rate','avg_boost']} />}
+          {noosphericInterface && <GenericModulePanel icon={Radio} title="Noospheric Interface" color="var(--indigo)" data={noosphericInterface} fields={['total_waves','patterns_detected','dominant_sentiment']} />}
+          {akashicRecords && <GenericModulePanel icon={Database} title="Akashic Records" color="var(--gold)" data={akashicRecords} fields={['total_entries','integrity_valid','chain_length']} />}
+          {dejaVu && <GenericModulePanel icon={RefreshCw} title="Déjà Vu Engine" color="var(--cyan)" data={dejaVu} fields={['fingerprints_stored','deja_vu_triggers','avg_similarity']} />}
+          {morphogeneticField && <GenericModulePanel icon={Layers} title="Morphogenetic Field" color="var(--green)" data={morphogeneticField} fields={['templates','active_growths','matured_capabilities']} />}
+          {liminalProcessor && <GenericModulePanel icon={Shuffle} title="Liminal Processor" color="var(--purple)" data={liminalProcessor} fields={['total_processed','liminal_detected','paradoxes_synthesized']} />}
+          {prescientExecutor && <GenericModulePanel icon={FastForward} title="Prescient Executor" color="var(--orange)" data={prescientExecutor} fields={['patterns_learned','predictions_made','pre_executions','accuracy']} />}
+          {cognitiveDarkMatter && <GenericModulePanel icon={Moon} title="Cognitive Dark Matter" color="var(--gray)" data={cognitiveDarkMatter} fields={['metrics_tracked','anomalies_detected','dark_variables_inferred']} />}
+          {egoMembrane && <GenericModulePanel icon={Shield} title="Ego Membrane" color="var(--teal)" data={egoMembrane} fields={['total_processed','absorbed','deflected','quarantined','permeability']} />}
+          {hyperstitionEngine && <GenericModulePanel icon={Sparkles} title="Hyperstition Engine" color="var(--pink)" data={hyperstitionEngine} fields={['active_hyperstitions','realized','total_reinforcements']} />}
+          {cognitiveChrysalis && <GenericModulePanel icon={Flower} title="Cognitive Chrysalis" color="var(--gold)" data={cognitiveChrysalis} fields={['current_stage','experience','metamorphoses','capabilities_gained']} />}
+          {existentialCompass && <GenericModulePanel icon={Compass} title="Existential Compass" color="var(--blue)" data={existentialCompass} fields={['purpose_layers','alignment_checks','avg_alignment','meaning_trend']} />}
 
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (
@@ -2262,6 +2355,61 @@ function EthicalReasonerPanel({ data }) {
         <_Stat label="Blocked" value={blocked} color={blocked > 0 ? '#e17055' : '#00b894'} />
       </div>
       {totalChecks === 0 && <div style={s.empty}>No ethical checks performed yet</div>}
+    </div>
+  );
+}
+
+// ── Generic Module Panel (v1.5 World-First) ──────────────────────────
+// ── Emotional Contagion Panel (custom — shows emotion bars) ──────────
+function EmotionalContagionPanel({ data }) {
+  if (!data) return null;
+  const emotions = data.emotions || {};
+  const dominant = data.dominant_mood || '—';
+  const stability = data.mood_stability ?? 0;
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Heart size={12} style={{ color: '#e84393' }} /> Emotional Contagion</div>
+      <div style={{ padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
+          <_Stat label="Dominant" value={dominant} color="#e84393" />
+          <_Stat label="Stability" value={stability.toFixed(2)} color={stability > 0.7 ? '#00b894' : '#fdcb6e'} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {Object.entries(emotions).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', width: 68, textTransform: 'capitalize' }}>{k}</span>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 3,
+                  width: `${Math.min(v, 1) * 100}%`,
+                  background: EMOTION_COLORS[k] || '#636e72',
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
+              <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: EMOTION_COLORS[k] || '#636e72', width: 30, textAlign: 'right' }}>{v.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GenericModulePanel({ icon: Icon, title, color, data, fields }) {
+  if (!data) return null;
+  return (
+    <div style={s.section}>
+      <div style={s.sectionTitle}><Icon size={12} style={{ color }} /> {title}</div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+        {fields.map(f => {
+          let val = data[f];
+          if (val === undefined || val === null) return null;
+          if (typeof val === 'object') val = Array.isArray(val) ? val.length : JSON.stringify(val).slice(0, 40);
+          if (typeof val === 'number') val = Number.isInteger(val) ? val : val.toFixed(2);
+          const label = f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          return <_Stat key={f} label={label} value={String(val)} color={color} />;
+        })}
+      </div>
     </div>
   );
 }
