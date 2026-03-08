@@ -14,15 +14,30 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests: 518](https://img.shields.io/badge/tests-518%20passing-brightgreen.svg)](#-running-tests)
-[![Modules: 119](https://img.shields.io/badge/core%20modules-119-blue.svg)](#-project-statistics)
+[![Modules: 128](https://img.shields.io/badge/core%20modules-128-blue.svg)](#-project-statistics)
 
 Open-Sable is a next-generation autonomous AI agent framework with Agentic AI cognitive subsystems. It runs 24/7 on your local machine, integrates with your favorite messengers, executes real-world tasks, and continuously improves itself, all while keeping your data private.
 
 ## ✅ What works right now
-Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**, **deep multi-step planner (10+ step DAG planning with replanning)**, **inter-agent learning bridge (shared knowledge vault between agents)**, **ultra-long-term memory (weeks/months pattern consolidation)**, **quantified self-benchmarking (8-suite autonomy scoring)**, **meta-learner (learning-to-learn)**, **causal reasoning engine**, **autonomous goal synthesis**, **compound skill composer**, **predictive world model**, **cognitive architecture optimizer**, **adversarial self-tester**, **resource governor**, **theory of mind (user modeling)**, **ethical reasoner**, **dream engine (REM-like creative replay)**, **cognitive immunity (antibody-based failure defense)**, **temporal consciousness (biological clock)**, **cognitive fusion (cross-domain pollination)**, **memory palace (spatial Method of Loci)**, **narrative identity (autobiographical self)**, **curiosity drive (intrinsic motivation)**, **collective unconscious (shared archetypes)**, **cognitive metabolism (energy budgeting)**, **synthetic intuition (gut-feel patterns)**, **phantom limb (missing capability detection)**, **cognitive scar (permanent failure markers)**, **time crystal memory (temporal patterns)**, **holographic context (fragment-to-whole)**, **swarm cortex (parallel mini-agents)**, **cognitive archaeology (decision excavation)**, **emotional contagion (cascading emotions)**, **predictive empathy (frustration prediction)**, **autonomous researcher (scientific method)**, **empathy synthesizer (user simulation)**, **cognitive teleportation (instant domain transfer)**, **ontological engine (reality model)**, **cognitive gravity (idea mass & attraction)**, **temporal paradox resolver (time contradictions)**, **synaesthetic processor (cross-modal perception)**, **cognitive mitosis (thought splitting)**, **entropic sentinel (fights entropy)**, **quantum cognition (superposition reasoning)**, **cognitive placebo (confidence boosts)**, **noospheric interface (collective thought)**, **akashic records (immutable thought ledger)**, **déjà vu engine (gestalt matching)**, **morphogenetic field (capability templates)**, **liminal processor (ambiguity handling)**, **prescient executor (pre-execution)**, **cognitive dark matter (hidden variables)**, **ego membrane (self-boundary)**, **hyperstition engine (self-fulfilling ideas)**, **cognitive chrysalis (metamorphosis)**, **existential compass (purpose finding)**.
+Run locally, chat via Telegram, create goals, store memory, run tools safely, audit logs, SkillFactory, RAG pipeline, workflow engine, self-modification, 21+ community skills, document creation (Word/Excel/PDF/PowerPoint), real email (SMTP/IMAP), Google Calendar, clipboard, OCR, autonomous self-healing, **multi-exchange trading bot** (crypto, stocks, prediction markets), **token/cost tracking**, **encrypted memory at rest**, **CrewAI-style multi-agent orchestration**, **cognitive memory with decay & consolidation**, **self-reflection engine**, **evolutionary skill management**, **git-backed episodic memory**, **System 1 inner life processing**, **institutional pattern learning**, **proactive reasoning engine**, **ReAct executor (multi-step tool-chaining)**, **full GitHub integration (issues, PRs, branches, code search, releases)**, **connectome neural colony (FlyWire brain-inspired cognitive wiring with Hebbian learning)**, **deep multi-step planner (10+ step DAG planning with replanning)**, **inter-agent learning bridge (shared knowledge vault between agents)**, **ultra-long-term memory (weeks/months pattern consolidation)**, **quantified self-benchmarking (8-suite autonomy scoring)**, **meta-learner (learning-to-learn)**, **causal reasoning engine**, **autonomous goal synthesis**, **compound skill composer**, **predictive world model**, **cognitive architecture optimizer**, **adversarial self-tester**, **resource governor**, **theory of mind (user modeling)**, **ethical reasoner**, **dream engine (REM-like creative replay)**, **cognitive immunity (antibody-based failure defense)**, **temporal consciousness (biological clock)**, **cognitive fusion (cross-domain pollination)**, **memory palace (spatial Method of Loci)**, **narrative identity (autobiographical self)**, **curiosity drive (intrinsic motivation)**, **collective unconscious (shared archetypes)**, **cognitive metabolism (energy budgeting)**, **synthetic intuition (gut-feel patterns)**, **phantom limb (missing capability detection)**, **cognitive scar (permanent failure markers)**, **time crystal memory (temporal patterns)**, **holographic context (fragment-to-whole)**, **swarm cortex (parallel mini-agents)**, **cognitive archaeology (decision excavation)**, **emotional contagion (cascading emotions)**, **predictive empathy (frustration prediction)**, **autonomous researcher (scientific method)**, **empathy synthesizer (user simulation)**, **cognitive teleportation (instant domain transfer)**, **ontological engine (reality model)**, **cognitive gravity (idea mass & attraction)**, **temporal paradox resolver (time contradictions)**, **synaesthetic processor (cross-modal perception)**, **cognitive mitosis (thought splitting)**, **entropic sentinel (fights entropy)**, **quantum cognition (superposition reasoning)**, **cognitive placebo (confidence boosts)**, **noospheric interface (collective thought)**, **akashic records (immutable thought ledger)**, **déjà vu engine (gestalt matching)**, **morphogenetic field (capability templates)**, **liminal processor (ambiguity handling)**, **prescient executor (pre-execution)**, **cognitive dark matter (hidden variables)**, **ego membrane (self-boundary)**, **hyperstition engine (self-fulfilling ideas)**, **cognitive chrysalis (metamorphosis)**, **existential compass (purpose finding)**, **autonomous web agent (browsing + API discovery)**, **self healer (auto-restart + watchdog + hot-reload)**, **dynamic skill factory (runtime skill creation)**, **multi-modal engine (image/audio/video perception)**, **internet monitor (24/7 web surveillance)**, **financial autonomy (invoicing + budgets)**, **social presence builder (audience growth)**, **self replicator (clone + horizontal scaling)**, **continuous learner (permanent evolution)**.
 
 ## 🧪 What's experimental
-Tool synthesis, multi-device sync, multimodal (vision/audio).
+Tool synthesis, multi-device sync.
+
+### 🆕 What's new in v1.7.0 — God Supreme Modules (69/69 Autonomy)
+- **Autonomous Web Agent**, autonomous web browsing, search, and API discovery — browses the web independently, discovers APIs, performs research through DuckDuckGo
+- **Self Healer**, auto-restart with watchdog and hot-reload — monitors all subsystems, auto-recovers from crashes, hot-reloads modules without restart
+- **Dynamic Skill Factory**, runtime skill creation from scratch — designs, generates, tests, and deploys new skills autonomously using LLM code generation
+- **Multi-Modal Engine**, real image/audio/video perception — processes images (PIL), audio (WAV), video (ffprobe), creates cross-modal links between perceptions
+- **Internet Monitor**, 24/7 persistent web surveillance — monitors news, social media, markets, research feeds continuously with trend detection and alerts
+- **Financial Autonomy**, economic self-management — invoicing, billing, budget tracking, cost optimization, multi-account financial management
+- **Social Presence Builder**, autonomous audience growth — content strategy, AI content generation, content calendars, multi-platform presence management
+- **Self Replicator**, clone and horizontal scaling — clones the entire codebase, deploys replicas on different ports, manages a distributed fleet
+- **Continuous Learner**, permanent behavioral evolution — learns from every interaction, builds behavior rules, grows knowledge graphs, synthesizes insights
+- **71-phase cognitive tick pipeline** (up from 62), 9 new god supreme API endpoints, 9 new dashboard panels
+
+<details>
+<summary>What was new in v1.6.0</summary>
 
 ### 🆕 What's new in v1.6.0 — Godlike Modules (60/60 Autonomy)
 - **Cognitive Teleportation**, instant context transfer between completely unrelated domains — teleports full cognitive state across domain boundaries without gradual transition
@@ -46,6 +61,8 @@ Tool synthesis, multi-device sync, multimodal (vision/audio).
 - **Cognitive Chrysalis**, complete cognitive metamorphosis — 5-stage development (larval→pupal→emergent→imago→transcendent) with XP system and capability unlocks
 - **Existential Compass**, purpose-finding engine — 4-layer purpose hierarchy (immediate→tactical→strategic→existential) with alignment checking and meaning trend tracking
 - **62-phase cognitive tick pipeline** (up from 42), 20 new godlike API endpoints, 20 new dashboard panels
+
+</details>
 
 <details>
 <summary>What was new in v1.5.0</summary>
@@ -826,6 +843,18 @@ graph LR
         HYP[Hyperstition Engine]
         CHR[Cognitive Chrysalis]
         EXC[Existential Compass]
+    end
+
+    subgraph "God Supreme Modules (v1.7)"
+        WAG[Autonomous Web Agent]
+        SHL[Self Healer]
+        DSF[Dynamic Skill Factory]
+        MME[Multi-Modal Engine]
+        IMO[Internet Monitor]
+        FIN[Financial Autonomy]
+        SOP[Social Presence]
+        SRP[Self Replicator]
+        CLR[Continuous Learner]
     end
     
     subgraph "Integration Layer"

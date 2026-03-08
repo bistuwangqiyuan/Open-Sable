@@ -153,6 +153,16 @@ class AutonomousMode:
         self.hyperstition_engine = None
         self.cognitive_chrysalis = None
         self.existential_compass = None
+        # ── v1.7 God Supreme Modules ──
+        self.web_agent = None
+        self.self_healer = None
+        self.dynamic_skill_factory = None
+        self.multimodal_engine = None
+        self.internet_monitor = None
+        self.financial_autonomy = None
+        self.social_presence = None
+        self.self_replicator = None
+        self.continuous_learner = None
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -490,6 +500,43 @@ class AutonomousMode:
         self.existential_compass = _inherit("existential_compass", lambda: __import__(
             "opensable.core.existential_compass", fromlist=["ExistentialCompass"]
         ).ExistentialCompass(data_dir=data_dir / "existential_compass"), "Existential compass")
+
+        # ── v1.7 God Supreme inherits ──
+        self.web_agent = _inherit("web_agent", lambda: __import__(
+            "opensable.core.autonomous_web_agent", fromlist=["AutonomousWebAgent"]
+        ).AutonomousWebAgent(data_dir=data_dir / "web_agent"), "Web agent")
+
+        self.self_healer = _inherit("self_healer", lambda: __import__(
+            "opensable.core.self_healer", fromlist=["SelfHealer"]
+        ).SelfHealer(data_dir=data_dir / "self_healer"), "Self healer")
+
+        self.dynamic_skill_factory = _inherit("dynamic_skill_factory", lambda: __import__(
+            "opensable.core.dynamic_skill_factory", fromlist=["DynamicSkillFactory"]
+        ).DynamicSkillFactory(data_dir=data_dir / "dynamic_skill_factory"), "Dynamic skill factory")
+
+        self.multimodal_engine = _inherit("multimodal_engine", lambda: __import__(
+            "opensable.core.multimodal_engine", fromlist=["MultiModalEngine"]
+        ).MultiModalEngine(data_dir=data_dir / "multimodal_engine"), "Multimodal engine")
+
+        self.internet_monitor = _inherit("internet_monitor", lambda: __import__(
+            "opensable.core.internet_monitor", fromlist=["InternetMonitor"]
+        ).InternetMonitor(data_dir=data_dir / "internet_monitor"), "Internet monitor")
+
+        self.financial_autonomy = _inherit("financial_autonomy", lambda: __import__(
+            "opensable.core.financial_autonomy", fromlist=["FinancialAutonomy"]
+        ).FinancialAutonomy(data_dir=data_dir / "financial_autonomy"), "Financial autonomy")
+
+        self.social_presence = _inherit("social_presence", lambda: __import__(
+            "opensable.core.social_presence", fromlist=["SocialPresenceBuilder"]
+        ).SocialPresenceBuilder(data_dir=data_dir / "social_presence"), "Social presence")
+
+        self.self_replicator = _inherit("self_replicator", lambda: __import__(
+            "opensable.core.self_replicator", fromlist=["SelfReplicator"]
+        ).SelfReplicator(data_dir=data_dir / "self_replicator"), "Self replicator")
+
+        self.continuous_learner = _inherit("continuous_learner", lambda: __import__(
+            "opensable.core.continuous_learner", fromlist=["ContinuousLearner"]
+        ).ContinuousLearner(data_dir=data_dir / "continuous_learner"), "Continuous learner")
 
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
@@ -2524,6 +2571,69 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Existential compass tick: {e}")
 
+            # ── 62. Web agent — autonomous browsing stats ──
+            if self.web_agent:
+                try:
+                    _ = self.web_agent.get_stats()
+                except Exception as e:
+                    logger.debug(f"Web agent tick: {e}")
+
+            # ── 63. Self healer — health watchdog ──
+            if self.self_healer:
+                try:
+                    _ = self.self_healer.get_system_health()
+                except Exception as e:
+                    logger.debug(f"Self healer tick: {e}")
+
+            # ── 64. Dynamic skill factory — skill pipeline ──
+            if self.dynamic_skill_factory:
+                try:
+                    _ = self.dynamic_skill_factory.get_stats()
+                except Exception as e:
+                    logger.debug(f"Dynamic skill factory tick: {e}")
+
+            # ── 65. Multimodal engine — perception update ──
+            if self.multimodal_engine:
+                try:
+                    _ = self.multimodal_engine.get_stats()
+                except Exception as e:
+                    logger.debug(f"Multimodal engine tick: {e}")
+
+            # ── 66. Internet monitor — 24/7 scan ──
+            if self.internet_monitor:
+                try:
+                    _ = self.internet_monitor.get_stats()
+                except Exception as e:
+                    logger.debug(f"Internet monitor tick: {e}")
+
+            # ── 67. Financial autonomy — balance check ──
+            if self.financial_autonomy:
+                try:
+                    _ = self.financial_autonomy.get_stats()
+                except Exception as e:
+                    logger.debug(f"Financial autonomy tick: {e}")
+
+            # ── 68. Social presence — engagement pulse ──
+            if self.social_presence:
+                try:
+                    _ = self.social_presence.get_stats()
+                except Exception as e:
+                    logger.debug(f"Social presence tick: {e}")
+
+            # ── 69. Self replicator — fleet status ──
+            if self.self_replicator:
+                try:
+                    _ = self.self_replicator.get_stats()
+                except Exception as e:
+                    logger.debug(f"Self replicator tick: {e}")
+
+            # ── 70. Continuous learner — evolve ──
+            if self.continuous_learner:
+                try:
+                    _ = self.continuous_learner.get_stats()
+                except Exception as e:
+                    logger.debug(f"Continuous learner tick: {e}")
+
         except Exception as e:
             logger.warning(f"Cognitive tick failed: {e}")
 
@@ -2675,6 +2785,10 @@ class AutonomousMode:
             "prescient_executor", "cognitive_dark_matter",
             "ego_membrane", "hyperstition_engine",
             "cognitive_chrysalis", "existential_compass",
+            # ── v1.7 God Supreme Modules ──
+            "web_agent", "self_healer", "dynamic_skill_factory",
+            "multimodal_engine", "internet_monitor", "financial_autonomy",
+            "social_presence", "self_replicator", "continuous_learner",
         ]:
             mod = getattr(self, attr, None)
             if mod:

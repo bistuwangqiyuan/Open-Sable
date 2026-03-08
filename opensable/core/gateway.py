@@ -319,6 +319,16 @@ class Gateway:
         app.router.add_get("/api/hyperstition-engine", self._hyperstition_engine_handler)
         app.router.add_get("/api/cognitive-chrysalis", self._cognitive_chrysalis_handler)
         app.router.add_get("/api/existential-compass", self._existential_compass_handler)
+        # ── v1.7 God Supreme routes ──
+        app.router.add_get("/api/web-agent", self._web_agent_handler)
+        app.router.add_get("/api/self-healer", self._self_healer_handler)
+        app.router.add_get("/api/dynamic-skill-factory", self._dynamic_skill_factory_handler)
+        app.router.add_get("/api/multimodal-engine", self._multimodal_engine_handler)
+        app.router.add_get("/api/internet-monitor", self._internet_monitor_handler)
+        app.router.add_get("/api/financial-autonomy", self._financial_autonomy_handler)
+        app.router.add_get("/api/social-presence", self._social_presence_handler)
+        app.router.add_get("/api/self-replicator", self._self_replicator_handler)
+        app.router.add_get("/api/continuous-learner", self._continuous_learner_handler)
 
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
@@ -352,7 +362,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -671,6 +681,35 @@ class Gateway:
 
     async def _existential_compass_handler(self, request: web.Request) -> web.Response:
         return await self._generic_module_handler("existential_compass", "Existential compass", request)
+
+    # ── v1.7 God Supreme handlers ──
+
+    async def _web_agent_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("web_agent", "Web agent", request)
+
+    async def _self_healer_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("self_healer", "Self healer", request)
+
+    async def _dynamic_skill_factory_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("dynamic_skill_factory", "Dynamic skill factory", request)
+
+    async def _multimodal_engine_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("multimodal_engine", "Multimodal engine", request)
+
+    async def _internet_monitor_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("internet_monitor", "Internet monitor", request)
+
+    async def _financial_autonomy_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("financial_autonomy", "Financial autonomy", request)
+
+    async def _social_presence_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("social_presence", "Social presence", request)
+
+    async def _self_replicator_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("self_replicator", "Self replicator", request)
+
+    async def _continuous_learner_handler(self, request: web.Request) -> web.Response:
+        return await self._generic_module_handler("continuous_learner", "Continuous learner", request)
 
     async def _generic_module_handler(self, attr: str, label: str, request: web.Request) -> web.Response:
         """Generic handler for cognitive module stats endpoints."""
@@ -2089,6 +2128,23 @@ class Gateway:
                 "prescient_executor", "cognitive_dark_matter",
                 "ego_membrane", "hyperstition_engine",
                 "cognitive_chrysalis", "existential_compass",
+            ):
+                mod = getattr(self.agent, _mod_attr, None)
+                if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:
+                    mod = getattr(self.agent.autonomous, _mod_attr, None)
+                if mod:
+                    try:
+                        result[_mod_attr] = mod.get_stats()
+                    except Exception:
+                        result[_mod_attr] = None
+                else:
+                    result[_mod_attr] = None
+
+            # ── v1.7 God Supreme Modules ──────────────────────────
+            for _mod_attr in (
+                "web_agent", "self_healer", "dynamic_skill_factory",
+                "multimodal_engine", "internet_monitor", "financial_autonomy",
+                "social_presence", "self_replicator", "continuous_learner",
             ):
                 mod = getattr(self.agent, _mod_attr, None)
                 if not mod and hasattr(self.agent, "autonomous") and self.agent.autonomous:

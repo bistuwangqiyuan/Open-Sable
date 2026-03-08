@@ -280,6 +280,16 @@ class SableAgent:
         self.hyperstition_engine = None      # HyperstitionEngine (self-fulfilling ideas)
         self.cognitive_chrysalis = None      # CognitiveChrysalis (metamorphosis)
         self.existential_compass = None      # ExistentialCompass (purpose finding)
+        # ── v1.7 God Supreme Modules (9/9) ──
+        self.web_agent = None                # AutonomousWebAgent (autonomous browsing)
+        self.self_healer = None              # SelfHealer (auto-restart + watchdog)
+        self.dynamic_skill_factory = None    # DynamicSkillFactory (runtime skill creation)
+        self.multimodal_engine = None        # MultiModalEngine (image/audio/video)
+        self.internet_monitor = None         # InternetMonitor (24/7 web watch)
+        self.financial_autonomy = None       # FinancialAutonomy (economic independence)
+        self.social_presence = None          # SocialPresenceBuilder (audience growth)
+        self.self_replicator = None          # SelfReplicator (clone + horizontal scaling)
+        self.continuous_learner = None       # ContinuousLearner (permanent evolution)
 
         # Intent classification + codebase RAG (self-awareness)
         self.intent_classifier = IntentClassifier()
@@ -403,6 +413,15 @@ class SableAgent:
             ("Hyperstition engine", self._init_hyperstition_engine),
             ("Cognitive chrysalis", self._init_cognitive_chrysalis),
             ("Existential compass", self._init_existential_compass),
+            ("Web agent", self._init_web_agent),
+            ("Self healer", self._init_self_healer),
+            ("Dynamic skill factory", self._init_dynamic_skill_factory),
+            ("Multimodal engine", self._init_multimodal_engine),
+            ("Internet monitor", self._init_internet_monitor),
+            ("Financial autonomy", self._init_financial_autonomy),
+            ("Social presence", self._init_social_presence),
+            ("Self replicator", self._init_self_replicator),
+            ("Continuous learner", self._init_continuous_learner),
         ]:
             try:
                 await init_fn()
@@ -795,6 +814,44 @@ class SableAgent:
     async def _init_existential_compass(self):
         from .existential_compass import ExistentialCompass
         self.existential_compass = ExistentialCompass(data_dir=Path(self._data_dir) / "existential_compass")
+
+    # ── v1.7 God Supreme init methods ──
+
+    async def _init_web_agent(self):
+        from .autonomous_web_agent import AutonomousWebAgent
+        self.web_agent = AutonomousWebAgent(data_dir=Path(self._data_dir) / "web_agent")
+
+    async def _init_self_healer(self):
+        from .self_healer import SelfHealer
+        self.self_healer = SelfHealer(data_dir=Path(self._data_dir) / "self_healer")
+
+    async def _init_dynamic_skill_factory(self):
+        from .dynamic_skill_factory import DynamicSkillFactory
+        self.dynamic_skill_factory = DynamicSkillFactory(data_dir=Path(self._data_dir) / "dynamic_skill_factory")
+
+    async def _init_multimodal_engine(self):
+        from .multimodal_engine import MultiModalEngine
+        self.multimodal_engine = MultiModalEngine(data_dir=Path(self._data_dir) / "multimodal_engine")
+
+    async def _init_internet_monitor(self):
+        from .internet_monitor import InternetMonitor
+        self.internet_monitor = InternetMonitor(data_dir=Path(self._data_dir) / "internet_monitor")
+
+    async def _init_financial_autonomy(self):
+        from .financial_autonomy import FinancialAutonomy
+        self.financial_autonomy = FinancialAutonomy(data_dir=Path(self._data_dir) / "financial_autonomy")
+
+    async def _init_social_presence(self):
+        from .social_presence import SocialPresenceBuilder
+        self.social_presence = SocialPresenceBuilder(data_dir=Path(self._data_dir) / "social_presence")
+
+    async def _init_self_replicator(self):
+        from .self_replicator import SelfReplicator
+        self.self_replicator = SelfReplicator(data_dir=Path(self._data_dir) / "self_replicator")
+
+    async def _init_continuous_learner(self):
+        from .continuous_learner import ContinuousLearner
+        self.continuous_learner = ContinuousLearner(data_dir=Path(self._data_dir) / "continuous_learner")
 
     async def _init_inner_life(self):
         from .inner_life import InnerLifeProcessor

@@ -7,6 +7,7 @@ import {
   BookMarked, Newspaper, Network, Route, Share2, Archive, BarChart3,
   Lightbulb, Search, Crosshair, Puzzle, Compass, Settings2,
   Bug, Gauge, UserCheck, Scale, Atom, Moon, FastForward, Flower, Shuffle,
+  Wifi, Hammer, Factory, Camera, Radar, DollarSign, Megaphone, Copy, GraduationCap,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1223,6 +1224,16 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const hyperstitionEngine     = data?.hyperstition_engine || null;
   const cognitiveChrysalis     = data?.cognitive_chrysalis || null;
   const existentialCompass     = data?.existential_compass || null;
+  // ── v1.7 God Supreme Modules ──
+  const webAgent               = data?.web_agent || null;
+  const selfHealer             = data?.self_healer || null;
+  const dynamicSkillFactory    = data?.dynamic_skill_factory || null;
+  const multimodalEngine       = data?.multimodal_engine || null;
+  const internetMonitor        = data?.internet_monitor || null;
+  const financialAutonomy      = data?.financial_autonomy || null;
+  const socialPresence         = data?.social_presence || null;
+  const selfReplicator         = data?.self_replicator || null;
+  const continuousLearner      = data?.continuous_learner || null;
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -1607,6 +1618,17 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           {hyperstitionEngine && <GenericModulePanel icon={Sparkles} title="Hyperstition Engine" color="var(--pink)" data={hyperstitionEngine} fields={['active_hyperstitions','realized','total_reinforcements']} />}
           {cognitiveChrysalis && <GenericModulePanel icon={Flower} title="Cognitive Chrysalis" color="var(--gold)" data={cognitiveChrysalis} fields={['current_stage','experience','metamorphoses','capabilities_gained']} />}
           {existentialCompass && <GenericModulePanel icon={Compass} title="Existential Compass" color="var(--blue)" data={existentialCompass} fields={['purpose_layers','alignment_checks','avg_alignment','meaning_trend']} />}
+
+          {/* ── v1.7 God Supreme Modules ────────────────────── */}
+          {webAgent && <GenericModulePanel icon={Globe} title="Autonomous Web Agent" color="var(--cyan)" data={webAgent} fields={['total_visits','total_searches','apis_discovered','data_gathered_kb','active_targets','knowledge_topics']} />}
+          {selfHealer && <GenericModulePanel icon={Hammer} title="Self Healer" color="var(--red)" data={selfHealer} fields={['total_crashes','total_recoveries','hot_reloads','health_pct','is_monitoring','recovery_rate']} />}
+          {dynamicSkillFactory && <GenericModulePanel icon={Factory} title="Dynamic Skill Factory" color="var(--purple)" data={dynamicSkillFactory} fields={['total_created','total_deployed','total_tests','total_failed','total_iterations','avg_complexity']} />}
+          {multimodalEngine && <GenericModulePanel icon={Camera} title="Multi-Modal Engine" color="var(--orange)" data={multimodalEngine} fields={['total_perceptions','images_processed','audio_processed','video_processed','cross_modal_links','total_generations']} />}
+          {internetMonitor && <GenericModulePanel icon={Radar} title="Internet Monitor" color="var(--green)" data={internetMonitor} fields={['active_sources','total_checks','total_alerts','unacknowledged_alerts','trends_detected','is_monitoring']} />}
+          {financialAutonomy && <GenericModulePanel icon={DollarSign} title="Financial Autonomy" color="var(--gold)" data={financialAutonomy} fields={['total_balance','total_revenue','total_expenses','net_profit','total_transactions','active_invoices']} />}
+          {socialPresence && <GenericModulePanel icon={Megaphone} title="Social Presence" color="var(--pink)" data={socialPresence} fields={['platforms','total_content','published_posts','total_engagement','total_followers','avg_engagement_rate']} />}
+          {selfReplicator && <GenericModulePanel icon={Copy} title="Self Replicator" color="var(--teal)" data={selfReplicator} fields={['total_replicas','running_replicas','total_clones','total_deployments','total_syncs','max_replicas']} />}
+          {continuousLearner && <GenericModulePanel icon={GraduationCap} title="Continuous Learner" color="var(--blue)" data={continuousLearner} fields={['total_lessons','interaction_count','behavior_rules','knowledge_nodes','total_adaptations','avg_confidence']} />}
 
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (
