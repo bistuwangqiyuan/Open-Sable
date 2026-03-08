@@ -193,3 +193,13 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "news_get_crypto_quotes": ("news_get_crypto_quotes", _p),
     "news_digest": ("news_digest", _p),
 }
+
+# Genelia v2 (Image Generation) — optional private skill
+try:
+    import importlib
+    importlib.import_module("opensable.skills.media.genelia_skill")
+    SCHEMA_TO_TOOL["genelia_generate"] = ("genelia_generate", _p)
+    SCHEMA_TO_TOOL["genelia_status"] = ("genelia_status", _p)
+    SCHEMA_TO_TOOL["genelia_list_images"] = ("genelia_list_images", _p)
+except (ImportError, ModuleNotFoundError):
+    pass

@@ -629,6 +629,88 @@ class ProductivityToolsMixin:
         except Exception as e:
             return f"❌ News digest failed: {e}"
 
+    # ========== GENELIA V2 (IMAGE GENERATION) ==========
+
+    async def _genelia_generate_tool(self, params: Dict) -> str:
+        """Generate an AI image using Genelia v2 with Guardian safety check."""
+        if not getattr(self, 'genelia_skill', None):
+            return "⚠️ Genelia v2 skill is not available."
+        prompt = params.get("prompt", "")
+        if not prompt:
+            return "⚠️ Please provide a prompt describing the image to generate."
+        try:
+            result = await self.genelia_skill.generate_image(
+                prompt=prompt,
+                negative_prompt=params.get("negative_prompt", ""),
+                width=int(params.get("width", 1024)),
+                height=int(params.get("height", 1024)),
+                steps=int(params.get("steps", 10)),
+                seed=int(params.get("seed", -1)),
+                use_enhancement=params.get("use_enhancement", True),
+            )
+            if result.get("blocked"):
+                return (
+                    "🛡️ **Image blocked by Guardian** — explicit content was detected "
+                    "in the generated image. The image was NOT saved or published.\n\n"
+                    f"Reason: {result.get('error', 'Explicit content detected')}"
+                )
+            if not result.get("success"):
+                return f"❌ Image generation failed: {result.get('error', 'Unknown error')}"
+
+            imgs = result.get("images", [])
+            msg = f"🎨 **Image generated successfully!**\n\n"
+            msg += f"**Prompt:** {prompt}\n"
+            msg += f"**Seed:** {result.get('seed', '?')}\n"
+            msg += f"**Count:** {len(imgs)}\n\n"
+            for img in imgs:
+                msg += f"📁 `{img['filename']}` ({img['size_bytes'] // 1024}KB)"
+                if img.get("guardian_checked"):
+                    msg += f" — Guardian: ✅ {img.get('rating', 'general')}"
+                msg += f"\n   Path: {img['path']}\n"
+            return msg.strip()
+        except Exception as e:
+            return f"❌ Image generation error: {e}"
+
+    async def _genelia_status_tool(self, params: Dict) -> str:
+        """Check Genelia v2 server status."""
+        if not getattr(self, 'genelia_skill', None):
+            return "⚠️ Genelia v2 skill is not available."
+        try:
+            status = await self.genelia_skill.get_server_status()
+            online = "🟢 Online" if status.get("online") else "🔴 Offline"
+            guardian = "🛡️ ON" if status.get("guardian_enabled") else "⚠️ OFF"
+            return (
+                f"🎨 **Genelia v2 Server**\n\n"
+                f"Status: {online}\n"
+                f"URL: {status.get('url', '?')}\n"
+                f"Queue: {status.get('queue_size', '?')} jobs\n"
+                f"Guardian: {guardian}\n"
+                f"Generated: {status.get('generated', 0)} images\n"
+                f"Blocked: {status.get('blocked', 0)} images"
+            )
+        except Exception as e:
+            return f"❌ Status check failed: {e}"
+
+    async def _genelia_list_images_tool(self, params: Dict) -> str:
+        """List recently generated images."""
+        if not getattr(self, 'genelia_skill', None):
+            return "⚠️ Genelia v2 skill is not available."
+        try:
+            limit = int(params.get("limit", 20))
+            images = await self.genelia_skill.list_generated(limit=limit)
+            if not images:
+                return "🎨 No generated images found."
+            msg = f"🎨 **Generated Images** ({len(images)} shown):\n\n"
+            for i, img in enumerate(images, 1):
+                msg += (
+                    f"{i}. `{img['filename']}` — "
+                    f"{img['size_bytes'] // 1024}KB — "
+                    f"{img['created']}\n"
+                )
+            return msg.strip()
+        except Exception as e:
+            return f"❌ Failed to list images: {e}"
+
     # ========== CLIPBOARD TOOLS ==========
 
     async def _clipboard_copy_tool(self, params: Dict) -> str:

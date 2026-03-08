@@ -165,3 +165,10 @@ system_check.service
 system_check.timer
 /test-venv
 data/news_cache.json
+
+# Private Zunvra skills 
+opensable/skills/media/genelia_skill.py
+opensable/core/tools/_schemas/genelia.py
+data/genelia_images/
+q4_planning_meeting_materials.md
+team_meeting_presentation.md

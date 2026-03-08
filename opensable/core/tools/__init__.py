@@ -154,6 +154,10 @@ class ToolRegistry(
         from ...skills.automation.calendar_skill import CalendarSkill as GoogleCalendarSkill
         from ...skills.automation.email_skill import EmailSkill
         from ...skills.automation.news_reader_skill import NewsReaderSkill
+        try:
+            from ...skills.media.genelia_skill import GeneliaSkill
+        except ImportError:
+            GeneliaSkill = None
 
         self.document_skill = DocumentSkill(config)
         self.clipboard_skill = ClipboardSkill(config)
@@ -161,6 +165,7 @@ class ToolRegistry(
         self.google_calendar_skill = GoogleCalendarSkill(config)
         self.email_skill = EmailSkill(config)
         self.news_reader_skill = NewsReaderSkill(config)
+        self.genelia_skill = GeneliaSkill(config) if GeneliaSkill else None
 
         # Trading skill (conditional)
         self.trading_skill = None
@@ -241,6 +246,12 @@ class ToolRegistry(
         self.register("news_get_market_quotes", self._news_get_market_quotes_tool)
         self.register("news_get_crypto_quotes", self._news_get_crypto_quotes_tool)
         self.register("news_digest", self._news_digest_tool)
+
+        # ── Genelia v2 (Image Generation) ───────────────────────────────────
+        if self.genelia_skill:
+            self.register("genelia_generate", self._genelia_generate_tool)
+            self.register("genelia_status", self._genelia_status_tool)
+            self.register("genelia_list_images", self._genelia_list_images_tool)
 
         # ── Clipboard ─────────────────────────────────────────────────────────
         self.register("clipboard_copy", self._clipboard_copy_tool)
@@ -419,6 +430,8 @@ class ToolRegistry(
             ("Email", self.email_skill),
             ("News Reader", self.news_reader_skill),
         ]
+        if self.genelia_skill:
+            _productivity_skills.append(("Genelia v2", self.genelia_skill))
         for name, skill in _productivity_skills:
             try:
                 await skill.initialize()

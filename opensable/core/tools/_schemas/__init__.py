@@ -26,6 +26,10 @@ from .ocr import SCHEMAS as OCR_SCHEMAS
 from .trading import SCHEMAS as TRADING_SCHEMAS
 from .github import SCHEMAS as GITHUB_SCHEMAS
 from .news_reader import SCHEMAS as NEWS_READER_SCHEMAS
+try:
+    from .genelia import SCHEMAS as GENELIA_SCHEMAS
+except ImportError:
+    GENELIA_SCHEMAS = []
 
 
 def get_all_schemas() -> List[Dict[str, Any]]:
@@ -53,4 +57,5 @@ def get_all_schemas() -> List[Dict[str, Any]]:
     all_schemas.extend(TRADING_SCHEMAS)
     all_schemas.extend(GITHUB_SCHEMAS)
     all_schemas.extend(NEWS_READER_SCHEMAS)
+    all_schemas.extend(GENELIA_SCHEMAS)
     return all_schemas
