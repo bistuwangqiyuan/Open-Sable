@@ -76,7 +76,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: {},
+      settings: { ws: ws.wsRef, connected: ws.connected },
     };
   } else {
     // Remote agent — interactive view via proxy
@@ -96,7 +96,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: {},
+      settings: { ws: ws.wsRef, connected: ws.connected },
     };
   }
 

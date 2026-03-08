@@ -95,6 +95,31 @@ export const PROVIDERS = [
     name: 'DeepSeek',
     models: ['deepseek-chat', 'deepseek-reasoner'],
   },
+  {
+    id: 'openwebui',
+    name: 'Open WebUI',
+    models: ['llama3.2:latest'],
+  },
+  {
+    id: 'together',
+    name: 'Together AI',
+    models: ['meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'],
+  },
+  {
+    id: 'cohere',
+    name: 'Cohere',
+    models: ['command-a-03-2025', 'command-r-plus'],
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen',
+    models: ['qwen-plus', 'qwen-turbo'],
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi (Moonshot)',
+    models: ['moonshot-v1-8k'],
+  },
 ];
 
 /**
@@ -111,4 +136,9 @@ export const PROVIDER_LOGOS = {
   openrouter: '🔀',
   xai:        '✖️',
   deepseek:   '🐋',
+  openwebui:  '🌐',
+  together:   '🤝',
+  cohere:     '🔷',
+  qwen:       '🟣',
+  kimi:       '🌙',
 };

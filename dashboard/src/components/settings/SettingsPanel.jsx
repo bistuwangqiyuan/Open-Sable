@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp, RefreshCw, Zap, Loader2, Server } from 'lucide-react';
 import { PROVIDERS, PROVIDER_LOGOS } from '../../lib/utils';
 
 const s = {
@@ -13,10 +13,10 @@ const s = {
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--text)' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 },
-  provCard: (active) => ({
+  provCard: (active, isCurrentActive) => ({
     padding: '12px', borderRadius: 'var(--radius)', cursor: 'pointer',
-    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-    background: active ? 'var(--accent-dim)' : 'var(--bg-tertiary)',
+    border: `1px solid ${isCurrentActive ? 'var(--green)' : active ? 'var(--accent)' : 'var(--border)'}`,
+    background: isCurrentActive ? 'rgba(34,197,94,.08)' : active ? 'var(--accent-dim)' : 'var(--bg-tertiary)',
     transition: 'all .15s', display: 'flex', flexDirection: 'column', gap: 6,
   }),
   provName: { fontSize: 13, fontWeight: 600 },
@@ -48,8 +48,8 @@ const s = {
     border: variant === 'ghost' ? '1px solid var(--border)' : 'none',
     cursor: 'pointer', fontSize: 12, fontWeight: 600,
     display: 'flex', alignItems: 'center', gap: 6,
-    background: variant === 'primary' ? 'var(--accent)' : variant === 'danger' ? 'var(--red)' : 'var(--bg-tertiary)',
-    color: variant === 'primary' || variant === 'danger' ? '#fff' : 'var(--text)',
+    background: variant === 'primary' ? 'var(--accent)' : variant === 'danger' ? 'var(--red)' : variant === 'success' ? 'var(--green)' : 'var(--bg-tertiary)',
+    color: variant === 'primary' || variant === 'danger' || variant === 'success' ? '#fff' : 'var(--text)',
   }),
   select: {
     flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)',
@@ -57,16 +57,20 @@ const s = {
     color: 'var(--text)', fontSize: 12, outline: 'none',
     appearance: 'none', cursor: 'pointer',
   },
-  envRow: {
-    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-    background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)',
-    marginBottom: 6, fontFamily: 'var(--mono)', fontSize: 11,
+  activeModel: {
+    padding: '16px', borderRadius: 'var(--radius)', marginBottom: 16,
+    background: 'linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(34,197,94,.08) 100%)',
+    border: '1px solid rgba(99,102,241,.25)',
   },
-  envKey: { color: 'var(--teal)', fontWeight: 600 },
-  envVal: { color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' },
+  modelTag: {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-primary)', border: '1px solid var(--border)',
+    fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600,
+    color: 'var(--accent-light)',
+  },
 };
 
-// Load saved config from localStorage
 function loadConfig() {
   try {
     return JSON.parse(localStorage.getItem('opensable_agent_config') || '{}');
@@ -76,30 +80,84 @@ function saveConfig(cfg) {
   localStorage.setItem('opensable_agent_config', JSON.stringify(cfg));
 }
 
-export default function SettingsPanel() {
+export default function SettingsPanel({ ws, connected }) {
   const [config, setConfig] = useState(loadConfig);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [expandedSection, setExpandedSection] = useState('providers');
+  const [expandedSection, setExpandedSection] = useState('llm');
 
-  const activeProvider = config.activeProvider || '';
+  // Live LLM state from gateway
+  const [llmStatus, setLlmStatus] = useState(null);
+  const [allModels, setAllModels] = useState({});
+  const [switching, setSwitching] = useState(false);
+  const [switchResult, setSwitchResult] = useState(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+
   const providerConfigs = config.providers || {};
+
+  // WebSocket message listener
+  useEffect(() => {
+    const socket = ws?.current;
+    if (!socket) return;
+
+    const handler = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'llm.status') {
+          setLlmStatus(msg);
+        } else if (msg.type === 'llm.models') {
+          setAllModels(msg.models || {});
+          setLoadingModels(false);
+        } else if (msg.type === 'llm.switch') {
+          setSwitching(false);
+          setSwitchResult(msg);
+          if (msg.success) setTimeout(() => requestLlmStatus(), 500);
+          setTimeout(() => setSwitchResult(null), 4000);
+        } else if (msg.type === 'llm.changed') {
+          requestLlmStatus();
+        }
+      } catch {}
+    };
+
+    socket.addEventListener('message', handler);
+    return () => socket.removeEventListener('message', handler);
+  }, [ws?.current]);
+
+  const requestLlmStatus = useCallback(() => {
+    const socket = ws?.current;
+    if (socket?.readyState === 1) socket.send(JSON.stringify({ type: 'llm.status' }));
+  }, [ws]);
+
+  const requestModels = useCallback(() => {
+    const socket = ws?.current;
+    if (socket?.readyState === 1) {
+      setLoadingModels(true);
+      socket.send(JSON.stringify({ type: 'llm.models' }));
+    }
+  }, [ws]);
+
+  const switchLlm = useCallback((provider, model) => {
+    const socket = ws?.current;
+    if (socket?.readyState === 1) {
+      setSwitching(true);
+      setSwitchResult(null);
+      socket.send(JSON.stringify({ type: 'llm.switch', provider, model: model || undefined }));
+    }
+  }, [ws]);
+
+  useEffect(() => {
+    if (connected) {
+      requestLlmStatus();
+      requestModels();
+    }
+  }, [connected]);
 
   const updateProviderConfig = (id, key, value) => {
     const next = {
       ...config,
-      providers: {
-        ...providerConfigs,
-        [id]: { ...providerConfigs[id], [key]: value },
-      },
+      providers: { ...providerConfigs, [id]: { ...providerConfigs[id], [key]: value } },
     };
-    setConfig(next);
-    saveConfig(next);
-  };
-
-  const setActiveProvider = (id) => {
-    const next = { ...config, activeProvider: id };
     setConfig(next);
     saveConfig(next);
   };
@@ -111,14 +169,151 @@ export default function SettingsPanel() {
   };
 
   const sel = PROVIDERS.find(p => p.id === selectedProvider);
+  const currentProvider = llmStatus?.provider || '';
+  const currentModel = llmStatus?.model || '';
+  const configuredProviders = llmStatus?.providers_configured || [];
+  const getProviderInfo = (id) => configuredProviders.find(p => p.name === id) || {};
+
+  const getModelsForProvider = (providerId) => {
+    const live = allModels[providerId] || [];
+    const stat = (PROVIDERS.find(p => p.id === providerId) || {}).models || [];
+    const merged = [...live];
+    for (const m of stat) { if (!merged.includes(m)) merged.push(m); }
+    return merged;
+  };
 
   return (
     <div style={s.panel}>
       <div style={s.header}>
         <span style={{ fontSize: 16 }}>⚙️</span>
         <span style={s.title}>Agent Configuration</span>
+        {connected && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <button style={s.iconBtn} onClick={() => { requestLlmStatus(); requestModels(); }} title="Refresh LLM status">
+              <RefreshCw size={14} />
+            </button>
+          </div>
+        )}
       </div>
       <div style={s.body}>
+
+        {/* Active LLM */}
+        <div style={s.section}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}
+            onClick={() => setExpandedSection(expandedSection === 'llm' ? '' : 'llm')}
+          >
+            <span style={s.sectionTitle}>🧠 Active LLM</span>
+            {expandedSection === 'llm' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+
+          {expandedSection === 'llm' && (
+            <>
+              <div style={s.activeModel}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 24 }}>{PROVIDER_LOGOS[currentProvider] || '🤖'}</span>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '.05em' }}>
+                      Current Provider
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{currentProvider || 'Loading...'}</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto' }}>
+                    <span style={s.modelTag}><Server size={12} />{currentModel || '...'}</span>
+                  </div>
+                </div>
+                {switchResult && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginTop: 8,
+                    background: switchResult.success ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+                    color: switchResult.success ? 'var(--green)' : 'var(--red)',
+                    fontSize: 12, fontWeight: 600,
+                  }}>
+                    {switchResult.success
+                      ? `✓ Switched to ${switchResult.current?.provider}/${switchResult.current?.model}`
+                      : `✗ ${switchResult.error || 'Switch failed'}`}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Switch */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Quick Switch</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {Object.keys(allModels).map(provider => (
+                    <button key={provider} disabled={switching} onClick={() => switchLlm(provider)}
+                      style={{ ...s.btn(currentProvider === provider ? 'success' : 'ghost'), opacity: switching ? 0.5 : 1, fontSize: 11, padding: '6px 12px' }}>
+                      <span>{PROVIDER_LOGOS[provider] || '🔗'}</span>
+                      {provider}
+                      {currentProvider === provider && <Check size={12} />}
+                    </button>
+                  ))}
+                  {switching && (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Switching...
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Models by Provider */}
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Available Models by Provider
+                <button style={{ ...s.iconBtn, width: 24, height: 24, marginLeft: 8, display: 'inline-flex' }}
+                  onClick={requestModels} title="Refresh model list">
+                  {loadingModels ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={11} />}
+                </button>
+              </div>
+
+              {Object.entries(allModels).map(([provider, models]) => (
+                <div key={provider} style={{
+                  marginBottom: 8, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span>{PROVIDER_LOGOS[provider] || '🔗'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>{provider}</span>
+                    {currentProvider === provider && (
+                      <span style={{ fontSize: 9, color: 'var(--green)', fontWeight: 700, background: 'var(--green-dim)', padding: '1px 6px', borderRadius: 99 }}>ACTIVE</span>
+                    )}
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                      {models.length} model{models.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {models.map(model => {
+                      const isAct = currentProvider === provider && currentModel === model;
+                      return (
+                        <button key={model} disabled={switching} onClick={() => switchLlm(provider, model)}
+                          style={{
+                            padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                            border: `1px solid ${isAct ? 'var(--green)' : 'var(--border)'}`,
+                            background: isAct ? 'rgba(34,197,94,.1)' : 'var(--bg-primary)',
+                            color: isAct ? 'var(--green)' : 'var(--text-muted)',
+                            fontSize: 11, fontFamily: 'var(--mono)', cursor: 'pointer',
+                            fontWeight: isAct ? 700 : 400, opacity: switching ? 0.5 : 1,
+                            transition: 'all .15s',
+                          }}
+                          title={`Switch to ${provider}/${model}`}
+                        >
+                          {isAct && <span style={{ marginRight: 4 }}>●</span>}
+                          {model}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {Object.keys(allModels).length === 0 && !loadingModels && (
+                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                  {connected ? 'No models found. Click refresh to retry.' : 'Connect to gateway to see available models.'}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* AI Providers */}
         <div style={s.section}>
           <div
@@ -134,25 +329,23 @@ export default function SettingsPanel() {
               <div style={s.grid}>
                 {PROVIDERS.map(p => {
                   const cfg = providerConfigs[p.id] || {};
-                  const isActive = activeProvider === p.id;
-                  const hasKey = !!cfg.apiKey;
+                  const liveInfo = getProviderInfo(p.id);
+                  const isActive = currentProvider === p.id;
+                  const hasKey = !!cfg.apiKey || liveInfo.configured;
                   return (
-                    <div
-                      key={p.id}
-                      style={s.provCard(selectedProvider === p.id)}
-                      onClick={() => setSelectedProvider(p.id)}
-                    >
+                    <div key={p.id} style={s.provCard(selectedProvider === p.id, isActive)}
+                      onClick={() => setSelectedProvider(p.id)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 18 }}>{PROVIDER_LOGOS[p.id]}</span>
                         <span style={s.provName}>{p.name}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <span style={s.provStatus(hasKey)}>
                           {hasKey ? <><Check size={10} /> Ready</> : 'Not configured'}
                         </span>
                         {isActive && (
                           <span style={{ ...s.provStatus(true), background: 'var(--accent-dim)', color: 'var(--accent-light)' }}>
-                            Active
+                            <Zap size={10} /> Active
                           </span>
                         )}
                       </div>
@@ -161,7 +354,6 @@ export default function SettingsPanel() {
                 })}
               </div>
 
-              {/* Provider detail form */}
               {sel && (
                 <div style={{
                   marginTop: 16, padding: 16, background: 'var(--bg-tertiary)',
@@ -170,10 +362,7 @@ export default function SettingsPanel() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                     <span style={{ fontSize: 22 }}>{PROVIDER_LOGOS[sel.id]}</span>
                     <span style={{ fontSize: 16, fontWeight: 700 }}>{sel.name}</span>
-                    <button
-                      style={{ marginLeft: 'auto', ...s.iconBtn }}
-                      onClick={() => setSelectedProvider(null)}
-                    >
+                    <button style={{ marginLeft: 'auto', ...s.iconBtn }} onClick={() => setSelectedProvider(null)}>
                       <X size={14} />
                     </button>
                   </div>
@@ -182,13 +371,11 @@ export default function SettingsPanel() {
                     <div style={s.formGroup}>
                       <label style={s.label}>API Key</label>
                       <div style={s.inputRow}>
-                        <input
-                          style={s.input}
+                        <input style={s.input}
                           type={showKey ? 'text' : 'password'}
                           value={providerConfigs[sel.id]?.apiKey || ''}
                           onChange={(e) => updateProviderConfig(sel.id, 'apiKey', e.target.value)}
-                          placeholder={`Enter ${sel.name} API key…`}
-                        />
+                          placeholder={`Enter ${sel.name} API key…`} />
                         <button style={s.iconBtn} onClick={() => setShowKey(v => !v)}>
                           {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
@@ -196,47 +383,51 @@ export default function SettingsPanel() {
                     </div>
                   )}
 
-                  {sel.local && (
+                  {(sel.local || sel.id === 'openwebui') && (
                     <div style={s.formGroup}>
-                      <label style={s.label}>Base URL</label>
-                      <input
-                        style={s.input}
-                        value={providerConfigs[sel.id]?.baseUrl || (sel.id === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234')}
+                      <label style={s.label}>{sel.id === 'openwebui' ? 'Open WebUI URL' : 'Base URL'}</label>
+                      <input style={s.input}
+                        value={providerConfigs[sel.id]?.baseUrl || (sel.id === 'ollama' ? 'http://localhost:11434' : sel.id === 'openwebui' ? 'https://sofia.zunvra.com/api' : 'http://localhost:1234')}
                         onChange={(e) => updateProviderConfig(sel.id, 'baseUrl', e.target.value)}
-                        placeholder="http://localhost:11434"
-                      />
+                        placeholder={sel.id === 'openwebui' ? 'https://your-server.com/api' : 'http://localhost:11434'} />
                     </div>
                   )}
 
                   <div style={s.formGroup}>
                     <label style={s.label}>Model</label>
-                    <div style={{ position: 'relative' }}>
-                      <select
-                        style={s.select}
-                        value={providerConfigs[sel.id]?.model || sel.models[0]}
-                        onChange={(e) => updateProviderConfig(sel.id, 'model', e.target.value)}
-                      >
-                        {sel.models.map(m => <option key={m} value={m}>{m}</option>)}
-                        <option value="custom">Custom…</option>
-                      </select>
-                    </div>
+                    <select style={s.select}
+                      value={providerConfigs[sel.id]?.model || getModelsForProvider(sel.id)[0] || sel.models[0]}
+                      onChange={(e) => updateProviderConfig(sel.id, 'model', e.target.value)}>
+                      {getModelsForProvider(sel.id).map(m => <option key={m} value={m}>{m}</option>)}
+                      <option value="custom">Custom…</option>
+                    </select>
                   </div>
 
                   {providerConfigs[sel.id]?.model === 'custom' && (
                     <div style={s.formGroup}>
                       <label style={s.label}>Custom Model Name</label>
-                      <input
-                        style={s.input}
+                      <input style={s.input}
                         value={providerConfigs[sel.id]?.customModel || ''}
                         onChange={(e) => updateProviderConfig(sel.id, 'customModel', e.target.value)}
-                        placeholder="e.g. my-finetuned-model"
-                      />
+                        placeholder="e.g. my-finetuned-model" />
                     </div>
                   )}
 
                   <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                    <button style={s.btn('primary')} onClick={() => { setActiveProvider(sel.id); handleSave(); }}>
-                      <Check size={14} /> Set as Active
+                    <button
+                      style={s.btn(currentProvider === sel.id ? 'success' : 'primary')}
+                      disabled={switching}
+                      onClick={() => {
+                        const model = providerConfigs[sel.id]?.model === 'custom'
+                          ? providerConfigs[sel.id]?.customModel
+                          : providerConfigs[sel.id]?.model || getModelsForProvider(sel.id)[0] || sel.models[0];
+                        switchLlm(sel.id, model);
+                      }}>
+                      {switching
+                        ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Switching…</>
+                        : currentProvider === sel.id
+                          ? <><Check size={14} /> Active</>
+                          : <><Zap size={14} /> Switch to {sel.name}</>}
                     </button>
                     <button style={s.btn('ghost')} onClick={handleSave}>
                       {saved ? '✓ Saved' : 'Save'}
@@ -245,41 +436,6 @@ export default function SettingsPanel() {
                 </div>
               )}
             </>
-          )}
-        </div>
-
-        {/* Environment Variables */}
-        <div style={s.section}>
-          <div
-            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}
-            onClick={() => setExpandedSection(expandedSection === 'env' ? '' : 'env')}
-          >
-            <span style={s.sectionTitle}>🔐 Environment Variables</span>
-            {expandedSection === 'env' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </div>
-
-          {expandedSection === 'env' && (
-            <div>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                These environment variables are read from .env at startup. Edit .env file to change.
-              </p>
-              {[
-                ['OPENAI_API_KEY', 'OpenAI API key'],
-                ['ANTHROPIC_API_KEY', 'Anthropic API key'],
-                ['GOOGLE_AI_API_KEY', 'Google AI API key'],
-                ['XAI_API_KEY', 'xAI API key'],
-                ['DEEPSEEK_API_KEY', 'DeepSeek API key'],
-                ['SABLE_STORE_API_KEY', 'Skills Marketplace key'],
-                ['SABLE_GATEWAY_URL', 'SAGP Gateway URL'],
-                ['LLM_MODEL', 'Active LLM model'],
-                ['LLM_PROVIDER', 'Active LLM provider'],
-              ].map(([k, desc]) => (
-                <div key={k} style={s.envRow}>
-                  <span style={s.envKey}>{k}</span>
-                  <span style={s.envVal}>{desc}</span>
-                </div>
-              ))}
-            </div>
           )}
         </div>
 
@@ -312,21 +468,16 @@ export default function SettingsPanel() {
                         setConfig(next);
                         saveConfig(next);
                       }}
-                      placeholder={field.hint}
-                    />
+                      placeholder={field.hint} />
                   ) : (
-                    <input
-                      style={s.input}
-                      type={field.type}
-                      step={field.step}
+                    <input style={s.input} type={field.type} step={field.step}
                       value={config[field.key] ?? field.default}
                       onChange={(e) => {
                         const next = { ...config, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value };
                         setConfig(next);
                         saveConfig(next);
                       }}
-                      placeholder={field.hint}
-                    />
+                      placeholder={field.hint} />
                   )}
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{field.hint}</div>
                 </div>
@@ -335,7 +486,7 @@ export default function SettingsPanel() {
           )}
         </div>
 
-        {/* Permissions / Allowed Folders */}
+        {/* Permissions */}
         <div style={s.section}>
           <div
             style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}
@@ -362,22 +513,15 @@ export default function SettingsPanel() {
                   background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)',
                   marginBottom: 6, border: '1px solid var(--border)',
                 }}>
-                  <label style={{
-                    position: 'relative', width: 40, height: 22, flexShrink: 0, cursor: 'pointer',
-                  }}>
-                    <input
-                      type="checkbox"
+                  <label style={{ position: 'relative', width: 40, height: 22, flexShrink: 0, cursor: 'pointer' }}>
+                    <input type="checkbox"
                       checked={config.permissions?.[perm.key] !== false}
                       onChange={(e) => {
-                        const next = {
-                          ...config,
-                          permissions: { ...config.permissions, [perm.key]: e.target.checked },
-                        };
+                        const next = { ...config, permissions: { ...config.permissions, [perm.key]: e.target.checked } };
                         setConfig(next);
                         saveConfig(next);
                       }}
-                      style={{ display: 'none' }}
-                    />
+                      style={{ display: 'none' }} />
                     <span style={{
                       display: 'block', width: 40, height: 22, borderRadius: 11,
                       background: config.permissions?.[perm.key] !== false ? 'var(--accent)' : 'var(--border)',
@@ -385,8 +529,7 @@ export default function SettingsPanel() {
                     }}>
                       <span style={{
                         position: 'absolute', top: 2, left: config.permissions?.[perm.key] !== false ? 20 : 2,
-                        width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                        transition: 'left .2s',
+                        width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s',
                       }} />
                     </span>
                   </label>
@@ -400,6 +543,7 @@ export default function SettingsPanel() {
           )}
         </div>
       </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
