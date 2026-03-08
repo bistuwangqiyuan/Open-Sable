@@ -116,65 +116,60 @@ class InstagramSkill:
                 logger.debug(f"Instagram: Could not set mobile device: {e}")
 
             # ── Login strategy ──
-            # 1. Try saved session (cookie-based, no password needed)
-            # 2. Fresh login  3. Retry fresh on JSON errors
+            # PRIORITY: Use saved cookies. NEVER do password login if cookies exist.
+            # Password login from a "new device" triggers Instagram challenges.
+            # Cookie-based session restore does NOT trigger challenges.
             logged_in = False
 
-            # Attempt 1: Saved session with cookies
+            # Attempt 1: Saved session with cookies — NO password login
             if self._session_path.exists():
                 try:
                     await loop.run_in_executor(
                         None, self._client.load_settings, str(self._session_path)
                     )
-                    # If we have a sessionid in the saved data, try cookie-based login
-                    # This avoids triggering a challenge on the same IP
-                    auth = {}
+
+                    # Read sessionid from saved data
+                    session_id = ""
                     try:
                         with open(self._session_path) as f:
                             saved = json.load(f)
-                        auth = saved.get("authorization_data", {})
+                        session_id = saved.get("authorization_data", {}).get("sessionid", "")
+                        # Also check in cookies dict
+                        if not session_id:
+                            session_id = saved.get("cookies", {}).get("sessionid", "")
                     except Exception:
                         pass
 
-                    session_id = auth.get("sessionid", "")
                     if session_id:
-                        logger.info("Instagram: Attempting cookie-based session restore...")
+                        logger.info("Instagram: Restoring session from cookies (no password login)...")
                         try:
-                            ok = await loop.run_in_executor(
+                            await loop.run_in_executor(
                                 None, self._client.login_by_sessionid, session_id
                             )
-                            if ok:
+                            logged_in = True
+                            logger.info("✅ Instagram: Session restored from cookies")
+                        except Exception as e:
+                            err = str(e).lower()
+                            if "loginrequired" in err or "login_required" in err:
+                                # Session truly expired — need password login
+                                logger.info("Instagram: Session expired (login_required), will try password...")
+                                logged_in = False
+                            else:
+                                # JSON error, 429, etc — session might still work for uploads
+                                # Trust the cookies and mark as initialized
+                                logger.warning(
+                                    f"Instagram: Session check got error ({e}), "
+                                    "but cookies exist — trusting session for uploads"
+                                )
                                 logged_in = True
-                                logger.info("✅ Instagram: Logged in via saved session cookies")
-                        except Exception as e:
-                            logger.info(f"Instagram: Cookie login failed ({e}), trying password...")
+                    else:
+                        logger.info("Instagram: No sessionid in saved data, will do fresh login...")
 
-                    # Fallback: password login with loaded settings
-                    if not logged_in:
-                        await loop.run_in_executor(
-                            None, self._client.login, username, password
-                        )
-                        logged_in = True
-                        logger.info("✅ Instagram: Logged in via saved session + password")
-
-                    # Verify session is valid
-                    if logged_in:
-                        try:
-                            await loop.run_in_executor(None, self._client.get_timeline_feed)
-                        except Exception as e:
-                            logger.warning(f"Instagram: Timeline check failed ({e}), but login OK")
-
-                except (LoginRequired, Exception) as e:
-                    logger.info(f"Instagram session expired, re-logging: {e}")
+                except Exception as e:
+                    logger.info(f"Instagram: Could not load session file: {e}")
                     logged_in = False
-                    # Delete stale session
-                    try:
-                        self._session_path.unlink(missing_ok=True)
-                    except Exception:
-                        pass
-                    self._client = InstaClient()
 
-            # Attempt 2: Fresh login
+            # Attempt 2: Fresh password login — ONLY if no saved session
             if not logged_in:
                 try:
                     await loop.run_in_executor(
