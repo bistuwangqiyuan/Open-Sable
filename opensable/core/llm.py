@@ -169,19 +169,72 @@ class TokenTracker:
         self.total_cost_usd += usage.estimated_cost_usd
         self.call_count += 1
         self.history.append(usage)
+        # Cap history to last 10 000 entries to avoid unbounded memory growth
+        if len(self.history) > 10_000:
+            self.history = self.history[-10_000:]
         logger.debug(
             f"Tokens: +{usage.total_tokens} ({usage.prompt_tokens}in/{usage.completion_tokens}out) "
             f"| Total: {self.total_tokens} | Cost: ${self.total_cost_usd:.6f}"
         )
 
     def snapshot(self) -> Dict[str, Any]:
-        """Return a serializable summary of current usage."""
+        """Return a serializable summary of current usage with time breakdowns."""
+        now = time.time()
+        h1 = now - 3600
+        h24 = now - 86400
+
+        # Time-window aggregations
+        tokens_1h = 0
+        tokens_24h = 0
+        cost_1h = 0.0
+        cost_24h = 0.0
+        calls_1h = 0
+        calls_24h = 0
+        by_model: Dict[str, Dict[str, Any]] = {}
+
+        for u in self.history:
+            # Per-model breakdown
+            m = u.model or "unknown"
+            if m not in by_model:
+                by_model[m] = {"prompt": 0, "completion": 0, "total": 0, "cost": 0.0, "calls": 0}
+            by_model[m]["prompt"] += u.prompt_tokens
+            by_model[m]["completion"] += u.completion_tokens
+            by_model[m]["total"] += u.total_tokens
+            by_model[m]["cost"] += u.estimated_cost_usd
+            by_model[m]["calls"] += 1
+
+            # Time windows
+            if u.timestamp >= h24:
+                tokens_24h += u.total_tokens
+                cost_24h += u.estimated_cost_usd
+                calls_24h += 1
+            if u.timestamp >= h1:
+                tokens_1h += u.total_tokens
+                cost_1h += u.estimated_cost_usd
+                calls_1h += 1
+
+        # Round costs in per-model
+        for v in by_model.values():
+            v["cost"] = round(v["cost"], 6)
+
+        # Compute tokens-per-minute rate (last hour)
+        elapsed_min = max((now - self.history[0].timestamp) / 60, 1) if self.history else 1
+        tokens_per_min = round(self.total_tokens / elapsed_min, 1)
+
         return {
             "total_prompt_tokens": self.total_prompt_tokens,
             "total_completion_tokens": self.total_completion_tokens,
             "total_tokens": self.total_tokens,
             "total_cost_usd": round(self.total_cost_usd, 6),
             "call_count": self.call_count,
+            "tokens_1h": tokens_1h,
+            "tokens_24h": tokens_24h,
+            "cost_1h": round(cost_1h, 6),
+            "cost_24h": round(cost_24h, 6),
+            "calls_1h": calls_1h,
+            "calls_24h": calls_24h,
+            "tokens_per_min": tokens_per_min,
+            "by_model": by_model,
         }
 
     def reset(self):

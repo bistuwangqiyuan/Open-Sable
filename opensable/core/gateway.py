@@ -582,7 +582,7 @@ class Gateway:
 
     def status(self) -> dict:
         uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
-        return {
+        st = {
             "version": GATEWAY_VER,
             "running": self._running,
             "socket": str(SOCKET_PATH),
@@ -592,6 +592,13 @@ class Gateway:
             "start_time": self._start_time.isoformat(),
             "monitor_clients": len(self._monitor_clients),
         }
+        # Attach token usage from the LLM
+        try:
+            if hasattr(self.agent, "llm") and hasattr(self.agent.llm, "token_tracker"):
+                st["tokens"] = self.agent.llm.token_tracker.snapshot()
+        except Exception:
+            pass
+        return st
 
     # ── Dispatch ──────────────────────────────────────────────────────────────
 
