@@ -1,0 +1,413 @@
+"""
+Instagram Autonomous Content Creator — Genelia v2 + Guardian Shield.
+
+Periodically generates AI art via Genelia, scans with Guardian,
+and publishes safe images to Instagram with LLM-generated captions.
+
+Behavior:
+  1. Every IG_POST_INTERVAL seconds (default: 3600 = 1 hour), wakes up
+  2. Uses the LLM to brainstorm a creative image concept
+  3. Generates the image via Genelia v2 (portrait 832×1216 for IG)
+  4. Guardian scans for explicit content — blocks if unsafe
+  5. LLM writes an engaging IG caption with hashtags
+  6. Publishes to Instagram
+  7. Sleeps until next cycle
+
+Config (.env):
+    IG_AUTOPOSTER_ENABLED=true       — activate autonomous IG posting
+    IG_POST_INTERVAL=3600            — seconds between posts (default 1h)
+    IG_MAX_DAILY_POSTS=8             — max posts per day
+    IG_TOPICS=art,surrealism,digital art,cyberpunk,nature,fantasy
+    IG_STYLE=cinematic               — visual style preference
+    IG_LANGUAGE=en                   — caption language
+    IG_DRY_RUN=false                 — if true, generates but doesn't post
+    GENELIA_V2_URL=http://192.168.68.24:8001
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import random
+import re
+from datetime import datetime, timedelta, date
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+
+DEFAULT_POST_INTERVAL = 3600       # 1 hour
+DEFAULT_MAX_DAILY = 8
+DEFAULT_TOPICS = [
+    "cinematic landscapes", "surreal dreamscapes", "cyberpunk cities",
+    "fantasy worlds", "abstract art", "nature photography",
+    "futuristic architecture", "cosmic scenes", "ethereal portraits",
+    "underwater worlds", "steampunk", "minimalist design",
+    "neon noir", "post-apocalyptic", "magical realism",
+]
+DEFAULT_STYLE = "cinematic, highly detailed, professional photography, 8k"
+
+# Portrait dimensions optimized for Instagram feed
+IG_WIDTH = 832
+IG_HEIGHT = 1216
+
+# Image quality settings
+IG_STEPS = 12
+IG_SHARPNESS = 1.4
+IG_CONTRAST = 1.2
+
+
+class IGAutoposter:
+    """Autonomous Instagram content creator using Genelia v2 image generation."""
+
+    def __init__(self, agent: Any, config: Any):
+        self.agent = agent
+        self.config = config
+        self.running = False
+        self._task: Optional[asyncio.Task] = None
+
+        # Config from env
+        self.post_interval = int(os.getenv("IG_POST_INTERVAL", str(DEFAULT_POST_INTERVAL)))
+        self.max_daily = int(os.getenv("IG_MAX_DAILY_POSTS", str(DEFAULT_MAX_DAILY)))
+        self.dry_run = os.getenv("IG_DRY_RUN", "false").lower() in ("true", "1", "yes")
+        self.language = os.getenv("IG_LANGUAGE", "en")
+        self.style = os.getenv("IG_STYLE", DEFAULT_STYLE)
+
+        topics_env = os.getenv("IG_TOPICS", "")
+        if topics_env:
+            self.topics = [t.strip() for t in topics_env.split(",") if t.strip()]
+        else:
+            self.topics = DEFAULT_TOPICS
+
+        # Stats
+        self._posts_today = 0
+        self._today = date.today()
+        self._total_posted = 0
+        self._total_blocked = 0
+        self._last_post_time: Optional[datetime] = None
+        self._history: List[Dict] = []
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    async def start(self):
+        """Start the autonomous IG posting loop."""
+        # Wait for skills to be ready
+        await asyncio.sleep(random.uniform(30, 60))
+
+        # Pre-flight: verify Instagram skill is available and initialized
+        ig_skill = self._get_instagram_skill()
+        if not ig_skill and not self.dry_run:
+            # Check if credentials exist at all
+            ig_user = os.getenv("INSTAGRAM_USERNAME", "").strip()
+            ig_pass = os.getenv("INSTAGRAM_PASSWORD", "").strip()
+            if not ig_user or not ig_pass:
+                logger.info("📸 IG Autoposter: No Instagram credentials configured — disabled")
+                return
+            logger.warning("📸 IG Autoposter: Instagram skill not ready — will retry")
+
+        if not self._get_genelia_skill():
+            logger.info("📸 IG Autoposter: Genelia skill not available — disabled")
+            return
+
+        self.running = True
+        logger.info(
+            f"📸 IG Autoposter started — interval={self.post_interval}s, "
+            f"max_daily={self.max_daily}, topics={len(self.topics)}, "
+            f"dry_run={self.dry_run}"
+        )
+
+        while self.running:
+            try:
+                # Reset daily counter
+                if date.today() != self._today:
+                    self._posts_today = 0
+                    self._today = date.today()
+
+                # Check daily limit
+                if self._posts_today >= self.max_daily:
+                    logger.info(f"📸 IG daily limit reached ({self.max_daily}). Sleeping until tomorrow.")
+                    # Sleep until midnight + some jitter
+                    now = datetime.now()
+                    tomorrow = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
+                    sleep_secs = (tomorrow - now).total_seconds() + random.uniform(60, 300)
+                    await asyncio.sleep(sleep_secs)
+                    continue
+
+                # Run one post cycle
+                await self._post_cycle()
+
+                # Sleep with jitter (±20% of interval)
+                jitter = self.post_interval * random.uniform(-0.2, 0.2)
+                sleep_time = max(60, self.post_interval + jitter)
+                logger.info(f"📸 IG next post in {sleep_time/60:.0f}min")
+                await asyncio.sleep(sleep_time)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"📸 IG Autoposter error: {e}", exc_info=True)
+                await asyncio.sleep(300)  # 5 min cooldown on error
+
+        logger.info("📸 IG Autoposter stopped")
+
+    async def stop(self):
+        """Stop the autoposter."""
+        self.running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+
+    # ── Core Post Cycle ───────────────────────────────────────────────────────
+
+    async def _post_cycle(self):
+        """Generate an image and post it to Instagram."""
+
+        # Get skill references
+        genelia = self._get_genelia_skill()
+        ig_skill = self._get_instagram_skill()
+
+        if not genelia:
+            logger.warning("📸 IG Autoposter: Genelia skill not available — skipping")
+            return
+        if not ig_skill and not self.dry_run:
+            logger.warning("📸 IG Autoposter: Instagram skill not available — skipping")
+            return
+
+        # Step 1: Generate creative concept via LLM
+        concept = await self._brainstorm_concept()
+        if not concept:
+            logger.warning("📸 IG Autoposter: Failed to brainstorm concept")
+            return
+
+        prompt = concept.get("prompt", "")
+        if not prompt:
+            return
+
+        logger.info(f"📸 IG Concept: {prompt[:100]}...")
+
+        # Step 2: Generate image via Genelia (portrait for IG)
+        try:
+            result = await genelia.generate_image(
+                prompt=prompt,
+                negative_prompt="blurry, low quality, deformed, ugly, watermark, text, signature, nsfw, nude",
+                width=IG_WIDTH,
+                height=IG_HEIGHT,
+                steps=IG_STEPS,
+                seed=-1,
+                use_enhancement=True,
+                sharpness=IG_SHARPNESS,
+                contrast=IG_CONTRAST,
+            )
+        except Exception as e:
+            logger.error(f"📸 IG image generation failed: {e}")
+            return
+
+        if result.get("blocked"):
+            logger.warning("📸 IG image blocked by Guardian — skipping this cycle")
+            self._total_blocked += 1
+            return
+
+        if not result.get("success") or not result.get("images"):
+            logger.warning(f"📸 IG generation failed: {result.get('error', 'unknown')}")
+            return
+
+        img = result["images"][0]
+        img_path = img["path"]
+        logger.info(f"📸 IG image generated: {img['filename']} ({img['size_bytes']//1024}KB)")
+
+        # Step 3: Generate caption via LLM
+        caption = await self._generate_caption(concept)
+
+        # Step 4: Post to Instagram
+        if self.dry_run:
+            logger.info(f"📸 [DRY RUN] Would post to IG: {img['filename']}")
+            logger.info(f"📸 [DRY RUN] Caption: {caption[:100]}...")
+            self._record_post(img, caption, dry_run=True)
+            return
+
+        try:
+            ig_result = await ig_skill.upload_photo(
+                path=img_path,
+                caption=caption,
+            )
+        except Exception as e:
+            logger.error(f"📸 IG posting failed: {e}")
+            return
+
+        if ig_result.get("success"):
+            url = ig_result.get("url", "")
+            logger.info(f"📸 ✅ Posted to Instagram! {url}")
+            self._posts_today += 1
+            self._total_posted += 1
+            self._last_post_time = datetime.now()
+            self._record_post(img, caption, url=url)
+        else:
+            logger.error(f"📸 IG upload failed: {ig_result.get('error')}")
+
+    # ── LLM Creative Engine ──────────────────────────────────────────────────
+
+    async def _brainstorm_concept(self) -> Optional[Dict]:
+        """Use LLM to brainstorm an image concept."""
+        if not hasattr(self.agent, "llm") or not self.agent.llm:
+            # Fallback: random topic-based prompt
+            return self._fallback_concept()
+
+        topic = random.choice(self.topics)
+        recent_prompts = [h.get("prompt", "")[:60] for h in self._history[-5:]]
+        avoided = f"\nAvoid similar concepts to recent posts: {recent_prompts}" if recent_prompts else ""
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a visual art director creating concepts for an Instagram art page. "
+                    "Generate ONE image concept as JSON with keys: prompt, theme, mood.\n"
+                    "The 'prompt' should be a detailed Stable Diffusion prompt (50-120 words) "
+                    f"with style keywords like: {self.style}.\n"
+                    "Make it visually stunning, unique, and Instagram-worthy.\n"
+                    "Focus on: composition, lighting, atmosphere, color palette.\n"
+                    "NEVER include people's faces, real celebrities, or trademarked characters.\n"
+                    "Output ONLY valid JSON, no markdown."
+                    f"{avoided}"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Create a stunning image concept inspired by: {topic}",
+            },
+        ]
+
+        try:
+            result = await self.agent.llm.invoke_with_tools(messages, [])
+            text = result.get("text", "") or result.get("content", "") if isinstance(result, dict) else str(result)
+
+            # Parse JSON from response
+            json_match = re.search(r'\{[^{}]+\}', text, re.DOTALL)
+            if json_match:
+                concept = json.loads(json_match.group())
+                if "prompt" in concept:
+                    return concept
+        except Exception as e:
+            logger.debug(f"📸 LLM brainstorm failed: {e}")
+
+        return self._fallback_concept()
+
+    async def _generate_caption(self, concept: Dict) -> str:
+        """Use LLM to write an Instagram caption."""
+        if not hasattr(self.agent, "llm") or not self.agent.llm:
+            return self._fallback_caption(concept)
+
+        lang_hint = f" Write the caption in {self.language}." if self.language != "en" else ""
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are writing an Instagram caption for an AI-generated artwork. "
+                    "Write a SHORT, engaging caption (2-4 lines max). "
+                    "Include 5-10 relevant hashtags at the end. "
+                    "Be artistic and evocative, not generic.{lang}"
+                    "\nOutput ONLY the caption text, nothing else."
+                ).format(lang=lang_hint),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Image concept: {concept.get('prompt', '')}\n"
+                    f"Theme: {concept.get('theme', 'digital art')}\n"
+                    f"Mood: {concept.get('mood', 'atmospheric')}"
+                ),
+            },
+        ]
+
+        try:
+            result = await self.agent.llm.invoke_with_tools(messages, [])
+            text = result.get("text", "") or result.get("content", "") if isinstance(result, dict) else str(result)
+            # Clean up: remove JSON artifacts, quotes wrapping
+            text = text.strip().strip('"').strip("'")
+            if text and len(text) > 10:
+                return text
+        except Exception as e:
+            logger.debug(f"📸 LLM caption failed: {e}")
+
+        return self._fallback_caption(concept)
+
+    # ── Fallbacks ─────────────────────────────────────────────────────────────
+
+    def _fallback_concept(self) -> Dict:
+        """Generate a concept without LLM."""
+        topic = random.choice(self.topics)
+        styles = [
+            "cinematic lighting, volumetric fog, dramatic sky",
+            "golden hour, soft bokeh, dreamy atmosphere",
+            "neon-lit, cyberpunk aesthetic, rain reflections",
+            "ethereal, magical particles, aurora borealis",
+            "moody, dark academia, candlelight ambiance",
+            "vibrant colors, pop art inspired, dynamic composition",
+        ]
+        style = random.choice(styles)
+        prompt = (
+            f"{topic}, {style}, ultra detailed, professional photography, "
+            f"8k resolution, masterpiece quality, award winning"
+        )
+        return {"prompt": prompt, "theme": topic, "mood": style.split(",")[0]}
+
+    def _fallback_caption(self, concept: Dict) -> str:
+        """Generate a caption without LLM."""
+        theme = concept.get("theme", "digital art")
+        mood = concept.get("mood", "atmospheric")
+        captions = [
+            f"✨ {theme.title()} — {mood}\n\n🎨 Created with AI\n\n",
+            f"🌌 Exploring {theme} through the lens of imagination\n\n",
+            f"🎭 {mood.title()} vibes in {theme}\n\n",
+        ]
+        caption = random.choice(captions)
+        tags = "#aiart #digitalart #generativeart #stablediffusion #aiartwork #artoftheday #digitalpainting #aigenerated #creativeai #artstation"
+        return caption + tags
+
+    # ── Helpers ────────────────────────────────────────────────────────────────
+
+    def _get_genelia_skill(self):
+        """Get Genelia skill from agent's tools."""
+        tools = getattr(self.agent, "tools", None)
+        if tools:
+            return getattr(tools, "genelia_skill", None)
+        return None
+
+    def _get_instagram_skill(self):
+        """Get Instagram skill from agent's tools."""
+        tools = getattr(self.agent, "tools", None)
+        if tools:
+            return getattr(tools, "instagram_skill", None)
+        return None
+
+    def _record_post(self, img: Dict, caption: str, url: str = "", dry_run: bool = False):
+        """Record a post in history."""
+        self._history.append({
+            "filename": img.get("filename", ""),
+            "prompt": img.get("prompt", ""),
+            "caption": caption[:200],
+            "url": url,
+            "dry_run": dry_run,
+            "timestamp": datetime.now().isoformat(),
+        })
+        # Keep last 50 entries
+        if len(self._history) > 50:
+            self._history = self._history[-50:]
+
+    def get_stats(self) -> Dict:
+        """Return autoposter statistics."""
+        return {
+            "running": self.running,
+            "posts_today": self._posts_today,
+            "max_daily": self.max_daily,
+            "total_posted": self._total_posted,
+            "total_blocked": self._total_blocked,
+            "last_post": self._last_post_time.isoformat() if self._last_post_time else None,
+            "interval_min": self.post_interval // 60,
+            "dry_run": self.dry_run,
+            "topics": len(self.topics),
+        }

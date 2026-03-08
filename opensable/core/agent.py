@@ -1959,6 +1959,7 @@ class SableAgent:
             f"\n- CRITICAL DATE RULE: Today is {today}. If search results contain articles older than 60 days, explicitly note the date of each article so the user knows how recent it is. NEVER present old news as if it happened today."
             "\n- If the tool returned an error or no data, say so honestly and offer to retry."
             "\n- Be concise and direct."
+            "\n- IMAGES: If tool results contain markdown images like ![name](url), you MUST include them EXACTLY as-is in your response. Never omit, rewrite, or describe image links — copy them verbatim."
         )
         if plan:
             synthesis_prompt += f"\n\nYou completed a multi-step plan:\n{plan.summary()}"
@@ -1998,6 +1999,9 @@ class SableAgent:
                     final_text = r.sanitized
                 elif r.action == GuardrailAction.BLOCK:
                     final_text = "I generated a response but it was blocked by safety filters. Please rephrase your request."
+
+        # ── Re-inject media URLs the LLM may have dropped during synthesis ──
+        final_text = self._reinject_media_urls(final_text, tool_results)
 
         # ── Clean output text ──
         final_text = self._clean_output(final_text)
@@ -2048,6 +2052,33 @@ class SableAgent:
             self.tracer.end_span(span.span_id)
 
         return state
+
+    # ------------------------------------------------------------------
+    # Media URL re-injection (post-synthesis)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _reinject_media_urls(final_text: str | None, tool_results: list) -> str | None:
+        """If tool results contain markdown image URLs that the LLM dropped
+        during synthesis, append them to the final response."""
+        if not final_text or not tool_results:
+            return final_text
+        import re as _re
+        # Collect all markdown image refs from tool results
+        media_refs: list[str] = []
+        for r in tool_results:
+            if not r:
+                continue
+            rs = str(r)
+            for m in _re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', rs):
+                full_md = m.group(0)
+                url = m.group(2)
+                # Only re-inject if the URL is NOT already in final_text
+                if url not in final_text:
+                    media_refs.append(full_md)
+        if media_refs:
+            final_text = final_text.rstrip() + "\n\n" + "\n\n".join(media_refs)
+        return final_text
 
     # ------------------------------------------------------------------
     # Output text cleaner

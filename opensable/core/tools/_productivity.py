@@ -642,8 +642,8 @@ class ProductivityToolsMixin:
             result = await self.genelia_skill.generate_image(
                 prompt=prompt,
                 negative_prompt=params.get("negative_prompt", ""),
-                width=int(params.get("width", 1024)),
-                height=int(params.get("height", 1024)),
+                width=int(params.get("width", 832)),
+                height=int(params.get("height", 1216)),
                 steps=int(params.get("steps", 10)),
                 seed=int(params.get("seed", -1)),
                 use_enhancement=params.get("use_enhancement", True),
@@ -658,15 +658,46 @@ class ProductivityToolsMixin:
                 return f"❌ Image generation failed: {result.get('error', 'Unknown error')}"
 
             imgs = result.get("images", [])
+            # Build gateway URL for image previews
+            import os
+            gw_port = os.getenv("WEBCHAT_PORT", "8789")
+            gw_host = os.getenv("WEBCHAT_HOST", "localhost")
+            base_url = f"http://{gw_host}:{gw_port}"
+
             msg = f"🎨 **Image generated successfully!**\n\n"
             msg += f"**Prompt:** {prompt}\n"
             msg += f"**Seed:** {result.get('seed', '?')}\n"
             msg += f"**Count:** {len(imgs)}\n\n"
             for img in imgs:
-                msg += f"📁 `{img['filename']}` ({img['size_bytes'] // 1024}KB)"
+                fname = img['filename']
+                img_url = f"{base_url}/files/genelia/{fname}"
+                # Markdown image for desktop/chat preview
+                msg += f"![{fname}]({img_url})\n\n"
+                msg += f"📁 `{fname}` ({img['size_bytes'] // 1024}KB)"
                 if img.get("guardian_checked"):
                     msg += f" — Guardian: ✅ {img.get('rating', 'general')}"
-                msg += f"\n   Path: {img['path']}\n"
+                msg += f"\n"
+
+            # --- Auto-publish to Instagram (default: always) ---
+            publish_ig = params.get("publish_instagram", True)
+            if publish_ig and imgs and getattr(self, 'instagram_skill', None):
+                caption = params.get("caption", prompt)
+                ig_path = imgs[0]["path"]
+                try:
+                    ig_result = await self.instagram_skill.upload_photo(
+                        path=ig_path,
+                        caption=caption,
+                    )
+                    if ig_result.get("success"):
+                        ig_url = ig_result.get("url", "")
+                        msg += f"\n📸 **Published to Instagram!** {ig_url}\n"
+                    else:
+                        msg += f"\n⚠️ Instagram publish failed: {ig_result.get('error')}\n"
+                except Exception as ig_err:
+                    msg += f"\n⚠️ Instagram publish error: {ig_err}\n"
+            elif publish_ig and not getattr(self, 'instagram_skill', None):
+                msg += "\n⚠️ Instagram skill not available — image not published.\n"
+
             return msg.strip()
         except Exception as e:
             return f"❌ Image generation error: {e}"

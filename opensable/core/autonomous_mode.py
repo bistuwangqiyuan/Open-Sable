@@ -74,6 +74,7 @@ class AutonomousMode:
         self.completed_tasks: List[Dict] = []
         self.goal_manager: Optional[GoalManager] = None
         self.x_autoposter = None
+        self.ig_autoposter = None
 
         # ── Tick state ──────────────────────────────────────────────────
         self.tick: int = 0  # Monotonic tick counter (persisted)
@@ -240,6 +241,28 @@ class AutonomousMode:
             except Exception as e:
                 logger.error(f"Failed to start X Autoposter: {e}", exc_info=True)
 
+        # Initialize IG Autoposter if enabled
+        if (
+            os.getenv("IG_AUTOPOSTER_ENABLED", "false").lower() in ("true", "1", "yes")
+            and not getattr(self.agent, "ig_autoposter", None)
+        ):
+            try:
+                from .ig_autoposter import IGAutoposter
+
+                self.ig_autoposter = IGAutoposter(self.agent, self.config)
+                self.agent.ig_autoposter = self.ig_autoposter
+
+                async def _run_ig_ap():
+                    try:
+                        await self.ig_autoposter.start()
+                    except Exception as exc:
+                        logger.error(f"📸 IG Autoposter crashed: {exc}", exc_info=True)
+
+                asyncio.create_task(_run_ig_ap())
+                logger.info("📸 IG Autoposter launched as background task")
+            except Exception as e:
+                logger.error(f"Failed to start IG Autoposter: {e}", exc_info=True)
+
         self.running = True
 
         # Start main loop
@@ -251,6 +274,8 @@ class AutonomousMode:
         self.running = False
         if self.x_autoposter:
             await self.x_autoposter.stop()
+        if self.ig_autoposter:
+            await self.ig_autoposter.stop()
 
     async def _autonomous_loop(self):
         """Main tick-based autonomous loop.

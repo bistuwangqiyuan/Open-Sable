@@ -204,6 +204,28 @@ export default function MessageBubble({ message }) {
               remarkPlugins={[remarkGfm]}
               components={{
                 a: CustomLink,
+                // Render generated images with proper sizing
+                img({ src, alt, ...props }) {
+                  return (
+                    <img
+                      src={src}
+                      alt={alt || 'Generated image'}
+                      className="msg-generated-image"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '480px',
+                        borderRadius: '8px',
+                        marginTop: '8px',
+                        marginBottom: '8px',
+                        cursor: 'pointer',
+                        objectFit: 'contain',
+                      }}
+                      onClick={() => window.open(src, '_blank')}
+                      loading="lazy"
+                      {...props}
+                    />
+                  )
+                },
                 // Override <pre> to capture fenced code blocks with language
                 pre({ children }) {
                   const child = React.Children.toArray(children)[0]

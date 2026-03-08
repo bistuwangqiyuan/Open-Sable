@@ -193,7 +193,7 @@ class SocialToolsMixin:
         if not self.instagram_skill:
             return "❌ Instagram skill not initialized. Set INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD in .env"
         result = await self.instagram_skill.upload_photo(
-            photo_path=params.get("photo_path", ""),
+            path=params.get("photo_path", ""),
             caption=params.get("caption", ""),
         )
         if result.get("success"):

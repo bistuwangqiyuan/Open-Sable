@@ -257,6 +257,9 @@ class Gateway:
         # Polymarket public API proxy
         app.router.add_get("/api/polymarket/{endpoint:.*}", self._polymarket_proxy)
 
+        # Serve generated files (images, etc.)
+        app.router.add_get("/files/genelia/{filename}", self._genelia_file_handler)
+
         # HTML pages
         app.router.add_get("/chat", self._chat_handler)
         app.router.add_get("/monitor", self._monitor_page_handler)
@@ -393,6 +396,25 @@ class Gateway:
         except Exception as e:
             logger.error(f"Polymarket proxy error: {e}")
             return web.json_response({"error": str(e)}, status=502)
+
+    # ── Generated files ──────────────────────────────────────────────────────
+
+    async def _genelia_file_handler(self, request: web.Request) -> web.Response:
+        """Serve generated images from data/genelia_images/."""
+        filename = request.match_info.get("filename", "")
+        # Security: only allow simple filenames (no path traversal)
+        if not filename or "/" in filename or ".." in filename:
+            return web.Response(status=404)
+        filepath = self._project_root / "data" / "genelia_images" / filename
+        if not filepath.exists() or not filepath.is_file():
+            return web.Response(status=404)
+        import mimetypes
+        ct = mimetypes.guess_type(str(filepath))[0] or "image/png"
+        return web.Response(
+            body=filepath.read_bytes(),
+            content_type=ct,
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
 
     # ── Static file helpers ───────────────────────────────────────────────────
 
