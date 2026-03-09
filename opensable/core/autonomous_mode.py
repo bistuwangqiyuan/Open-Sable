@@ -2396,6 +2396,35 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Collective unconscious tick: {e}")
 
+            # ── 29b. Arena auto-queue — periodic fight scheduling ──
+            # Every 10 ticks (~10 min), if arena is provisioned and idle,
+            # auto-queue for a fight.  Both agents do this independently,
+            # so they converge in the matchmaker queue within minutes.
+            if self._tick_counter % 10 == 0:
+                try:
+                    arena_skill = getattr(self.agent.tools, "arena_skill", None) if self.agent else None
+                    if arena_skill and getattr(arena_skill, '_ready', False):
+                        arena_status = getattr(arena_skill, '_status', 'idle')
+                        if arena_status == 'idle':
+                            import random
+                            if random.random() < 0.75:  # 75% chance per 10-tick window
+                                fight_task = {
+                                    "id": f"arena_auto_{self._tick_counter}",
+                                    "type": "proactive",
+                                    "description": "Arena: auto-queuing for a competitive match",
+                                    "goal_type": "creative",
+                                    "priority": 3,
+                                    "tool_name": "arena_fight",
+                                    "tool_args": {"use_llm": True},
+                                    "reasoning": "Periodic arena auto-queue — competitive sport",
+                                    "risk_level": "low",
+                                    "created_at": datetime.now(),
+                                }
+                                self.task_queue.append(fight_task)
+                                logger.info("🥊 Arena auto-queue: scheduling fight")
+                except Exception as e:
+                    logger.debug(f"Arena auto-queue tick: {e}")
+
             # ── 30. Cognitive metabolism — energy regeneration ──
             if self.cognitive_metabolism:
                 try:
