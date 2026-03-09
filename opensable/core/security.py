@@ -2,12 +2,14 @@
 Security and permission system for Open-Sable
 """
 
+import asyncio
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Callable, Awaitable, List, Optional
 from enum import Enum
 from datetime import datetime
 import json
 from pathlib import Path
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,12 @@ class ActionType(Enum):
 
 
 class PermissionManager:
-    """Manages user permissions and security policies"""
+    """Manages user permissions and security policies.
+
+    Supports an optional *confirmation callback* for ``"ask"`` permissions:
+    when set, the manager sends a request to the user (e.g. via WebSocket)
+    and waits for their response instead of silently denying.
+    """
 
     def __init__(self, config):
         self.config = config
@@ -43,6 +50,35 @@ class PermissionManager:
         self.permissions: Dict[str, Dict[str, str]] = {}
         self.audit_log: List[Dict] = []
         self.audit_log_file = Path("./logs/audit.log")
+        # Confirmation callback: async (user_id, action, context) → bool
+        self._confirmation_cb: Optional[
+            Callable[[str, str, Dict[str, Any]], Awaitable[bool]]
+        ] = None
+        # Pending confirmation futures keyed by request_id
+        self._pending: Dict[str, asyncio.Future] = {}
+
+    # ── Public API ────────────────────────────────────────────────────────
+
+    def set_confirmation_callback(
+        self,
+        cb: Callable[[str, str, Dict[str, Any]], Awaitable[bool]],
+    ):
+        """Register a callback the gateway will provide so ``ask`` permissions
+        can be forwarded to the user via WebSocket."""
+        self._confirmation_cb = cb
+
+    def create_pending(self, request_id: str) -> asyncio.Future:
+        """Create a Future for a pending confirmation identified by *request_id*."""
+        loop = asyncio.get_event_loop()
+        fut: asyncio.Future = loop.create_future()
+        self._pending[request_id] = fut
+        return fut
+
+    def resolve_pending(self, request_id: str, allowed: bool):
+        """Resolve a pending confirmation (called when the user responds)."""
+        fut = self._pending.pop(request_id, None)
+        if fut and not fut.done():
+            fut.set_result(allowed)
 
     def initialize(self):
         """Load permissions from file"""
@@ -61,7 +97,12 @@ class PermissionManager:
     async def check_permission(
         self, user_id: str, action: ActionType, context: Optional[Dict[str, Any]] = None
     ) -> bool:
-        """Check if action is permitted"""
+        """Check if action is permitted.
+
+        For ``"ask"`` permissions: if a confirmation callback is registered
+        (set by the gateway), we forward the request to the user and wait
+        up to 60 s for a response.  Otherwise we deny by default.
+        """
         # Get user permissions (or default)
         user_perms = self.permissions.get(user_id, self.permissions.get("default", {}))
         permission_level = user_perms.get(action.value, PermissionLevel.ASK.value)
@@ -75,8 +116,24 @@ class PermissionManager:
             logger.warning(f"Action {action.value} denied for user {user_id}")
             return False
         else:  # ASK
-            # In production with an interactive interface, this would prompt the user.
-            # For safety: deny by default until interactive confirmation is implemented.
+            if self._confirmation_cb:
+                try:
+                    allowed = await asyncio.wait_for(
+                        self._confirmation_cb(user_id, action.value, context or {}),
+                        timeout=60,
+                    )
+                    if allowed:
+                        logger.info(f"✅ User {user_id} approved {action.value}")
+                    else:
+                        logger.info(f"❌ User {user_id} denied {action.value}")
+                    return allowed
+                except asyncio.TimeoutError:
+                    logger.warning(f"⏱️ Confirmation timed out for {action.value} (user {user_id}) — denying")
+                    return False
+                except Exception as e:
+                    logger.warning(f"Confirmation callback error: {e} — denying")
+                    return False
+            # No callback registered — deny by default for safety
             logger.warning(
                 f"Action {action.value} requires confirmation for user {user_id} — denied (no interactive prompt available)"
             )

@@ -16,6 +16,8 @@ import DevicesPanel from './components/agent/DevicesPanel';
 import ThoughtsPanel from './components/agent/ThoughtsPanel';
 import BrainPanel from './components/agent/BrainPanel';
 import SettingsPanel from './components/settings/SettingsPanel';
+import PermissionDialog from './components/PermissionDialog';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const panels = {
   chat: ChatPanel,
@@ -76,7 +78,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: {},
+      settings: { modelGroups: ws.modelGroups, requestModels: ws.requestModels, switchModel: ws.switchModel, importGGUF: ws.importGGUF },
     };
   } else {
     // Remote agent — interactive view via proxy
@@ -96,7 +98,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: {},
+      settings: { modelGroups: ws.modelGroups, requestModels: ws.requestModels, switchModel: ws.switchModel, importGGUF: ws.importGGUF },
     };
   }
 
@@ -111,6 +113,10 @@ export default function App() {
         agents={ma.agents}
         currentAgent={ma.currentAgent}
         onAgentSelect={ma.setCurrentAgent}
+        modelGroups={ws.modelGroups}
+        activeProvider={ws.activeProvider}
+        onModelSwitch={ws.switchModel}
+        onRefreshModels={ws.requestModels}
       />
 
       {(isLocal ? ws.streaming : remoteState?.streaming) && (
@@ -142,6 +148,9 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <PermissionDialog pending={ws.pendingPermission} onRespond={ws.respondPermission} />
+      <LoadingOverlay connected={ws.connected} />
     </div>
   );
 }

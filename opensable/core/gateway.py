@@ -886,6 +886,10 @@ class Gateway:
         self._running = True
         self._hb_task = asyncio.create_task(self._heartbeat())
 
+        # Wire up the interactive permission confirmation callback so that
+        # "ask" permissions are forwarded to the user via WebSocket.
+        self._wire_permission_confirmation()
+
         token_hint = f"?token={self._webchat_token}" if self._webchat_token else ""
         urls = [f"http://{h}:{self._webchat_port}{token_hint}" for h in bind_hosts]
         logger.info(
@@ -990,6 +994,12 @@ class Gateway:
             except Exception:
                 pass
             await client.send({"type": "status", **status})
+        elif t == "models.list":
+            await self._on_models_list(client)
+        elif t == "models.set":
+            await self._on_models_set(client, msg)
+        elif t == "models.import":
+            await self._on_models_import(client, msg)
         elif t == "code.run":
             await self._on_code_run(client, msg)
         elif t == "code.autofix":
@@ -1008,12 +1018,90 @@ class Gateway:
             await self._on_agents_brain_data(client, msg)
         elif t == "brain.data":
             await self._on_brain_data(client, msg)
+        elif t == "permission.response":
+            await self._on_permission_response(client, msg)
         elif t == "ping":
             await client.send({"type": "pong", "ts": time.time()})
         else:
             await client.send({"type": "error", "text": f"Unknown type: {t!r}"})
 
     # ── Handlers ──────────────────────────────────────────────────────────────
+
+    # ── Permission confirmation flow ──────────────────────────────────────
+
+    def _wire_permission_confirmation(self):
+        """Connect the PermissionManager's ask-callback to the gateway WS."""
+        try:
+            pm = getattr(self.agent, "tools", None)
+            pm = getattr(pm, "_permission_manager", None) if pm else None
+            if pm and hasattr(pm, "set_confirmation_callback"):
+                pm.set_confirmation_callback(self._ask_user_permission)
+                logger.info("[Gateway] Permission confirmation callback wired via WebSocket")
+        except Exception as e:
+            logger.debug(f"[Gateway] Could not wire permission callback: {e}")
+
+    async def _ask_user_permission(
+        self, user_id: str, action: str, context: dict
+    ) -> bool:
+        """Send a confirmation request to all connected clients for *user_id*
+        and await the first response (up to 60 s — handled by the caller)."""
+        import uuid as _uuid
+
+        request_id = _uuid.uuid4().hex[:12]
+        tool_name = context.get("tool", action)
+        tool_args = context.get("arguments", {})
+
+        pm = self.agent.tools._permission_manager
+        fut = pm.create_pending(request_id)
+
+        payload = {
+            "type": "permission.request",
+            "requestId": request_id,
+            "action": action,
+            "tool": tool_name,
+            "arguments": {
+                k: (str(v)[:200] if isinstance(v, str) else v)
+                for k, v in (tool_args or {}).items()
+            },
+            "message": f"Allow {tool_name}?",
+        }
+
+        # Broadcast to all connected clients (any of them can answer)
+        sent = 0
+        for c in list(self._clients):
+            if not c.ws.closed:
+                try:
+                    await c.send(payload)
+                    sent += 1
+                except Exception:
+                    pass
+
+        if sent == 0:
+            logger.warning("[Gateway] No connected clients to ask for confirmation")
+            pm.resolve_pending(request_id, False)
+
+        return await fut
+
+    async def _on_permission_response(self, client: _Client, msg: dict):
+        """User responded to a permission.request."""
+        request_id = msg.get("requestId", "")
+        allowed = msg.get("allowed", False)
+        remember = msg.get("remember", False)
+
+        pm = getattr(self.agent, "tools", None)
+        pm = getattr(pm, "_permission_manager", None) if pm else None
+        if pm:
+            pm.resolve_pending(request_id, bool(allowed))
+            # Optionally persist the choice
+            if remember and allowed:
+                action_str = msg.get("action", "")
+                try:
+                    from opensable.core.security import ActionType, PermissionLevel
+                    action = ActionType(action_str)
+                    pm.set_permission("default", action, PermissionLevel.ALWAYS_ALLOW)
+                    logger.info(f"[Gateway] Permission {action_str} set to always_allow (remembered)")
+                except Exception:
+                    pass
 
     async def _on_tools_list(self, client: _Client):
         tool_names: list = []
@@ -1023,6 +1111,189 @@ class Gateway:
         except Exception as exc:
             logger.debug(f"[Gateway] tools.list error: {exc}")
         await client.send({"type": "tools.list.result", "tools": tool_names})
+
+    # Provider id → (config_key, display_name, default_models)
+    _MODEL_PROVIDERS: list[tuple[str, str, str, list[str]]] = [
+        ("openai",    "openai_api_key",    "OpenAI",    ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1", "o1-mini", "o3-mini"]),
+        ("anthropic", "anthropic_api_key", "Anthropic", ["claude-opus-4-5", "claude-sonnet-4-5", "claude-3-5-sonnet-20241022"]),
+        ("gemini",    "gemini_api_key",    "Google",    ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"]),
+        ("deepseek",  "deepseek_api_key",  "DeepSeek",  ["deepseek-chat", "deepseek-reasoner"]),
+        ("groq",      "groq_api_key",      "Groq",      ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]),
+        ("xai",       "xai_api_key",       "xAI",       ["grok-3-mini-fast", "grok-2-latest"]),
+        ("mistral",   "mistral_api_key",   "Mistral",   ["mistral-large-latest", "mistral-small-latest"]),
+        ("openrouter","openrouter_api_key","OpenRouter", ["openai/gpt-4o", "anthropic/claude-3.5-sonnet"]),
+        ("together",  "together_api_key",  "Together",  ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"]),
+    ]
+
+    async def _on_models_list(self, client: _Client):
+        """Return all available models: local Ollama + configured cloud providers."""
+        groups: list[dict] = []  # [{provider, name, models: [{name, active}]}]
+        current_model: str = ""
+        provider_type: str = "ollama"  # default
+        try:
+            llm = getattr(self.agent, "llm", None)
+            if llm:
+                current_model = getattr(llm, "current_model", "") or ""
+                provider_type = getattr(llm, "provider", "ollama")
+
+                # ── Local Ollama models ──
+                if hasattr(llm, "_update_available_models"):
+                    llm._update_available_models()
+                local_models = getattr(llm, "available_models", [])
+                if local_models:
+                    groups.append({
+                        "provider": "ollama",
+                        "name": "Ollama (Local)",
+                        "models": [
+                            {"name": (m if isinstance(m, str) else str(m)),
+                             "active": (m if isinstance(m, str) else str(m)) == current_model}
+                            for m in local_models if m
+                        ],
+                    })
+
+                # ── Cloud providers with configured API keys ──
+                config = getattr(self.agent, "config", None)
+                if config:
+                    for pid, key_attr, display_name, default_models in self._MODEL_PROVIDERS:
+                        if getattr(config, key_attr, None):
+                            groups.append({
+                                "provider": pid,
+                                "name": display_name,
+                                "models": [
+                                    {"name": m, "active": m == current_model}
+                                    for m in default_models
+                                ],
+                            })
+        except Exception as exc:
+            logger.debug(f"[Gateway] models.list error: {exc}")
+        await client.send({
+            "type": "models.list.result",
+            "groups": groups,
+            "current": current_model,
+            "provider": provider_type,
+        })
+
+    async def _on_models_set(self, client: _Client, msg: dict):
+        """Switch the active model.  Supports both local and cloud models."""
+        model_name: str = msg.get("model", "").strip()
+        provider: str = msg.get("provider", "").strip()  # optional: force provider
+        if not model_name:
+            await client.send({"type": "models.set.result", "success": False, "error": "No model specified"})
+            return
+        try:
+            llm = getattr(self.agent, "llm", None)
+            if not llm:
+                raise RuntimeError("LLM not initialised")
+
+            # If switching to a cloud provider model, we need to swap the LLM instance
+            if provider and provider != "ollama":
+                from opensable.core.llm import CloudLLM
+                config = self.agent.config
+                cloud_llm = CloudLLM(provider=provider, config=config)
+                cloud_llm.current_model = model_name
+                self.agent.llm = cloud_llm
+                logger.info(f"[Gateway] Switched to cloud LLM: {provider}/{model_name}")
+            else:
+                # Local Ollama model switch
+                llm.current_model = model_name
+                logger.info(f"[Gateway] Switched model → {model_name}")
+
+            await client.send({
+                "type": "models.set.result",
+                "success": True,
+                "model": model_name,
+                "provider": provider or "ollama",
+            })
+            # Broadcast status update so all clients see the new model
+            for c in list(self._clients):
+                try:
+                    await c.send({"type": "status", "model": model_name})
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.error(f"[Gateway] models.set error: {exc}")
+            await client.send({"type": "models.set.result", "success": False, "error": str(exc)})
+
+    async def _on_models_import(self, client: _Client, msg: dict):
+        """Import a local GGUF model file into Ollama.
+
+        Message format:
+            { "type": "models.import", "path": "/path/to/model.gguf", "name": "my-model" }
+
+        This creates a temporary Modelfile pointing to the GGUF then runs
+        ``ollama create <name> -f <Modelfile>`` in a subprocess.
+        """
+        import tempfile, os as _os
+
+        file_path: str = msg.get("path", "").strip()
+        model_name: str = msg.get("name", "").strip()
+
+        if not file_path:
+            await client.send({"type": "models.import.result", "success": False, "error": "No file path provided"})
+            return
+
+        file_path = _os.path.expanduser(file_path)
+        if not _os.path.isfile(file_path):
+            await client.send({"type": "models.import.result", "success": False,
+                                "error": f"File not found: {file_path}"})
+            return
+
+        if not file_path.lower().endswith(".gguf"):
+            await client.send({"type": "models.import.result", "success": False,
+                                "error": "Only .gguf files are supported"})
+            return
+
+        # Derive a model name from the filename if not provided
+        if not model_name:
+            base = _os.path.basename(file_path)
+            model_name = base.rsplit(".", 1)[0].lower().replace(" ", "-")
+
+        logger.info(f"[Gateway] Importing GGUF → {model_name} from {file_path}")
+
+        try:
+            # Write a temporary Modelfile
+            with tempfile.NamedTemporaryFile("w", suffix=".Modelfile", delete=False) as mf:
+                mf.write(f"FROM {file_path}\n")
+                modelfile_path = mf.name
+
+            proc = await asyncio.create_subprocess_exec(
+                "ollama", "create", model_name, "-f", modelfile_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+
+            # Clean up Modelfile
+            try:
+                _os.unlink(modelfile_path)
+            except OSError:
+                pass
+
+            if proc.returncode == 0:
+                logger.info(f"[Gateway] GGUF import successful: {model_name}")
+                await client.send({
+                    "type": "models.import.result",
+                    "success": True,
+                    "model": model_name,
+                    "message": stdout.decode(errors="replace").strip(),
+                })
+            else:
+                err_text = stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
+                logger.error(f"[Gateway] GGUF import failed: {err_text}")
+                await client.send({
+                    "type": "models.import.result",
+                    "success": False,
+                    "error": err_text or "ollama create failed",
+                })
+        except asyncio.TimeoutError:
+            logger.error("[Gateway] GGUF import timed out (600s)")
+            await client.send({"type": "models.import.result", "success": False, "error": "Import timed out (10 min limit)"})
+        except FileNotFoundError:
+            await client.send({"type": "models.import.result", "success": False,
+                                "error": "Ollama CLI not found. Is Ollama installed and in PATH?"})
+        except Exception as exc:
+            logger.error(f"[Gateway] GGUF import error: {exc}")
+            await client.send({"type": "models.import.result", "success": False, "error": str(exc)})
 
     async def _on_code_run(self, client: _Client, msg: dict):
         """Execute a code snippet sent from the desktop chat Run button."""

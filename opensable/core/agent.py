@@ -1029,6 +1029,31 @@ class SableAgent:
         return await self._agentic_loop(state)
 
     # ------------------------------------------------------------------
+    # LLM-native intent routing
+    # ------------------------------------------------------------------
+    # Instead of regex-matching greetings, we let the LLM decide.
+    # For `general_chat` intent the LLM is called with ZERO tools first.
+    # If its response is self-contained → return immediately (fast path).
+    # If the LLM says it needs to search/check/look up → fall through to
+    # the full tool-augmented pipeline.
+    #
+    # This covers ALL conversational messages (greetings, math, knowledge
+    # questions, small talk, etc.) — not just a hardcoded regex list.
+    # ------------------------------------------------------------------
+
+    # Phrases in an LLM response that signal it actually wants tools.
+    _TOOL_HINT_RE = re.compile(
+        r"(I('ll| will| would| can| need to| should)\s+"
+        r"(search|look\s*(up|for|into)|check|fetch|browse|scrape|find|execute|run|open|call)|"
+        r"let me (search|look|check|find|get|fetch|browse)|"
+        r"I don'?t have (access|real-?time|current|live|up-to-date)|"
+        r"I('m| am) (unable|not able) to (access|search|browse)|"
+        r"unfortunately.{0,30}(can'?t|cannot|don'?t|unable)|"
+        r"my (training|knowledge) (data|cutoff))",
+        re.IGNORECASE,
+    )
+
+    # ------------------------------------------------------------------
     # Lazy tool loading  (OpenClaw-inspired)
     # ------------------------------------------------------------------
     # LOCAL mode (Ollama / free inference):
@@ -1185,8 +1210,11 @@ class SableAgent:
             if name in full_names:
                 result.append(s)  # full schema
                 n_full += 1
-            elif is_cloud:
-                # CLOUD mode: omit non-relevant tools entirely to save cost
+            elif is_cloud or model_tier == "small":
+                # CLOUD mode: omit non-relevant tools entirely to save cost.
+                # SMALL local models (≤8B): also omit — compact schemas still
+                # add ~15k chars that overwhelm the tiny context window.
+                # The model can call load_tool_details to expand any tool.
                 n_omitted += 1
             else:
                 # LOCAL mode: compact schema (name + description, empty params)
@@ -1492,6 +1520,47 @@ class SableAgent:
         "phone_device": "Checking phone status",
     }
 
+    # ── Free CoinGecko price lookup (no API key) ─────────────────────────
+    _CG_SYMBOL_TO_ID = {
+        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "BNB": "binancecoin",
+        "XRP": "ripple", "DOGE": "dogecoin", "ADA": "cardano", "AVAX": "avalanche-2",
+        "DOT": "polkadot", "MATIC": "matic-network", "LINK": "chainlink",
+        "UNI": "uniswap", "ATOM": "cosmos", "LTC": "litecoin", "NEAR": "near",
+        "APT": "aptos", "ARB": "arbitrum", "OP": "optimism", "SUI": "sui",
+        "SEI": "sei-network", "TIA": "celestia", "JUP": "jupiter-exchange-solana",
+        "WIF": "dogwifcoin", "PEPE": "pepe", "SHIB": "shiba-inu",
+        "BONK": "bonk", "FLOKI": "floki",
+    }
+
+    async def _fetch_coingecko_price(self, symbol: str) -> str:
+        """Fetch real-time price from CoinGecko free API (no key needed)."""
+        import aiohttp
+        cg_id = self._CG_SYMBOL_TO_ID.get(symbol.upper(), symbol.lower())
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status != 200:
+                        return f"⚠️ CoinGecko returned HTTP {resp.status} for {symbol}"
+                    data = await resp.json()
+                    coin = data.get(cg_id, {})
+                    if not coin:
+                        return f"⚠️ No CoinGecko data for {symbol}"
+                    price = coin.get("usd", 0)
+                    change = coin.get("usd_24h_change", 0)
+                    mcap = coin.get("usd_market_cap", 0)
+                    direction = "📈" if change >= 0 else "📉"
+                    mcap_str = f"${mcap / 1e9:.2f}B" if mcap > 1e9 else f"${mcap / 1e6:.1f}M"
+                    return (
+                        f"{direction} **{symbol}** — ${price:,.2f} USD\n"
+                        f"24h change: {change:+.2f}%\n"
+                        f"Market cap: {mcap_str}\n"
+                        f"Source: CoinGecko (real-time)"
+                    )
+        except Exception as e:
+            logger.warning(f"CoinGecko fetch failed for {symbol}: {e}")
+            return f"⚠️ Could not fetch {symbol} price: {e}"
+
     async def _execute_tool(self, name: str, arguments: dict, user_id: str = "default") -> str:
         emoji = self._TOOL_EMOJIS.get(name, "🔧")
         label = self._TOOL_LABELS.get(name, name.replace("_", " ").title())
@@ -1671,9 +1740,15 @@ class SableAgent:
                     continue
                 history_for_ollama.append({"role": role, "content": content})
 
+        # ── Early intent classification (gates instruction blocks below) ──
+        _intent = self.intent_classifier.classify(task)
+        logger.info(f"🧠 Intent: {_intent}")
+        _simple_intents = frozenset({"general_chat"})
+        _include_extras = _intent.intent not in _simple_intents
+
         # Build social media instructions if any social skill is available
         social_instructions = ""
-        if self.tools and any([
+        if _include_extras and self.tools and any([
             getattr(self.tools, 'instagram_skill', None),
             getattr(self.tools, 'facebook_skill', None),
             getattr(self.tools, 'linkedin_skill', None),
@@ -1696,7 +1771,7 @@ class SableAgent:
 
         # Build trading instructions if trading is enabled
         trading_instructions = ""
-        if getattr(self.config, "trading_enabled", False):
+        if _include_extras and getattr(self.config, "trading_enabled", False):
             trading_instructions = (
                 "\n\nTRADING RULES (MANDATORY):"
                 "\n- You have access to real-time trading tools. NEVER answer price, market, or portfolio questions from memory or training data."
@@ -1711,32 +1786,36 @@ class SableAgent:
                 "\n- When a user asks 'what is the price of X', call trading_price with symbol=X."
             )
 
-        # Build Skills Marketplace instructions
-        marketplace_instructions = (
-            "\n\nSKILLS MARKETPLACE (SableCore Store):"
-            "\n- You have access to the SableCore Skills Marketplace at sk.opensable.com"
-            "\n- The marketplace contains community and official skills you can search, browse, install, and review."
-            "\n- Connection uses the ultra-secure Agent Gateway Protocol (SAGP/1.0) with Ed25519 + NaCl encryption."
-            "\n- Available tools: marketplace_search (browse/find skills), marketplace_info (detailed skill info), "
-            "marketplace_install (install a skill — REQUIRES USER APPROVAL), marketplace_review (rate a skill)."
-            "\n- When a user asks about available skills, extensions, or new capabilities → use marketplace_search."
-            "\n- When a user asks to install a skill → use marketplace_install (you MUST inform the user and wait for approval)."
-            "\n- After installing and testing a skill, you can leave a review with marketplace_review."
-            "\n- NEVER install a skill without the user's explicit permission unless auto-approve mode is enabled."
-        )
+        # Build Skills Marketplace instructions (skip for general chat)
+        marketplace_instructions = ""
+        if _include_extras:
+            marketplace_instructions = (
+                "\n\nSKILLS MARKETPLACE (SableCore Store):"
+                "\n- You have access to the SableCore Skills Marketplace at sk.opensable.com"
+                "\n- The marketplace contains community and official skills you can search, browse, install, and review."
+                "\n- Connection uses the ultra-secure Agent Gateway Protocol (SAGP/1.0) with Ed25519 + NaCl encryption."
+                "\n- Available tools: marketplace_search (browse/find skills), marketplace_info (detailed skill info), "
+                "marketplace_install (install a skill — REQUIRES USER APPROVAL), marketplace_review (rate a skill)."
+                "\n- When a user asks about available skills, extensions, or new capabilities → use marketplace_search."
+                "\n- When a user asks to install a skill → use marketplace_install (you MUST inform the user and wait for approval)."
+                "\n- After installing and testing a skill, you can leave a review with marketplace_review."
+                "\n- NEVER install a skill without the user's explicit permission unless auto-approve mode is enabled."
+            )
 
-        # Build Mobile phone instructions
-        mobile_instructions = (
-            "\n\nMOBILE PHONE INTEGRATION (SETP/1.0):"
-            "\n- You can interact with the user's phone via E2E encrypted tunnel (X25519 + XSalsa20-Poly1305)."
-            "\n- Available tools: phone_notify (push notifications), phone_reminder (smart reminders), "
-            "phone_geofence (location triggers), phone_location (GPS), phone_device (battery/network)."
-            "\n- For location-based reminders (e.g. 'remind me to buy X when near a pharmacy'), use phone_reminder with type='geo'."
-            "\n- You can send proactive notifications for important events, trade alerts, or task completions."
-            "\n- Check phone_device to adapt behavior when battery is low or connectivity is poor."
-            "\n- The user's phone location and battery status are periodically updated — use them for context-aware responses."
-            "\n- All phone communication is encrypted end-to-end. No data passes through third parties."
-        )
+        # Build Mobile phone instructions (skip for general chat)
+        mobile_instructions = ""
+        if _include_extras:
+            mobile_instructions = (
+                "\n\nMOBILE PHONE INTEGRATION (SETP/1.0):"
+                "\n- You can interact with the user's phone via E2E encrypted tunnel (X25519 + XSalsa20-Poly1305)."
+                "\n- Available tools: phone_notify (push notifications), phone_reminder (smart reminders), "
+                "phone_geofence (location triggers), phone_location (GPS), phone_device (battery/network)."
+                "\n- For location-based reminders (e.g. 'remind me to buy X when near a pharmacy'), use phone_reminder with type='geo'."
+                "\n- You can send proactive notifications for important events, trade alerts, or task completions."
+                "\n- Check phone_device to adapt behavior when battery is low or connectivity is poor."
+                "\n- The user's phone location and battery status are periodically updated — use them for context-aware responses."
+                "\n- All phone communication is encrypted end-to-end. No data passes through third parties."
+            )
 
         base_system = (
             self._get_personality_prompt()
@@ -1776,11 +1855,8 @@ class SableAgent:
             if addon:
                 base_system += f"\n\n[Emotional context] {addon}"
 
-        # ── Intent classification + Codebase RAG injection ─────────────────
-        # Exactly what GitHub Copilot does: classify intent, search codebase,
-        # inject relevant source snippets into the system prompt before the LLM sees the task.
-        _intent = self.intent_classifier.classify(task)
-        logger.info(f"🧠 Intent: {_intent}")
+        # ── Codebase RAG injection ─────────────────────────────────────────
+        # Inject relevant source snippets into the system prompt before the LLM sees the task.
         if _intent.needs_code_context and self.codebase_rag:
             try:
                 _code_results = await asyncio.wait_for(
@@ -1796,6 +1872,63 @@ class SableAgent:
             except Exception as _e:
                 logger.debug(f"CodebaseRAG search error: {_e}")
         # ── End intent + RAG ─────────────────────────────────────────────────
+
+        # ── LLM-NATIVE NO-TOOLS FAST-PATH ────────────────────────────────────
+        # For `general_chat` intent: call the LLM with ZERO tool schemas.
+        # The LLM itself decides whether it can answer directly.  If it can
+        # → return immediately.  If its response hints that it needs tools
+        # ("let me search", "I don't have real-time data") → fall through
+        # to the full tool-augmented pipeline.
+        #
+        # This handles greetings, math, knowledge questions, small talk,
+        # explanations — anything the LLM can answer from its own weights.
+        # No hardcoded regex needed; the LLM IS the intent judge.
+        # ─────────────────────────────────────────────────────────────────────
+        if _intent.intent == "general_chat" and not _intent.needs_web_search:
+            logger.info("💬 No-tools fast-path (general_chat) — letting LLM respond naturally")
+            _nt_system = (
+                base_system
+                + "\n\nIMPORTANT: Answer the user directly from your knowledge. "
+                "If you genuinely need real-time data, a web search, file access, "
+                "or any other tool to answer properly, say so explicitly and the "
+                "system will provide the tools. Otherwise, just answer."
+            )
+            _nt_msgs = [{"role": "system", "content": _nt_system}]
+            # Include last few exchanges for continuity
+            _recent_hist = [
+                m for m in state.get("messages", [])
+                if m.get("role") in ("user", "assistant")
+            ][-4:]
+            _nt_msgs += [{"role": m["role"], "content": m["content"]} for m in _recent_hist]
+            _nt_msgs.append({"role": "user", "content": task})
+            try:
+                # Use plain_chat (no tools parameter at all) — avoids 400
+                # errors from models that reject even an empty tools list.
+                # 300 s timeout: first request after model switch may need
+                # to load the model into GPU/CPU memory (especially GGUF).
+                _nt_resp = await asyncio.wait_for(
+                    self.llm.plain_chat(_nt_msgs),
+                    timeout=300,
+                )
+                _nt_text = _nt_resp.get("text", "")
+                _nt_text = self._clean_output(_nt_text)
+                # If the LLM gave a real answer (not a "I need tools" hedge):
+                if _nt_text and not self._TOOL_HINT_RE.search(_nt_text):
+                    logger.info("✅ No-tools fast-path succeeded — returning direct LLM response")
+                    state["messages"].append({
+                        "role": "final_response",
+                        "content": _nt_text,
+                        "timestamp": datetime.now().isoformat(),
+                    })
+                    await self._store_memory(user_id, task, _nt_text)
+                    return state
+                else:
+                    logger.info("🔧 LLM indicated it needs tools — falling through to tool pipeline")
+            except asyncio.TimeoutError:
+                logger.warning("⏱️ No-tools fast-path timed out (model may still be loading) — falling through")
+            except Exception as _nte:
+                logger.warning(f"No-tools fast-path error: {type(_nte).__name__}: {_nte} — falling through")
+        # ── End no-tools fast-path ───────────────────────────────────────────
 
         # Fast path: open/launch application
         task_lower = task.lower().strip()
@@ -1921,44 +2054,71 @@ class SableAgent:
         is_personal = any(p in f" {task_lower} " for p in personal_indicators)
         is_search = (not is_personal) and any(task_lower.startswith(p) for p in search_start)
 
-        # ── Fast path: Trading price queries → route to trading_price tool ──
-        is_trading_price_query = False
-        if getattr(self.config, "trading_enabled", False):
-            _crypto_tokens = [
-                "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "bnb",
-                "xrp", "doge", "dogecoin", "ada", "cardano", "avax", "dot",
-                "matic", "link", "uni", "atom", "ltc", "near", "apt", "arb",
-                "op", "sui", "sei", "tia", "jup", "wif", "pepe", "shib",
-                "bonk", "floki", "crypto", "coin", "token", "meme coin",
+        # Also force-search when the intent classifier flagged web_search
+        # and the query contains clear informational keywords (even if it
+        # doesn't start with a search prefix like "search for").
+        if not is_search and not is_personal and _intent.intent == "web_search":
+            _info_keywords = [
+                "market", "trends", "trending", "analyze", "analysis",
+                "latest", "current", "recent", "today", "update",
+                "forecast", "prediction", "outlook", "summary",
+                "compare", "versus", "vs", "statistics", "stats",
             ]
-            _price_patterns = ["price of ", "price for ", "how much is ", "what does ", "current price",
-                               "what is btc", "what is eth", "what is sol", "btc price", "eth price",
-                               "bitcoin price", "ethereum price", "check price", "get price"]
-            has_price_intent = any(p in task_lower for p in _price_patterns)
-            has_crypto_token = any(t in task_lower for t in _crypto_tokens)
-            if has_price_intent or (has_crypto_token and ("price" in task_lower or "worth" in task_lower or "value" in task_lower or "cost" in task_lower)):
-                is_trading_price_query = True
-                # Extract the symbol
-                symbol = "BTC"  # default
-                _symbol_map = {
-                    "bitcoin": "BTC", "btc": "BTC", "ethereum": "ETH", "eth": "ETH",
-                    "solana": "SOL", "sol": "SOL", "bnb": "BNB", "xrp": "XRP",
-                    "doge": "DOGE", "dogecoin": "DOGE", "ada": "ADA", "cardano": "ADA",
-                    "avax": "AVAX", "dot": "DOT", "matic": "MATIC", "link": "LINK",
-                    "uni": "UNI", "atom": "ATOM", "ltc": "LTC", "near": "NEAR",
-                    "apt": "APT", "arb": "ARB", "op": "OP", "sui": "SUI",
-                    "sei": "SEI", "tia": "TIA", "jup": "JUP", "wif": "WIF",
-                    "pepe": "PEPE", "shib": "SHIB", "bonk": "BONK", "floki": "FLOKI",
-                }
-                for token_name, sym in _symbol_map.items():
-                    if token_name in task_lower:
-                        symbol = sym
-                        break
-                logger.info(f"📊 [FORCED] Trading price query detected → {symbol}")
+            if any(kw in task_lower for kw in _info_keywords):
+                is_search = True
+                logger.info("🔍 [FORCED] web_search intent + info keyword → forcing search")
+
+        # ── Fast path: Crypto price queries ──────────────────────────────────
+        # Detect crypto price intent regardless of TRADING_ENABLED.
+        # If trading is enabled → use trading_price tool (exchange data).
+        # If trading is disabled → use free CoinGecko API (no key needed).
+        is_trading_price_query = False
+        _crypto_tokens = [
+            "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "bnb",
+            "xrp", "doge", "dogecoin", "ada", "cardano", "avax", "dot",
+            "matic", "link", "uni", "atom", "ltc", "near", "apt", "arb",
+            "op", "sui", "sei", "tia", "jup", "wif", "pepe", "shib",
+            "bonk", "floki", "crypto", "coin", "token", "meme coin",
+        ]
+        _price_patterns = ["price of ", "price for ", "how much is ", "what does ", "current price",
+                           "what is btc", "what is eth", "what is sol", "btc price", "eth price",
+                           "bitcoin price", "ethereum price", "check price", "get price"]
+        has_price_intent = any(p in task_lower for p in _price_patterns)
+        has_crypto_token = any(t in task_lower for t in _crypto_tokens)
+        _is_crypto_price = has_price_intent or (has_crypto_token and ("price" in task_lower or "worth" in task_lower or "value" in task_lower or "cost" in task_lower))
+
+        if _is_crypto_price:
+            # Extract the symbol
+            symbol = "BTC"  # default
+            _symbol_map = {
+                "bitcoin": "BTC", "btc": "BTC", "ethereum": "ETH", "eth": "ETH",
+                "solana": "SOL", "sol": "SOL", "bnb": "BNB", "xrp": "XRP",
+                "doge": "DOGE", "dogecoin": "DOGE", "ada": "ADA", "cardano": "ADA",
+                "avax": "AVAX", "dot": "DOT", "matic": "MATIC", "link": "LINK",
+                "uni": "UNI", "atom": "ATOM", "ltc": "LTC", "near": "NEAR",
+                "apt": "APT", "arb": "ARB", "op": "OP", "sui": "SUI",
+                "sei": "SEI", "tia": "TIA", "jup": "JUP", "wif": "WIF",
+                "pepe": "PEPE", "shib": "SHIB", "bonk": "BONK", "floki": "FLOKI",
+            }
+            for token_name, sym in _symbol_map.items():
+                if token_name in task_lower:
+                    symbol = sym
+                    break
+
+            is_trading_price_query = True
+
+            if getattr(self.config, "trading_enabled", False):
+                # Full trading stack — use exchange data
+                logger.info(f"📊 [FORCED] Trading price query → {symbol}")
                 result = await self._execute_tool(
                     "trading_price", {"symbol": symbol}, user_id=user_id
                 )
                 tool_results.append(result)
+            else:
+                # Trading disabled — use free CoinGecko API (no API key needed)
+                logger.info(f"📊 [COINGECKO] Free price lookup → {symbol}")
+                _cg_result = await self._fetch_coingecko_price(symbol)
+                tool_results.append(_cg_result)
 
         if is_search and not is_trading_price_query:
             logger.info("🔍 [FORCED] Search intent detected")

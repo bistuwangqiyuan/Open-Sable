@@ -10,6 +10,12 @@ const TAB_ICONS = {
       <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
     </svg>
   ),
+  models: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
+      <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+      <line x1="10" y1="21" x2="14" y2="21"/>
+    </svg>
+  ),
   dashboard: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -39,11 +45,17 @@ export default function SettingsDialog() {
   const agentModel   = useSableStore(s => s.agentModel)
   const agentVersion = useSableStore(s => s.agentVersion)
   const tools        = useSableStore(s => s.tools)
+  const modelGroups  = useSableStore(s => s.modelGroups)
+  const requestModels = useSableStore(s => s.requestModels)
+  const switchModel  = useSableStore(s => s.switchModel)
+  const importGGUF   = useSableStore(s => s.importGGUF)
 
   const [tab, setTab]     = useState('connection')
   const [wsUrl, setWsUrl] = useState(config.wsUrl)
   const [token, setToken] = useState(config.token)
   const [showToken, setShowToken] = useState(false)
+  const [ggufPath, setGgufPath] = useState('')
+  const [ggufName, setGgufName] = useState('')
 
   const httpBase = (config?.wsUrl || 'ws://localhost:8789')
     .replace(/^ws:\/\//, 'http://')
@@ -92,6 +104,7 @@ export default function SettingsDialog() {
         <div className="settings-tabs">
           {[
             { id: 'connection', label: 'Connection' },
+            { id: 'models',     label: 'Models'     },
             { id: 'dashboard',  label: 'Dashboard'  },
             { id: 'preferences',label: 'Preferences'},
             { id: 'about',      label: 'About'      },
@@ -154,8 +167,100 @@ export default function SettingsDialog() {
           </div>
         )}
 
-        {/* ── Tab: Dashboard ─────────────────────────────────── */}
-        {tab === 'dashboard' && (
+        {/* ── Tab: Dashboard ─────────────────────────────────── */}        {tab === 'models' && (
+          <div className="settings-tab-content">
+            <div className="form-group">
+              <label className="form-label">Active Model</label>
+              <div className="form-hint" style={{ marginBottom: 12 }}>
+                {agentModel || 'No model selected'}
+                {agentModel && <span style={{ color: '#22c55e', marginLeft: 8 }}>● active</span>}
+              </div>
+            </div>
+
+            {/* List available models by group */}
+            {(modelGroups || []).map(group => (
+              <div key={group.provider} className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {group.name}
+                  <span style={{ fontWeight: 400, opacity: 0.6 }}>({group.models?.length || 0})</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {(group.models || []).map(m => (
+                    <div
+                      key={m.name}
+                      onClick={() => { if (m.name !== agentModel) switchModel(m.name, group.provider) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                        borderRadius: 6, cursor: 'pointer', fontSize: 12,
+                        background: m.name === agentModel ? 'rgba(124,58,237,.1)' : 'var(--surface-2, rgba(255,255,255,.03))',
+                        border: `1px solid ${m.name === agentModel ? 'var(--accent, #7c3aed)' : 'transparent'}`,
+                      }}
+                    >
+                      <span style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: m.name === agentModel ? '#22c55e' : 'transparent',
+                        border: m.name === agentModel ? 'none' : '1px solid var(--border)',
+                      }} />
+                      <span style={{ flex: 1 }}>{m.name}</span>
+                      {m.name === agentModel && <span style={{ fontSize: 10, color: '#22c55e' }}>active</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {(!modelGroups || modelGroups.length === 0) && (
+              <div className="form-hint" style={{ textAlign: 'center', padding: '20px 0' }}>
+                No models available. Start Ollama or configure API keys in .env
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn btn-secondary" onClick={requestModels}>↻ Refresh Models</button>
+            </div>
+
+            {/* GGUF Import */}
+            <div className="gguf-import-section">
+              <div className="gguf-import-title">
+                📥 Import GGUF Model
+              </div>
+              <div className="gguf-import-row">
+                <input
+                  className="gguf-import-input"
+                  value={ggufPath}
+                  onChange={e => setGgufPath(e.target.value)}
+                  placeholder="/path/to/model.gguf (e.g. ~/Downloads/Qwen3.5-9B-Q4_K_M.gguf)"
+                />
+              </div>
+              <div className="gguf-import-row">
+                <input
+                  className="gguf-import-input"
+                  value={ggufName}
+                  onChange={e => setGgufName(e.target.value)}
+                  placeholder="Model name (optional — auto-derived from filename)"
+                />
+                <button
+                  className="gguf-import-btn"
+                  disabled={!ggufPath.trim()}
+                  onClick={() => {
+                    importGGUF(ggufPath.trim(), ggufName.trim())
+                    setGgufPath('')
+                    setGgufName('')
+                  }}
+                >
+                  Import
+                </button>
+              </div>
+              <div className="gguf-import-hint">
+                Imports a .gguf file into Ollama so you can use it like any other model.
+                Supports models downloaded from HuggingFace, TheBloke, etc.
+                The file stays on disk — Ollama creates a reference to it.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Dashboard (original) ───────────────────── */}        {tab === 'dashboard' && (
           <div className="settings-tab-content">
             <div className="dashboard-links-grid">
               <button className="dash-link-card" onClick={openDashboard}>

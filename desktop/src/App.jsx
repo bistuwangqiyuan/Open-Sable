@@ -25,6 +25,10 @@ import ChatArea from './components/ChatArea.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
 import DashboardPanel from './components/DashboardPanel.jsx'
 import DevStudioPanel from './components/DevStudioPanel.jsx'
+import ModelSelector from './components/ModelSelector.jsx'
+import BrainPanel from './components/BrainPanel.jsx'
+import PermissionDialog from './components/PermissionDialog.jsx'
+import LoadingOverlay from './components/LoadingOverlay.jsx'
 
 // ─── Window control helpers ────────────────────────────────────────────────
 const api = typeof window !== 'undefined' && window.sable ? window.sable : null
@@ -36,6 +40,7 @@ export default function App() {
   const settingsOpen = useSableStore(s => s.settingsOpen)
   const toast = useSableStore(s => s.toast)
   const newChat = useSableStore(s => s.newChat)
+  const wsStatus = useSableStore(s => s.wsStatus)
 
   // ── Theme: dark (default) / light ─────────────────────────────────────────
   const [isDark, setIsDark] = useState(
@@ -46,6 +51,7 @@ export default function App() {
   )
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [devStudioOpen, setDevStudioOpen] = useState(false)
+  const [brainOpen, setBrainOpen] = useState(false)
 
   // ── Platform detection (macOS puts controls on the left) ──────────────
   const platform = api?.platform || 'linux'
@@ -101,6 +107,7 @@ export default function App() {
       e.preventDefault()
       setDevStudioOpen(v => !v)
       setDashboardOpen(false)
+      setBrainOpen(false)
       return
     }
     // Ctrl+D → Dashboard
@@ -108,6 +115,7 @@ export default function App() {
       e.preventDefault()
       setDashboardOpen(v => !v)
       setDevStudioOpen(false)
+      setBrainOpen(false)
     }
   }, [newChat, toggleSidebar])
 
@@ -169,9 +177,10 @@ export default function App() {
             </button>
           )}
           <div className="titlebar-status">
-            <div className="titlebar-status-dot" />
+            <div className={`titlebar-status-dot ${wsStatus}`} />
             SableCore
           </div>
+          <ModelSelector />
         </div>
 
         {/* ── Day / Night toggle ──────────────────────────────────────── */}
@@ -201,7 +210,7 @@ export default function App() {
           <button
             className={`titlebar-btn ${devStudioOpen ? 'active' : ''}`}
             title="Dev Studio (Ctrl+Shift+D)"
-            onClick={() => { setDevStudioOpen(v => !v); setDashboardOpen(false) }}
+            onClick={() => { setDevStudioOpen(v => !v); setDashboardOpen(false); setBrainOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="13" height="13">
               <polyline points="16 18 22 12 16 6" />
@@ -209,9 +218,19 @@ export default function App() {
             </svg>
           </button>
           <button
+            className={`titlebar-btn ${brainOpen ? 'active' : ''}`}
+            title="Brain Panel"
+            onClick={() => { setBrainOpen(v => !v); setDashboardOpen(false); setDevStudioOpen(false) }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
+              <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+              <line x1="10" y1="21" x2="14" y2="21"/>
+            </svg>
+          </button>
+          <button
             className={`titlebar-btn ${dashboardOpen ? 'active' : ''}`}
             title="Agent Dashboard (Ctrl+D)"
-            onClick={() => { setDashboardOpen(v => !v); setDevStudioOpen(false) }}
+            onClick={() => { setDashboardOpen(v => !v); setDevStudioOpen(false); setBrainOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -231,17 +250,21 @@ export default function App() {
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="main">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false) }} />
+        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false); setBrainOpen(false) }} />
         {devStudioOpen
           ? <DevStudioPanel onClose={() => setDevStudioOpen(false)} />
-          : dashboardOpen
-            ? <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />
-            : <ChatArea />
+          : brainOpen
+            ? <BrainPanel onClose={() => setBrainOpen(false)} />
+            : dashboardOpen
+              ? <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />
+              : <ChatArea />
         }
       </div>
 
       {/* ── Modals / overlays ────────────────────────────────────────────── */}
       {settingsOpen && <SettingsDialog />}
+      <PermissionDialog />
+      <LoadingOverlay />
       {toast && <div className="toast">{toast}</div>}
     </div>
   )

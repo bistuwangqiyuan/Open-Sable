@@ -5,11 +5,38 @@ Provides web scraping, search, and content extraction capabilities
 
 import logging
 import asyncio
+import re
 import subprocess
 import sys
 from typing import Dict, Optional, Any, List
 
 logger = logging.getLogger(__name__)
+
+# ── Prompt-injection / control-token sanitizer ──────────────────────────────
+# Scraped web pages sometimes contain LLM control tokens or injected prompts.
+# Strip them before feeding content to the model.
+_CONTROL_TOKEN_RE = re.compile(
+    r'<\|(?:endoftext|im_start|im_end|pad|sep|system|user|assistant|'  # ChatML / GPT
+    r'begin_of_text|end_of_text|eot_id|start_header_id|end_header_id|'  # Llama 3
+    r'eos|bos|end_turn|tool_call|tool_result)\|>',  # misc
+    re.IGNORECASE,
+)
+# Also catch common injected role markers that aren't in <|...|> form
+_ROLE_INJECTION_RE = re.compile(
+    r'(?:^|\n)\s*(?:system|user|assistant)\s*:\s*$',
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def sanitize_web_content(text: str) -> str:
+    """Remove LLM control tokens and injected role markers from scraped text."""
+    if not text:
+        return text
+    text = _CONTROL_TOKEN_RE.sub('', text)
+    text = _ROLE_INJECTION_RE.sub('', text)
+    # Collapse runs of blank lines left over after stripping
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 
 class BrowserEngine:
@@ -132,6 +159,9 @@ class BrowserEngine:
                 return main.innerText.trim();
             }""")
 
+            # Sanitize: strip LLM control tokens / prompt injections
+            content = sanitize_web_content(content)
+
             # Truncate if needed
             if len(content) > max_length:
                 content = content[:max_length] + "...\n\n(Content truncated for brevity)"
@@ -202,6 +232,13 @@ class BrowserEngine:
                 num_results,
             )
 
+            # Sanitize snippets
+            for r in results:
+                if r.get('snippet'):
+                    r['snippet'] = sanitize_web_content(r['snippet'])
+                if r.get('title'):
+                    r['title'] = sanitize_web_content(r['title'])
+
             if len(results) > 0:
                 logger.info(f"✅ Brave: {len(results)} results")
                 return {"query": query, "results": results, "count": len(results), "success": True}
@@ -236,6 +273,13 @@ class BrowserEngine:
             }""",
                 num_results,
             )
+
+            # Sanitize Bing snippets
+            for r in results:
+                if r.get('snippet'):
+                    r['snippet'] = sanitize_web_content(r['snippet'])
+                if r.get('title'):
+                    r['title'] = sanitize_web_content(r['title'])
 
             logger.info(f"✅ Bing: {len(results)} results")
             return {"query": query, "results": results, "count": len(results), "success": True}

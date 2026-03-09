@@ -410,9 +410,29 @@ class AdaptiveLLM:
         Injects tool schemas into the system prompt and parses <tool_call> JSON blocks.
         Qwen3 understands this format natively.
         """
+        # Filter: only include tools that have actual parameters (full schemas).
+        # Compact stub schemas (name + description only) are useless in text
+        # mode and overwhelm small models.  Cap at 30 tools max.
+        _MAX_TEXT_TOOLS = 30
+        full_tools = []
+        compact_tools = []
+        for t in tools:
+            fn = t.get("function", t)
+            params = fn.get("parameters", {})
+            if params.get("properties"):
+                full_tools.append(t)
+            else:
+                compact_tools.append(t)
+
+        # Prefer full-schema tools; if we have room, add compact ones
+        selected = full_tools[:_MAX_TEXT_TOOLS]
+        remaining = _MAX_TEXT_TOOLS - len(selected)
+        if remaining > 0:
+            selected.extend(compact_tools[:remaining])
+
         # Build compact tool schema list
         tool_schemas = []
-        for t in tools:
+        for t in selected:
             fn = t.get("function", t)
             schema = {
                 "name": fn.get("name", ""),
@@ -423,6 +443,8 @@ class AdaptiveLLM:
                 schema["parameters"] = {k: {"type": v.get("type", "string"), "description": v.get("description", "")[:80]}
                                          for k, v in params["properties"].items()}
             tool_schemas.append(schema)
+
+        logger.info(f"📝 Text-based tool calling: {len(tool_schemas)} tools (from {len(tools)} total)")
 
         tools_json = json.dumps(tool_schemas, indent=2)
         tool_instruction = (
@@ -454,8 +476,21 @@ class AdaptiveLLM:
         _chat_kwargs = {"model": self.current_model, "messages": new_messages}
         if not _skip_no_think:
             _chat_kwargs["think"] = False
-        async with _ollama_lock():
-            resp = await client.chat(**_chat_kwargs)
+        try:
+            async with _ollama_lock():
+                resp = await asyncio.wait_for(client.chat(**_chat_kwargs), timeout=120)
+        except asyncio.TimeoutError:
+            logger.warning("Text-based tool calling timed out after 120s — returning empty")
+            return {"tool_call": None, "tool_calls": [], "text": ""}
+        except Exception as _tbe:
+            # If think:false is rejected, retry without it
+            if "think" in str(_tbe).lower() or "400" in str(_tbe):
+                logger.warning(f"Text-based fallback error ({_tbe}), retrying without think param")
+                _chat_kwargs.pop("think", None)
+                async with _ollama_lock():
+                    resp = await asyncio.wait_for(client.chat(**_chat_kwargs), timeout=120)
+            else:
+                raise
         raw_text = resp.get("message", {}).get("content", "")
         thinking_field = resp.get("message", {}).get("thinking", "") or ""
         clean_text, reasoning_from_tags = parse_thinking(raw_text)
@@ -527,8 +562,11 @@ class AdaptiveLLM:
             _chat_kwargs = {
                 "model": self.current_model,
                 "messages": messages,
-                "tools": tools,
             }
+            # Only include tools key when there are actual tools — some models
+            # reject even an empty list with HTTP 400.
+            if tools:
+                _chat_kwargs["tools"] = tools
             if not _skip_no_think:
                 _chat_kwargs["think"] = False
             async with _ollama_lock():
@@ -630,6 +668,49 @@ class AdaptiveLLM:
             except Exception as e2:
                 logger.error(f"Fallback also failed: {e2}")
                 return {"tool_call": None, "tool_calls": [], "text": f"Error: {e}"}
+
+    async def plain_chat(self, messages: List[Dict]) -> Dict[str, Any]:
+        """
+        Simple chat completion *without* tools — used for the no-tools fast-path.
+
+        Unlike ``invoke_with_tools(msgs, [])``, this never sends a ``tools``
+        key at all, which avoids 400 errors from models that reject even an
+        empty tools list.  Think-stripping and token-tracking are still applied.
+
+        Returns:
+            Dict with keys ``text`` (str), ``tool_call`` (None), ``tool_calls`` ([]).
+        """
+        client = ollama.AsyncClient(host=self.base_url)
+        _skip_nt = _should_skip_no_think(self.current_model)
+        if not _skip_nt:
+            messages = _inject_no_think(messages, self.current_model)
+        _chat_kw: dict = {"model": self.current_model, "messages": messages}
+        if not _skip_nt:
+            _chat_kw["think"] = False
+        async with _ollama_lock():
+            resp = await client.chat(**_chat_kw)
+        # Token tracking
+        prompt_tokens = resp.get("prompt_eval_count", 0)
+        completion_tokens = resp.get("eval_count", 0)
+        self.token_tracker.record(TokenUsage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+            model=self.current_model,
+            provider="ollama",
+            estimated_cost_usd=0.0,
+        ))
+        raw_text = resp.get("message", {}).get("content", "")
+        thinking_field = resp.get("message", {}).get("thinking", "") or ""
+        clean_text, reasoning_from_tags = parse_thinking(raw_text)
+        reasoning = (thinking_field.strip() or reasoning_from_tags) or None
+        if not clean_text.strip() and reasoning:
+            logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
+            clean_text = reasoning
+        result: Dict[str, Any] = {"tool_call": None, "tool_calls": [], "text": clean_text}
+        if reasoning:
+            result["reasoning"] = reasoning
+        return result
 
     async def astream(self, messages: List[Dict]) -> AsyncIterator[str]:
         """

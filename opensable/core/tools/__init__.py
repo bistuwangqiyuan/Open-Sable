@@ -57,6 +57,7 @@ from ._trading import TradingToolsMixin
 from ._marketplace import MarketplaceToolsMixin
 from ._mobile import MobileToolsMixin
 from ._github import GitHubToolsMixin
+from ._google_workspace import GoogleWorkspaceToolsMixin
 from ._arena import ArenaToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
@@ -73,6 +74,7 @@ class ToolRegistry(
     MarketplaceToolsMixin,
     MobileToolsMixin,
     GitHubToolsMixin,
+    GoogleWorkspaceToolsMixin,
     ArenaToolsMixin,
 ):
     """Registry of all available tools/actions.
@@ -86,6 +88,7 @@ class ToolRegistry(
     - MarketplaceToolsMixin: skills marketplace (SAGP)
     - MobileToolsMixin: phone notification, reminders, geofence, location, device status
     - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
+    - GoogleWorkspaceToolsMixin: Gmail, Drive, Calendar, Sheets, Docs, Chat (via gws CLI)
     - ArenaToolsMixin: fighting-game arena (SAGP auth + WebSocket combat)
     """
 
@@ -185,6 +188,14 @@ class ToolRegistry(
             self.github_skill = GitHubSkill(config)
         except Exception as e:
             logger.debug(f"GitHub skill not available: {e}")
+
+        # Google Workspace skill (conditional — needs gws CLI)
+        self.gws_skill = None
+        try:
+            from ...skills.automation.google_workspace_skill import GoogleWorkspaceSkill
+            self.gws_skill = GoogleWorkspaceSkill(config)
+        except Exception as e:
+            logger.debug(f"Google Workspace skill not available: {e}")
 
         # Arena Fighter skill (conditional)
         self.arena_skill = None
@@ -311,6 +322,28 @@ class ToolRegistry(
                 await self.github_skill.initialize()
             except Exception as e:
                 logger.debug(f"GitHub skill init failed: {e}")
+
+        # ── Google Workspace (gws CLI) ────────────────────────────────────────
+        self.register("gws_gmail_list", self._gws_gmail_list_tool)
+        self.register("gws_gmail_get", self._gws_gmail_get_tool)
+        self.register("gws_gmail_send", self._gws_gmail_send_tool)
+        self.register("gws_drive_list", self._gws_drive_list_tool)
+        self.register("gws_drive_get", self._gws_drive_get_tool)
+        self.register("gws_drive_search", self._gws_drive_search_tool)
+        self.register("gws_drive_upload", self._gws_drive_upload_tool)
+        self.register("gws_drive_create", self._gws_drive_create_tool)
+        self.register("gws_calendar_list", self._gws_calendar_list_tool)
+        self.register("gws_calendar_create", self._gws_calendar_create_tool)
+        self.register("gws_calendar_delete", self._gws_calendar_delete_tool)
+        self.register("gws_sheets_get", self._gws_sheets_get_tool)
+        self.register("gws_sheets_write", self._gws_sheets_write_tool)
+        self.register("gws_sheets_create", self._gws_sheets_create_tool)
+        self.register("gws_sheets_append", self._gws_sheets_append_tool)
+        self.register("gws_docs_get", self._gws_docs_get_tool)
+        self.register("gws_docs_create", self._gws_docs_create_tool)
+        self.register("gws_chat_send", self._gws_chat_send_tool)
+        self.register("gws_raw_command", self._gws_raw_command_tool)
+        self.register("gws_auth_status", self._gws_auth_status_tool)
 
         # ── Arena Fighter ─────────────────────────────────────────────────────
         self.register("arena_fight", self._arena_fight_tool)
