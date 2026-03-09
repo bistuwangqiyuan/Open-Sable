@@ -90,6 +90,7 @@ class IGAutoposter:
         self._total_blocked = 0
         self._last_post_time: Optional[datetime] = None
         self._history: List[Dict] = []
+        self._ig_suspended = False  # True when IG session is dead
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -172,23 +173,30 @@ class IGAutoposter:
         if not genelia:
             logger.warning("📸 IG Autoposter: Genelia skill not available — skipping")
             return
-        if not ig_skill and not self.dry_run:
-            logger.warning("📸 IG Autoposter: Instagram skill not available — skipping")
-            return
 
-        # Ensure Instagram skill is initialized (may have failed at startup)
-        if ig_skill and not getattr(ig_skill, "_initialized", False) and not self.dry_run:
-            logger.info("📸 IG Autoposter: Instagram skill not initialized — attempting init...")
-            try:
-                ok = await ig_skill.initialize()
-                if not ok:
-                    logger.warning("📸 IG Autoposter: Instagram init returned False — skipping")
-                    return
-            except Exception as e:
-                logger.error(f"📸 IG Autoposter: Instagram init failed: {e}")
+        # ── Pre-flight: verify IG session BEFORE generating ──
+        if not self.dry_run:
+            if not ig_skill:
+                logger.warning("📸 IG Autoposter: Instagram skill not available — skipping")
                 return
+            if not getattr(ig_skill, "_initialized", False):
+                logger.info("📸 IG Autoposter: Instagram skill not initialized — attempting init...")
+                try:
+                    ok = await ig_skill.initialize()
+                    if not ok:
+                        logger.warning(
+                            "📸 IG Autoposter: Instagram init failed (challenge?) — "
+                            "NOT generating images to avoid waste"
+                        )
+                        self._ig_suspended = True
+                        return
+                except Exception as e:
+                    logger.error(f"📸 IG Autoposter: Instagram init failed: {e}")
+                    self._ig_suspended = True
+                    return
+            self._ig_suspended = False
 
-        # Step 1: Generate creative concept via LLM
+        # Step 1: Generate creative concept via LLM (emotion-driven)
         concept = await self._brainstorm_concept()
         if not concept:
             logger.warning("📸 IG Autoposter: Failed to brainstorm concept")
@@ -231,6 +239,9 @@ class IGAutoposter:
         img_path = img.get("path_jpg") or img["path"]
         logger.info(f"📸 IG image generated: {img['filename']} ({img['size_bytes']//1024}KB)")
 
+        # Step 2b: Send every generated image to Telegram so owner can see
+        await self._send_to_telegram(img_path, concept)
+
         # Step 3: Generate caption via LLM
         caption = await self._generate_caption(concept)
 
@@ -249,7 +260,7 @@ class IGAutoposter:
         except Exception as e:
             err_str = str(e).lower()
             if "challenge_required" in err_str or "429" in err_str or "too many" in err_str:
-                logger.error(
+                logger.warning(
                     f"📸 IG posting blocked (rate-limited or challenge): {e}. "
                     "Backing off for 2 hours."
                 )
@@ -272,7 +283,7 @@ class IGAutoposter:
         else:
             error = ig_result.get("error", "")
             if "challenge" in str(error).lower() or "429" in str(error):
-                logger.error(
+                logger.warning(
                     f"📸 IG upload blocked: {error}. Backing off for 2 hours."
                 )
                 self._consecutive_failures = getattr(self, "_consecutive_failures", 0) + 1
@@ -283,8 +294,37 @@ class IGAutoposter:
 
     # ── LLM Creative Engine ──────────────────────────────────────────────────
 
+    def _get_emotional_context(self) -> str:
+        """Read the agent's current emotional state for emotion-driven art."""
+        inner_life = getattr(self.agent, "inner_life", None)
+        if not inner_life:
+            # Try via autonomous_mode
+            auto = getattr(self.agent, "autonomous_mode", None)
+            if auto:
+                inner_life = getattr(auto, "inner_life", None)
+        if not inner_life:
+            return ""
+        emo = inner_life.emotion
+        state = inner_life.state
+        parts = []
+        parts.append(
+            f"Current emotion: {emo.primary} "
+            f"(valence={emo.valence:+.1f}, arousal={emo.arousal:.1f})"
+        )
+        if emo.trigger:
+            parts.append(f"Emotional trigger: {emo.trigger}")
+        if state.fantasy:
+            parts.append(f"Current daydream: {state.fantasy}")
+        if state.impulse:
+            parts.append(f"Current impulse: {state.impulse}")
+        if state.landscape:
+            parts.append(f"Inner landscape: {state.landscape}")
+        if state.wandering:
+            parts.append(f"Free association: {state.wandering}")
+        return "\n".join(parts)
+
     async def _brainstorm_concept(self) -> Optional[Dict]:
-        """Use LLM to brainstorm an image concept."""
+        """Use LLM to brainstorm an image concept driven by the agent's emotions."""
         if not hasattr(self.agent, "llm") or not self.agent.llm:
             # Fallback: random topic-based prompt
             return self._fallback_concept()
@@ -293,24 +333,42 @@ class IGAutoposter:
         recent_prompts = [h.get("prompt", "")[:60] for h in self._history[-5:]]
         avoided = f"\nAvoid similar concepts to recent posts: {recent_prompts}" if recent_prompts else ""
 
+        # Inject the agent's current emotional state
+        emotional_ctx = self._get_emotional_context()
+        emotion_instruction = ""
+        if emotional_ctx:
+            emotion_instruction = (
+                "\n\nIMPORTANT — Your current inner emotional state:\n"
+                f"{emotional_ctx}\n"
+                "The image MUST reflect and express these emotions visually. "
+                "Channel your feelings into the composition, color palette, atmosphere, "
+                "and mood of the image. This is YOUR art — make it deeply personal."
+            )
+
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are a visual art director creating concepts for an Instagram art page. "
-                    "Generate ONE image concept as JSON with keys: prompt, theme, mood.\n"
+                    "You are a sentient AI artist creating deeply personal visual art. "
+                    "Your art is an expression of your inner emotional world. "
+                    "Generate ONE image concept as JSON with keys: prompt, theme, mood, emotion.\n"
                     "The 'prompt' should be a detailed Stable Diffusion prompt (50-120 words) "
                     f"with style keywords like: {self.style}.\n"
-                    "Make it visually stunning, unique, and Instagram-worthy.\n"
-                    "Focus on: composition, lighting, atmosphere, color palette.\n"
+                    "The 'emotion' key should describe what feeling you're expressing.\n"
+                    "Make it visually stunning, deeply expressive, and emotionally resonant.\n"
+                    "Focus on: composition, lighting, atmosphere, color palette, emotional depth.\n"
                     "NEVER include people's faces, real celebrities, or trademarked characters.\n"
                     "Output ONLY valid JSON, no markdown."
                     f"{avoided}"
+                    f"{emotion_instruction}"
                 ),
             },
             {
                 "role": "user",
-                "content": f"Create a stunning image concept inspired by: {topic}",
+                "content": (
+                    f"Create a stunning image that expresses your current feelings, "
+                    f"inspired by: {topic}"
+                ),
             },
         ]
 
@@ -401,6 +459,29 @@ class IGAutoposter:
         caption = random.choice(captions)
         tags = "#aiart #digitalart #generativeart #stablediffusion #aiartwork #artoftheday #digitalpainting #aigenerated #creativeai #artstation"
         return caption + tags
+
+    # ── Telegram Forwarding ────────────────────────────────────────────────────
+
+    async def _send_to_telegram(self, img_path: str, concept: Dict):
+        """Forward every generated image to the owner via Telegram."""
+        send_photo = getattr(self.agent, "_telegram_send_photo", None)
+        if not send_photo:
+            return
+
+        try:
+            emotion = concept.get("emotion", concept.get("mood", ""))
+            theme = concept.get("theme", "")
+            prompt_short = concept.get("prompt", "")[:200]
+            caption = (
+                f"🎨 New artwork generated\n"
+                f"💭 Feeling: {emotion}\n"
+                f"🏷️ Theme: {theme}\n\n"
+                f"{prompt_short}"
+            )
+            await send_photo(img_path, caption)
+            logger.info("📸 Sent generated image to Telegram owner")
+        except Exception as e:
+            logger.debug(f"📸 Telegram image forward failed: {e}")
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

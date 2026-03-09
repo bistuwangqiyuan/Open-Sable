@@ -166,6 +166,7 @@ class SableAgent:
         self.heartbeat_task = None
         self._progress_callback: ProgressCallback = None
         self._telegram_notify = None
+        self._telegram_send_photo = None  # (chat_id, photo_path, caption) → send image
 
         # Production primitives
         self.guardrails = GuardrailsEngine.default()

@@ -205,6 +205,25 @@ KNOWN_ERRORS: List[ErrorPattern] = [
         cooldown=7200,
         description="Account permission issue. Long pause to avoid permanent suspension.",
     ),
+    # ── Instagram errors (handled by IG autoposter — self-heal should IGNORE) ──
+    ErrorPattern(
+        name="ig_challenge_required",
+        pattern=r"challenge_required|Instagram.*upload.*error|IG upload blocked|IG posting blocked|Photo Upload failed|Response \[412\]",
+        severity=Severity.LOW,
+        remedy="ig_ignore",
+        params={},
+        cooldown=300,
+        description="Instagram challenge — handled by IG autoposter's own backoff. Do NOT pause X.",
+    ),
+    ErrorPattern(
+        name="ig_login_required",
+        pattern=r"Instagram.*login.*required|InstaLogin|instagrapi.*login",
+        severity=Severity.LOW,
+        remedy="ig_ignore",
+        params={},
+        cooldown=300,
+        description="Instagram login issue — handled by IG skill. Do NOT pause X.",
+    ),
 ]
 
 
@@ -298,6 +317,11 @@ class RemedyEngine:
                 result.update(await self._network_backoff(params))
             elif remedy == "fallback_llm":
                 result.update(self._fallback_llm())
+            elif remedy == "ig_ignore":
+                # Instagram errors are handled by the IG autoposter itself.
+                # Do NOT apply any X remedy — just log and move on.
+                logger.info(f"🩺 Instagram error detected — skipping X self-heal (IG handles its own backoff)")
+                result.update({"action": "ig_ignore", "applied": True})
             elif remedy == "emergency_pause":
                 result.update(await self._emergency_pause(params))
             elif remedy == "pause_until_midnight":
@@ -460,13 +484,14 @@ class RemedyEngine:
     async def _emergency_pause(self, params: Dict) -> Dict:
         """Full stop — serious account issue."""
         pause_min = params.get("pause_minutes", 120)
+        platform = params.get("platform", "X/Twitter")
         resume_at = datetime.now() + timedelta(minutes=pause_min)
 
         for loop in ["post", "engage", "trend", "mention"]:
             self._paused_loops[loop] = resume_at
 
         logger.critical(
-            f"🚨 EMERGENCY PAUSE — ALL loops stopped for {pause_min}min. "
+            f"🚨 EMERGENCY PAUSE [{platform}] — ALL loops stopped for {pause_min}min. "
             f"Account may be flagged. Check manually."
         )
 
@@ -763,6 +788,14 @@ class SelfHealMonitor:
         # Classify and handle each error
         for error_entry in new_errors:
             error_msg = error_entry.get("raw", "") + " " + error_entry.get("msg", "")
+            error_source = error_entry.get("name", "")
+
+            # Skip ALL errors from Instagram/instagrapi loggers — IG autoposter
+            # handles its own backoff.  These must NEVER trigger X remedies.
+            if re.search(r"instagrapi|instagram|ig_autoposter", error_source, re.IGNORECASE):
+                logger.debug(f"🩺 Skipping non-X error from logger '{error_source}'")
+                continue
+
             matched = False
 
             for pattern in KNOWN_ERRORS:
@@ -791,7 +824,12 @@ class SelfHealMonitor:
                     break  # One remedy per error per cycle
 
             # Unknown error — consult Grok if we haven't done too many
+            # BUT skip non-X errors (Instagram, etc.) — those platforms handle their own recovery
             if not matched and self._can_consult_grok():
+                # Skip errors from non-X platforms (they handle their own recovery)
+                if re.search(r"Instagram|📸 IG|instagrapi|ig_autoposter|Photo Upload failed|challenge_required", error_msg, re.IGNORECASE):
+                    logger.debug(f"🩺 Skipping non-X error (Instagram) — IG handles its own recovery")
+                    continue
                 context = self._buffer.get_recent_context(20)
                 logger.info(f"🩺 Unknown error — consulting Grok for diagnosis")
                 result = await self._remedy.apply(

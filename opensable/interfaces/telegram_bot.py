@@ -274,6 +274,24 @@ class TelegramInterface:
 
             self.agent._telegram_notify = _tg_notify
 
+            # Wire photo sending for IG autoposter → Telegram forwarding
+            _bot_ref = self.bot
+            _owner_int = int(owner_id)
+
+            async def _tg_send_photo(photo_path: str, caption: str = ""):
+                try:
+                    from aiogram.types import FSInputFile
+                    photo = FSInputFile(photo_path)
+                    await _bot_ref.send_photo(
+                        chat_id=_owner_int,
+                        photo=photo,
+                        caption=caption[:1024] if caption else "",
+                    )
+                except Exception as e:
+                    logger.debug(f"Telegram send_photo failed: {e}")
+
+            self.agent._telegram_send_photo = _tg_send_photo
+
             # Also wire notifications to X API queue for error alerts
             try:
                 from opensable.core.x_api_queue import XApiQueue
