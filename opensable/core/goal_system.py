@@ -46,6 +46,17 @@ class GoalPriority(Enum):
     LOW = 2
     OPTIONAL = 1
 
+    @classmethod
+    def from_str(cls, name: str) -> "GoalPriority":
+        """Safely resolve a priority name, mapping unknown values to the closest match."""
+        key = name.strip().upper()
+        if key in cls._member_map_:
+            return cls[key]
+        # Common LLM hallucinations → map to closest valid member
+        _aliases = {"HIGHEST": cls.CRITICAL, "URGENT": cls.CRITICAL, "VERY_HIGH": cls.CRITICAL,
+                    "NONE": cls.OPTIONAL, "LOWEST": cls.OPTIONAL, "NORMAL": cls.MEDIUM}
+        return _aliases.get(key, cls.MEDIUM)
+
 
 @dataclass
 class Goal:
@@ -428,7 +439,7 @@ class GoalManager:
                 sub_goal = await self.create_goal(
                     description=spec["description"],
                     success_criteria=spec["success_criteria"],
-                    priority=GoalPriority[spec.get("priority", "MEDIUM").upper()],
+                    priority=GoalPriority.from_str(spec.get("priority", "MEDIUM")),
                     parent_goal_id=goal_id,
                     auto_decompose=False,  # Don't recursively decompose
                 )
@@ -598,7 +609,7 @@ class GoalManager:
                     goal_id=data["goal_id"],
                     description=data["description"],
                     success_criteria=data["success_criteria"],
-                    priority=GoalPriority[data["priority"]],
+                    priority=GoalPriority.from_str(data["priority"]),
                     deadline=datetime.fromisoformat(data["deadline"]) if data["deadline"] else None,
                     parent_goal_id=data.get("parent_goal_id"),
                     sub_goals=data.get("sub_goals", []),

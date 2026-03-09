@@ -8,7 +8,7 @@ import {
   Lightbulb, Search, Crosshair, Puzzle, Compass, Settings2,
   Bug, Gauge, UserCheck, Scale, Atom, Moon, FastForward, Flower, Shuffle,
   Wifi, Hammer, Factory, Camera, Radar, DollarSign, Megaphone, Copy, GraduationCap,
-  PlayCircle, Video, GitMerge, Home, Server, Swords,
+  PlayCircle, Video, GitMerge, Home, Server,
 } from 'lucide-react';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1240,7 +1240,6 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const knowledgeGraph         = data?.knowledge_graph || null;
   const iotController          = data?.iot_controller || null;
   const distributedTaskQueue   = data?.distributed_task_queue || null;
-  const fightClub              = data?.fight_club || null;
 
   const rawEmotion = il.emotion || liveStats.emotion || '—';
   const emotion = typeof rawEmotion === 'object' ? (rawEmotion.primary || JSON.stringify(rawEmotion)) : String(rawEmotion);
@@ -1641,7 +1640,6 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           {knowledgeGraph && <GenericModulePanel icon={GitMerge} title="Knowledge Graph" color="var(--purple)" data={knowledgeGraph} fields={['total_entities','total_relationships','total_queries','total_extractions','total_traversals','communities']} />}
           {iotController && <GenericModulePanel icon={Home} title="IoT Controller" color="var(--teal)" data={iotController} fields={['configured','total_devices','total_routines','total_commands','total_discoveries','errors']} />}
           {distributedTaskQueue && <GenericModulePanel icon={Server} title="Distributed Tasks" color="var(--gold)" data={distributedTaskQueue} fields={['backend','workers_active','total_submitted','total_completed','total_failed','success_rate']} />}
-          {fightClub && <GenericModulePanel icon={Swords} title="Fight Club" color="var(--red)" data={fightClub} fields={['agent_name','total_wins','total_losses','win_rate','win_streak','today_fights','is_fighting','use_llm']} />}
 
           {/* ── Trace Files ──────────────────────────────────────── */}
           {traces.length > 0 && (

@@ -335,8 +335,6 @@ class Gateway:
         app.router.add_get("/api/knowledge-graph", self._knowledge_graph_handler)
         app.router.add_get("/api/iot-controller", self._iot_controller_handler)
         app.router.add_get("/api/distributed-tasks", self._distributed_task_queue_handler)
-        # ── v1.9 Recreation ──
-        app.router.add_get("/api/fight-club", self._fight_club_handler)
         # ── LLM Management ──
         app.router.add_get("/api/llm/status", self._llm_status_http_handler)
         app.router.add_get("/api/llm/models", self._llm_models_http_handler)
@@ -374,7 +372,7 @@ class Gateway:
 
         # Asset extensions and specific prefixes skip auth
         ext = os.path.splitext(path)[1]
-        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path.startswith("/api/nl-automation") or path.startswith("/api/video-understanding") or path.startswith("/api/knowledge-graph") or path.startswith("/api/iot-controller") or path.startswith("/api/distributed-tasks") or path.startswith("/api/fight-club") or path.startswith("/api/llm/") or path == "/favicon.ico":
+        if ext in _ASSET_EXTS or path.startswith("/aggr/") or path.startswith("/api/polymarket/") or path.startswith("/api/connectome") or path.startswith("/api/deep-planner") or path.startswith("/api/inter-agent") or path.startswith("/api/ultra-ltm") or path.startswith("/api/self-benchmark") or path.startswith("/api/meta-learner") or path.startswith("/api/causal-engine") or path.startswith("/api/goal-synthesis") or path.startswith("/api/skill-composer") or path.startswith("/api/world-predictor") or path.startswith("/api/cognitive-optimizer") or path.startswith("/api/adversarial-tester") or path.startswith("/api/resource-governor") or path.startswith("/api/theory-of-mind") or path.startswith("/api/ethical-reasoner") or path.startswith("/api/dream-engine") or path.startswith("/api/cognitive-immunity") or path.startswith("/api/temporal-consciousness") or path.startswith("/api/cognitive-fusion") or path.startswith("/api/memory-palace") or path.startswith("/api/narrative-identity") or path.startswith("/api/curiosity-drive") or path.startswith("/api/collective-unconscious") or path.startswith("/api/cognitive-metabolism") or path.startswith("/api/synthetic-intuition") or path.startswith("/api/phantom-limb") or path.startswith("/api/cognitive-scar") or path.startswith("/api/time-crystal") or path.startswith("/api/holographic-context") or path.startswith("/api/swarm-cortex") or path.startswith("/api/cognitive-archaeology") or path.startswith("/api/emotional-contagion") or path.startswith("/api/predictive-empathy") or path.startswith("/api/autonomous-researcher") or path.startswith("/api/empathy-synthesizer") or path.startswith("/api/cognitive-teleportation") or path.startswith("/api/ontological-engine") or path.startswith("/api/cognitive-gravity") or path.startswith("/api/temporal-paradox") or path.startswith("/api/synaesthetic-processor") or path.startswith("/api/cognitive-mitosis") or path.startswith("/api/entropic-sentinel") or path.startswith("/api/quantum-cognition") or path.startswith("/api/cognitive-placebo") or path.startswith("/api/noospheric-interface") or path.startswith("/api/akashic-records") or path.startswith("/api/deja-vu") or path.startswith("/api/morphogenetic-field") or path.startswith("/api/liminal-processor") or path.startswith("/api/prescient-executor") or path.startswith("/api/cognitive-dark-matter") or path.startswith("/api/ego-membrane") or path.startswith("/api/hyperstition-engine") or path.startswith("/api/cognitive-chrysalis") or path.startswith("/api/existential-compass") or path.startswith("/api/web-agent") or path.startswith("/api/self-healer") or path.startswith("/api/dynamic-skill-factory") or path.startswith("/api/multimodal-engine") or path.startswith("/api/internet-monitor") or path.startswith("/api/financial-autonomy") or path.startswith("/api/social-presence") or path.startswith("/api/self-replicator") or path.startswith("/api/continuous-learner") or path.startswith("/api/nl-automation") or path.startswith("/api/video-understanding") or path.startswith("/api/knowledge-graph") or path.startswith("/api/iot-controller") or path.startswith("/api/distributed-tasks") or path.startswith("/api/llm/") or path == "/favicon.ico":
             return await handler(request)
 
         supplied = request.query.get("token", "")
@@ -737,21 +735,6 @@ class Gateway:
 
     async def _distributed_task_queue_handler(self, request: web.Request) -> web.Response:
         return await self._generic_module_handler("distributed_task_queue", "Distributed task queue", request)
-
-    async def _fight_club_handler(self, request: web.Request) -> web.Response:
-        """GET /api/fight-club — Fight Club status (arena participation stats)."""
-        am = getattr(self.agent, "autonomous_mode", None)
-        fc = getattr(am, "fight_club", None) if am else None
-        if not fc:
-            fc_attr = getattr(self.agent, "fight_club", None)
-            if fc_attr:
-                fc = fc_attr
-        if fc:
-            return web.json_response(fc.get_status(), headers={"Access-Control-Allow-Origin": "*"})
-        return web.json_response(
-            {"enabled": False, "note": "Fight Club module not loaded"},
-            headers={"Access-Control-Allow-Origin": "*"},
-        )
 
     # ── LLM Management HTTP handlers ─────────────────────────────────────────
 
@@ -2361,18 +2344,6 @@ class Gateway:
                         result[_mod_attr] = None
                 else:
                     result[_mod_attr] = None
-
-            # ── v1.9 Recreation ───────────────────────────────────
-            fc = getattr(self.agent, "fight_club", None)
-            if not fc and hasattr(self.agent, "autonomous") and self.agent.autonomous:
-                fc = getattr(self.agent.autonomous, "fight_club", None)
-            if fc:
-                try:
-                    result["fight_club"] = fc.get_status()
-                except Exception:
-                    result["fight_club"] = None
-            else:
-                result["fight_club"] = None
 
         except Exception as e:
             logger.warning(f"[Gateway] brain.data error: {e}")
