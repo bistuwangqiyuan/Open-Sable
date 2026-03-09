@@ -175,3 +175,4 @@ dashboard/src/components/agent/BrainPanel.jsx
 data/*
 !data/calendar.json
 epistemic_uncertainty_framework.md
+epistemic_wary.png
