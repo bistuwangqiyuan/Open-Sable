@@ -174,3 +174,5 @@ dashboard/src/components/agent/BrainPanel.jsx
 # Agent runtime state (auto-generated per module, never commit)
 data/*
 !data/calendar.json
+epistemic_uncertainty_framework.md
+epistemic_wary.png

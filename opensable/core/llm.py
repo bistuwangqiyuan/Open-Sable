@@ -1472,3 +1472,121 @@ async def pull_ollama_model(model_name: str, base_url: str = "http://localhost:1
     except Exception as e:
         logger.error(f"Failed to pull model {model_name}: {e}")
         raise
+
+
+# ── OpenWebUI model discovery ───────────────────────────────────────
+
+async def check_openwebui_models(base_url: str, api_key: str) -> list:
+    """Fetch available models from an Open WebUI instance.
+
+    Open WebUI exposes GET /api/models (with Bearer auth) that returns
+    a list of models available on the server.
+    """
+    import aiohttp
+
+    url = base_url.rstrip("/")
+    # Normalise: if user provided 'https://host.com/api' use that,
+    # otherwise append /api
+    if not url.endswith("/api"):
+        url = url + "/api"
+    models_url = url + "/models"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            headers = {"Authorization": f"Bearer {api_key}"}
+            async with session.get(models_url, headers=headers, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                if resp.status != 200:
+                    logger.warning(f"OpenWebUI models endpoint returned {resp.status}")
+                    return []
+                data = await resp.json()
+                # Open WebUI returns {"data": [...]} with each model having an "id" field
+                models_list = data if isinstance(data, list) else data.get("data", data.get("models", []))
+                result = []
+                for m in models_list:
+                    if isinstance(m, str):
+                        result.append(m)
+                    elif isinstance(m, dict):
+                        result.append(m.get("id") or m.get("name") or m.get("model", ""))
+                return [x for x in result if x]
+    except Exception as e:
+        logger.error(f"Failed to list OpenWebUI models: {e}")
+        return []
+
+
+# ── Runtime LLM switching ───────────────────────────────────────────
+
+async def list_all_models(config) -> dict:
+    """List all available models across all configured providers.
+
+    Returns dict with provider name → list of model IDs.
+    """
+    result = {}
+
+    # Ollama models
+    try:
+        ollama_models = await check_ollama_models(config.ollama_base_url)
+        if ollama_models:
+            result["ollama"] = ollama_models
+    except Exception:
+        pass
+
+    # Open WebUI models
+    owui_url = getattr(config, "openwebui_api_url", None)
+    owui_key = getattr(config, "openwebui_api_key", None)
+    if owui_url and owui_key:
+        try:
+            owui_models = await check_openwebui_models(owui_url, owui_key)
+            if owui_models:
+                result["openwebui"] = owui_models
+        except Exception:
+            pass
+
+    # Cloud providers — list the default model for each configured provider
+    for provider, (_, key_attr, default_model) in CloudLLM._PROVIDERS.items():
+        if provider in ("openwebui",):
+            continue  # already handled above
+        if getattr(config, key_attr, None):
+            result[provider] = [default_model]
+
+    return result
+
+
+def switch_llm(agent, provider: str, model: str | None = None) -> dict:
+    """Switch the agent's LLM to a different provider/model at runtime.
+
+    Args:
+        agent: The agent instance (has .llm and .config)
+        provider: 'ollama', 'openwebui', or any cloud provider name
+        model: Optional model name (uses provider default if omitted)
+
+    Returns:
+        dict with status info
+    """
+    config = agent.config
+    old_provider = "ollama" if isinstance(agent.llm, AdaptiveLLM) else getattr(agent.llm, "provider", "unknown")
+    old_model = agent.llm.current_model
+
+    try:
+        if provider == "ollama":
+            new_llm = AdaptiveLLM(config, model or config.default_model)
+            if model:
+                new_llm.current_model = model
+        else:
+            new_llm = CloudLLM(provider=provider, config=config)
+            if model:
+                new_llm.current_model = model
+
+        # Preserve token tracker history
+        new_llm.token_tracker = agent.llm.token_tracker
+
+        agent.llm = new_llm
+        logger.info(f"LLM switched: {old_provider}/{old_model} → {provider}/{new_llm.current_model}")
+        return {
+            "success": True,
+            "previous": {"provider": old_provider, "model": old_model},
+            "current": {"provider": provider, "model": new_llm.current_model},
+        }
+    except Exception as e:
+        logger.error(f"Failed to switch LLM to {provider}/{model}: {e}")
+        return {"success": False, "error": str(e)}
+

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   Brain, Zap, Target, RefreshCw, Activity, Cpu, Layers,
   Sparkles, Eye, TrendingUp, Clock, Database, FileText, Heart,
@@ -1534,7 +1534,7 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           )}
 
           {/* ── Connectome – Neural Colony ──────────────────────── */}
-          {connectome && <ConnectomeMonitor connectome={connectome} />}
+          {connectome && <ConnectomeSwitcher connectome={connectome} />}
 
           {/* ── Self-Benchmark – Autonomy Score ────────────────── */}
           {selfBenchmark && <SelfBenchmarkPanel benchmark={selfBenchmark} />}
@@ -1919,7 +1919,43 @@ function UltraLtmPanel({ ltm }) {
   );
 }
 
-// ── Connectome Monitor ───────────────────────────────────────────────
+// ── Lazy-load Brain3D (heavy Three.js bundle) ────────────────────────
+const Brain3DLazy = lazy(() => import('./Brain3D'));
+
+// ── Connectome Switcher (3D / 2D toggle) ─────────────────────────────
+function ConnectomeSwitcher({ connectome }) {
+  const [view, setView] = useState('3d');
+
+  return (
+    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={s.sectionTitle}><Network size={12} /> Connectome Neural Colony</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {['3d', '2d'].map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)',
+              background: view === v ? 'var(--accent, #7c3aed)' : 'transparent',
+              color: view === v ? '#fff' : 'var(--text-muted)',
+              fontSize: 9, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase',
+              transition: 'all 0.2s',
+            }}>
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === '3d' ? (
+        <Suspense fallback={<div style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading 3D brain…</div>}>
+          <Brain3DLazy connectome={connectome} />
+        </Suspense>
+      ) : (
+        <ConnectomeMonitor2D connectome={connectome} />
+      )}
+    </div>
+  );
+}
+
+// ── 2D Connectome Monitor (original SVG) ─────────────────────────────
 const _NODE_POS = {
   AL:  { x: 80,  y: 50  },
   OL:  { x: 320, y: 50  },
@@ -1937,7 +1973,7 @@ const _REGION_LABELS = {
   LPC: 'Lateral Protocerebrum', SEZ: 'Subesophageal Zone',
 };
 
-function ConnectomeMonitor({ connectome }) {
+function ConnectomeMonitor2D({ connectome }) {
   const [hovered, setHovered] = useState(null);
 
   const nodes = connectome.nodes || [];
@@ -1968,9 +2004,7 @@ function ConnectomeMonitor({ connectome }) {
   };
 
   return (
-    <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-      <div style={s.sectionTitle}><Network size={12} /> Connectome Neural Colony</div>
-
+    <div>
       {/* Stats bar */}
       <div style={{
         display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16, padding: '8px 12px',

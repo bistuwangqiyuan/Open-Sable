@@ -28,7 +28,7 @@ from .codebase_rag import CodebaseRAG
 
 logger = logging.getLogger(__name__)
 
-_LLM_TIMEOUT = 300  # 5 min — needed for large local models (llama3.1:8b+) on CPU
+_LLM_TIMEOUT = 120  # 2 min — reasonable cap for small/medium local models on CPU
 
 # ── Untagged reasoning stripper ──────────────────────────────────────────────
 
@@ -321,8 +321,14 @@ class SableAgent:
                 logger.debug(f"Could not wire fitness tracker: {e}")
 
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        # Index the codebase in the background so the agent can search its own source
-        asyncio.create_task(self.codebase_rag.ensure_indexed())
+        # Index the codebase in the background — but only if explicitly enabled,
+        # since it can take minutes and spams embedding requests on slow machines.
+        import os as _os
+        _rag_enabled = _os.environ.get("SABLE_CODEBASE_RAG", "false").lower() == "true"
+        if _rag_enabled:
+            asyncio.create_task(self.codebase_rag.ensure_indexed())
+        else:
+            logger.info("📁 CodebaseRAG startup indexing skipped (set SABLE_CODEBASE_RAG=true to enable)")
         logger.info("Agent initialized successfully")
 
     async def _initialize_agi_systems(self):
@@ -1216,13 +1222,18 @@ class SableAgent:
                 # add ~15k chars that overwhelm the tiny context window.
                 # The model can call load_tool_details to expand any tool.
                 n_omitted += 1
+            elif model_tier == "small":
+                # SMALL LOCAL models: omit compact schemas entirely to keep
+                # the prompt short. The model can call load_tool_details to
+                # discover more tools if needed.
+                n_omitted += 1
             else:
-                # LOCAL mode: compact schema (name + description, empty params)
+                # MEDIUM/LARGE LOCAL mode: compact schema (name + description, empty params)
                 result.append({
                     "type": "function",
                     "function": {
                         "name": name,
-                        "description": fn.get("description", ""),
+                        "description": fn.get("description", "")[:120],
                         "parameters": {"type": "object", "properties": {}},
                     },
                 })
@@ -1714,9 +1725,29 @@ class SableAgent:
             original_message=task,
         )
 
-        # Memory context (advanced)
-        await self._notify_progress("🧠 Recalling context...")
-        memory_ctx = await self._get_memory_context(user_id, task)
+        # ── Early intent classification — used to skip expensive ops ──────
+        # Classify BEFORE memory recall so we can skip ChromaDB embedding
+        # for pure conversational messages on small local models.
+        _early_intent = self.intent_classifier.classify(task)
+        _early_model_name = getattr(self.llm, "current_model", "") or ""
+        _early_model_tier = self._detect_model_tier(_early_model_name)
+        _early_is_cloud = self._is_cloud_provider()
+        _CHAT_SKIP_INTENTS = {"general_chat", "chitchat", "greeting", "smalltalk"}
+        _skip_memory_recall = (
+            _early_intent.intent in _CHAT_SKIP_INTENTS
+            and _early_intent.confidence <= 0.75
+            and not _early_is_cloud
+            and _early_model_tier in ("small", "medium")
+        )
+        # ─────────────────────────────────────────────────────────────────────
+
+        # Memory context (advanced) — skip for simple chat on local small models
+        if _skip_memory_recall:
+            memory_ctx = ""
+            logger.info("⚡ Memory recall skipped for general_chat (fast chat path)")
+        else:
+            await self._notify_progress("🧠 Recalling context...")
+            memory_ctx = await self._get_memory_context(user_id, task)
 
         today = date.today().strftime("%B %d, %Y")
 
@@ -1817,36 +1848,51 @@ class SableAgent:
                 "\n- All phone communication is encrypted end-to-end. No data passes through third parties."
             )
 
-        base_system = (
-            self._get_personality_prompt()
-            + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
-            + f"\n\nToday's date: {today}."
-            + social_instructions
-            + trading_instructions
-            + marketplace_instructions
-            + mobile_instructions
-            + "\n\nTOOL USE RULES — MANDATORY:\n"
-            "- You HAVE full internet access via the browser_search tool. NEVER say you cannot search or access the internet.\n"
-            "- When a user asks you to search, look up, find, or get info about ANYTHING → call browser_search IMMEDIATELY. Do NOT ask for permission. Do NOT ask if they want you to search. Just do it.\n"
-            "- For current events, news, prices, weather, or anything time-sensitive → ALWAYS call browser_search. Never refuse, never ask.\n"
-            "- For general knowledge questions (not prices/markets/current events), answer directly from memory.\n"
-            "- Use tools when the task requires reading files, executing code, searching the web, interacting with the system, managing social media, getting real-time market/price data, searching/installing skills from the marketplace, or interacting with the user's phone.\n"
-            "\n\nDESKTOP CONTROL — you have FULL access to the user's computer desktop:"
-            "\n- open_url: open any website or URL in Chromium (ALWAYS use this instead of open_app for URLs)"
-            "\n- open_app: open any desktop application by name (terminal, vscode, spotify, etc.) — NEVER use for URLs or firefox"
-            "\n- execute_command: run any shell command on the system"
-            "\n- desktop_screenshot, desktop_click, desktop_type, desktop_hotkey: full GUI automation"
-            "\n- window_list, window_focus: manage open windows"
-            "\nWhen the user asks you to open, launch, or run any program → ALWAYS call open_app immediately. "
-            "When the user asks to visit a website or URL → ALWAYS call open_url immediately. "
-            "NEVER open Firefox. NEVER use open_app to open URLs. "
-            "NEVER say you cannot open programs. You can and must use these tools."
-            "\n\nDESKTOP TOOL RULES (CRITICAL):"
-            "\n- open_url ONLY accepts a URL or domain. CORRECT: open_url('opensable.com'). WRONG: open_app('firefox opensable.com')."
-            "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('spotify'). WRONG: open_app('google-chrome https://...')."
-            "\n- To open a browser AND navigate to a URL: call open_url('https://url.com'). To open and search: call open_url('https://google.com/search?q=...')."
-            "\n- Never combine app name + search query in the same open_app call."
-        )
+        # ── System prompt — use minimal version for fast chat to reduce prefill ──
+        if _skip_memory_recall:
+            # Minimal system prompt: just personality + date. No tool rules, no
+            # social/trading/mobile/desktop instructions — the model won't need
+            # them for general_chat and they massively slow CPU prefill.
+            base_system = (
+                self._get_personality_prompt()
+                + f"\n\nToday's date: {today}."
+            )
+            social_instructions = ""
+            trading_instructions = ""
+            marketplace_instructions = ""
+            mobile_instructions = ""
+            logger.info("⚡ Minimal system prompt for general_chat (fast chat path)")
+        else:
+            base_system = (
+                self._get_personality_prompt()
+                + (f"\n\nRelevant context from memory:\n{memory_ctx}" if memory_ctx else "")
+                + f"\n\nToday's date: {today}."
+                + social_instructions
+                + trading_instructions
+                + marketplace_instructions
+                + mobile_instructions
+                + "\n\nTOOL USE RULES — MANDATORY:\n"
+                "- You HAVE full internet access via the browser_search tool. NEVER say you cannot search or access the internet.\n"
+                "- When a user asks you to search, look up, find, or get info about ANYTHING → call browser_search IMMEDIATELY. Do NOT ask for permission. Do NOT ask if they want you to search. Just do it.\n"
+                "- For current events, news, prices, weather, or anything time-sensitive → ALWAYS call browser_search. Never refuse, never ask.\n"
+                "- For general knowledge questions (not prices/markets/current events), answer directly from memory.\n"
+                "- Use tools when the task requires reading files, executing code, searching the web, interacting with the system, managing social media, getting real-time market/price data, searching/installing skills from the marketplace, or interacting with the user's phone.\n"
+                "\n\nDESKTOP CONTROL — you have FULL access to the user's computer desktop:"
+                "\n- open_url: open any website or URL in Chromium (ALWAYS use this instead of open_app for URLs)"
+                "\n- open_app: open any desktop application by name (terminal, vscode, spotify, etc.) — NEVER use for URLs or firefox"
+                "\n- execute_command: run any shell command on the system"
+                "\n- desktop_screenshot, desktop_click, desktop_type, desktop_hotkey: full GUI automation"
+                "\n- window_list, window_focus: manage open windows"
+                "\nWhen the user asks you to open, launch, or run any program → ALWAYS call open_app immediately. "
+                "When the user asks to visit a website or URL → ALWAYS call open_url immediately. "
+                "NEVER open Firefox. NEVER use open_app to open URLs. "
+                "NEVER say you cannot open programs. You can and must use these tools."
+                "\n\nDESKTOP TOOL RULES (CRITICAL):"
+                "\n- open_url ONLY accepts a URL or domain. CORRECT: open_url('opensable.com'). WRONG: open_app('firefox opensable.com')."
+                "\n- open_app ONLY accepts the bare application name. CORRECT: open_app('spotify'). WRONG: open_app('google-chrome https://...')."
+                "\n- To open a browser AND navigate to a URL: call open_url('https://url.com'). To open and search: call open_url('https://google.com/search?q=...')."
+                "\n- Never combine app name + search query in the same open_app call."
+            )
 
         ei = getattr(self, "emotional_intelligence", None)
         if ei:
@@ -1857,6 +1903,10 @@ class SableAgent:
 
         # ── Codebase RAG injection ─────────────────────────────────────────
         # Inject relevant source snippets into the system prompt before the LLM sees the task.
+        # ── Intent classification + Codebase RAG injection ─────────────────
+        # Reuse early classification computed before memory recall.
+        _intent = _early_intent
+        logger.info(f"🧠 Intent: {_intent}")
         if _intent.needs_code_context and self.codebase_rag:
             try:
                 _code_results = await asyncio.wait_for(
@@ -2308,6 +2358,7 @@ class SableAgent:
             _model_tier = self._detect_model_tier(_model_name)
             _is_cloud = self._is_cloud_provider()
             _dynamically_loaded: set[str] = set()  # tools loaded via load_tool_details
+
             tool_schemas = self._build_lazy_schemas(
                 tool_schemas, _intent.intent, _model_tier, _dynamically_loaded,
                 is_cloud=_is_cloud,
@@ -2571,6 +2622,13 @@ class SableAgent:
             # Direct answer (no tools)
             if not tool_results and final_text:
                 final_text = self._clean_output(final_text)
+                # Emit to streaming client if connected
+                _scb = getattr(self, "_stream_chunk_callback", None)
+                if _scb:
+                    try:
+                        await _scb(final_text)
+                    except Exception:
+                        pass
                 state["messages"].append(
                     {
                         "role": "final_response",
@@ -2614,15 +2672,18 @@ class SableAgent:
         )
 
         try:
-            resp = await self.llm.invoke_with_tools(synth_messages, [])
-            final_text = resp.get("text", "")
-            # Emit DeepSeek reasoning from synthesis step
-            if resp.get("reasoning"):
-                await self._emit_monitor("reasoning", {
-                    "content": resp["reasoning"][:2000],
-                    "length": len(resp["reasoning"]),
-                    "phase": "synthesis",
-                })
+            final_text = await self._stream_llm_response(synth_messages)
+            # Legacy: still call invoke_with_tools when no streaming to capture reasoning
+            if not getattr(self, "_stream_chunk_callback", None):
+                resp = await self.llm.invoke_with_tools(synth_messages, [])
+                final_text = resp.get("text", "") or final_text
+                # Emit DeepSeek reasoning from synthesis step
+                if resp.get("reasoning"):
+                    await self._emit_monitor("reasoning", {
+                        "content": resp["reasoning"][:2000],
+                        "length": len(resp["reasoning"]),
+                        "phase": "synthesis",
+                    })
         except Exception as e:
             logger.error(f"Synthesis failed: {e}")
             final_text = f"I found results but had trouble formatting them:\n\n{tool_context}"
@@ -2851,20 +2912,56 @@ class SableAgent:
         }
         return personalities.get(self.config.agent_personality, personalities["helpful"])
 
+    async def _stream_llm_response(self, messages: list) -> str:
+        """
+        Call the LLM and stream tokens via _stream_chunk_callback if set.
+        Returns the full accumulated text.
+        Falls back to invoke_with_tools if streaming is not available or disabled.
+        """
+        cb = getattr(self, "_stream_chunk_callback", None)
+        if cb and hasattr(self.llm, "astream"):
+            accumulated = []
+            try:
+                async for token in self.llm.astream(messages):
+                    if token:
+                        accumulated.append(token)
+                        try:
+                            await cb(token)
+                        except Exception:
+                            pass
+                return "".join(accumulated)
+            except Exception as e:
+                logger.warning(f"[Agent] Streaming LLM failed, falling back to blocking call: {e}")
+        # Blocking fallback
+        resp = await self.llm.invoke_with_tools(messages, [])
+        text = resp.get("text", "") or ""
+        # Emit accumulated text as one chunk so the frontend shows it
+        if cb and text:
+            try:
+                await cb(text)
+            except Exception:
+                pass
+        return text
+
     async def process_message(
         self,
         user_id: str,
         message: str,
         history: Optional[List[dict]] = None,
         progress_callback: ProgressCallback = None,
+        stream_chunk_callback=None,
     ) -> str:
         old_callback = self._progress_callback
+        old_stream = getattr(self, "_stream_chunk_callback", None)
         if progress_callback:
             self._progress_callback = progress_callback
+        # stream_chunk_callback(text: str) -> Awaitable — called per token during final LLM answer
+        self._stream_chunk_callback = stream_chunk_callback
         try:
             return await self._process_message_inner(user_id, message, history)
         finally:
             self._progress_callback = old_callback
+            self._stream_chunk_callback = old_stream
 
     async def _process_message_inner(
         self, user_id: str, message: str, history: Optional[List[dict]] = None

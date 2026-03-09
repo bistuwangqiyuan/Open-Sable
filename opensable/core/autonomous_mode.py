@@ -1147,16 +1147,18 @@ class AutonomousMode:
                     emotion_boost["system_maintenance"] = emotion_boost.get("system_maintenance", 0) + 2
                     emotion_boost["email_action"] = 1
 
-                # Frustration → boost self-improvement
+                # Frustration → boost self-improvement + arena as outlet
                 if primary == "frustration":
                     emotion_boost["goal"] = 2
                     emotion_boost["self_improve"] = 3
+                    emotion_boost["arena"] = 2
 
-                # Boredom → boost creative/proactive
+                # Boredom → boost creative/proactive (including arena fights)
                 if primary == "boredom":
                     emotion_boost["proactive"] = 3
                     emotion_boost["creative"] = 2
                     emotion_boost["research"] = 2
+                    emotion_boost["arena"] = 3
 
                 # Positive valence → boost ambitious goals
                 if valence > 0.3:
@@ -2357,6 +2359,31 @@ class AutonomousMode:
                         probes = await self.curiosity_drive.generate_curiosity_probes(self.llm)
                         if probes:
                             logger.info(f"🔍 Curiosity generated {len(probes)} exploration probes")
+
+                        # Fight Club impulse — when bored & idle, consider arena combat
+                        # as a recreational outlet (de-stress / competitive sport)
+                        arena_skill = getattr(self.agent.tools, "arena_skill", None) if self.agent else None
+                        if arena_skill and getattr(arena_skill, '_ready', False):
+                            arena_status = getattr(arena_skill, '_status', 'idle')
+                            idle = len(getattr(self, 'task_queue', [])) == 0
+                            if arena_status == 'idle' and idle:
+                                import random
+                                # ~30% chance per boredom tick to go fight
+                                if random.random() < 0.3:
+                                    fight_task = {
+                                        "id": f"fight_club_{self._tick_counter}",
+                                        "type": "proactive",
+                                        "description": "Join the Fight Club arena for a competitive match (de-stress / sport)",
+                                        "goal_type": "creative",
+                                        "priority": 4,
+                                        "tool_name": "arena_fight",
+                                        "tool_args": {"use_llm": True},
+                                        "reasoning": "Bored and idle — fight club is a fun competitive outlet",
+                                        "risk_level": "low",
+                                        "created_at": datetime.now(),
+                                    }
+                                    self.task_queue.append(fight_task)
+                                    logger.info("🥊 Boredom → Fight Club impulse! Queueing arena match")
                 except Exception as e:
                     logger.debug(f"Curiosity drive tick: {e}")
 

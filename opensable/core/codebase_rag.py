@@ -30,7 +30,12 @@ logger = logging.getLogger(__name__)
 # ── ChromaDB ─────────────────────────────────────────────────────────────────
 try:
     import chromadb
-
+    # Silence broken telemetry (chromadb 0.5.x changed capture() signature)
+    try:
+        import chromadb.telemetry.product as _ct
+        _ct.ProductTelemetryClient.capture = lambda self, *a, **kw: None
+    except Exception:
+        pass
     _CHROMA_OK = True
 except ImportError:
     _CHROMA_OK = False
