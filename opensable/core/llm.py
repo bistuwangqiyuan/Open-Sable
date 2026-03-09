@@ -569,6 +569,11 @@ class AdaptiveLLM:
                 _chat_kwargs["tools"] = tools
             if not _skip_no_think:
                 _chat_kwargs["think"] = False
+            logger.debug(
+                f"[LLM] invoke_with_tools: model={self.current_model}, "
+                f"think={_chat_kwargs.get('think')}, tools={len(tools)}, "
+                f"msgs={len(messages)}, skip_no_think={_skip_no_think}"
+            )
             async with _ollama_lock():
                 response = await client.chat(**_chat_kwargs)
             msg = response.get("message", {})

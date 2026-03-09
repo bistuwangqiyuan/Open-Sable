@@ -137,6 +137,12 @@ def _clean_gateway_reply(text: str) -> str:
     text = _THINK_RE.sub("", text)
     text = _THINK_OPEN.sub("", text)
     text = text.replace("</think>", "").strip()
+    # Strip leaked ChatML / special tokens and everything after them
+    for tok in ("<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|eot_id|>",
+                "<|start_header_id|>", "<|end_header_id|>"):
+        idx = text.find(tok)
+        if idx != -1:
+            text = text[:idx].strip()
     # Strip leaked role prefixes (llama/mistral chat template bleed)
     text = re.sub(
         r'^(?:assistant|asistente|user|sistema|system)\s*[:\n]+\s*',
@@ -1903,8 +1909,17 @@ class Gateway:
         from opensable.core.session_manager import SessionManager
 
         sm = SessionManager()
-        sessions = [
-            {
+        sessions = []
+        for s in sm.list_sessions(channel="webchat"):
+            if len(s.messages) == 0:
+                continue
+            last_user = next(
+                (m.content for m in reversed(s.messages) if m.role == "user"), ""
+            )
+            last_assistant = next(
+                (m.content for m in reversed(s.messages) if m.role == "assistant"), ""
+            )
+            sessions.append({
                 "id": s.id,
                 "session_id": s.id,
                 "channel": s.channel,
@@ -1914,13 +1929,12 @@ class Gateway:
                     (m.content[:60] for m in s.messages if m.role == "user"), None
                 )
                 or s.id[:12],
-                "messages": len(s.messages),
+                "message_count": len(s.messages),
+                "last_message": last_user[:200] if last_user else "",
+                "last_response": last_assistant[:500] if last_assistant else "",
                 "created_at": s.created_at,
                 "updated_at": s.updated_at,
-            }
-            for s in sm.list_sessions(channel="webchat")
-            if len(s.messages) > 0
-        ]
+            })
         sessions.sort(key=lambda x: x["updated_at"], reverse=True)
         await client.send({"type": "sessions.list.result", "sessions": sessions})
 

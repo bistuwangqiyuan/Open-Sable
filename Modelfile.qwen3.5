@@ -1,0 +1,58 @@
+FROM /Users/emreacar/.ollama/models/blobs/sha256-03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8
+
+TEMPLATE """{{- if .System }}
+<|im_start|>system
+{{ .System }}
+{{- if .Tools }}
+
+# Tools
+
+You are provided with the following tools. To call a tool, respond with a JSON object in a <tool_call> block:
+
+<tool_call>
+{"name": "tool_name", "arguments": {"arg1": "value1"}}
+</tool_call>
+
+Here are the available tools:
+{{- range .Tools }}
+{"type": "function", "function": {{ .Function }}}
+{{- end }}
+{{- end }}<|im_end|>
+{{ end }}
+{{- range .Messages }}
+{{- if eq .Role "user" }}
+<|im_start|>user
+{{ .Content }}<|im_end|>
+{{- else if eq .Role "assistant" }}
+<|im_start|>assistant
+{{- if .Thinking }}
+<think>
+{{ .Thinking }}</think>
+{{ end }}
+{{ if .Content }}{{ .Content }}{{ end }}
+{{- if .ToolCalls }}
+{{- range .ToolCalls }}
+<tool_call>
+{"name": "{{ .Function.Name }}", "arguments": {{ .Function.Arguments }}}
+</tool_call>
+{{- end }}
+{{ end }}<|im_end|>
+{{- else if eq .Role "tool" }}
+<|im_start|>tool
+{{ .Content }}<|im_end|>
+{{- end }}
+{{- end }}
+<|im_start|>assistant
+{{- if and .IsThinkSet (not .Think) }}
+<think>
+</think>
+
+{{ end }}"""
+
+PARAMETER stop <|im_start|>
+PARAMETER stop <|im_end|>
+PARAMETER stop <|endoftext|>
+PARAMETER num_ctx 32768
+PARAMETER temperature 0.7
+PARAMETER top_p 0.8
+PARAMETER repeat_penalty 1.05

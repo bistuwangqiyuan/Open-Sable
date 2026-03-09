@@ -1109,6 +1109,7 @@ class SableAgent:
         "file_operation":     ("delete_", "move_"),
         "system_command":     ("clipboard_",),
         "code_question":      ("vector_",),
+        "skill_management":   ("create_skill", "delete_skill", "disable_skill", "enable_skill", "list_skills"),
     }
 
     # Intent → extra exact tool names that get FULL schemas
@@ -1118,6 +1119,7 @@ class SableAgent:
         "desktop_screenshot": frozenset({"desktop_screenshot", "screen_analyze", "screen_find"}),
         "trading":            frozenset({"trading_place_trade", "trading_price", "trading_portfolio"}),
         "file_operation":     frozenset({"create_document", "create_spreadsheet", "create_pdf", "create_presentation", "write_in_writer", "read_document", "open_document"}),
+        "skill_management":   frozenset({"create_skill", "list_skills", "delete_skill", "disable_skill", "enable_skill"}),
     }
 
     def _is_cloud_provider(self) -> bool:
@@ -1170,8 +1172,19 @@ class SableAgent:
         if model_tier == "large":
             return all_schemas
 
+        # Dynamic skill tools (user-created) always get FULL schemas.
+        # Collect their names from _custom_schemas so they are never
+        # compacted or omitted — the user specifically created them.
+        _dynamic_tool_names: set[str] = set()
+        if hasattr(self, 'tools') and hasattr(self.tools, '_custom_schemas'):
+            for s in self.tools._custom_schemas:
+                fn_name = s.get('function', {}).get('name', '')
+                if fn_name:
+                    _dynamic_tool_names.add(fn_name)
+
         # Build set of tools that get FULL schemas
         full_names: set[str] = set(self._ALWAYS_FULL_TOOLS)
+        full_names.update(_dynamic_tool_names)  # dynamic skills always full
 
         # Intent-driven extras
         prefixes = self._INTENT_FULL_PREFIXES.get(intent, ())
@@ -1218,15 +1231,23 @@ class SableAgent:
                 n_omitted += 1
             else:
                 # LOCAL mode: compact schema (name + description, empty params)
-                result.append({
-                    "type": "function",
-                    "function": {
-                        "name": name,
-                        "description": fn.get("description", ""),
-                        "parameters": {"type": "object", "properties": {}},
-                    },
-                })
-                n_compact += 1
+                # Cap compact schemas for medium models — native tool calling
+                # sends each schema as a structured entry, and 100+ stubs
+                # overwhelm 9-30B models.  The model can call
+                # load_tool_details to expand any tool it needs.
+                _MAX_COMPACT = 50 if model_tier == "medium" else 200
+                if n_compact < _MAX_COMPACT:
+                    result.append({
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            "description": fn.get("description", ""),
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    })
+                    n_compact += 1
+                else:
+                    n_omitted += 1
 
         mode = "cloud" if is_cloud else "local"
         logger.info(
@@ -2120,7 +2141,21 @@ class SableAgent:
                 _cg_result = await self._fetch_coingecko_price(symbol)
                 tool_results.append(_cg_result)
 
-        if is_search and not is_trading_price_query:
+        # When a query is BOTH a crypto price request AND a search request
+        # (e.g. "BTC price and today's news"), allow both to fire.
+        # Only skip search for *pure* crypto queries that have no additional
+        # informational content (e.g. "what's the BTC price?").
+        _additional_search_kws = {
+            "news", "headlines", "summary", "summarize", "weather",
+            "events", "trending", "analysis", "report", "search",
+            "find", "about", "updates", "update", "market trends",
+            "compare", "versus", "outlook", "forecast", "what else",
+            "also", "and", "plus", "along with", "as well",
+        }
+        _pure_crypto_only = is_trading_price_query and not bool(
+            _additional_search_kws & set(task_lower.split())
+        )
+        if is_search and not _pure_crypto_only:
             logger.info("🔍 [FORCED] Search intent detected")
             query = task
             for filler in ["search for", "busca", "find", "look up", "google", "what is", "who is"]:
@@ -2146,7 +2181,7 @@ class SableAgent:
                 try:
                     news_result = await self._execute_tool(
                         "browser_scrape",
-                        {"url": "https://news.zunvra.com", "max_length": 6000},
+                        {"url": "https://news.zunvra.com", "max_length": 3000},
                         user_id=user_id,
                     )
                     if news_result and "error" not in str(news_result).lower():
@@ -2583,8 +2618,13 @@ class SableAgent:
 
         # Synthesis
         await self._notify_progress("✍️ Writing response...")
+        # Use a MINIMAL system prompt for synthesis — the full base_system
+        # includes tool rules, desktop control instructions, social media,
+        # trading, etc. that are completely irrelevant for summarizing
+        # tool results and just waste context window + generation time.
+        _personality = self._get_personality_prompt()
         synthesis_prompt = (
-            base_system + f"\n\nTODAY'S DATE: {today}. This is the real current date."
+            _personality + f"\n\nTODAY'S DATE: {today}. This is the real current date."
             "\n\nCRITICAL RULES:"
             "\n- The tool(s) have ALREADY been called. The results are provided below."
             "\n- Your job is ONLY to present/summarize those results to the user."
@@ -2603,6 +2643,13 @@ class SableAgent:
         # Filter out None/empty results that could confuse the synthesizer
         valid_tool_results = [r for r in tool_results if r and str(r).strip()]
         tool_context = "\n\n".join(valid_tool_results) if valid_tool_results else "(no tool results)"
+
+        # ── Cap synthesis context to avoid overwhelming small models ──
+        _MAX_SYNTH_CHARS = 6000
+        if len(tool_context) > _MAX_SYNTH_CHARS:
+            logger.info(f"✂️  [SYNTHESIS] Truncating tool context: {len(tool_context)} → {_MAX_SYNTH_CHARS} chars")
+            tool_context = tool_context[:_MAX_SYNTH_CHARS] + "\n\n[… remaining results truncated for brevity]"
+
         synth_messages = [{"role": "system", "content": synthesis_prompt}]
         # Do NOT include conversation history in synthesis — it can re-poison the model
         # with prior refusals or "permission" responses. The tool results are the only context needed.
@@ -2614,8 +2661,15 @@ class SableAgent:
         )
 
         try:
-            resp = await self.llm.invoke_with_tools(synth_messages, [])
+            _synth_start = asyncio.get_event_loop().time()
+            logger.info(f"🧪 [SYNTHESIS] Starting LLM call (context={len(tool_context)} chars, results={len(valid_tool_results)})")
+            resp = await asyncio.wait_for(
+                self.llm.invoke_with_tools(synth_messages, []),
+                timeout=120,  # 2-minute hard cap for synthesis
+            )
+            _synth_elapsed = asyncio.get_event_loop().time() - _synth_start
             final_text = resp.get("text", "")
+            logger.info(f"✅ [SYNTHESIS] Done in {_synth_elapsed:.1f}s (response={len(final_text)} chars)")
             # Emit DeepSeek reasoning from synthesis step
             if resp.get("reasoning"):
                 await self._emit_monitor("reasoning", {
@@ -2623,9 +2677,12 @@ class SableAgent:
                     "length": len(resp["reasoning"]),
                     "phase": "synthesis",
                 })
+        except asyncio.TimeoutError:
+            logger.error("⏱️ [SYNTHESIS] Timed out after 120s")
+            final_text = f"I found results but the response generation timed out. Here's what I found:\n\n{tool_context[:2000]}"
         except Exception as e:
             logger.error(f"Synthesis failed: {e}")
-            final_text = f"I found results but had trouble formatting them:\n\n{tool_context}"
+            final_text = f"I found results but had trouble formatting them:\n\n{tool_context[:2000]}"
 
         # ── Guardrails: validate output ──
         output_check: ValidationResult = self.guardrails.validate_output(final_text)

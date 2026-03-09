@@ -1,9 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Trash2 } from 'lucide-react';
+import { Send, Trash2, Plus, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fmtTime } from '../../lib/utils';
 
+/* ── Chat-area styles ──────────────────────────────────────────────────── */
 const s = {
-  panel: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' },
+  panel: { display: 'flex', flex: 1, overflow: 'hidden' },
+  sidebar: (collapsed) => ({
+    width: collapsed ? 0 : 220, minWidth: collapsed ? 0 : 220,
+    background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    transition: 'width .15s, min-width .15s',
+  }),
+  sidebarHeader: {
+    display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px',
+    borderBottom: '1px solid var(--border)', flexShrink: 0,
+  },
+  newChatBtn: {
+    flex: 1, padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: 'none',
+    background: 'var(--accent)', color: 'white', fontWeight: 600, fontSize: 11,
+    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center',
+  },
+  sessionList: { flex: 1, overflowY: 'auto', padding: '6px 0' },
+  sessionItem: (active) => ({
+    padding: '8px 12px', cursor: 'pointer', fontSize: 12,
+    background: active ? 'var(--accent-dim)' : 'transparent',
+    color: active ? 'var(--accent-light)' : 'var(--text-muted)',
+    borderLeft: active ? '3px solid var(--accent)' : '3px solid transparent',
+    display: 'flex', alignItems: 'center', gap: 8,
+    transition: 'background .1s',
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  }),
+  sessionTitle: {
+    flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    fontWeight: 600,
+  },
+  sessionTime: { fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 },
+  chatCol: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' },
   header: {
     display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px',
     borderBottom: '1px solid var(--border)', minHeight: 44, flexShrink: 0,
@@ -25,9 +57,15 @@ const s = {
     background: user ? 'var(--accent-dim)' : 'var(--teal-dim)',
     color: user ? 'var(--accent-light)' : 'var(--teal)',
   }),
+  msgBody: (user) => ({
+    flex: 1, minWidth: 0, maxWidth: '80%',
+    display: 'flex', flexDirection: 'column',
+    alignItems: user ? 'flex-end' : 'flex-start',
+  }),
   bubble: (user) => ({
-    maxWidth: '80%', padding: '10px 14px', borderRadius: 'var(--radius)',
-    fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+    padding: '10px 14px', borderRadius: 'var(--radius)',
+    fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word', overflowWrap: 'break-word',
     ...(user
       ? { background: 'var(--accent)', color: 'white', borderBottomRightRadius: 4 }
       : { background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderBottomLeftRadius: 4 }),
@@ -52,14 +90,25 @@ const s = {
     background: 'var(--accent)', color: 'white', fontWeight: 600, fontSize: 13,
     cursor: 'pointer', display: 'flex', alignItems: 'center',
   },
-  clearBtn: {
+  iconBtn: {
     background: 'none', border: 'none', color: 'var(--text-muted)',
-    cursor: 'pointer', padding: 4,
+    cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
   },
 };
 
-export default function ChatPanel({ messages, streaming, onSend, onClear }) {
+function relativeTime(ts) {
+  const now = Date.now();
+  const diff = now - (typeof ts === 'string' ? new Date(ts).getTime() : ts);
+  if (diff < 0) return 'just now';
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
+  return new Date(ts).toLocaleDateString();
+}
+
+export default function ChatPanel({ messages, streaming, onSend, onClear, sessions, activeSessionId, onLoadSession, onNewChat }) {
   const [input, setInput] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -81,68 +130,111 @@ export default function ChatPanel({ messages, streaming, onSend, onClear }) {
     }
   };
 
+  const activeTitle = sessions?.find(s => (s.session_id || s.id) === activeSessionId)?.title || 'Chat';
+
   return (
     <div style={s.panel}>
-      <div style={s.header}>
-        <span style={{ fontSize: 16 }}>💬</span>
-        <span style={s.title}>Chat</span>
-        <span style={s.meta}>{messages.length} messages</span>
-        <button onClick={onClear} style={s.clearBtn} title="Clear chat">
-          <Trash2 size={14} />
-        </button>
-      </div>
-
-      <div style={s.messages}>
-        {messages.length === 0 ? (
-          <div style={s.empty}>
-            <div style={{ fontSize: 48, opacity: .3 }}>🤖</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Send a message to start chatting</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Use /help for available commands</p>
-          </div>
-        ) : (
-          messages.map((m, i) => (
-            <div key={i} style={s.msg(m.role === 'user')}>
-              <div style={s.avatar(m.role === 'user')}>
-                {m.role === 'user' ? '👤' : '🤖'}
-              </div>
-              <div>
-                <div style={s.bubble(m.role === 'user')}>
-                  {m.content}
-                  {m._streaming && (
-                    <span className="typing-dots" style={{ marginLeft: 6 }}>
-                      <span>●</span><span>●</span><span>●</span>
-                    </span>
-                  )}
-                </div>
-                <div style={s.time(m.role === 'user')}>{fmtTime(m.ts)}</div>
-              </div>
+      {/* ── Session sidebar ──────────────────────────────────────────── */}
+      <div style={s.sidebar(!sidebarOpen)}>
+        {sidebarOpen && (
+          <>
+            <div style={s.sidebarHeader}>
+              <button style={s.newChatBtn} onClick={onNewChat} title="New chat">
+                <Plus size={13} /> New Chat
+              </button>
             </div>
-          ))
+            <div style={s.sessionList}>
+              {(sessions || []).map(sess => {
+                const sid = sess.session_id || sess.id;
+                return (
+                  <div
+                    key={sid}
+                    style={s.sessionItem(sid === activeSessionId)}
+                    onClick={() => onLoadSession?.(sid)}
+                    title={sess.title || sid}
+                  >
+                    <MessageSquare size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                    <span style={s.sessionTitle}>{sess.title || sid}</span>
+                    <span style={s.sessionTime}>{relativeTime(sess.updated_at || sess.created_at)}</span>
+                  </div>
+                );
+              })}
+              {(!sessions || sessions.length === 0) && (
+                <div style={{ padding: '20px 12px', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  No conversations yet
+                </div>
+              )}
+            </div>
+          </>
         )}
-        <div ref={endRef} />
       </div>
 
-      <div style={s.inputArea}>
-        <form onSubmit={handleSubmit}>
-          <div style={s.row}>
-            <textarea
-              style={s.input}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message… (/ for commands, Shift+Enter for newline)"
-              disabled={streaming}
-              rows={1}
-            />
-            <button
-              type="submit"
-              style={{ ...s.sendBtn, opacity: streaming || !input.trim() ? 0.5 : 1 }}
-              disabled={streaming || !input.trim()}
-            >
-              <Send size={16} />
-            </button>
-          </div>
-        </form>
+      {/* ── Chat area ────────────────────────────────────────────────── */}
+      <div style={s.chatCol}>
+        <div style={s.header}>
+          <button style={s.iconBtn} onClick={() => setSidebarOpen(v => !v)} title={sidebarOpen ? 'Hide sessions' : 'Show sessions'}>
+            {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </button>
+          <span style={{ fontSize: 16 }}>💬</span>
+          <span style={s.title}>{activeTitle}</span>
+          <span style={s.meta}>{messages.length} messages</span>
+          <button onClick={onClear} style={s.iconBtn} title="Clear chat">
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        <div style={s.messages}>
+          {messages.length === 0 ? (
+            <div style={s.empty}>
+              <div style={{ fontSize: 48, opacity: .3 }}>🤖</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Send a message to start chatting</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Select a conversation from the sidebar or start a new one</p>
+            </div>
+          ) : (
+            messages.map((m, i) => (
+              <div key={i} style={s.msg(m.role === 'user')}>
+                <div style={s.avatar(m.role === 'user')}>
+                  {m.role === 'user' ? '👤' : '🤖'}
+                </div>
+                <div style={s.msgBody(m.role === 'user')}>
+                  <div style={s.bubble(m.role === 'user')}>
+                    {m.content}
+                    {m._streaming && (
+                      <span className="typing-dots" style={{ marginLeft: 6 }}>
+                        <span>●</span><span>●</span><span>●</span>
+                      </span>
+                    )}
+                  </div>
+                  <div style={s.time(m.role === 'user')}>{fmtTime(m.ts)}</div>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={endRef} />
+        </div>
+
+        <div style={s.inputArea}>
+          <form onSubmit={handleSubmit}>
+            <div style={s.row}>
+              <textarea
+                style={s.input}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message… (/ for commands, Shift+Enter for newline)"
+                disabled={streaming}
+                rows={1}
+              />
+              <button
+                type="submit"
+                style={{ ...s.sendBtn, opacity: streaming || !input.trim() ? 0.5 : 1 }}
+                disabled={streaming || !input.trim()}
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

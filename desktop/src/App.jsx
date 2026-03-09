@@ -251,14 +251,13 @@ export default function App() {
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="main">
         <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} onOpenDevStudio={() => { setDevStudioOpen(true); setDashboardOpen(false); setBrainOpen(false) }} />
-        {devStudioOpen
-          ? <DevStudioPanel onClose={() => setDevStudioOpen(false)} />
-          : brainOpen
-            ? <BrainPanel onClose={() => setBrainOpen(false)} />
-            : dashboardOpen
-              ? <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />
-              : <ChatArea />
-        }
+        {/* Always keep ChatArea mounted so WS state survives panel switches */}
+        <div style={{ display: (devStudioOpen || brainOpen || dashboardOpen) ? 'none' : 'flex', flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
+          <ChatArea />
+        </div>
+        {devStudioOpen && <DevStudioPanel onClose={() => setDevStudioOpen(false)} />}
+        {brainOpen && <BrainPanel onClose={() => setBrainOpen(false)} />}
+        {dashboardOpen && <DashboardPanel config={config} onClose={() => setDashboardOpen(false)} />}
       </div>
 
       {/* ── Modals / overlays ────────────────────────────────────────────── */}

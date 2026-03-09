@@ -55,6 +55,12 @@ export default function App() {
 
   const ws = useWebSocket(onExternalMessage);
   const ma = useMultiAgent(ws.wsRef, ws.connected);
+
+  // Load a session from history and switch to chat (must be after ws is created)
+  const handleLoadSession = useCallback((sessionId) => {
+    ws.loadSession(sessionId);
+    setTab('chat');
+  }, [ws.loadSession]);
   multiAgentRef.current = ma;
 
   // Determine if we're viewing a remote agent or the current (local) agent
@@ -66,13 +72,13 @@ export default function App() {
   let panelProps;
   if (isLocal) {
     panelProps = {
-      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages },
+      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages, sessions: ws.sessions, activeSessionId: ws.activeSessionId, onLoadSession: ws.loadSession, onNewChat: () => ws.loadSession(null) },
       activity: { activity: ws.activity, onClear: ws.clearActivity },
       terminal: { terminal: ws.terminal, onClear: ws.clearTerminal },
       status:   { stats: ws.stats, sessions: ws.sessions, model: ws.model, activity: ws.activity },
       trading:  { stats: ws.stats, messages: ws.messages, streaming: ws.streaming, sendMessage: ws.sendMessage },
       tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
-      history:  { messages: ws.messages, sessions: ws.sessions },
+      history:  { messages: ws.messages, sessions: ws.sessions, onLoadSession: handleLoadSession },
       thoughts: { ws: ws.wsRef, thoughts: ws.thoughts, connected: ws.connected },
       brain:    { ws: ws.wsRef, brainData: ws.brainData, connected: ws.connected, profile: null, isLocal: true },
       qr:       {},
@@ -86,13 +92,13 @@ export default function App() {
     const sendToRemote = (text) => ma.sendToAgent(ma.currentAgent, text);
     const clearRemoteMsgs = () => {};
     panelProps = {
-      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs },
+      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs, sessions: rs.sessions || [], activeSessionId: '', onLoadSession: () => {}, onNewChat: () => {} },
       activity: { activity: rs.activity || [], onClear: () => {} },
       terminal: { terminal: rs.terminal || [], onClear: () => {} },
       status:   { stats: rs.stats || {}, sessions: rs.sessions || [], model: rs.model || '', activity: rs.activity || [] },
       trading:  { stats: rs.stats || {}, messages: rs.messages || [], streaming: rs.streaming || false, sendMessage: sendToRemote },
       tasks:    { streaming: rs.streaming || false, messages: rs.messages || [], activity: rs.activity || [], sendMessage: sendToRemote },
-      history:  { messages: rs.messages || [], sessions: rs.sessions || [] },
+      history:  { messages: rs.messages || [], sessions: rs.sessions || [], onLoadSession: handleLoadSession },
       thoughts: { ws: { current: null }, thoughts: rs.thoughts, connected: rs.connected || false },
       brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: ws.connected, profile: ma.currentAgent, isLocal: false },
       qr:       {},

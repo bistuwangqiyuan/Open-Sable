@@ -154,8 +154,16 @@ export const useSableStore = create((set, get) => ({
     // Add user message locally
     get()._addMessage(sessionId, { id: uid(), role: 'user', content: text, ts: Date.now() })
 
-    // Show typing indicator
-    set({ streaming: true, streamingSessionId: sessionId })
+    // Show typing indicator + safety timeout (5 min max)
+    if (get()._streamingTimer) clearTimeout(get()._streamingTimer)
+    const timer = setTimeout(() => {
+      const { streaming: still } = get()
+      if (still) {
+        console.warn('[Sable] Streaming safety timeout — resetting')
+        set({ streaming: false, streamingSessionId: null, agentProgress: null, _streamingTimer: null })
+      }
+    }, 5 * 60 * 1000)
+    set({ streaming: true, streamingSessionId: sessionId, _streamingTimer: timer })
 
     // If chatting with a remote agent, use agents.chat proxy
     const isRemote = activeAgent && !agents.find(a => a.is_current && a.name === activeAgent)
@@ -314,6 +322,11 @@ export const useSableStore = create((set, get) => ({
   _finalizeMessage: (sessionId, finalText) => {
     // Clear think-block state for this session
     delete thinkState[sessionId]
+    // Clear any streaming safety timer
+    if (get()._streamingTimer) {
+      clearTimeout(get()._streamingTimer)
+      set({ _streamingTimer: null })
+    }
 
     // Strip any remaining think blocks from the final text
     const cleanText = finalText ? stripThinkBlocks(finalText) : null

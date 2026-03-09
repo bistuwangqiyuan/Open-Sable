@@ -229,7 +229,16 @@ _IMAGE_ANALYZE = re.compile(
     r'\b(analyze\s+(this\s+)?(image|photo|picture)|what.{0,20}image|describe\s+(the\s+)?image)\b',
     re.IGNORECASE,
 )
-
+# ── Skill management ──────────────────────────────────────────────────────────────
+_SKILL_MGMT = re.compile(
+    r'\b(create\s+(a\s+)?skill|make\s+(a\s+)?skill|build\s+(a\s+)?(skill|tool|tracker|plugin)|'
+    r'delete\s+(the\s+)?skill|disable\s+(the\s+)?skill|enable\s+(the\s+)?skill|'
+    r'list\s+(my\s+)?skills|show\s+(my\s+)?skills|'
+    r'job\s+(application|tracker|summary)|expense\s+tracker|'
+    r'add\s+(a\s+)?job|my\s+job\s+applications?|update\s+job\s+status|'
+    r'my\s+applications?\s+summary|application\s+tracker)\b',
+    re.IGNORECASE,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 class IntentClassifier:
@@ -332,6 +341,13 @@ class IntentClassifier:
             return IntentResult(
                 intent="system_command", confidence=0.88,
                 entities={"command": cmd},
+            )
+
+        # 10b. Skill management (create/list/use dynamic skills)
+        if _SKILL_MGMT.search(msg):
+            return IntentResult(
+                intent="skill_management", confidence=0.88,
+                entities={"query": msg},
             )
 
         # 11. Code question

@@ -23,6 +23,7 @@ export function useWebSocket(onExternalMessage) {
   const [modelGroups, setModelGroups] = useState([]);
   const [activeProvider, setActiveProvider] = useState('ollama');
   const [pendingPermission, setPendingPermission] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState('webchat_default');
 
   const wsRef = useRef(null);
   const streamBuf = useRef('');
@@ -128,7 +129,33 @@ export function useWebSocket(onExternalMessage) {
         break;
       case 'sessions.list.result':
         setSessions(msg.sessions || []);
+        // Auto-load the most recent session if we haven't loaded one yet
+        if (msg.sessions?.length > 0) {
+          setActiveSessionId(prev => {
+            if (prev === 'webchat_default') {
+              const latest = msg.sessions[0];
+              const sid = latest.session_id || latest.id;
+              // Request its full history
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: sid }));
+              }
+              return sid;
+            }
+            return prev;
+          });
+        }
         break;
+      case 'sessions.history.result': {
+        if (!msg.session_id || !msg.messages) break;
+        const loaded = msg.messages.map(m => ({
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content || m.text || '',
+          ts: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+        }));
+        setMessages(loaded);
+        addActivity('info', '📂', 'Session loaded', `${loaded.length} messages`);
+        break;
+      }
       case 'monitor.subscribed':
         addActivity('info', '📡', 'Monitor', 'Subscribed to real-time events');
         break;
@@ -223,10 +250,26 @@ export function useWebSocket(onExternalMessage) {
   const sendMessage = useCallback((text) => {
     if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     setMessages(prev => [...prev, { role: 'user', content: text, ts: Date.now() }]);
+    const sid = activeSessionId || 'webchat_default';
     if (text.startsWith('/')) {
-      wsRef.current.send(JSON.stringify({ type: 'command', text, session_id: 'webchat_default' }));
+      wsRef.current.send(JSON.stringify({ type: 'command', text, session_id: sid }));
     } else {
-      wsRef.current.send(JSON.stringify({ type: 'message', text, session_id: 'webchat_default', user_id: 'dashboard_user' }));
+      wsRef.current.send(JSON.stringify({ type: 'message', text, session_id: sid, user_id: 'dashboard_user' }));
+    }
+  }, [activeSessionId]);
+
+  const loadSession = useCallback((sessionId) => {
+    if (!sessionId) {
+      // New chat — generate a fresh session ID
+      const fresh = 'dash_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      setActiveSessionId(fresh);
+      setMessages([]);
+      return;
+    }
+    setActiveSessionId(sessionId);
+    setMessages([]);
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: sessionId }));
     }
   }, []);
 
@@ -267,7 +310,7 @@ export function useWebSocket(onExternalMessage) {
 
   return {
     connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts, brainData,
-    modelGroups, activeProvider, pendingPermission,
-    sendMessage, clearMessages, clearActivity, clearTerminal, requestModels, switchModel, importGGUF, respondPermission, wsRef,
+    modelGroups, activeProvider, pendingPermission, activeSessionId,
+    sendMessage, loadSession, clearMessages, clearActivity, clearTerminal, requestModels, switchModel, importGGUF, respondPermission, wsRef,
   };
 }
