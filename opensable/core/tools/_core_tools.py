@@ -785,7 +785,7 @@ class CoreToolsMixin:
     # ========== SKILL CREATION TOOLS ==========
 
     async def _create_skill_tool(self, params: Dict) -> str:
-        """Create a new dynamic skill"""
+        """Create a new dynamic skill with full auto-wiring into the tool registry."""
         name = params.get("name", "")
         description = params.get("description", "")
         code = params.get("code", "")
@@ -798,25 +798,49 @@ class CoreToolsMixin:
             result = await self.skill_creator.create_skill(name, description, code, metadata)
 
             if result.get("success"):
-                return f"✅ Skill '{name}' created successfully!\n\nPath: {result.get('path')}\n\nThe skill has been validated and is ready to use."
+                # Auto-wire the skill's tools into the live registry
+                module = result.get("module")
+                tool_info = result.get("tool_info", {})
+                registered_tools = []
+
+                if module and tool_info:
+                    registered_tools = await self.register_dynamic_skill(
+                        name, module, tool_info
+                    )
+
+                tool_list = ", ".join(registered_tools) if registered_tools else "none"
+                return (
+                    f"✅ Skill '{name}' created and auto-wired!\n\n"
+                    f"Path: {result.get('path')}\n"
+                    f"Tools registered: {tool_list}\n\n"
+                    f"These tools are now live — you can call them immediately."
+                )
             else:
                 return f"❌ Failed to create skill: {result.get('error')}"
         except Exception as e:
             return f"❌ Skill creation error: {str(e)}"
 
     async def _list_skills_tool(self, params: Dict) -> str:
-        """List all custom skills"""
+        """List all custom skills with their registered tools"""
         try:
             skills = await self.skill_creator.list_skills()
 
             if not skills:
                 return (
-                    "📦 No custom skills created yet.\n\nUse create_skill to add new functionality!"
+                    "📦 No custom skills created yet.\n\n"
+                    "Use create_skill to add new functionality! The skill code "
+                    "should follow the Dynamic Skill Protocol:\n"
+                    "  - Define TOOL_SCHEMAS (list of OpenAI schema dicts)\n"
+                    "  - Define handle_<name>(params) async functions\n"
+                    "  - Optionally define TOOL_PERMISSIONS and initialize()"
                 )
 
             formatted = "\n".join(
                 [
-                    f"• **{s['name']}** - {s['description']}\n  Status: {'✅ Enabled' if s.get('enabled', True) else '❌ Disabled'}\n  Author: {s.get('metadata', {}).get('author', 'unknown')}"
+                    f"• **{s['name']}** — {s['description']}\n"
+                    f"  Status: {'✅ Active' if s.get('active', True) else '❌ Disabled'}\n"
+                    f"  Tools: {', '.join(s.get('tool_names', [])) or 'none'}\n"
+                    f"  Author: {s.get('metadata', {}).get('author', 'unknown')}"
                     for s in skills
                 ]
             )
@@ -824,6 +848,77 @@ class CoreToolsMixin:
             return f"📦 Custom Skills ({len(skills)}):\n\n{formatted}"
         except Exception as e:
             return f"❌ Error listing skills: {str(e)}"
+
+    async def _delete_skill_tool(self, params: Dict) -> str:
+        """Delete a dynamic skill and unregister its tools."""
+        name = params.get("name", "")
+        if not name:
+            return "❌ Please provide the skill name to delete."
+
+        try:
+            result = self.skill_creator.delete_skill(name)
+            if result.get("success"):
+                tool_names = result.get("tool_names", [])
+                self.unregister_dynamic_skill(tool_names)
+                return (
+                    f"🗑️  Skill '{name}' deleted.\n"
+                    f"Unregistered tools: {', '.join(tool_names) or 'none'}"
+                )
+            else:
+                return f"❌ {result.get('error', 'Unknown error')}"
+        except Exception as e:
+            return f"❌ Error deleting skill: {str(e)}"
+
+    async def _disable_skill_tool(self, params: Dict) -> str:
+        """Disable a dynamic skill (keeps it on disk but unregisters tools)."""
+        name = params.get("name", "")
+        if not name:
+            return "❌ Please provide the skill name to disable."
+
+        try:
+            if self.skill_creator.disable_skill(name):
+                # Unregister its tools from the live registry
+                entry = self.skill_creator.registry.get(name, {})
+                tool_names = entry.get("tool_names", [])
+                self.unregister_dynamic_skill(tool_names)
+                return (
+                    f"⏸️  Skill '{name}' disabled.\n"
+                    f"Tools unregistered: {', '.join(tool_names) or 'none'}\n"
+                    f"Use enable_skill to re-activate it."
+                )
+            else:
+                return f"❌ Skill '{name}' not found."
+        except Exception as e:
+            return f"❌ Error disabling skill: {str(e)}"
+
+    async def _enable_skill_tool(self, params: Dict) -> str:
+        """Re-enable a disabled dynamic skill and re-wire its tools."""
+        name = params.get("name", "")
+        if not name:
+            return "❌ Please provide the skill name to enable."
+
+        try:
+            if self.skill_creator.enable_skill(name):
+                # Reload and re-wire the skill
+                entry = self.skill_creator.registry.get(name, {})
+                skill_file = entry.get("file", "")
+                if skill_file:
+                    from pathlib import Path
+                    module = self.skill_creator._load_module(name, Path(skill_file))
+                    self.skill_creator._loaded_modules[name] = module
+                    tool_info = self.skill_creator._extract_tool_info(module, name)
+                    registered = await self.register_dynamic_skill(
+                        name, module, tool_info
+                    )
+                    return (
+                        f"▶️  Skill '{name}' re-enabled!\n"
+                        f"Tools registered: {', '.join(registered) or 'none'}"
+                    )
+                return f"▶️  Skill '{name}' enabled (no tools to wire)."
+            else:
+                return f"❌ Skill '{name}' not found."
+        except Exception as e:
+            return f"❌ Error enabling skill: {str(e)}"
 
     # ── Meta-tool: lazy schema loading ────────────────────────────────────
 

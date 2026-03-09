@@ -20,6 +20,12 @@ TOOL_PERMISSIONS = {
     "browser_action": "browser_navigate",
     # Code execution
     "execute_code": "system_command",
+    # Dynamic skills
+    "create_skill": "system_command",
+    "delete_skill": "system_command",
+    "disable_skill": "system_command",
+    "enable_skill": "system_command",
+    "list_skills": "file_read",
     # Desktop control
     "desktop_screenshot": "system_command",
     "desktop_click": "system_command",

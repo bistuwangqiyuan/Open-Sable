@@ -64,6 +64,7 @@ from ._arena import ArenaToolsMixin
 from ._permissions import TOOL_PERMISSIONS
 from ._dispatch import SCHEMA_TO_TOOL
 from ._schemas import get_all_schemas
+from ..skill_creator import make_dynamic_handler
 
 
 class ToolRegistry(
@@ -309,6 +310,22 @@ class ToolRegistry(
         # ── Skill creation ────────────────────────────────────────────────────
         self.register("create_skill", self._create_skill_tool)
         self.register("list_skills", self._list_skills_tool)
+        self.register("delete_skill", self._delete_skill_tool)
+        self.register("disable_skill", self._disable_skill_tool)
+        self.register("enable_skill", self._enable_skill_tool)
+
+        # ── Dynamic skills (reload from previous sessions) ────────────────────
+        for skill_data in self.skill_creator.load_all_active():
+            try:
+                await self.register_dynamic_skill(
+                    skill_data["name"],
+                    skill_data["module"],
+                    skill_data["tool_info"],
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to wire dynamic skill '{skill_data['name']}': {e}"
+                )
 
         # ── Meta-tool: lazy schema loading ────────────────────────────────────
         self.register("load_tool_details", self._load_tool_details)
@@ -613,6 +630,88 @@ class ToolRegistry(
     def list_tools(self) -> List[str]:
         """List all available tools."""
         return list(self.tools.keys())
+
+    # ── Dynamic skill wiring ──────────────────────────────────────────────────
+
+    async def register_dynamic_skill(
+        self, name: str, module, tool_info: Dict[str, Any]
+    ) -> List[str]:
+        """Wire a dynamically-created skill into the live tool registry.
+
+        Registers:
+          1. Tool schemas   → ``_custom_schemas`` (LLM sees them)
+          2. Handlers        → ``self.tools``      (execution)
+          3. Dispatch entries → ``_SCHEMA_TO_TOOL`` (schema→handler mapping)
+          4. RBAC perms      → ``_TOOL_PERMISSIONS``
+          5. Calls ``initialize()`` on the module if defined
+
+        Returns the list of newly registered tool names.
+        """
+        import asyncio as _aio
+
+        registered: List[str] = []
+        _passthrough = lambda a: a  # noqa: E731
+
+        # Avoid duplicate schemas
+        existing_schema_names = {
+            s.get("function", {}).get("name") for s in self._custom_schemas
+        }
+
+        # 1. Schemas
+        for schema in tool_info.get("schemas", []):
+            fn_name = schema.get("function", {}).get("name")
+            if fn_name and fn_name not in existing_schema_names:
+                self._custom_schemas.append(schema)
+                existing_schema_names.add(fn_name)
+
+        # 2 + 3. Handlers & dispatch
+        for tool_name, handler_fn in tool_info.get("handlers", {}).items():
+            wrapped = make_dynamic_handler(handler_fn)
+            self.register(tool_name, wrapped)
+            self._SCHEMA_TO_TOOL[tool_name] = (tool_name, _passthrough)
+            registered.append(tool_name)
+
+        # 4. RBAC permissions
+        for tool_name, perm in tool_info.get("permissions", {}).items():
+            self._TOOL_PERMISSIONS[tool_name] = perm
+
+        # 5. Call initialize() if present
+        if tool_info.get("has_initialize"):
+            init_fn = getattr(module, "initialize", None)
+            if init_fn:
+                try:
+                    if _aio.iscoroutinefunction(init_fn):
+                        await init_fn()
+                    else:
+                        init_fn()
+                except Exception as e:
+                    logger.warning(
+                        f"Dynamic skill '{name}' initialize() failed: {e}"
+                    )
+
+        if registered:
+            logger.info(
+                f"🔧 Dynamic skill '{name}' wired — "
+                f"tools: {', '.join(registered)}"
+            )
+        return registered
+
+    def unregister_dynamic_skill(self, tool_names: List[str]):
+        """Remove dynamically-registered tools from the live registry."""
+        for tool_name in tool_names:
+            self.tools.pop(tool_name, None)
+            self._SCHEMA_TO_TOOL.pop(tool_name, None)
+            self._TOOL_PERMISSIONS.pop(tool_name, None)
+            # Remove from custom schemas
+            self._custom_schemas = [
+                s
+                for s in self._custom_schemas
+                if s.get("function", {}).get("name") != tool_name
+            ]
+        if tool_names:
+            logger.info(
+                f"🗑️  Unregistered dynamic tools: {', '.join(tool_names)}"
+            )
 
     # ── Schema generation ─────────────────────────────────────────────────────
 
