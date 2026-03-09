@@ -227,7 +227,8 @@ class IGAutoposter:
             return
 
         img = result["images"][0]
-        img_path = img["path"]
+        # Prefer JPEG (Instagram-friendly) over PNG
+        img_path = img.get("path_jpg") or img["path"]
         logger.info(f"📸 IG image generated: {img['filename']} ({img['size_bytes']//1024}KB)")
 
         # Step 3: Generate caption via LLM
