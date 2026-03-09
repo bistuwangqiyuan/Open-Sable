@@ -176,3 +176,6 @@ data/*
 !data/calendar.json
 epistemic_uncertainty_framework.md
 epistemic_wary.png
+
+# Agent autonomous write sandbox — all LLM-generated files land here
+data/agent_output/

@@ -63,6 +63,57 @@ class ComputerTools:
                 return base_p
         return p
 
+    # Directories inside the workspace where the agent is allowed to write.
+    # Everything else is READ-ONLY to prevent polluting the repo root.
+    _WRITE_ALLOWED_DIRS = {
+        "data", "logs", "docs", "models", "skills",
+        "static", "marketplace", "experiments",
+    }
+
+    def _resolve_write_path(self, path: str) -> Path:
+        """Resolve a file path for WRITE operations — always stays inside workspace.
+
+        Rules:
+        1. The resolved path MUST be inside the workspace.
+        2. The top-level folder MUST be in _WRITE_ALLOWED_DIRS.
+           If the LLM tries to write to the repo root or a code directory,
+           the file is redirected into ``data/agent_output/``.
+        """
+        ws = self.workspace_root.resolve()
+
+        # ── 1. Anchor inside workspace ──────────────────────────────────────
+        p = Path(path).resolve()
+        try:
+            p.relative_to(ws)
+        except ValueError:
+            # Outside workspace — re-anchor
+            relative = path.lstrip("/")
+            p = (ws / relative).resolve()
+            try:
+                p.relative_to(ws)
+            except ValueError:
+                # Still escapes (e.g. ../../) — fallback to filename only
+                basename = Path(path).name or "output.txt"
+                p = (ws / "data" / "agent_output" / basename).resolve()
+
+        # ── 2. Enforce allowed top-level directory ──────────────────────────
+        try:
+            rel = p.relative_to(ws)
+        except ValueError:
+            rel = Path(Path(path).name or "output.txt")
+
+        top_dir = rel.parts[0] if rel.parts else ""
+
+        if top_dir not in self._WRITE_ALLOWED_DIRS:
+            # Redirect into data/agent_output/ keeping the original filename
+            old = p
+            p = (ws / "data" / "agent_output" / rel).resolve()
+            logger.warning(
+                f"Write restricted: '{old}' → '{p}' (top-level '{top_dir}' not in allowed dirs)"
+            )
+
+        return p
+
     async def execute_command(
         self,
         command: str,
@@ -275,7 +326,7 @@ class ComputerTools:
             }
         """
         try:
-            file_path = self._resolve_path(path)
+            file_path = self._resolve_write_path(path)
 
             # Create parent directories if needed
             if create_dirs and not file_path.parent.exists():
@@ -452,7 +503,7 @@ class ComputerTools:
             }
         """
         try:
-            dir_path = Path(path).resolve()
+            dir_path = self._resolve_write_path(path)
             dir_path.mkdir(parents=parents, exist_ok=True)
 
             logger.info(f"Created directory: {dir_path}")
