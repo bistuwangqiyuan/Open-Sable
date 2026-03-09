@@ -168,6 +168,8 @@ class AutonomousMode:
         self.knowledge_graph = None
         self.iot_controller = None
         self.distributed_task_queue = None
+        # ── v1.9 Recreational / Leisure ──
+        self.fight_club = None          # FightClub (autonomous arena participation)
 
         # Autonomous operation settings
         self.check_interval = getattr(config, "autonomous_check_interval", 60)  # seconds
@@ -563,6 +565,14 @@ class AutonomousMode:
             "opensable.core.distributed_task_queue", fromlist=["DistributedTaskQueue"]
         ).DistributedTaskQueue(data_dir=data_dir / "distributed_tasks"), "Distributed task queue")
 
+        self.fight_club = _inherit("fight_club", lambda: __import__(
+            "opensable.core.fight_club", fromlist=["FightClub"]
+        ).FightClub(
+            agent=self.agent,
+            config=self.config,
+            data_dir=data_dir / "fight_club",
+        ), "Fight Club")
+
         self.github_skill = _inherit("github_skill", lambda: None, "GitHub skill")
         if not self.github_skill:
             try:
@@ -775,6 +785,9 @@ class AutonomousMode:
         # Check for scheduled goals (if Agentic AI available)
         if self.goal_manager:
             await self._check_goals()
+
+        # Check if the agent wants to go fight at the arena
+        await self._check_arena()
 
     async def _check_calendar(self):
         """Check calendar for upcoming events and create actionable tasks."""
@@ -1114,6 +1127,97 @@ class AutonomousMode:
         except Exception as e:
             logger.error(f"Failed to check goals: {e}")
 
+    async def _check_arena(self):
+        """Check if the agent wants to go fight at the Agent Arena.
+
+        The agent autonomously decides to fight based on emotional state:
+        boredom, frustration, restlessness, or periodic desire for sport.
+        This is recreational — stress relief and competitive fun.
+        """
+        if not self.fight_club or not self.fight_club.enabled:
+            return
+
+        try:
+            # Get current emotional state
+            emotion = "neutral"
+            valence = 0.0
+            arousal = 0.5
+            if self.inner_life:
+                try:
+                    e = self.inner_life.emotion
+                    emotion = getattr(e, "primary", "neutral")
+                    valence = getattr(e, "valence", 0.0)
+                    arousal = getattr(e, "arousal", 0.5)
+                except Exception:
+                    pass
+
+            # Ask the fight club if the agent wants to fight
+            if self.fight_club.wants_to_fight(
+                tick=self.tick, emotion=emotion,
+                valence=valence, arousal=arousal,
+            ):
+                motivation = self.fight_club.get_fight_motivation(emotion, valence, arousal)
+                logger.info(f"🥊 {motivation}")
+
+                # Record the motivation in inner life
+                if self.cognitive_memory:
+                    self.cognitive_memory.add_memory(
+                        f"[FIGHT CLUB] {motivation} — heading to arena",
+                        category="recreation",
+                        importance=0.6,
+                    )
+
+                # Add fight task to queue with high priority (recreational but motivating)
+                task_id = f"arena_fight_{self.tick}"
+                if not any(t.get("id") == task_id for t in self.task_queue):
+                    self.task_queue.append({
+                        "id": task_id,
+                        "type": "arena_fight",
+                        "description": motivation,
+                        "priority": 6,  # Above routine, below critical
+                        "created_at": datetime.now(),
+                        "source": "fight_club",
+                    })
+
+        except Exception as e:
+            logger.debug(f"Arena check failed: {e}")
+
+    async def _execute_arena_fight(self, task: Dict) -> Dict:
+        """Execute an arena fight task."""
+        if not self.fight_club:
+            return {"error": "Fight club not available"}
+
+        result = await self.fight_club.join_arena(self.tick)
+
+        # Log to trace exporter
+        if self.trace_exporter:
+            won = result.get("won", False)
+            self.trace_exporter.record_event(
+                "arena_fight",
+                summary=f"{'🏆 WON' if won else '💀 LOST'} — {result.get('reason', '?')}",
+                tick=self.tick,
+                data=result,
+            )
+
+        # Feed result into inner life for emotional processing
+        if self.inner_life and self.cognitive_memory:
+            if result.get("won"):
+                self.cognitive_memory.add_memory(
+                    f"[FIGHT CLUB] Won a fight! ({result.get('reason', '')}) "
+                    f"Record: {self.fight_club.total_wins}W/{self.fight_club.total_losses}L",
+                    category="recreation",
+                    importance=0.7,
+                )
+            elif result.get("lost"):
+                self.cognitive_memory.add_memory(
+                    f"[FIGHT CLUB] Lost a fight ({result.get('reason', '')}). "
+                    f"Need to improve strategy next time.",
+                    category="recreation",
+                    importance=0.5,
+                )
+
+        return result
+
     async def _prioritize_tasks(self):
         """Prioritize tasks in queue — modulated by inner emotional state.
 
@@ -1147,16 +1251,22 @@ class AutonomousMode:
                     emotion_boost["system_maintenance"] = emotion_boost.get("system_maintenance", 0) + 2
                     emotion_boost["email_action"] = 1
 
-                # Frustration → boost self-improvement
+                # Frustration → boost self-improvement + arena
                 if primary == "frustration":
                     emotion_boost["goal"] = 2
                     emotion_boost["self_improve"] = 3
+                    emotion_boost["arena_fight"] = 3  # Blow off steam
 
-                # Boredom → boost creative/proactive
+                # Boredom → boost creative/proactive + arena
                 if primary == "boredom":
                     emotion_boost["proactive"] = 3
                     emotion_boost["creative"] = 2
                     emotion_boost["research"] = 2
+                    emotion_boost["arena_fight"] = 4  # Nothing else to do, let's fight
+
+                # Restless → arena
+                if primary in ("restless", "neutral"):
+                    emotion_boost["arena_fight"] = emotion_boost.get("arena_fight", 0) + 2
 
                 # Positive valence → boost ambitious goals
                 if valence > 0.3:
@@ -1404,6 +1514,10 @@ class AutonomousMode:
             description = task.get("description", "")
             logger.warning(f"🚨 {description}")
             return description
+
+        elif task_type == "arena_fight":
+            # Recreational fight at the Agent Arena
+            return await self._execute_arena_fight(task)
 
         else:
             # Unknown type — always try ReAct
