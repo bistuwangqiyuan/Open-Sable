@@ -1608,6 +1608,17 @@ class AutonomousMode:
                 cognitive_state=cognitive_state,
             )
 
+            # Inject business automation context (CRM + pipeline follow-ups)
+            try:
+                if hasattr(self.agent, 'tools') and hasattr(self.agent.tools, 'followup_skill'):
+                    fu = self.agent.tools.followup_skill
+                    if fu and fu.is_ready():
+                        biz_summary = await fu.get_business_summary()
+                        if biz_summary and biz_summary != "No business data yet.":
+                            context += f"\n\nBusiness Automation State:\n{biz_summary}"
+            except Exception:
+                pass
+
             # Ask LLM to think proactively
             proposals = await self.proactive_engine.think(
                 llm=self.agent.llm,

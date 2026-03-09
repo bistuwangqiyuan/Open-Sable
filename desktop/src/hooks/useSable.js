@@ -39,6 +39,7 @@ export const useSableStore = create((set, get) => ({
   // Connection
   ws: null,
   wsStatus: 'disconnected', // 'connecting' | 'connected' | 'disconnected'
+  booting: true, // true until first successful WS connection
   config: { wsUrl: 'ws://localhost:8789', token: '' },
   agentModel: '',
   agentVersion: '',
@@ -76,6 +77,17 @@ export const useSableStore = create((set, get) => ({
   // Code execution results: { [request_id]: { stdout, stderr, exit_code, running } }
   codeResults: {},
 
+  // Model groups (from gateway models.list)
+  modelGroups: [],   // [{provider, name, models: [{name, active}]}]
+  activeProvider: 'ollama',
+
+  // Brain data (for Brain panel)
+  brainData: null,
+  brainLoading: false,
+
+  // Permission confirmation prompt (from gateway RBAC)
+  pendingPermission: null, // { requestId, action, tool, arguments, message }
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
   setConfig: (config) => set({ config }),
@@ -110,21 +122,22 @@ export const useSableStore = create((set, get) => ({
     const socket = new WebSocket(url)
 
     socket.onopen = () => {
-      set({ wsStatus: 'connected', ws: socket })
+      set({ wsStatus: 'connected', ws: socket, booting: false })
       // Fetch existing sessions, available tools, and agent status (model info)
       socket.send(JSON.stringify({ type: 'sessions.list' }))
       socket.send(JSON.stringify({ type: 'tools.list' }))
       socket.send(JSON.stringify({ type: 'status' }))
       socket.send(JSON.stringify({ type: 'agents.list' }))
+      socket.send(JSON.stringify({ type: 'models.list' }))
     }
 
     socket.onclose = () => {
       set({ wsStatus: 'disconnected', ws: null, streaming: false })
-      // Auto-reconnect after 3s
+      // Auto-reconnect after 1s (SableCore may still be booting)
       setTimeout(() => {
         const { wsStatus } = get()
         if (wsStatus === 'disconnected') get().connect()
-      }, 3000)
+      }, 1000)
     }
 
     socket.onerror = () => {
@@ -464,6 +477,93 @@ export const useSableStore = create((set, get) => ({
         }
         break
       }
+
+      case 'models.list.result':
+        set({ modelGroups: msg.groups || [] })
+        if (msg.current) set({ agentModel: msg.current })
+        if (msg.provider) set({ activeProvider: msg.provider })
+        break
+
+      case 'models.set.result':
+        if (msg.success) {
+          if (msg.model) set({ agentModel: msg.model })
+          if (msg.provider) set({ activeProvider: msg.provider })
+          get().requestModels()
+        }
+        break
+
+      case 'models.import.result':
+        if (msg.success) {
+          get().showToast(`Model "${msg.model}" imported successfully`)
+          get().requestModels()
+        } else {
+          get().showToast(`Import failed: ${msg.error || 'unknown error'}`)
+        }
+        break
+
+      case 'brain.data.result':
+        set({ brainData: msg, brainLoading: false })
+        break
+
+      case 'permission.request':
+        // Show confirmation dialog for RBAC "ask" permissions
+        set({
+          pendingPermission: {
+            requestId: msg.requestId,
+            action: msg.action,
+            tool: msg.tool,
+            arguments: msg.arguments || {},
+            message: msg.message || `Allow ${msg.tool}?`,
+          }
+        })
+        break
     }
+  },
+
+  // ── Model management ─────────────────────────────────────────────────────
+  requestModels: () => {
+    const { ws } = get()
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'models.list' }))
+    }
+  },
+
+  switchModel: (modelName, provider) => {
+    const { ws } = get()
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'models.set', model: modelName, provider: provider || '' }))
+    }
+  },
+
+  importGGUF: (filePath, modelName) => {
+    const { ws } = get()
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'models.import', path: filePath, name: modelName }))
+      get().showToast(`Importing "${modelName}"… this may take a moment`)
+    }
+  },
+
+  // ── Brain data ───────────────────────────────────────────────────────────
+  fetchBrain: () => {
+    const { ws } = get()
+    if (ws?.readyState === WebSocket.OPEN) {
+      set({ brainLoading: true })
+      ws.send(JSON.stringify({ type: 'brain.data' }))
+    }
+  },
+
+  // ── Permission response ──────────────────────────────────────────────────
+  respondPermission: (requestId, allowed, remember = false) => {
+    const { ws, pendingPermission } = get()
+    if (ws?.readyState === WebSocket.OPEN && requestId) {
+      ws.send(JSON.stringify({
+        type: 'permission.response',
+        requestId,
+        allowed,
+        remember,
+        action: pendingPermission?.action || '',
+      }))
+    }
+    set({ pendingPermission: null })
   },
 }))

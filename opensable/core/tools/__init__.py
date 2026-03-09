@@ -57,11 +57,14 @@ from ._trading import TradingToolsMixin
 from ._marketplace import MarketplaceToolsMixin
 from ._mobile import MobileToolsMixin
 from ._github import GitHubToolsMixin
+from ._google_workspace import GoogleWorkspaceToolsMixin
+from ._business import BusinessToolsMixin
 from ._arena import ArenaToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
 from ._dispatch import SCHEMA_TO_TOOL
 from ._schemas import get_all_schemas
+from ..skill_creator import make_dynamic_handler
 
 
 class ToolRegistry(
@@ -73,6 +76,8 @@ class ToolRegistry(
     MarketplaceToolsMixin,
     MobileToolsMixin,
     GitHubToolsMixin,
+    GoogleWorkspaceToolsMixin,
+    BusinessToolsMixin,
     ArenaToolsMixin,
 ):
     """Registry of all available tools/actions.
@@ -86,6 +91,7 @@ class ToolRegistry(
     - MarketplaceToolsMixin: skills marketplace (SAGP)
     - MobileToolsMixin: phone notification, reminders, geofence, location, device status
     - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
+    - GoogleWorkspaceToolsMixin: Gmail, Drive, Calendar, Sheets, Docs, Chat (via gws CLI)
     - ArenaToolsMixin: fighting-game arena (SAGP auth + WebSocket combat)
     """
 
@@ -186,6 +192,14 @@ class ToolRegistry(
         except Exception as e:
             logger.debug(f"GitHub skill not available: {e}")
 
+        # Google Workspace skill (conditional — needs gws CLI)
+        self.gws_skill = None
+        try:
+            from ...skills.automation.google_workspace_skill import GoogleWorkspaceSkill
+            self.gws_skill = GoogleWorkspaceSkill(config)
+        except Exception as e:
+            logger.debug(f"Google Workspace skill not available: {e}")
+
         # Arena Fighter skill (conditional)
         self.arena_skill = None
         try:
@@ -193,6 +207,28 @@ class ToolRegistry(
             self.arena_skill = ArenaFighterSkill(config)
         except Exception as e:
             logger.debug(f"Arena skill not available: {e}")
+
+        # Business automation skills (CRM, Pipeline, Templates, Follow-ups)
+        self.crm_skill = None
+        self.pipeline_skill = None
+        self.templates_skill = None
+        self.followup_skill = None
+        try:
+            from ...skills.business.crm_skill import CRMSkill
+            from ...skills.business.pipeline_skill import PipelineSkill
+            from ...skills.business.email_templates_skill import EmailTemplatesSkill
+            from ...skills.business.followup_skill import FollowUpSkill
+            data_dir = getattr(config, "data_dir", "./data")
+            self.crm_skill = CRMSkill(data_dir=data_dir)
+            self.pipeline_skill = PipelineSkill(data_dir=data_dir)
+            self.templates_skill = EmailTemplatesSkill(data_dir=data_dir)
+            self.followup_skill = FollowUpSkill(
+                crm_skill=self.crm_skill,
+                pipeline_skill=self.pipeline_skill,
+                templates_skill=self.templates_skill,
+            )
+        except Exception as e:
+            logger.debug(f"Business skills not available: {e}")
 
     # ── Initialization ────────────────────────────────────────────────────────
 
@@ -274,6 +310,22 @@ class ToolRegistry(
         # ── Skill creation ────────────────────────────────────────────────────
         self.register("create_skill", self._create_skill_tool)
         self.register("list_skills", self._list_skills_tool)
+        self.register("delete_skill", self._delete_skill_tool)
+        self.register("disable_skill", self._disable_skill_tool)
+        self.register("enable_skill", self._enable_skill_tool)
+
+        # ── Dynamic skills (reload from previous sessions) ────────────────────
+        for skill_data in self.skill_creator.load_all_active():
+            try:
+                await self.register_dynamic_skill(
+                    skill_data["name"],
+                    skill_data["module"],
+                    skill_data["tool_info"],
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to wire dynamic skill '{skill_data['name']}': {e}"
+                )
 
         # ── Meta-tool: lazy schema loading ────────────────────────────────────
         self.register("load_tool_details", self._load_tool_details)
@@ -312,6 +364,28 @@ class ToolRegistry(
             except Exception as e:
                 logger.debug(f"GitHub skill init failed: {e}")
 
+        # ── Google Workspace (gws CLI) ────────────────────────────────────────
+        self.register("gws_gmail_list", self._gws_gmail_list_tool)
+        self.register("gws_gmail_get", self._gws_gmail_get_tool)
+        self.register("gws_gmail_send", self._gws_gmail_send_tool)
+        self.register("gws_drive_list", self._gws_drive_list_tool)
+        self.register("gws_drive_get", self._gws_drive_get_tool)
+        self.register("gws_drive_search", self._gws_drive_search_tool)
+        self.register("gws_drive_upload", self._gws_drive_upload_tool)
+        self.register("gws_drive_create", self._gws_drive_create_tool)
+        self.register("gws_calendar_list", self._gws_calendar_list_tool)
+        self.register("gws_calendar_create", self._gws_calendar_create_tool)
+        self.register("gws_calendar_delete", self._gws_calendar_delete_tool)
+        self.register("gws_sheets_get", self._gws_sheets_get_tool)
+        self.register("gws_sheets_write", self._gws_sheets_write_tool)
+        self.register("gws_sheets_create", self._gws_sheets_create_tool)
+        self.register("gws_sheets_append", self._gws_sheets_append_tool)
+        self.register("gws_docs_get", self._gws_docs_get_tool)
+        self.register("gws_docs_create", self._gws_docs_create_tool)
+        self.register("gws_chat_send", self._gws_chat_send_tool)
+        self.register("gws_raw_command", self._gws_raw_command_tool)
+        self.register("gws_auth_status", self._gws_auth_status_tool)
+
         # ── Arena Fighter ─────────────────────────────────────────────────────
         self.register("arena_fight", self._arena_fight_tool)
         self.register("arena_status", self._arena_status_tool)
@@ -324,6 +398,47 @@ class ToolRegistry(
                 await self.arena_skill.initialize()
             except Exception as e:
                 logger.debug(f"Arena skill init failed: {e}")
+
+        # ── Business Automation (CRM, Pipeline, Templates, Follow-ups) ────────
+        self.register("crm_add_contact", self._crm_add_contact_tool)
+        self.register("crm_search_contacts", self._crm_search_contacts_tool)
+        self.register("crm_get_contact", self._crm_get_contact_tool)
+        self.register("crm_update_contact", self._crm_update_contact_tool)
+        self.register("crm_delete_contact", self._crm_delete_contact_tool)
+        self.register("crm_log_activity", self._crm_log_activity_tool)
+        self.register("crm_get_activities", self._crm_get_activities_tool)
+        self.register("crm_stats", self._crm_stats_tool)
+        self.register("pipeline_create_deal", self._pipeline_create_deal_tool)
+        self.register("pipeline_advance_deal", self._pipeline_advance_deal_tool)
+        self.register("pipeline_get_deal", self._pipeline_get_deal_tool)
+        self.register("pipeline_list_deals", self._pipeline_list_deals_tool)
+        self.register("pipeline_update_deal", self._pipeline_update_deal_tool)
+        self.register("pipeline_stats", self._pipeline_stats_tool)
+        self.register("pipeline_match", self._pipeline_match_tool)
+        self.register("template_list", self._template_list_tool)
+        self.register("template_get", self._template_get_tool)
+        self.register("template_save", self._template_save_tool)
+        self.register("template_render", self._template_render_tool)
+        self.register("template_delete", self._template_delete_tool)
+        self.register("followup_recommendations", self._followup_recommendations_tool)
+        self.register("followup_overdue", self._followup_overdue_tool)
+        self.register("followup_stale", self._followup_stale_tool)
+        self.register("followup_summary", self._followup_summary_tool)
+
+        # Initialize business skills
+        _business_skills = [
+            ("CRM", self.crm_skill),
+            ("Pipeline", self.pipeline_skill),
+            ("EmailTemplates", self.templates_skill),
+            ("FollowUp", self.followup_skill),
+        ]
+        for name, skill in _business_skills:
+            if skill:
+                try:
+                    await skill.initialize()
+                    logger.info(f"✅ {name} skill initialized")
+                except Exception as e:
+                    logger.warning(f"{name} skill initialization failed: {e}")
 
         # ── X (Twitter) ──────────────────────────────────────────────────────
         self.register("x_post_tweet", self._x_post_tweet_tool)
@@ -515,6 +630,88 @@ class ToolRegistry(
     def list_tools(self) -> List[str]:
         """List all available tools."""
         return list(self.tools.keys())
+
+    # ── Dynamic skill wiring ──────────────────────────────────────────────────
+
+    async def register_dynamic_skill(
+        self, name: str, module, tool_info: Dict[str, Any]
+    ) -> List[str]:
+        """Wire a dynamically-created skill into the live tool registry.
+
+        Registers:
+          1. Tool schemas   → ``_custom_schemas`` (LLM sees them)
+          2. Handlers        → ``self.tools``      (execution)
+          3. Dispatch entries → ``_SCHEMA_TO_TOOL`` (schema→handler mapping)
+          4. RBAC perms      → ``_TOOL_PERMISSIONS``
+          5. Calls ``initialize()`` on the module if defined
+
+        Returns the list of newly registered tool names.
+        """
+        import asyncio as _aio
+
+        registered: List[str] = []
+        _passthrough = lambda a: a  # noqa: E731
+
+        # Avoid duplicate schemas
+        existing_schema_names = {
+            s.get("function", {}).get("name") for s in self._custom_schemas
+        }
+
+        # 1. Schemas
+        for schema in tool_info.get("schemas", []):
+            fn_name = schema.get("function", {}).get("name")
+            if fn_name and fn_name not in existing_schema_names:
+                self._custom_schemas.append(schema)
+                existing_schema_names.add(fn_name)
+
+        # 2 + 3. Handlers & dispatch
+        for tool_name, handler_fn in tool_info.get("handlers", {}).items():
+            wrapped = make_dynamic_handler(handler_fn)
+            self.register(tool_name, wrapped)
+            self._SCHEMA_TO_TOOL[tool_name] = (tool_name, _passthrough)
+            registered.append(tool_name)
+
+        # 4. RBAC permissions
+        for tool_name, perm in tool_info.get("permissions", {}).items():
+            self._TOOL_PERMISSIONS[tool_name] = perm
+
+        # 5. Call initialize() if present
+        if tool_info.get("has_initialize"):
+            init_fn = getattr(module, "initialize", None)
+            if init_fn:
+                try:
+                    if _aio.iscoroutinefunction(init_fn):
+                        await init_fn()
+                    else:
+                        init_fn()
+                except Exception as e:
+                    logger.warning(
+                        f"Dynamic skill '{name}' initialize() failed: {e}"
+                    )
+
+        if registered:
+            logger.info(
+                f"🔧 Dynamic skill '{name}' wired — "
+                f"tools: {', '.join(registered)}"
+            )
+        return registered
+
+    def unregister_dynamic_skill(self, tool_names: List[str]):
+        """Remove dynamically-registered tools from the live registry."""
+        for tool_name in tool_names:
+            self.tools.pop(tool_name, None)
+            self._SCHEMA_TO_TOOL.pop(tool_name, None)
+            self._TOOL_PERMISSIONS.pop(tool_name, None)
+            # Remove from custom schemas
+            self._custom_schemas = [
+                s
+                for s in self._custom_schemas
+                if s.get("function", {}).get("name") != tool_name
+            ]
+        if tool_names:
+            logger.info(
+                f"🗑️  Unregistered dynamic tools: {', '.join(tool_names)}"
+            )
 
     # ── Schema generation ─────────────────────────────────────────────────────
 

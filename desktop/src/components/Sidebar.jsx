@@ -5,6 +5,7 @@ export default function Sidebar({ collapsed = false, onOpenDevStudio, onToggle }
   const sessions = useSableStore(s => s.sessions)
   const activeSessionId = useSableStore(s => s.activeSessionId)
   const wsStatus = useSableStore(s => s.wsStatus)
+  const booting = useSableStore(s => s.booting)
   const newChat = useSableStore(s => s.newChat)
   const selectSession = useSableStore(s => s.selectSession)
   const deleteSession = useSableStore(s => s.deleteSession)
@@ -78,9 +79,9 @@ export default function Sidebar({ collapsed = false, onOpenDevStudio, onToggle }
 
       <div className="sidebar-footer">
         <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-          <span className={`status-badge ${wsStatus}`}>
+          <span className={`status-badge ${booting ? 'connecting' : wsStatus}`}>
             <span style={{ fontSize: 8 }}>●</span>
-            {wsStatus === 'connected' ? 'Connected' : wsStatus === 'connecting' ? 'Connecting…' : 'Disconnected'}
+            {wsStatus === 'connected' ? 'Connected' : booting ? 'Starting up…' : wsStatus === 'connecting' ? 'Connecting…' : 'Disconnected'}
           </span>
         </div>
         <button className="settings-btn dev-studio-btn" onClick={onOpenDevStudio} title="Dev Studio (Ctrl+Shift+D)">

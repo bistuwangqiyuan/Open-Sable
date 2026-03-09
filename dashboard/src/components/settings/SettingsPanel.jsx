@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp, RefreshCw, Zap, Loader2, Server } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { PROVIDERS, PROVIDER_LOGOS } from '../../lib/utils';
 
 const s = {
@@ -80,19 +80,19 @@ function saveConfig(cfg) {
   localStorage.setItem('opensable_agent_config', JSON.stringify(cfg));
 }
 
-export default function SettingsPanel({ ws, connected }) {
+export default function SettingsPanel({ modelGroups = [], requestModels, switchModel, importGGUF }) {
   const [config, setConfig] = useState(loadConfig);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [expandedSection, setExpandedSection] = useState('llm');
+  const [expandedSection, setExpandedSection] = useState('providers');
+  const [ggufPath, setGgufPath] = useState('');
+  const [ggufName, setGgufName] = useState('');
 
-  // Live LLM state from gateway
-  const [llmStatus, setLlmStatus] = useState(null);
-  const [allModels, setAllModels] = useState({});
-  const [switching, setSwitching] = useState(false);
-  const [switchResult, setSwitchResult] = useState(null);
-  const [loadingModels, setLoadingModels] = useState(false);
+  // Refresh local models when settings panel opens or Ollama is selected
+  useEffect(() => {
+    if (requestModels) requestModels();
+  }, [selectedProvider]);
 
   const providerConfigs = config.providers || {};
 
@@ -394,13 +394,52 @@ export default function SettingsPanel({ ws, connected }) {
                   )}
 
                   <div style={s.formGroup}>
-                    <label style={s.label}>Model</label>
-                    <select style={s.select}
-                      value={providerConfigs[sel.id]?.model || getModelsForProvider(sel.id)[0] || sel.models[0]}
-                      onChange={(e) => updateProviderConfig(sel.id, 'model', e.target.value)}>
-                      {getModelsForProvider(sel.id).map(m => <option key={m} value={m}>{m}</option>)}
-                      <option value="custom">Custom…</option>
-                    </select>
+                    <label style={s.label}>
+                      Model
+                      {sel.local && (() => {
+                        const grp = modelGroups.find(g => g.provider === sel.id || (sel.id === 'ollama' && g.provider === 'ollama'));
+                        const count = grp?.models?.length || 0;
+                        return count > 0 ? (
+                          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, color: 'var(--green)' }}>
+                            ({count} installed)
+                          </span>
+                        ) : null;
+                      })()}
+                      {sel.local && requestModels && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); requestModels(); }}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--text-muted)', marginLeft: 6, padding: 0, verticalAlign: 'middle',
+                          }}
+                          title="Refresh local models"
+                        >
+                          <RefreshCw size={11} />
+                        </button>
+                      )}
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      {(() => {
+                        // For local providers (Ollama/LM Studio), prefer dynamically fetched models from gateway groups
+                        let dynamicNames = [];
+                        if (sel.local) {
+                          const grp = modelGroups.find(g => g.provider === sel.id || (sel.id === 'ollama' && g.provider === 'ollama'));
+                          if (grp && grp.models) dynamicNames = grp.models.map(m => m.name || m);
+                        }
+                        const modelList = dynamicNames.length > 0 ? dynamicNames : sel.models;
+                        const currentVal = providerConfigs[sel.id]?.model || modelList[0];
+                        return (
+                          <select
+                            style={s.select}
+                            value={currentVal}
+                            onChange={(e) => updateProviderConfig(sel.id, 'model', e.target.value)}
+                          >
+                            {modelList.map(m => <option key={m} value={m}>{m}</option>)}
+                            <option value="custom">Custom…</option>
+                          </select>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {providerConfigs[sel.id]?.model === 'custom' && (
@@ -436,6 +475,94 @@ export default function SettingsPanel({ ws, connected }) {
                 </div>
               )}
             </>
+          )}
+        </div>
+
+        {/* Environment Variables */}
+        <div style={s.section}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}
+            onClick={() => setExpandedSection(expandedSection === 'env' ? '' : 'env')}
+          >
+            <span style={s.sectionTitle}>🔐 Environment Variables</span>
+            {expandedSection === 'env' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+
+          {expandedSection === 'env' && (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                These environment variables are read from .env at startup. Edit .env file to change.
+              </p>
+              {[
+                ['OPENAI_API_KEY', 'OpenAI API key'],
+                ['ANTHROPIC_API_KEY', 'Anthropic API key'],
+                ['GOOGLE_AI_API_KEY', 'Google AI API key'],
+                ['XAI_API_KEY', 'xAI API key'],
+                ['DEEPSEEK_API_KEY', 'DeepSeek API key'],
+                ['SABLE_STORE_API_KEY', 'Skills Marketplace key'],
+                ['SABLE_GATEWAY_URL', 'SAGP Gateway URL'],
+                ['LLM_MODEL', 'Active LLM model'],
+                ['LLM_PROVIDER', 'Active LLM provider'],
+              ].map(([k, desc]) => (
+                <div key={k} style={s.envRow}>
+                  <span style={s.envKey}>{k}</span>
+                  <span style={s.envVal}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Import GGUF Model */}
+        <div style={s.section}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}
+            onClick={() => setExpandedSection(expandedSection === 'gguf' ? '' : 'gguf')}
+          >
+            <span style={s.sectionTitle}>📥 Import Local Model (GGUF)</span>
+            {expandedSection === 'gguf' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+
+          {expandedSection === 'gguf' && (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                Import a .gguf model file (from HuggingFace, TheBloke, etc.) into Ollama.
+                The file stays on disk — Ollama creates a reference to it.
+              </p>
+              <div style={s.formGroup}>
+                <label style={s.label}>GGUF File Path</label>
+                <input
+                  style={s.input}
+                  value={ggufPath}
+                  onChange={(e) => setGgufPath(e.target.value)}
+                  placeholder="/path/to/model.gguf  (e.g. ~/Downloads/Qwen3.5-9B-Q4_K_M.gguf)"
+                />
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Model Name (optional)</label>
+                <div style={s.inputRow}>
+                  <input
+                    style={s.input}
+                    value={ggufName}
+                    onChange={(e) => setGgufName(e.target.value)}
+                    placeholder="Auto-derived from filename if empty"
+                  />
+                  <button
+                    style={s.btn(ggufPath.trim() ? 'primary' : 'ghost')}
+                    disabled={!ggufPath.trim()}
+                    onClick={() => {
+                      if (importGGUF && ggufPath.trim()) {
+                        importGGUF(ggufPath.trim(), ggufName.trim());
+                        setGgufPath('');
+                        setGgufName('');
+                      }
+                    }}
+                  >
+                    📥 Import
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

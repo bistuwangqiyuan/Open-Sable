@@ -50,6 +50,7 @@ export default function WelcomeScreen({ wsStatus }) {
   const sendMessage = useSableStore(s => s.sendMessage)
   const tools      = useSableStore(s => s.tools)
   const activeAgent = useSableStore(s => s.activeAgent)
+  const booting    = useSableStore(s => s.booting)
   const [input, setInput] = useState('')
   const textareaRef = useRef(null)
 
@@ -68,6 +69,8 @@ export default function WelcomeScreen({ wsStatus }) {
               <span style={{ fontSize: 8 }}>●</span>
               {wsStatus === 'connected'
                 ? `${agentLabel} · ${tools.length} tools ready`
+                : booting
+                ? 'Starting up…'
                 : wsStatus === 'connecting'
                 ? 'Connecting…'
                 : 'Disconnected — check gateway'}

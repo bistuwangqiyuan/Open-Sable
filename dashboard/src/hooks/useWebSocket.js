@@ -20,6 +20,9 @@ export function useWebSocket(onExternalMessage) {
   const [model, setModel] = useState('');
   const [thoughts, setThoughts] = useState(null);
   const [brainData, setBrainData] = useState(null);
+  const [modelGroups, setModelGroups] = useState([]);
+  const [activeProvider, setActiveProvider] = useState('ollama');
+  const [pendingPermission, setPendingPermission] = useState(null);
 
   const wsRef = useRef(null);
   const streamBuf = useRef('');
@@ -141,6 +144,41 @@ export function useWebSocket(onExternalMessage) {
       case 'brain.data.result':
         setBrainData(msg);
         break;
+      case 'models.list.result':
+        setModelGroups(msg.groups || []);
+        if (msg.current) setModel(msg.current);
+        if (msg.provider) setActiveProvider(msg.provider);
+        break;
+      case 'models.set.result':
+        if (msg.success) {
+          if (msg.model) setModel(msg.model);
+          if (msg.provider) setActiveProvider(msg.provider);
+          // Refresh model list after switch
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'models.list' }));
+          }
+        }
+        break;
+      case 'models.import.result':
+        if (msg.success) {
+          addActivity('success', '📦', 'Model imported', msg.model || '');
+          // Refresh model list
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'models.list' }));
+          }
+        } else {
+          addActivity('error', '❌', 'Import failed', msg.error || '');
+        }
+        break;
+      case 'permission.request':
+        setPendingPermission({
+          requestId: msg.requestId,
+          action: msg.action,
+          tool: msg.tool,
+          arguments: msg.arguments || {},
+          message: msg.message || `Allow ${msg.tool}?`,
+        });
+        break;
       default:
         break;
     }
@@ -157,12 +195,13 @@ export function useWebSocket(onExternalMessage) {
       ws.send(JSON.stringify({ type: 'sessions.list' }));
       ws.send(JSON.stringify({ type: 'monitor.subscribe' }));
       ws.send(JSON.stringify({ type: 'thoughts.list', limit: 500 }));
+      ws.send(JSON.stringify({ type: 'models.list' }));
     };
 
     ws.onclose = () => {
       setConnected(false);
-      addActivity('error', '🔌', 'Disconnected', 'Reconnecting in 3s…');
-      setTimeout(connect, 3000);
+      addActivity('error', '🔌', 'Disconnected', 'Reconnecting in 1s…');
+      setTimeout(connect, 1000);
     };
 
     ws.onerror = () => {};
@@ -195,8 +234,40 @@ export function useWebSocket(onExternalMessage) {
   const clearActivity = useCallback(() => setActivity([]), []);
   const clearTerminal = useCallback(() => setTerminal([]), []);
 
+  const requestModels = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'models.list' }));
+    }
+  }, []);
+
+  const switchModel = useCallback((modelName, provider) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'models.set', model: modelName, provider: provider || '' }));
+    }
+  }, []);
+
+  const importGGUF = useCallback((filePath, modelName) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'models.import', path: filePath, name: modelName || '' }));
+    }
+  }, []);
+
+  const respondPermission = useCallback((requestId, allowed, remember = false) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && requestId) {
+      wsRef.current.send(JSON.stringify({
+        type: 'permission.response',
+        requestId,
+        allowed,
+        remember,
+        action: pendingPermission?.action || '',
+      }));
+    }
+    setPendingPermission(null);
+  }, [pendingPermission]);
+
   return {
     connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts, brainData,
-    sendMessage, clearMessages, clearActivity, clearTerminal, wsRef,
+    modelGroups, activeProvider, pendingPermission,
+    sendMessage, clearMessages, clearActivity, clearTerminal, requestModels, switchModel, importGGUF, respondPermission, wsRef,
   };
 }
