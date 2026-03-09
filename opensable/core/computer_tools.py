@@ -66,8 +66,7 @@ class ComputerTools:
     # Directories inside the workspace where the agent is allowed to write.
     # Everything else is READ-ONLY to prevent polluting the repo root.
     _WRITE_ALLOWED_DIRS = {
-        "data", "logs", "docs", "models", "skills",
-        "static", "marketplace", "experiments",
+        "data", "logs", "docs", "models", "skills", "experiments",
     }
 
     def _resolve_write_path(self, path: str) -> Path:
