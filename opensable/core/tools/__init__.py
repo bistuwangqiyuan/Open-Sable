@@ -58,6 +58,7 @@ from ._marketplace import MarketplaceToolsMixin
 from ._mobile import MobileToolsMixin
 from ._github import GitHubToolsMixin
 from ._google_workspace import GoogleWorkspaceToolsMixin
+from ._business import BusinessToolsMixin
 from ._arena import ArenaToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
@@ -75,6 +76,7 @@ class ToolRegistry(
     MobileToolsMixin,
     GitHubToolsMixin,
     GoogleWorkspaceToolsMixin,
+    BusinessToolsMixin,
     ArenaToolsMixin,
 ):
     """Registry of all available tools/actions.
@@ -204,6 +206,28 @@ class ToolRegistry(
             self.arena_skill = ArenaFighterSkill(config)
         except Exception as e:
             logger.debug(f"Arena skill not available: {e}")
+
+        # Business automation skills (CRM, Pipeline, Templates, Follow-ups)
+        self.crm_skill = None
+        self.pipeline_skill = None
+        self.templates_skill = None
+        self.followup_skill = None
+        try:
+            from ...skills.business.crm_skill import CRMSkill
+            from ...skills.business.pipeline_skill import PipelineSkill
+            from ...skills.business.email_templates_skill import EmailTemplatesSkill
+            from ...skills.business.followup_skill import FollowUpSkill
+            data_dir = getattr(config, "data_dir", "./data")
+            self.crm_skill = CRMSkill(data_dir=data_dir)
+            self.pipeline_skill = PipelineSkill(data_dir=data_dir)
+            self.templates_skill = EmailTemplatesSkill(data_dir=data_dir)
+            self.followup_skill = FollowUpSkill(
+                crm_skill=self.crm_skill,
+                pipeline_skill=self.pipeline_skill,
+                templates_skill=self.templates_skill,
+            )
+        except Exception as e:
+            logger.debug(f"Business skills not available: {e}")
 
     # ── Initialization ────────────────────────────────────────────────────────
 
@@ -357,6 +381,47 @@ class ToolRegistry(
                 await self.arena_skill.initialize()
             except Exception as e:
                 logger.debug(f"Arena skill init failed: {e}")
+
+        # ── Business Automation (CRM, Pipeline, Templates, Follow-ups) ────────
+        self.register("crm_add_contact", self._crm_add_contact_tool)
+        self.register("crm_search_contacts", self._crm_search_contacts_tool)
+        self.register("crm_get_contact", self._crm_get_contact_tool)
+        self.register("crm_update_contact", self._crm_update_contact_tool)
+        self.register("crm_delete_contact", self._crm_delete_contact_tool)
+        self.register("crm_log_activity", self._crm_log_activity_tool)
+        self.register("crm_get_activities", self._crm_get_activities_tool)
+        self.register("crm_stats", self._crm_stats_tool)
+        self.register("pipeline_create_deal", self._pipeline_create_deal_tool)
+        self.register("pipeline_advance_deal", self._pipeline_advance_deal_tool)
+        self.register("pipeline_get_deal", self._pipeline_get_deal_tool)
+        self.register("pipeline_list_deals", self._pipeline_list_deals_tool)
+        self.register("pipeline_update_deal", self._pipeline_update_deal_tool)
+        self.register("pipeline_stats", self._pipeline_stats_tool)
+        self.register("pipeline_match", self._pipeline_match_tool)
+        self.register("template_list", self._template_list_tool)
+        self.register("template_get", self._template_get_tool)
+        self.register("template_save", self._template_save_tool)
+        self.register("template_render", self._template_render_tool)
+        self.register("template_delete", self._template_delete_tool)
+        self.register("followup_recommendations", self._followup_recommendations_tool)
+        self.register("followup_overdue", self._followup_overdue_tool)
+        self.register("followup_stale", self._followup_stale_tool)
+        self.register("followup_summary", self._followup_summary_tool)
+
+        # Initialize business skills
+        _business_skills = [
+            ("CRM", self.crm_skill),
+            ("Pipeline", self.pipeline_skill),
+            ("EmailTemplates", self.templates_skill),
+            ("FollowUp", self.followup_skill),
+        ]
+        for name, skill in _business_skills:
+            if skill:
+                try:
+                    await skill.initialize()
+                    logger.info(f"✅ {name} skill initialized")
+                except Exception as e:
+                    logger.warning(f"{name} skill initialization failed: {e}")
 
         # ── X (Twitter) ──────────────────────────────────────────────────────
         self.register("x_post_tweet", self._x_post_tweet_tool)
