@@ -78,7 +78,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: { modelGroups: ws.modelGroups, requestModels: ws.requestModels, switchModel: ws.switchModel, importGGUF: ws.importGGUF },
+      settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected },
     };
   } else {
     // Remote agent,  interactive view via proxy
@@ -98,7 +98,7 @@ export default function App() {
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: { modelGroups: ws.modelGroups, requestModels: ws.requestModels, switchModel: ws.switchModel, importGGUF: ws.importGGUF },
+      settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected },
     };
   }
 

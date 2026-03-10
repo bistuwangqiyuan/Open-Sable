@@ -1261,7 +1261,7 @@ class Gateway:
     ]
 
     async def _on_models_list(self, client: _Client):
-        """Return all available models: local Ollama + configured cloud providers."""
+        """Return all available models: local Ollama + OpenWebUI + configured cloud providers."""
         groups: list[dict] = []  # [{provider, name, models: [{name, active}]}]
         current_model: str = ""
         provider_type: str = "ollama"  # default
@@ -1286,9 +1286,28 @@ class Gateway:
                         ],
                     })
 
-                # ── Cloud providers with configured API keys ──
+                # ── OpenWebUI models (fetched live from API) ──
                 config = getattr(self.agent, "config", None)
                 if config:
+                    owui_url = getattr(config, "openwebui_api_url", None)
+                    owui_key = getattr(config, "openwebui_api_key", None)
+                    if owui_url and owui_key:
+                        try:
+                            from opensable.core.llm import check_openwebui_models
+                            owui_models = await check_openwebui_models(owui_url, owui_key)
+                            if owui_models:
+                                groups.append({
+                                    "provider": "openwebui",
+                                    "name": f"Open WebUI ({owui_url.replace('https://', '').replace('http://', '').split('/')[0]})",
+                                    "models": [
+                                        {"name": m, "active": m == current_model and provider_type == "openwebui"}
+                                        for m in owui_models
+                                    ],
+                                })
+                        except Exception as e:
+                            logger.debug(f"[Gateway] OpenWebUI model fetch error: {e}")
+
+                    # ── Cloud providers with configured API keys ──
                     for pid, key_attr, display_name, default_models in self._MODEL_PROVIDERS:
                         if getattr(config, key_attr, None):
                             groups.append({
