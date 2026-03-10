@@ -78,6 +78,7 @@ class AutonomousMode:
 
         # ── Tick state ──────────────────────────────────────────────────
         self.tick: int = 0  # Monotonic tick counter (persisted)
+        self._tick_counter: int = 0  # Alias used by cognitive module ticks
         self.tick_start: float = 0.0
 
         # Pluggable modules (initialized in start())
@@ -664,6 +665,31 @@ class AutonomousMode:
         _MAX_CONSECUTIVE_ERRORS = 10
         _BACKOFF_MULTIPLIER = 2  # double interval after many failures
 
+        # ── Immediate arena fight on startup ────────────────────────────
+        # Queue a fight right away so both agents enter the matchmaker
+        # queue within seconds of starting instead of waiting 10+ ticks.
+        try:
+            arena_skill = getattr(self.agent.tools, "arena_skill", None) if self.agent else None
+            if arena_skill and getattr(arena_skill, '_ready', False):
+                fight_task = {
+                    "id": f"arena_startup_{self.tick}",
+                    "type": "proactive",
+                    "description": "Arena: startup fight — entering queue immediately",
+                    "goal_type": "creative",
+                    "priority": 1,  # high priority
+                    "tool_name": "arena_fight",
+                    "tool_args": {"use_llm": True},
+                    "reasoning": "Immediate arena queue on startup",
+                    "risk_level": "low",
+                    "created_at": datetime.now(),
+                }
+                self.task_queue.append(fight_task)
+                logger.info("🥊 Arena: queued startup fight immediately")
+            else:
+                logger.info("🥊 Arena: skill not ready at startup, will auto-queue later")
+        except Exception as e:
+            logger.debug(f"Arena startup queue: {e}")
+
         while self.running:
             self.tick_start = time.monotonic()
             try:
@@ -723,6 +749,7 @@ class AutonomousMode:
                     f"{len(self.completed_tasks)} completed)"
                 )
                 self.tick += 1
+                self._tick_counter = self.tick
                 consecutive_errors = 0  # Reset on success
 
                 # Wait before next tick
@@ -2818,6 +2845,7 @@ class AutonomousMode:
             if state_file.exists():
                 state = json.loads(state_file.read_text())
                 self.tick = state.get("tick", 0)
+                self._tick_counter = self.tick
                 self.task_queue = state.get("task_queue", [])
                 self.completed_tasks = state.get("completed_tasks", [])
 

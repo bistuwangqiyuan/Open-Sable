@@ -176,6 +176,36 @@ class TemporalConsciousness:
             "total_patterns": len(self.patterns),
         }
 
+    def get_context_for_system2(self) -> str:
+        """Get temporal awareness context for LLM system prompt injection.
+
+        Provides the agent with a sense of time, energy level, and
+        chronobiological awareness so it can adapt its behaviour.
+        """
+        now = datetime.now()
+        energy = self.get_current_energy()
+        task_type = self.recommend_task_type()
+        peak = self.is_peak_time()
+
+        parts = [
+            "YOUR TEMPORAL AWARENESS (biological clock):",
+            f"  Current time: {now.strftime('%H:%M, %A %B %d')}",
+            f"  Energy level: {energy:.0%} ({'peak' if peak else 'normal'})",
+            f"  Chronotype: {self.circadian.chronotype}",
+            f"  Recommended mode: {task_type.replace('_', ' ')}",
+        ]
+
+        if self.circadian.peak_hours:
+            peak_strs = [f"{h}:00" for h in sorted(self.circadian.peak_hours)]
+            parts.append(f"  Peak hours: {', '.join(peak_strs)}")
+
+        upcoming = self.get_upcoming_events(hours_ahead=2)
+        if upcoming:
+            for ev in upcoming[:3]:
+                parts.append(f"  Upcoming: {ev.get('description', '?')} at {ev.get('hour', '?')}:00")
+
+        return "\n".join(parts)
+
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _update_pattern(self, ptype: str, key: str, metric: str, value: float):

@@ -474,6 +474,7 @@ class AdaptiveLLM:
             new_messages = _inject_no_think(new_messages, self.current_model)
         client = ollama.AsyncClient(host=self.base_url)
         _chat_kwargs = {"model": self.current_model, "messages": new_messages}
+        _chat_kwargs["options"] = {"repeat_penalty": 1.3, "num_predict": 2048}
         if not _skip_no_think:
             _chat_kwargs["think"] = False
         try:
@@ -563,6 +564,7 @@ class AdaptiveLLM:
                 "model": self.current_model,
                 "messages": messages,
             }
+            _chat_kwargs["options"] = {"repeat_penalty": 1.3, "num_predict": 4096}
             # Only include tools key when there are actual tools,  some models
             # reject even an empty list with HTTP 400.
             if tools:
@@ -649,6 +651,7 @@ class AdaptiveLLM:
                 if not _skip_nt:
                     plain_msgs = _inject_no_think(plain_msgs, self.current_model)
                 _chat_kw = {"model": self.current_model, "messages": plain_msgs}
+                _chat_kw["options"] = {"repeat_penalty": 1.3, "num_predict": 2048}
                 if not _skip_nt:
                     _chat_kw["think"] = False
                 async with _ollama_lock():
@@ -685,6 +688,7 @@ class AdaptiveLLM:
         if not _skip_nt:
             messages = _inject_no_think(messages, self.current_model)
         _chat_kw: dict = {"model": self.current_model, "messages": messages}
+        _chat_kw["options"] = {"repeat_penalty": 1.3, "num_predict": 2048}
         if not _skip_nt:
             _chat_kw["think"] = False
         async with _ollama_lock():
@@ -732,6 +736,7 @@ class AdaptiveLLM:
             self._stream_lock_cm = _ollama_lock()
             await self._stream_lock_cm.__aenter__()
             _stream_kw = {"model": self.current_model, "messages": messages, "stream": True}
+            _stream_kw["options"] = {"repeat_penalty": 1.3, "num_predict": 2048}
             if not _skip_nt:
                 _stream_kw["think"] = False
             try:
