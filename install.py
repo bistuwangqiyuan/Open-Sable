@@ -700,9 +700,11 @@ def _pull_optimal_model():
         if m:
             existing = m.group(1).strip()
             if existing and existing != "llama3.2:3b":  # not the placeholder default
-                # Verify it actually exists in Ollama
+                # Verify it actually exists in Ollama (match full name or base)
                 r = run(["ollama", "list"], capture=True)
-                if r.returncode == 0 and existing.split(":")[0] in (r.stdout or ""):
+                ollama_out = r.stdout or ""
+                base_name = existing.split(":")[0]
+                if r.returncode == 0 and (existing in ollama_out or base_name in ollama_out):
                     ok(f"Model already configured: {existing} (keeping)")
                     return
 
