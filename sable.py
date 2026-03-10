@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DEPRECATED — This file is kept for backward compatibility only.
+DEPRECATED,  This file is kept for backward compatibility only.
 
 Use instead:
   python main.py          # Start the agent (all interfaces)

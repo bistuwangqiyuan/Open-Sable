@@ -1,8 +1,8 @@
 """
-Persistent Internet Monitor — WORLD FIRST
+Persistent Internet Monitor,  WORLD FIRST
 24/7 persistent monitoring of the internet: news feeds, social media,
 market data, research papers, and emergent trends.
-The agent never sleeps — it watches the world continuously.
+The agent never sleeps,  it watches the world continuously.
 """
 import json
 import logging

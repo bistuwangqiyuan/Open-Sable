@@ -1,5 +1,5 @@
 """
-Synaesthetic Processor — WORLD FIRST
+Synaesthetic Processor,  WORLD FIRST
 ======================================
 Cross-modal cognitive processing. The agent perceives code as music,
 data patterns as colors, errors as textures, and performance as rhythm.
@@ -130,7 +130,7 @@ class SynaestheticProcessor:
 
         if llm:
             prompt = (
-                f"SYNAESTHETIC ANALYSIS — perceive this data through multiple senses:\n\n"
+                f"SYNAESTHETIC ANALYSIS,  perceive this data through multiple senses:\n\n"
                 f"Data: {data[:300]}\n\n"
                 f"Initial perception: color={perception['color']}, "
                 f"texture={perception['texture']}, temp={perception['temperature']}°C, "
@@ -164,7 +164,7 @@ class SynaestheticProcessor:
         return {"perception": perception, "insight": "raw_perception_only"}
 
     def get_chromatic_history(self, n: int = 20) -> list:
-        """Get the color history of perceptions — a visual timeline."""
+        """Get the color history of perceptions,  a visual timeline."""
         return [{"color": m.output_perception.get("color", "#6b7280"),
                  "input": m.input_signature[:30],
                  "time": m.timestamp}

@@ -58,7 +58,7 @@ export default function AgentTabs({ agents, currentAgent, onSelect }) {
               ...(currentAgent === agent.name ? s.active : {}),
             }}
             onClick={() => onSelect(agent.name)}
-            title={`${agent.name} — ${agent.running ? 'Online' : 'Offline'}`}
+            title={`${agent.name},  ${agent.running ? 'Online' : 'Offline'}`}
           >
             <span style={s.dot(agent.running, agent.is_current)} />
             <span style={s.name}>{agent.name}</span>

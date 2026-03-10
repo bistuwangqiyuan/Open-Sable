@@ -1,5 +1,5 @@
 """
-Sable Gateway — Internal Control Plane (aiohttp, Unix + TCP)
+Sable Gateway,  Internal Control Plane (aiohttp, Unix + TCP)
 
 Architecture:
   ┌────────────────────────────────────────────────────────────┐
@@ -18,7 +18,7 @@ Architecture:
 Security:
   - Unix socket: only the process owner can connect (OS enforces it)
   - chmod 0600 applied immediately after bind
-  - Token auth via middleware — HMAC-compare on ?token= query param
+  - Token auth via middleware,  HMAC-compare on ?token= query param
   - Remote access via SSH tunnel: ssh -L 8789:/tmp/sable.sock user@vps
 
 Protocol (JSON over WebSocket, text frames):
@@ -739,7 +739,7 @@ class Gateway:
     # ── LLM Management HTTP handlers ─────────────────────────────────────────
 
     async def _llm_status_http_handler(self, request: web.Request) -> web.Response:
-        """GET /api/llm/status — current provider, model, and configured providers."""
+        """GET /api/llm/status,  current provider, model, and configured providers."""
         try:
             from opensable.core.llm import AdaptiveLLM
             llm = self.agent.llm
@@ -754,7 +754,7 @@ class Gateway:
             return web.json_response({"error": str(e)}, status=500)
 
     async def _llm_models_http_handler(self, request: web.Request) -> web.Response:
-        """GET /api/llm/models — list all available models across providers."""
+        """GET /api/llm/models,  list all available models across providers."""
         try:
             from opensable.core.llm import list_all_models
             models = await list_all_models(self.agent.config)
@@ -763,7 +763,7 @@ class Gateway:
             return web.json_response({"error": str(e)}, status=500)
 
     async def _llm_switch_http_handler(self, request: web.Request) -> web.Response:
-        """POST /api/llm/switch — switch provider/model at runtime.
+        """POST /api/llm/switch,  switch provider/model at runtime.
         Body: {"provider": "openwebui", "model": "optional-model-name"}
         """
         try:
@@ -1094,7 +1094,7 @@ class Gateway:
         self, user_id: str, action: str, context: dict
     ) -> bool:
         """Send a confirmation request to all connected clients for *user_id*
-        and await the first response (up to 60 s — handled by the caller)."""
+        and await the first response (up to 60 s,  handled by the caller)."""
         import uuid as _uuid
 
         request_id = _uuid.uuid4().hex[:12]
@@ -1957,7 +1957,7 @@ class Gateway:
             except Exception:
                 pass
 
-        # Streaming chunk callback — emits tokens word-by-word in real time
+        # Streaming chunk callback,  emits tokens word-by-word in real time
         _first_chunk_sent = []  # use list as mutable flag (avoids nonlocal in all Pythons)
 
         async def _stream_chunk(token: str):
@@ -1998,14 +1998,14 @@ class Gateway:
                 reply = (raw_reply or "").strip() or "I processed your request but couldn't generate a response. Please try again."
 
             # Deduplicate: if the reply is identical to the last assistant message,
-            # the model is repeating itself — ask it to try again without history
+            # the model is repeating itself,  ask it to try again without history
             if history:
                 last_assistant = next(
                     (m["content"] for m in reversed(history) if m.get("role") == "assistant"),
                     None,
                 )
                 if last_assistant and reply.strip() == last_assistant.strip():
-                    logger.warning("[Gateway] Duplicate response detected — retrying without history")
+                    logger.warning("[Gateway] Duplicate response detected,  retrying without history")
                     try:
                         retry_reply = await self.agent.process_message(
                             user_id, text, history=[], progress_callback=_progress

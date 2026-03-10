@@ -748,7 +748,7 @@ export default function PolymarketPanel({ onDataUpdate }) {
                       ))}
                       {market.outcomes.length > 15 && isMultiOutcome && (
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '6px 0', fontStyle: 'italic' }}>
-                          +{market.outcomes.length - 15} more — view all on Polymarket
+                          +{market.outcomes.length - 15} more,  view all on Polymarket
                         </div>
                       )}
                     </div>

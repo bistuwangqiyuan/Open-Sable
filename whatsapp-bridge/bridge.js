@@ -1,7 +1,7 @@
 /**
  * WhatsApp Bridge for OpenSable
  *
- * Uses whatsapp-web.js (wwebjs) — the most reliable WhatsApp Web library.
+ * Uses whatsapp-web.js (wwebjs),  the most reliable WhatsApp Web library.
  * Incoming messages → HTTP POST to Python webhook (port 3334).
  * REST API on port 3333 for Python → Bridge outbound (send, media, etc.).
  */
@@ -73,7 +73,7 @@ client.on('loading_screen', (percent, message) => {
 });
 
 client.on('qr', (qr) => {
-    process.stderr.write('[wwebjs] QR code received — scan with your phone\n');
+    process.stderr.write('[wwebjs] QR code received,  scan with your phone\n');
     qrcode.generate(qr, { small: true });
     sendEvent('qr', { qr });
 });
@@ -102,7 +102,7 @@ client.on('disconnected', (reason) => {
 // ── Message handling ────────────────────────────────────────────────
 client.on('message_create', async (msg) => {
     try {
-        // Skip own messages — never send them to the agent
+        // Skip own messages,  never send them to the agent
         if (msg.fromMe) {
             process.stderr.write(
                 `[wwebjs] SKIP own msg type=${msg.type} body="${(msg.body || '').substring(0, 40)}"\n`

@@ -1,5 +1,5 @@
 """
-Human-in-the-Loop (HITL) — Approval gates for dangerous agent actions.
+Human-in-the-Loop (HITL),  Approval gates for dangerous agent actions.
 
 Lets the agent pause execution and ask a human operator for confirmation
 before running risky operations (file deletion, sending emails, executing
@@ -84,7 +84,7 @@ class HumanApprovalRequired(Exception):
 
     def __init__(self, request: ApprovalRequest):
         self.request = request
-        super().__init__(f"Human approval required for: {request.action} — {request.description}")
+        super().__init__(f"Human approval required for: {request.action},  {request.description}")
 
 
 # ── Default risk classification ─────────────────────────────
@@ -111,7 +111,7 @@ _DEFAULT_RISK_MAP: Dict[str, RiskLevel] = {
     "calendar": RiskLevel.LOW,
     "system_info": RiskLevel.LOW,
     "vector_search": RiskLevel.LOW,
-    # Trading — read operations are LOW, executions are CRITICAL
+    # Trading,  read operations are LOW, executions are CRITICAL
     "trading_portfolio": RiskLevel.LOW,
     "trading_price": RiskLevel.LOW,
     "trading_analyze": RiskLevel.LOW,
@@ -122,12 +122,12 @@ _DEFAULT_RISK_MAP: Dict[str, RiskLevel] = {
     "trading_cancel_order": RiskLevel.HIGH,
     "trading_start_scan": RiskLevel.HIGH,
     "trading_stop_scan": RiskLevel.MEDIUM,
-    # Skills Marketplace — search/info are LOW, install needs user approval
+    # Skills Marketplace,  search/info are LOW, install needs user approval
     "marketplace_search": RiskLevel.LOW,
     "marketplace_info": RiskLevel.LOW,
     "marketplace_install": RiskLevel.HIGH,       # Requires human approval
     "marketplace_review": RiskLevel.MEDIUM,
-    # Mobile phone tools — notifications/reminders are MEDIUM, reads are LOW
+    # Mobile phone tools,  notifications/reminders are MEDIUM, reads are LOW
     "phone_notify": RiskLevel.MEDIUM,
     "phone_reminder": RiskLevel.MEDIUM,
     "phone_geofence": RiskLevel.MEDIUM,
@@ -236,7 +236,7 @@ class ApprovalGate:
         if decision.approved:
             logger.info(f"✅ Approved: {action}")
         else:
-            logger.info(f"❌ Denied: {action} — {decision.reason}")
+            logger.info(f"❌ Denied: {action},  {decision.reason}")
 
         return decision
 

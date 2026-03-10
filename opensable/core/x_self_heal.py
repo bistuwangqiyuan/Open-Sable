@@ -1,5 +1,5 @@
 """
-X Self-Healing System — The bot watches its own console, detects errors,
+X Self-Healing System,  The bot watches its own console, detects errors,
 and uses Grok to diagnose & fix them automatically.
 
 Features:
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  LOG BUFFER — Captures console output in a ring buffer
+#  LOG BUFFER,  Captures console output in a ring buffer
 # ══════════════════════════════════════════════════════════════════════════════
 
 class LogBuffer(logging.Handler):
@@ -100,7 +100,7 @@ class LogBuffer(logging.Handler):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  ERROR PATTERNS — Known errors and their automatic remedies
+#  ERROR PATTERNS,  Known errors and their automatic remedies
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Severity(Enum):
@@ -205,7 +205,7 @@ KNOWN_ERRORS: List[ErrorPattern] = [
         cooldown=7200,
         description="Account permission issue. Long pause to avoid permanent suspension.",
     ),
-    # ── Instagram errors (handled by IG autoposter — self-heal should IGNORE) ──
+    # ── Instagram errors (handled by IG autoposter,  self-heal should IGNORE) ──
     ErrorPattern(
         name="ig_challenge_required",
         pattern=r"challenge_required|Instagram.*upload.*error|IG upload blocked|IG posting blocked|Photo Upload failed|Response \[412\]",
@@ -213,7 +213,7 @@ KNOWN_ERRORS: List[ErrorPattern] = [
         remedy="ig_ignore",
         params={},
         cooldown=300,
-        description="Instagram challenge — handled by IG autoposter's own backoff. Do NOT pause X.",
+        description="Instagram challenge,  handled by IG autoposter's own backoff. Do NOT pause X.",
     ),
     ErrorPattern(
         name="ig_login_required",
@@ -222,13 +222,13 @@ KNOWN_ERRORS: List[ErrorPattern] = [
         remedy="ig_ignore",
         params={},
         cooldown=300,
-        description="Instagram login issue — handled by IG skill. Do NOT pause X.",
+        description="Instagram login issue,  handled by IG skill. Do NOT pause X.",
     ),
 ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  MOBILE USER AGENTS — Rotate through realistic mobile UAs
+#  MOBILE USER AGENTS,  Rotate through realistic mobile UAs
 # ══════════════════════════════════════════════════════════════════════════════
 MOBILE_USER_AGENTS = [
     # Android Chrome (most common)
@@ -258,7 +258,7 @@ def pick_user_agent(prefer_mobile: bool = True) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  REMEDY ENGINE — Safe pre-defined fix actions
+#  REMEDY ENGINE,  Safe pre-defined fix actions
 # ══════════════════════════════════════════════════════════════════════════════
 
 class RemedyEngine:
@@ -319,8 +319,8 @@ class RemedyEngine:
                 result.update(self._fallback_llm())
             elif remedy == "ig_ignore":
                 # Instagram errors are handled by the IG autoposter itself.
-                # Do NOT apply any X remedy — just log and move on.
-                logger.info(f"🩺 Instagram error detected — skipping X self-heal (IG handles its own backoff)")
+                # Do NOT apply any X remedy,  just log and move on.
+                logger.info(f"🩺 Instagram error detected,  skipping X self-heal (IG handles its own backoff)")
                 result.update({"action": "ig_ignore", "applied": True})
             elif remedy == "emergency_pause":
                 result.update(await self._emergency_pause(params))
@@ -393,7 +393,7 @@ class RemedyEngine:
             impl._action_delay = max(impl._action_delay * 3, 8)
 
         logger.warning(
-            f"🛡️ STEALTH MODE activated — pausing posts for {pause_min}min, "
+            f"🛡️ STEALTH MODE activated,  pausing posts for {pause_min}min, "
             f"reducing activity to {reduce*100:.0f}%, intervals tripled"
         )
 
@@ -424,7 +424,7 @@ class RemedyEngine:
         resume_at = datetime.now() + timedelta(minutes=backoff_min)
         self._paused_loops["engage"] = resume_at
 
-        logger.warning(f"⏸️ Rate limit backoff — engage paused for {backoff_min}min")
+        logger.warning(f"⏸️ Rate limit backoff,  engage paused for {backoff_min}min")
         return {"action": "rate_limit_backoff", "resume_at": resume_at.isoformat()}
 
     async def _refresh_auth(self) -> Dict:
@@ -477,12 +477,12 @@ class RemedyEngine:
         return {"action": "network_backoff", "waited_minutes": backoff_min}
 
     def _fallback_llm(self) -> Dict:
-        """Note that Grok failed — LLM fallback is already built-in."""
-        logger.info("🔧 Grok unavailable — using LLM fallback")
+        """Note that Grok failed,  LLM fallback is already built-in."""
+        logger.info("🔧 Grok unavailable,  using LLM fallback")
         return {"action": "fallback_llm", "note": "LLM fallback active"}
 
     async def _emergency_pause(self, params: Dict) -> Dict:
-        """Full stop — serious account issue."""
+        """Full stop,  serious account issue."""
         pause_min = params.get("pause_minutes", 120)
         platform = params.get("platform", "X/Twitter")
         resume_at = datetime.now() + timedelta(minutes=pause_min)
@@ -491,7 +491,7 @@ class RemedyEngine:
             self._paused_loops[loop] = resume_at
 
         logger.critical(
-            f"🚨 EMERGENCY PAUSE [{platform}] — ALL loops stopped for {pause_min}min. "
+            f"🚨 EMERGENCY PAUSE [{platform}],  ALL loops stopped for {pause_min}min. "
             f"Account may be flagged. Check manually."
         )
 
@@ -517,7 +517,7 @@ class RemedyEngine:
             self._agent._daily_limit_hit = True
         minutes_left = int((midnight - now).total_seconds() / 60)
         logger.warning(
-            f"\U0001f6ab Daily post limit (344) — posting paused for {minutes_left}min until midnight UTC. "
+            f"\U0001f6ab Daily post limit (344),  posting paused for {minutes_left}min until midnight UTC. "
             f"Engagement and browsing continue normally."
         )
         return {
@@ -527,7 +527,7 @@ class RemedyEngine:
         }
 
     async def _grok_custom_fix(self, error_context: str) -> Dict:
-        """For unknown errors — ask Grok, then parse and execute concrete actions."""
+        """For unknown errors,  ask Grok, then parse and execute concrete actions."""
         advice = await self._consult_grok_on_error(error_context, "unknown_error")
         actions_taken = []
 
@@ -733,7 +733,7 @@ class RemedyEngine:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  SELF-HEAL MONITOR — The main loop that ties everything together
+#  SELF-HEAL MONITOR,  The main loop that ties everything together
 # ══════════════════════════════════════════════════════════════════════════════
 
 class SelfHealMonitor:
@@ -757,8 +757,8 @@ class SelfHealMonitor:
         return self._remedy
 
     async def run(self):
-        """Main self-healing loop — runs forever alongside other loops."""
-        logger.info("🩺 Self-heal monitor active — watching console for errors")
+        """Main self-healing loop,  runs forever alongside other loops."""
+        logger.info("🩺 Self-heal monitor active,  watching console for errors")
         await asyncio.sleep(60)  # Let things warm up
 
         while self._agent.running:
@@ -779,7 +779,7 @@ class SelfHealMonitor:
             if self._consecutive_clean >= 10 and self._remedy._original_values:
                 restored = await self._remedy.restore_originals()
                 if restored:
-                    logger.info(f"🩺 {self._consecutive_clean} clean checks — restored normal operation")
+                    logger.info(f"🩺 {self._consecutive_clean} clean checks,  restored normal operation")
                     self._consecutive_clean = 0
             return
 
@@ -790,7 +790,7 @@ class SelfHealMonitor:
             error_msg = error_entry.get("raw", "") + " " + error_entry.get("msg", "")
             error_source = error_entry.get("name", "")
 
-            # Skip ALL errors from Instagram/instagrapi loggers — IG autoposter
+            # Skip ALL errors from Instagram/instagrapi loggers,  IG autoposter
             # handles its own backoff.  These must NEVER trigger X remedies.
             if re.search(r"instagrapi|instagram|ig_autoposter", error_source, re.IGNORECASE):
                 logger.debug(f"🩺 Skipping non-X error from logger '{error_source}'")
@@ -823,15 +823,15 @@ class SelfHealMonitor:
                             })
                     break  # One remedy per error per cycle
 
-            # Unknown error — consult Grok if we haven't done too many
-            # BUT skip non-X errors (Instagram, etc.) — those platforms handle their own recovery
+            # Unknown error,  consult Grok if we haven't done too many
+            # BUT skip non-X errors (Instagram, etc.),  those platforms handle their own recovery
             if not matched and self._can_consult_grok():
                 # Skip errors from non-X platforms (they handle their own recovery)
                 if re.search(r"Instagram|📸 IG|instagrapi|ig_autoposter|Photo Upload failed|challenge_required", error_msg, re.IGNORECASE):
-                    logger.debug(f"🩺 Skipping non-X error (Instagram) — IG handles its own recovery")
+                    logger.debug(f"🩺 Skipping non-X error (Instagram),  IG handles its own recovery")
                     continue
                 context = self._buffer.get_recent_context(20)
-                logger.info(f"🩺 Unknown error — consulting Grok for diagnosis")
+                logger.info(f"🩺 Unknown error,  consulting Grok for diagnosis")
                 result = await self._remedy.apply(
                     ErrorPattern(
                         name="unknown",
@@ -862,7 +862,7 @@ class SelfHealMonitor:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  SETUP HELPER — Call this once at startup
+#  SETUP HELPER,  Call this once at startup
 # ══════════════════════════════════════════════════════════════════════════════
 
 _global_log_buffer: Optional[LogBuffer] = None
@@ -887,7 +887,7 @@ def install_log_buffer() -> LogBuffer:
     root_logger.addHandler(buf)
 
     _global_log_buffer = buf
-    logger.info("🩺 LogBuffer installed — bot can see its own console")
+    logger.info("🩺 LogBuffer installed,  bot can see its own console")
     return buf
 
 

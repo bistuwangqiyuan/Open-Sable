@@ -1,5 +1,5 @@
 """
-Dream Engine — REM-like creative replay during idle time.
+Dream Engine,  REM-like creative replay during idle time.
 
 WORLD FIRST: No AI agent has biological dreaming. During idle periods,
 the agent "dreams" by replaying recent experiences in corrupted/remixed
@@ -50,7 +50,7 @@ class DreamCycle:
 
 
 class DreamEngine:
-    """Biological dreaming for AI agents — creative replay during idle."""
+    """Biological dreaming for AI agents,  creative replay during idle."""
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class DreamEngine:
         return self.idle_ticks >= self.idle_threshold and len(self._experience_buffer) >= 3
 
     async def dream_cycle(self, llm) -> DreamCycle:
-        """Run a full REM dream cycle — remix experiences for creative insight."""
+        """Run a full REM dream cycle,  remix experiences for creative insight."""
         cycle = DreamCycle(
             cycle_id=len(self.cycles) + 1,
             phase="rem",
@@ -204,7 +204,7 @@ class DreamEngine:
     async def _generate_dream(self, llm, seeds, corrupted, cycle_id, dream_idx) -> Optional[Dream]:
         try:
             prompt = (
-                "You are a DREAM ENGINE inside an AI agent. The agent is 'dreaming' — "
+                "You are a DREAM ENGINE inside an AI agent. The agent is 'dreaming',  "
                 "replaying and remixing recent experiences to find creative insights.\n\n"
                 f"Original experiences:\n" + "\n".join(f"- {s}" for s in seeds) + "\n\n"
                 f"Dream remix (corrupted replay):\n{corrupted}\n\n"

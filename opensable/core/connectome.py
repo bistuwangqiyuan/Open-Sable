@@ -8,14 +8,14 @@ that accumulates activation from incoming signals and fires when its
 threshold is reached.
 
 Brain regions modelled (mapped to agent modules):
-  MB  — Mushroom Body       → Associative memory / learning
-  CX  — Central Complex     → Decision-making / action selection
-  AL  — Antennal Lobe       → Sensory categorisation (input classification)
-  LH  — Lateral Horn        → Innate / reflex responses
-  OL  — Optic Lobe          → Visual / context processing
-  SEZ — Subesophageal Zone  → Motor output (tool execution)
-  PI  — Pars Intercerebralis → Motivation / homeostatic drive
-  LPC — Lateral Protocerebrum → Emotional valence
+  MB ,  Mushroom Body       → Associative memory / learning
+  CX ,  Central Complex     → Decision-making / action selection
+  AL ,  Antennal Lobe       → Sensory categorisation (input classification)
+  LH ,  Lateral Horn        → Innate / reflex responses
+  OL ,  Optic Lobe          → Visual / context processing
+  SEZ,  Subesophageal Zone  → Motor output (tool execution)
+  PI ,  Pars Intercerebralis → Motivation / homeostatic drive
+  LPC,  Lateral Protocerebrum → Emotional valence
 
 Connection weights are derived from normalised synapse counts in the
 real fly brain and can be MUTATED by the Evolution Engine.  This gives
@@ -25,7 +25,7 @@ Usage:
     colony = NeuralColony(data_dir=Path("data"))
     colony.stimulate("AL", 0.8)   # sensory input arrives
     firings = colony.propagate()  # signals flow through the connectome
-    # firings = {"MB": 0.6, "CX": 0.9, ...}  — who fired
+    # firings = {"MB": 0.6, "CX": 0.9, ...} ,  who fired
 """
 
 from __future__ import annotations
@@ -241,7 +241,7 @@ class NeuralColony:
                     fired[region] = output
 
             if not fired:
-                break  # No activity — stop early
+                break  # No activity,  stop early
 
             logger.debug("🧠 Cycle %d: fired %s", cycle, list(fired.keys()))
 
@@ -435,7 +435,7 @@ class NeuralColony:
             "generation": self._generation,
             "total_propagations": self._total_propagations,
             "total_firings": self._total_firings,
-            "source": "FlyWire FAFB v783 — Drosophila melanogaster connectome",
+            "source": "FlyWire FAFB v783,  Drosophila melanogaster connectome",
         }
 
     def get_stats(self) -> Dict[str, Any]:

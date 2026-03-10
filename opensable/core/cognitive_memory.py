@@ -1,21 +1,21 @@
 """
-Cognitive Memory — multi-tier memory with decay, consolidation, and attention.
+Cognitive Memory,  multi-tier memory with decay, consolidation, and attention.
 
 Implements a human-inspired memory architecture:
 
-  Working Memory  — top-N most relevant items (Miller's Number: 7 ± 2)
-  Short-Term      — recent, decaying rapidly
-  Long-Term       — consolidated high-importance memories, slow decay
+  Working Memory ,  top-N most relevant items (Miller's Number: 7 ± 2)
+  Short-Term     ,  recent, decaying rapidly
+  Long-Term      ,  consolidated high-importance memories, slow decay
 
 Core mechanisms:
-  MemoryDecay          — exponential time-based importance decay
-  MemoryConsolidation  — promotes STM→LTM, forgets low-importance items
-  AttentionFilter      — selects top-N for working memory
+  MemoryDecay         ,  exponential time-based importance decay
+  MemoryConsolidation ,  promotes STM→LTM, forgets low-importance items
+  AttentionFilter     ,  selects top-N for working memory
 
 Academic grounding:
-  [1] Miller (1956): The Magical Number Seven — working memory capacity
+  [1] Miller (1956): The Magical Number Seven,  working memory capacity
   [2] Atkinson & Shiffrin (1968): Multi-store model (STM/LTM)
-  [3] Park et al., arXiv:2304.03442: Generative Agents — importance × recency
+  [3] Park et al., arXiv:2304.03442: Generative Agents,  importance × recency
 """
 
 from __future__ import annotations
@@ -125,7 +125,7 @@ class MemoryConsolidation:
         for mem in memories:
             if mem.effective_importance < self.demote_threshold:
                 forgotten += 1
-                continue  # Forgotten — removed
+                continue  # Forgotten,  removed
             if (
                 mem.tier == "short_term"
                 and mem.effective_importance >= self.promote_threshold
@@ -179,9 +179,9 @@ class CognitiveMemoryManager:
     """Multi-tier memory system with decay, consolidation, and attention.
 
     Manages the full cognitive memory pipeline:
-      1. Memory Decay — apply exponential decay to all items
-      2. Consolidation — promote/demote between tiers
-      3. Attention — select working memory subset
+      1. Memory Decay,  apply exponential decay to all items
+      2. Consolidation,  promote/demote between tiers
+      3. Attention,  select working memory subset
 
     Persists memories to a JSONL file for cross-session continuity.
     """

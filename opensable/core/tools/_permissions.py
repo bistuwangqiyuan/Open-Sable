@@ -155,7 +155,7 @@ TOOL_PERMISSIONS = {
     "arena_status": "arena_read",
     "arena_history": "arena_read",
     "arena_disconnect": "arena_write",
-    # Business Automation — CRM
+    # Business Automation,  CRM
     "crm_add_contact": "crm_write",
     "crm_search_contacts": "crm_read",
     "crm_get_contact": "crm_read",
@@ -164,7 +164,7 @@ TOOL_PERMISSIONS = {
     "crm_log_activity": "crm_write",
     "crm_get_activities": "crm_read",
     "crm_stats": "crm_read",
-    # Business Automation — Pipeline
+    # Business Automation,  Pipeline
     "pipeline_create_deal": "pipeline_write",
     "pipeline_advance_deal": "pipeline_write",
     "pipeline_get_deal": "pipeline_read",
@@ -172,13 +172,13 @@ TOOL_PERMISSIONS = {
     "pipeline_update_deal": "pipeline_write",
     "pipeline_stats": "pipeline_read",
     "pipeline_match": "pipeline_read",
-    # Business Automation — Email Templates
+    # Business Automation,  Email Templates
     "template_list": "template_read",
     "template_get": "template_read",
     "template_save": "template_write",
     "template_render": "template_read",
     "template_delete": "template_write",
-    # Business Automation — Follow-ups
+    # Business Automation,  Follow-ups
     "followup_recommendations": "followup_read",
     "followup_overdue": "followup_read",
     "followup_stale": "followup_read",

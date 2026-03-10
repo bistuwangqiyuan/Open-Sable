@@ -1,5 +1,5 @@
 """
-Existential Compass — WORLD FIRST
+Existential Compass,  WORLD FIRST
 ====================================
 Purpose-finding engine. At any moment, the agent can answer:
 "WHY am I doing this?" and "WHAT is my purpose right now?"

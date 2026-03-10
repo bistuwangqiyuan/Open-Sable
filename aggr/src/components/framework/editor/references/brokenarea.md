@@ -8,8 +8,8 @@ Draws a "broken cloud," or a shape with both a top and bottom value, capable of 
 
 ## Parameters
 
-- **`cell`** — Defines the primary characteristics of the broken area.
-- **`options`** *(optional)* — Allows additional customization, such as color and stroke properties.
+- **`cell`**,  Defines the primary characteristics of the broken area.
+- **`options`** *(optional)*,  Allows additional customization, such as color and stroke properties.
 
 ## `BrokenAreaCell` Type
 

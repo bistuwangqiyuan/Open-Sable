@@ -1,5 +1,5 @@
 """
-Event-Driven Flows — declarative workflow DSL with ``@start``, ``@listen``,
+Event-Driven Flows,  declarative workflow DSL with ``@start``, ``@listen``,
 and ``@router`` decorators (inspired by CrewAI Flows).
 
 A *Flow* is a class whose methods are wired together via events.
@@ -210,7 +210,7 @@ class Flow:
             tasks = [self._run_step(ln, result.output) for ln in listeners]
             await asyncio.gather(*tasks)
         else:
-            # Normal step — trigger all listeners for this step name
+            # Normal step,  trigger all listeners for this step name
             listeners = self._listeners.get(name, [])
             if listeners:
                 tasks = [self._run_step(ln, output) for ln in listeners]
@@ -280,7 +280,7 @@ class FlowBuilder:
         class _DynFlow(Flow):
             pass
 
-        # Add start methods — wrap as staticmethod so getattr() doesn't inject 'self'
+        # Add start methods,  wrap as staticmethod so getattr() doesn't inject 'self'
         for name, fn in builder._start_fns.items():
             decorated = start()(fn)
             setattr(_DynFlow, name, staticmethod(decorated))

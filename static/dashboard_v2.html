@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Open-Sable — Dashboard</title>
+<title>Open-Sable,  Dashboard</title>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -457,7 +457,7 @@ function App() {
         break;
       case 'tool.done':
         if (data.success) {
-          addActivity('success', '✅', `Tool done: ${data.name}`, `${data.duration_ms}ms — ${truncate(data.result, 80)}`);
+          addActivity('success', '✅', `Tool done: ${data.name}`, `${data.duration_ms}ms,  ${truncate(data.result, 80)}`);
         } else {
           addActivity('error', '❌', `Tool failed: ${data.name}`, truncate(data.result, 80));
         }
@@ -468,7 +468,7 @@ function App() {
         addTerminal(`[thinking] Round ${data.round || '?'}: ${truncate(data.message, 100)}`, 'info');
         break;
       case 'reasoning':
-        addActivity('think', '💭', 'Deep Reasoning', `${data.length} chars — ${truncate(data.content, 120)}`);
+        addActivity('think', '💭', 'Deep Reasoning', `${data.length} chars,  ${truncate(data.content, 120)}`);
         addTerminal(`[reasoning] (${data.length} chars) ${truncate(data.content, 200)}`, 'info');
         break;
       case 'thinking.done':
@@ -791,7 +791,7 @@ function App() {
                 {/* Version */}
                 <div style={{ padding: '16px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Open-Sable v{stats.version || '1.1.0'} — Gateway {stats.version || '2.0.0'}
+                    Open-Sable v{stats.version || '1.1.0'},  Gateway {stats.version || '2.0.0'}
                   </div>
                 </div>
               </div>

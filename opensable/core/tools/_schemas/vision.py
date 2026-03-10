@@ -83,11 +83,11 @@ SCHEMAS = [
     "name": "open_app",
     "description": (
     "Open an application on the computer by name. "
-    "Pass ONLY the application name — never a search query or sentence. "
+    "Pass ONLY the application name,  never a search query or sentence. "
     "To open a URL in the browser, use open_url instead. "
     "Examples: 'terminal', 'vscode', 'spotify', 'vlc', 'gimp', "
     "'libreoffice', 'calculator', 'files', 'discord', 'slack'. "
-    "NEVER use 'firefox' — always use open_url for web browsing."
+    "NEVER use 'firefox',  always use open_url for web browsing."
     ),
     "parameters": {
     "type": "object",

@@ -1,5 +1,5 @@
 """
-Tool schemas for Business automation domain — CRM, Pipeline, Templates, Follow-ups.
+Tool schemas for Business automation domain,  CRM, Pipeline, Templates, Follow-ups.
 """
 
 SCHEMAS = [

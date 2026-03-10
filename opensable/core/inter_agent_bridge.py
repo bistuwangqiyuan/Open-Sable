@@ -1,11 +1,11 @@
 """
-Inter-Agent Learning Bridge — Knowledge sharing between Sable & Nexus Erebus.
+Inter-Agent Learning Bridge,  Knowledge sharing between Sable & Nexus Erebus.
 
 Each agent runs its own profile with isolated data. This bridge:
   • Exports "learnings" (patterns, strategies, insights) to a shared vault
   • Imports relevant learnings from sibling agents
   • De-duplicates and scores by relevance before import
-  • Tracks provenance — every learning carries its origin agent + timestamp
+  • Tracks provenance,  every learning carries its origin agent + timestamp
   • Runs asynchronously on a configurable schedule (default: every 10 ticks)
   • Persists a shared vault on disk readable by any agent instance
 """
@@ -461,7 +461,7 @@ class InterAgentBridge:
                 )
 
             logger.info(
-                f"🔗 InterAgentBridge [{self._profile}]: Loaded state — "
+                f"🔗 InterAgentBridge [{self._profile}]: Loaded state,  "
                 f"{self._total_exported} exported, {self._total_imported} imported"
             )
         except Exception as e:

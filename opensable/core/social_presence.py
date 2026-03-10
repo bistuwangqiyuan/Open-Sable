@@ -1,5 +1,5 @@
 """
-Social Presence Builder — WORLD FIRST
+Social Presence Builder,  WORLD FIRST
 Autonomous social media presence management: content strategy,
 audience growth, engagement optimization, and multi-platform
 presence building. The agent grows its own influence.

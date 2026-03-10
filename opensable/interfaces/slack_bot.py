@@ -249,7 +249,7 @@ class SlackInterface:
                 channel=channel_id,
                 text=(
                     f":wave: *Welcome, {username}!*\n"
-                    f"You're the first user — auto-approved as *owner*.\n"
+                    f"You're the first user,  auto-approved as *owner*.\n"
                     f"Your ID: `{user_id}`\nUse `/sable help` to see commands."
                 ),
             )
@@ -293,9 +293,9 @@ class SlackInterface:
         if not args:
             await say(
                 ":key: *Pairing commands*\n"
-                "`pair approve <CODE>` — approve a pending user\n"
-                "`pair deny <CODE>` — deny a pending user\n"
-                "`pair revoke <USER_ID>` — revoke access"
+                "`pair approve <CODE>`,  approve a pending user\n"
+                "`pair deny <CODE>`,  deny a pending user\n"
+                "`pair revoke <USER_ID>`,  revoke access"
             )
             return
 
@@ -490,14 +490,14 @@ class SlackInterface:
                         buffer = ""
                         last_edit = now
 
-            # Final edit — remove cursor
+            # Final edit,  remove cursor
             if full_text.strip():
                 try:
                     await client.chat_update(channel=channel_id, ts=ph_ts, text=full_text)
                 except Exception:
                     pass
             else:
-                # Streaming produced nothing — fall back to agent
+                # Streaming produced nothing,  fall back to agent
                 full_text = await self.agent.process_message(user_id, text, history=history)
                 await client.chat_update(channel=channel_id, ts=ph_ts, text=full_text)
 
@@ -543,11 +543,11 @@ class SlackInterface:
             if not text or text.lower() == "help":
                 await say(
                     ":robot_face: *Sable Commands*\n\n"
-                    "`/sable <message>` — chat with Sable\n"
-                    "`/sable status` — session info\n"
-                    "`/sable reset` — clear conversation\n"
-                    "`/sable pair approve|deny|revoke` — manage users\n"
-                    "`/sable help` — this message\n\n"
+                    "`/sable <message>`,  chat with Sable\n"
+                    "`/sable status`,  session info\n"
+                    "`/sable reset`,  clear conversation\n"
+                    "`/sable pair approve|deny|revoke`,  manage users\n"
+                    "`/sable help`,  this message\n\n"
                     "Or just mention <@me> in any channel!"
                 )
                 return
@@ -574,7 +574,7 @@ class SlackInterface:
                     await say(result.message)
                 return
 
-            # Regular message — process through agent
+            # Regular message,  process through agent
             response = await self.agent.process_message(user_id, text)
             await say(str(response))
 
@@ -585,7 +585,7 @@ class SlackInterface:
     # ────────────────────────── file / image handler ──────────────────
 
     async def handle_file_shared(self, event, client, say):
-        """Handle shared files — analyse images, transcribe audio."""
+        """Handle shared files,  analyse images, transcribe audio."""
         try:
             file_id = event.get("file_id")
             if not file_id:

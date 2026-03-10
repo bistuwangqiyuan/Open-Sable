@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Instagram Challenge Resolver — Fix "challenge_required" blocks.
+Instagram Challenge Resolver,  Fix "challenge_required" blocks.
 
 When Instagram blocks an account with "challenge_required", this script
 resolves it by:
@@ -112,7 +112,7 @@ def main():
         print("🔍 Verifying session...")
         try:
             cl.get_timeline_feed()
-            print("✅ Timeline access confirmed — session is fully active!")
+            print("✅ Timeline access confirmed,  session is fully active!")
         except Exception as e:
             print(f"⚠️  Timeline check failed: {e}")
             print("   Session may still work for uploads.")
@@ -120,7 +120,7 @@ def main():
         # Save session
         cl.dump_settings(str(session_path))
         print(f"\n💾 Session saved to: {session_path}")
-        print("\n🔄 Restart the agent now — Instagram should work!")
+        print("\n🔄 Restart the agent now,  Instagram should work!")
 
     except ChallengeRequired as e:
         print(f"\n⚠️  Challenge required: {e}")
@@ -135,7 +135,7 @@ def main():
             cl.login(username, password)
             cl.dump_settings(str(session_path))
             print(f"💾 Session saved to: {session_path}")
-            print("\n🔄 Restart the agent — Instagram should work now!")
+            print("\n🔄 Restart the agent,  Instagram should work now!")
 
         except Exception as e2:
             print(f"❌ Challenge resolution failed: {e2}")

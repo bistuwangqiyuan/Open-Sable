@@ -1,5 +1,5 @@
 """
-Cognitive Mitosis — WORLD FIRST
+Cognitive Mitosis,  WORLD FIRST
 ================================
 The agent can split into multiple independent cognitive threads
 that DIVERGE, evolve separately with different strategies,
@@ -126,7 +126,7 @@ class CognitiveMitosis:
 
         # Heuristic evolution
         thread.findings.append({
-            "finding": f"Explored {thread.strategy} — step {len(thread.findings)+1}",
+            "finding": f"Explored {thread.strategy},  step {len(thread.findings)+1}",
             "confidence": thread.confidence,
             "step": len(thread.findings) + 1,
         })
@@ -152,7 +152,7 @@ class CognitiveMitosis:
                     "findings": [f.get("finding", "") for f in t.findings[-3:]],
                 })
             prompt = (
-                f"COGNITIVE MERGE — combine {len(threads_to_merge)} divergent "
+                f"COGNITIVE MERGE,  combine {len(threads_to_merge)} divergent "
                 f"thought threads:\n\n"
                 f"Threads: {json.dumps(thread_summaries)}\n\n"
                 f"1. Identify CONFLICTS between threads\n"

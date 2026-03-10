@@ -1,9 +1,9 @@
 """
-Ontological Engine — WORLD FIRST
+Ontological Engine,  WORLD FIRST
 =================================
 The agent constructs and maintains its own ontology of reality.
 It reasons about what EXISTS, what's POSSIBLE, what's IMPOSSIBLE,
-and what's PROBABLE — building a dynamic model of reality itself.
+and what's PROBABLE,  building a dynamic model of reality itself.
 
 No AI agent has ever built its own ontology from experience.
 This agent does. It knows its own limits of reality.

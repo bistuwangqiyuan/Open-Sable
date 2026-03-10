@@ -1,5 +1,5 @@
 """
-Guardrails — Input/Output validation for safe, reliable agent execution.
+Guardrails,  Input/Output validation for safe, reliable agent execution.
 
 Validates user inputs BEFORE the LLM sees them and validates LLM outputs
 BEFORE returning them.  Blocks prompt injection, enforces output schemas,
@@ -144,7 +144,7 @@ class PromptInjectionGuardrail(InputGuardrail):
                     passed=False,
                     guardrail_name=self.name,
                     action=GuardrailAction.BLOCK,
-                    rejection_message="I can't process that request — it looks like a prompt injection attempt.",
+                    rejection_message="I can't process that request,  it looks like a prompt injection attempt.",
                     details={"matched_pattern": match.group()},
                 )
         return GuardrailResult(passed=True, guardrail_name=self.name)
@@ -382,7 +382,7 @@ class GuardrailsEngine:
             return ValidationResult(
                 passed=False,
                 results=results,
-                rejection_message="Output validation failed — retrying.",
+                rejection_message="Output validation failed,  retrying.",
                 sanitized_content=sanitized,
             )
 

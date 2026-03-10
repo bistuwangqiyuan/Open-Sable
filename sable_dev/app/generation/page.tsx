@@ -70,7 +70,7 @@ interface ScrapeData {
 }
 
 function AISandboxPage() {
-  // Resolve sandbox URLs for remote access — replace localhost with the browser's hostname
+  // Resolve sandbox URLs for remote access,  replace localhost with the browser's hostname
   const resolveSandboxUrl = (url: string): string => {
     if (typeof window === 'undefined') return url;
     const browserHost = window.location.hostname;
@@ -578,7 +578,7 @@ function AISandboxPage() {
       const pendingPrompt = sessionStorage.getItem('creationPromptPending');
       
       if (pendingPrompt && !homeUrlInput) {
-        // Creation mode — the direct trigger in initializePage handles this now
+        // Creation mode,  the direct trigger in initializePage handles this now
         // This effect is just a safety fallback
         setShouldAutoGenerate(false);
         // Only set pendingCreationPrompt if the direct trigger hasn't already handled it
@@ -589,7 +589,7 @@ function AISandboxPage() {
         }
         return;
       } else if (homeUrlInput) {
-        // URL clone mode — original behavior
+        // URL clone mode,  original behavior
         setShouldAutoGenerate(false);
         
         const timer = setTimeout(() => {
@@ -2228,7 +2228,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       return;
     }
     
-    // Auto-fix/auto-continue messages start with these prefixes — don't show them as user messages
+    // Auto-fix/auto-continue messages start with these prefixes,  don't show them as user messages
     const isAutoMessage = message.startsWith('FIX THIS ERROR') || message.startsWith('Continue customizing');
     if (!isAutoMessage) {
       addChatMessage(message, 'user');
@@ -2680,7 +2680,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                   const correctedPkg = PACKAGE_CORRECTIONS[pkg] ?? pkg;
 
                   if (!correctedPkg) {
-                    // Package doesn't exist at all — ask AI to remove the import
+                    // Package doesn't exist at all,  ask AI to remove the import
                     autoFixRetryRef.current += 1;
                     addChatMessage(`Package "${pkg}" does not exist on npm. Asking AI to remove the import (attempt ${autoFixRetryRef.current}/${MAX_AUTO_FIX_RETRIES})...`, 'system');
                     await fetch('/api/check-vite-errors', { method: 'POST' });
@@ -2696,11 +2696,11 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                   await fetch('/api/check-vite-errors', { method: 'POST' });
                   try {
                     await installPackages([correctedPkg]);
-                    // Don't count this as a fix attempt — it was a package install
+                    // Don't count this as a fix attempt,  it was a package install
                     // Vite will auto-reload; skip to next iteration
                     return;
                   } catch {
-                    // Install failed — ask AI to remove the import
+                    // Install failed,  ask AI to remove the import
                     autoFixRetryRef.current += 1;
                     addChatMessage(`Failed to install "${correctedPkg}". Asking AI to remove the import...`, 'system');
                     const fixPrompt = `FIX THIS ERROR - The package "${pkg}" failed to install. REMOVE the import and replace icons/components with inline SVGs or plain HTML/CSS. Output ONLY the file "${brokenFile}":\n\n${errorText}`;
@@ -2711,7 +2711,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                   }
                 }
 
-                // Regular compile error — ask AI to fix
+                // Regular compile error,  ask AI to fix
                 autoFixRetryRef.current += 1;
                 const fixPrompt = `FIX THIS ERROR - Output ONLY the broken file "${brokenFile}", nothing else:\n\n${errorText}\n\nONLY fix and output the file: ${brokenFile}. Do NOT regenerate any other files.`;
                 addChatMessage(`Auto-detected compile error in ${brokenFile} (attempt ${autoFixRetryRef.current}/${MAX_AUTO_FIX_RETRIES}). Fixing...`, 'system');
@@ -2723,15 +2723,15 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                     sendChatMessageRef.current(fixPrompt);
                   }
                 }, 500);
-                return; // exit early — the recursive call handles completion
+                return; // exit early,  the recursive call handles completion
               }
             } catch (e) {
               console.log('[auto-fix] Error checking vite errors:', e);
             }
-            // No errors — reset retry counter
+            // No errors,  reset retry counter
             autoFixRetryRef.current = 0;
           } else {
-            // Max retries reached — reset and let user handle it
+            // Max retries reached,  reset and let user handle it
             autoFixRetryRef.current = 0;
             addChatMessage('Auto-fix reached max retries. Check the preview for remaining errors.', 'system');
           }
@@ -2763,7 +2763,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               const expectedComponents = ['Header.jsx', 'Hero.jsx', 'Features.jsx', 'Footer.jsx', 'App.jsx'];
               const missingComponents = expectedComponents.filter(c => !outputFileNames.has(c));
               if (missingComponents.length > 0 && missingComponents.length < expectedComponents.length) {
-                addChatMessage(`Continuing generation — still need: ${missingComponents.join(', ')}...`, 'system');
+                addChatMessage(`Continuing generation,  still need: ${missingComponents.join(', ')}...`, 'system');
                 const continuePrompt = `Continue customizing the remaining component files to match the user request. Output ONLY these files: ${missingComponents.join(', ')}. Keep the same theme, colors, and content style as the files you already generated.`;
                 setTimeout(() => {
                   if (sendChatMessageRef.current) {
@@ -4275,7 +4275,7 @@ Focus on the key sections and content, making it clean and modern.`;
                       className="p-3 border-b border-[#1a1a2e] hover:bg-[#12122a] cursor-pointer transition-colors group"
                       onClick={() => {
                         setShowProjectHistory(false);
-                        // For now just show info — full restore would need sandbox recreation
+                        // For now just show info,  full restore would need sandbox recreation
                         alert(`Project: ${proj.name}\nTemplate: ${proj.template}\nModel: ${proj.model}\nFiles: ${proj.fileCount}\nCreated: ${new Date(proj.createdAt).toLocaleString()}`);
                       }}
                     >

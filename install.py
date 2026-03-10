@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  SableCore — Universal Installer                                     ║
+║  SableCore,  Universal Installer                                     ║
 ║  One script to rule them all: Python, Node, dependencies, builds.    ║
 ║  Works on Linux, macOS, and Windows.                                 ║
 ╚══════════════════════════════════════════════════════════════════════╝
@@ -177,7 +177,7 @@ def print_banner():
     banner = f"""
 {bold(cyan('╔══════════════════════════════════════════════════════════════╗'))}
 {bold(cyan('║'))}                                                            {bold(cyan('║'))}
-{bold(cyan('║'))}   {bold('SableCore — Universal Installer')}                          {bold(cyan('║'))}
+{bold(cyan('║'))}   {bold('SableCore,  Universal Installer')}                          {bold(cyan('║'))}
 {bold(cyan('║'))}   {dim('Your personal AI that actually does things')}               {bold(cyan('║'))}
 {bold(cyan('║'))}                                                            {bold(cyan('║'))}
 {bold(cyan('║'))}   {dim(f'Platform: {OS} {ARCH}')}                                   {bold(cyan('║'))}
@@ -196,7 +196,7 @@ def check_python() -> bool:
     ver = f"{v.major}.{v.minor}.{v.micro}"
 
     if v.major < 3 or (v.major == 3 and v.minor < 11):
-        fail(f"Python {ver} detected — Python 3.11+ required")
+        fail(f"Python {ver} detected,  Python 3.11+ required")
         if IS_MAC:
             info("Fix: brew install python@3.12")
         elif IS_LINUX:
@@ -235,7 +235,7 @@ def check_system_deps() -> bool:
     if cmd_exists("curl"):
         ok(f"curl {cmd_version('curl') or '(found)'}")
     elif not IS_WIN:
-        warn("curl not found — some auto-installs may fail")
+        warn("curl not found,  some auto-installs may fail")
         if IS_LINUX:
             info("Fix: sudo apt install curl")
 
@@ -244,7 +244,7 @@ def check_system_deps() -> bool:
         if cmd_exists("gcc"):
             ok("Build tools (gcc) available")
         else:
-            warn("gcc not found — some Python packages may fail to compile")
+            warn("gcc not found,  some Python packages may fail to compile")
             info("Fix: sudo apt install build-essential python3-dev")
             _try_install_build_tools()
 
@@ -253,7 +253,7 @@ def check_system_deps() -> bool:
         if r.returncode == 0:
             ok("Xcode Command Line Tools installed")
         else:
-            warn("Xcode CLT not found — installing...")
+            warn("Xcode CLT not found,  installing...")
             run(["xcode-select", "--install"])
 
     return all_ok
@@ -291,11 +291,11 @@ def check_node() -> bool:
                 ok(f"npm v{npm_ver}")
             return True
         else:
-            warn(f"Node.js v{ver} found — v18+ recommended")
+            warn(f"Node.js v{ver} found,  v18+ recommended")
             info("Attempting upgrade...")
             return _install_node()
     else:
-        warn("Node.js not found — installing...")
+        warn("Node.js not found,  installing...")
         return _install_node()
 
 
@@ -373,7 +373,7 @@ def setup_venv() -> bool:
         # Verify it's not broken
         r = run([str(VENV_PYTHON), "-c", "import sys; print(sys.version)"], capture=True)
         if r.returncode != 0:
-            warn("venv appears broken — recreating...")
+            warn("venv appears broken,  recreating...")
             shutil.rmtree(VENV_DIR)
         else:
             return True
@@ -431,7 +431,7 @@ def install_python_deps() -> bool:
         cwd=ROOT,
     )
     if r.returncode != 0:
-        warn("Editable install had issues — trying without extras...")
+        warn("Editable install had issues,  trying without extras...")
         r = run([str(VENV_PIP), "install", "-e", "."], cwd=ROOT)
         if r.returncode != 0:
             fail("Could not install opensable package")
@@ -488,7 +488,7 @@ def install_playwright() -> bool:
             capture=True, timeout=120,
         )
         if r.returncode != 0:
-            warn("Could not install Playwright system deps — trying anyway...")
+            warn("Could not install Playwright system deps,  trying anyway...")
             info("If it fails: sudo npx playwright install-deps")
 
     r = run(
@@ -499,7 +499,7 @@ def install_playwright() -> bool:
         ok("Playwright Chromium installed")
         return True
     else:
-        warn("Playwright browser install failed (optional — web scraping may not work)")
+        warn("Playwright browser install failed (optional,  web scraping may not work)")
         info(f"Manual fix: {VENV_ACTIVATE} && python -m playwright install chromium")
         return False
 
@@ -517,7 +517,7 @@ def setup_ollama() -> bool:
         _pull_optimal_model()
         return True
 
-    info("Ollama not found — installing...")
+    info("Ollama not found,  installing...")
 
     try:
         if IS_MAC:
@@ -640,7 +640,7 @@ def _pull_optimal_model():
         if r.returncode == 0:
             ok(f"{model} downloaded")
         else:
-            warn(f"Could not download {model} — you can pull it later: ollama pull {model}")
+            warn(f"Could not download {model},  you can pull it later: ollama pull {model}")
 
     _set_env_var("DEFAULT_MODEL", model)
 
@@ -655,7 +655,7 @@ def _pull_optimal_model():
         if r2.returncode == 0:
             ok(f"{embed_model} downloaded")
         else:
-            warn(f"Could not download {embed_model} — run: ollama pull {embed_model}")
+            warn(f"Could not download {embed_model},  run: ollama pull {embed_model}")
 
     substep("Agent auto-downloads additional models at runtime as needed")
 
@@ -668,7 +668,7 @@ def install_npm_projects(full_mode: bool = False) -> int:
     step("JavaScript sub-projects (npm)")
 
     if not cmd_exists("node"):
-        warn("Node.js not available — skipping all JS sub-projects")
+        warn("Node.js not available,  skipping all JS sub-projects")
         return 0
 
     installed = 0
@@ -680,7 +680,7 @@ def install_npm_projects(full_mode: bool = False) -> int:
         name = proj["name"]
 
         if not pkg_json.exists():
-            substep(f"{name}: {dim('not found — skipping')}")
+            substep(f"{name}: {dim('not found,  skipping')}")
             continue
 
         # Ask for optional projects if not in full mode
@@ -715,7 +715,7 @@ def _install_npm_project(proj: dict, npm: str) -> bool:
                 return _build_npm_project(proj, npm)
             return True
         else:
-            warn(f"{name}: node_modules exists but may be incomplete — reinstalling")
+            warn(f"{name}: node_modules exists but may be incomplete,  reinstalling")
 
     substep(f"{name}: installing dependencies...")
 
@@ -843,12 +843,12 @@ def setup_env_file():
         ok("Created .env from .env.example")
         info("Edit .env to add your bot tokens and API keys")
     else:
-        warn(".env.example not found — creating minimal .env")
+        warn(".env.example not found,  creating minimal .env")
         env_file.write_text(textwrap.dedent("""\
             # SableCore Configuration
             # See .env.example for all options
 
-            # LLM (local — requires Ollama running)
+            # LLM (local,  requires Ollama running)
             OLLAMA_BASE_URL=http://localhost:11434
             DEFAULT_MODEL=llama3.2:3b
             AUTO_SELECT_MODEL=true
@@ -894,8 +894,8 @@ def install_extras_interactive():
     {bold('1')} Core only {dim('(minimal, ~100MB)')}
     {bold('2')} + Trading {dim('(ccxt, alpaca, technical analysis)')}
     {bold('3')} + Voice   {dim('(speech-to-text, text-to-speech)')}
-    {bold('4')} + Vision  {dim('(image recognition, OCR — 5GB+)')}
-    {bold('5')} All extras {dim('(everything — 5GB+)')}
+    {bold('4')} + Vision  {dim('(image recognition, OCR,  5GB+)')}
+    {bold('5')} All extras {dim('(everything,  5GB+)')}
 """)
 
     print(f"  {cyan('?')} Select option {dim('[1-5, default: 1]')}: ", end="", flush=True)
@@ -914,7 +914,7 @@ def install_extras_interactive():
 
     extras = extras_map.get(choice, [])
     if not extras:
-        substep("Core only selected — skipping extras")
+        substep("Core only selected,  skipping extras")
         return
 
     for extra in extras:
@@ -926,7 +926,7 @@ def install_extras_interactive():
             if req_path.exists():
                 r = run([str(VENV_PIP), "install", "-r", str(req_path)], cwd=ROOT)
             else:
-                warn(f"{extra} not found — skipping")
+                warn(f"{extra} not found,  skipping")
                 continue
 
         if r.returncode == 0:
@@ -1056,14 +1056,14 @@ def _status_line(name: str, value: str, status: Optional[bool]):
 def fix_install():
     """Re-check and fix broken installations."""
     print_banner()
-    step("Repair Mode — checking and fixing issues")
+    step("Repair Mode,  checking and fixing issues")
 
     issues = 0
     fixed = 0
 
     # Check venv
     if not VENV_PYTHON.exists():
-        warn("Virtual environment missing — recreating")
+        warn("Virtual environment missing,  recreating")
         if setup_venv():
             fixed += 1
         else:
@@ -1072,7 +1072,7 @@ def fix_install():
         # Verify venv is not broken
         r = run([str(VENV_PYTHON), "-c", "import sys; print(sys.version)"], capture=True)
         if r.returncode != 0:
-            warn("Virtual environment broken — recreating")
+            warn("Virtual environment broken,  recreating")
             shutil.rmtree(VENV_DIR, ignore_errors=True)
             if setup_venv():
                 fixed += 1
@@ -1085,7 +1085,7 @@ def fix_install():
     if VENV_PYTHON.exists():
         r = run([str(VENV_PYTHON), "-c", "import opensable"], capture=True)
         if r.returncode != 0:
-            warn("opensable package not installed — fixing")
+            warn("opensable package not installed,  fixing")
             if install_python_deps():
                 fixed += 1
             else:
@@ -1103,7 +1103,7 @@ def fix_install():
 
             node_modules = proj_dir / "node_modules"
             if not node_modules.exists() or not any(node_modules.iterdir()):
-                warn(f"{proj['name']}: missing node_modules — reinstalling")
+                warn(f"{proj['name']}: missing node_modules,  reinstalling")
                 r = run([npm, "install"], cwd=proj_dir, timeout=300)
                 if r.returncode == 0:
                     ok(f"{proj['name']}: fixed")
@@ -1129,7 +1129,7 @@ def fix_install():
     # Check .env
     env_file = ROOT / ".env"
     if not env_file.exists():
-        warn(".env missing — creating")
+        warn(".env missing,  creating")
         setup_env_file()
         fixed += 1
     else:
@@ -1148,9 +1148,9 @@ def fix_install():
     if issues == 0 and fixed == 0:
         ok(bold("Everything looks good! No issues found."))
     elif issues == 0:
-        ok(f"Repair complete — {fixed} issue(s) fixed, everything is good now!")
+        ok(f"Repair complete,  {fixed} issue(s) fixed, everything is good now!")
     else:
-        warn(f"Repair done — {fixed} fixed, {issues} remaining issue(s)")
+        warn(f"Repair done,  {fixed} fixed, {issues} remaining issue(s)")
         info("Check the errors above for manual fix instructions")
 
 
@@ -1285,7 +1285,7 @@ def main():
     if not args.core:
         install_npm_projects(full_mode=args.full)
 
-    # 10. Extras (interactive — skip in full/core mode)
+    # 10. Extras (interactive,  skip in full/core mode)
     if not args.core and not args.full:
         install_extras_interactive()
     elif args.full:

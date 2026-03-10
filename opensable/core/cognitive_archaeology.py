@@ -1,8 +1,8 @@
 """
-Cognitive Archaeology — past decision chain reconstruction.
+Cognitive Archaeology,  past decision chain reconstruction.
 
 WORLD FIRST: The agent can "excavate" its own past decisions, reconstructing
-the full reasoning chain that led to any outcome — even when the original
+the full reasoning chain that led to any outcome,  even when the original
 reasoning was not explicitly logged. Like an archaeologist piecing together
 ancient civilizations from fragments.
 
@@ -115,7 +115,7 @@ class CognitiveArchaeology:
         return results
 
     async def deep_excavation(self, llm, question: str) -> Dict[str, Any]:
-        """LLM-powered deep excavation — reconstruct WHY something happened."""
+        """LLM-powered deep excavation,  reconstruct WHY something happened."""
         # Find relevant fossils
         raw_results = self.excavate(question)
         if not raw_results:

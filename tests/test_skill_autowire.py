@@ -64,7 +64,7 @@ async def handle_inventory_add(params):
     return json.dumps({"success": True, "product": name, "quantity": qty})
 """
 
-# Skill with NO explicit schemas — tests auto-generation from docstrings
+# Skill with NO explicit schemas,  tests auto-generation from docstrings
 AUTO_SCHEMA_SKILL = """
 import json
 
@@ -133,7 +133,7 @@ async def test_full_protocol():
 
 
 async def test_auto_schema():
-    """Test skill WITHOUT explicit schemas — auto-generation from docstrings."""
+    """Test skill WITHOUT explicit schemas,  auto-generation from docstrings."""
     from opensable.core.skill_creator import SkillCreator, make_dynamic_handler
 
     config = SimpleNamespace(data_dir="./data")
@@ -154,7 +154,7 @@ async def test_auto_schema():
     # Verify auto-generated schemas have correct parameters
     for schema in tool_info["schemas"]:
         fn = schema["function"]
-        print(f"  Schema: {fn['name']} — params: {list(fn['parameters']['properties'].keys())}")
+        print(f"  Schema: {fn['name']},  params: {list(fn['parameters']['properties'].keys())}")
 
     price_schema = next(
         s for s in tool_info["schemas"] if s["function"]["name"] == "price_check"

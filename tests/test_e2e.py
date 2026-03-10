@@ -2,7 +2,7 @@
 End-to-End tests for SableCore.
 
 These tests spin up real components (Gateway, Config, ToolRegistry)
-and verify they work together — not just mocked unit behavior.
+and verify they work together,  not just mocked unit behavior.
 
 Run:
     pytest tests/test_e2e.py -v
@@ -358,7 +358,7 @@ class TestGatewayWebSocket:
 
     @pytest.mark.asyncio
     async def test_ws_on_root_path(self, gateway, config):
-        """Frontends connect to ws://host/ (root) — must work."""
+        """Frontends connect to ws://host/ (root),  must work."""
         url = f"http://127.0.0.1:{config.webchat_port}/"
         async with aiohttp.ClientSession() as session:
             async with session.ws_connect(url) as ws:

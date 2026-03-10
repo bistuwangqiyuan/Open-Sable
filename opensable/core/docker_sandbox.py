@@ -1,5 +1,5 @@
 """
-Docker Sandbox — Ephemeral container-based code execution.
+Docker Sandbox,  Ephemeral container-based code execution.
 
 Provides secure, network-isolated, resource-limited execution of
 LLM-generated code inside throwaway Docker containers. Each execution

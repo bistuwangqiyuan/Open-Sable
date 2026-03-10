@@ -1,5 +1,5 @@
 """
-Predictive World Model — anticipatory reasoning.
+Predictive World Model,  anticipatory reasoning.
 
 Maintains a lightweight world state model and uses LLM to predict
 likely future events, enabling the agent to proactively prepare
@@ -30,7 +30,7 @@ _PREDICT_SYSTEM = """You are a predictive world model for an autonomous AI agent
 Given the agent's current world state observations and recent history,
 predict 2-5 events likely to happen in the near future.
 
-Output ONLY valid JSON — an array of objects:
+Output ONLY valid JSON,  an array of objects:
 [
   {
     "prediction": "what will likely happen (5-20 words)",

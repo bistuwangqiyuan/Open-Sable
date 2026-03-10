@@ -1,5 +1,5 @@
 """
-Ethical Reasoning Framework — consequence analysis + guardrails.
+Ethical Reasoning Framework,  consequence analysis + guardrails.
 
 Evaluates the ethical implications and potential consequences of
 autonomous actions BEFORE executing them, providing a safety layer
@@ -34,7 +34,7 @@ _GUARDRAILS = [
     {"id": "privacy", "rule": "Never expose private user data to unauthorized parties", "severity": 0.9},
     {"id": "consent", "rule": "Never access services or data without proper authorization", "severity": 0.8},
     {"id": "reversibility", "rule": "Prefer reversible actions over irreversible ones", "severity": 0.6},
-    {"id": "proportionality", "rule": "Actions should be proportional to the goal — don't use a sledgehammer for a nail", "severity": 0.5},
+    {"id": "proportionality", "rule": "Actions should be proportional to the goal,  don't use a sledgehammer for a nail", "severity": 0.5},
     {"id": "transparency", "rule": "Always be transparent about being an AI when directly asked", "severity": 0.8},
     {"id": "resource_respect", "rule": "Don't consume excessive resources (rate limits, storage, bandwidth) without justification", "severity": 0.4},
 ]
@@ -162,7 +162,7 @@ class EthicalReasoner:
             # Financial actions get extra scrutiny
             if context.get("involves_money"):
                 risk_score += 0.2
-                reasons.append("Financial action — extra scrutiny applied")
+                reasons.append("Financial action,  extra scrutiny applied")
                 stakeholders.append("user_finances")
 
             # Actions affecting other users

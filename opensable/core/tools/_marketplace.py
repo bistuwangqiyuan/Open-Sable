@@ -1,11 +1,11 @@
 """
-Marketplace Tool Mixin — Skills Store integration for the agent.
+Marketplace Tool Mixin,  Skills Store integration for the agent.
 
 Tools:
-  marketplace_search    — Search the SableCore Skills Marketplace
-  marketplace_info      — Get detailed info about a specific skill
-  marketplace_install   — Install a skill (requires user approval via HITL)
-  marketplace_review    — Post a review on a skill the agent has used
+  marketplace_search   ,  Search the SableCore Skills Marketplace
+  marketplace_info     ,  Get detailed info about a specific skill
+  marketplace_install  ,  Install a skill (requires user approval via HITL)
+  marketplace_review   ,  Post a review on a skill the agent has used
 
 All operations go through the Agent Gateway Protocol (SAGP/1.0)
 with Ed25519 + HMAC-SHA512 + NaCl encryption.
@@ -66,7 +66,7 @@ class MarketplaceToolsMixin:
             if not skills:
                 return f"🏪 No skills found for '{query}'. Try a different search term."
 
-            lines = [f"🏪 **SableCore Skills Marketplace** — {len(skills)} result(s):\n"]
+            lines = [f"🏪 **SableCore Skills Marketplace**,  {len(skills)} result(s):\n"]
             for i, skill in enumerate(skills, 1):
                 rating = f"⭐ {skill.rating:.1f}" if skill.rating else "No rating"
                 lines.append(

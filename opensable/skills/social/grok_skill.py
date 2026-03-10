@@ -1,8 +1,8 @@
 """
-Grok AI Skill — Free Grok access via X (Twitter) account using twikit_grok.
+Grok AI Skill,  Free Grok access via X (Twitter) account using twikit_grok.
 
 Uses the twikit_grok library to interact with Grok AI through your X account.
-No paid API keys required — Grok is free for all X members.
+No paid API keys required,  Grok is free for all X members.
 
 Features:
 - Chat with Grok (streaming and non-streaming)
@@ -37,7 +37,7 @@ except ImportError:
 
 class GrokSkill:
     """
-    Interact with Grok AI through your X account — free, no API keys.
+    Interact with Grok AI through your X account,  free, no API keys.
 
     Uses twikit_grok which handles authentication via X cookies.
     """
@@ -55,7 +55,7 @@ class GrokSkill:
     async def initialize(self) -> bool:
         """Initialize and authenticate with X for Grok access."""
         if not TWIKIT_GROK_AVAILABLE:
-            logger.warning("twikit_grok not available — Grok skill disabled")
+            logger.warning("twikit_grok not available,  Grok skill disabled")
             return False
 
         try:

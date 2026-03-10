@@ -6,16 +6,16 @@ Supports lights, switches, locks, thermostats, cameras, sensors, scenes,
 and automation management through Home Assistant's REST API.
 
 Features:
-  1. Device discovery — Auto-discover all HA entities
-  2. Light control — On/off/brightness/color/temperature
-  3. Climate control — Temperature/HVAC mode/fan speed
-  4. Lock/switch control — Lock/unlock, turn on/off
-  5. Scene activation — Trigger HA scenes
-  6. Sensor reading — Temperature, humidity, motion, door/window state
-  7. Automation management — Enable/disable/trigger HA automations
-  8. NL commands — "Turn off the living room lights"
-  9. Routines — Combine multiple commands into one action
-  10. State monitoring — Watch for device state changes
+  1. Device discovery,  Auto-discover all HA entities
+  2. Light control,  On/off/brightness/color/temperature
+  3. Climate control,  Temperature/HVAC mode/fan speed
+  4. Lock/switch control,  Lock/unlock, turn on/off
+  5. Scene activation,  Trigger HA scenes
+  6. Sensor reading,  Temperature, humidity, motion, door/window state
+  7. Automation management,  Enable/disable/trigger HA automations
+  8. NL commands,  "Turn off the living room lights"
+  9. Routines,  Combine multiple commands into one action
+  10. State monitoring,  Watch for device state changes
 """
 import json
 import logging

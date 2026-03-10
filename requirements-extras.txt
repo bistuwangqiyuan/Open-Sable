@@ -1,5 +1,5 @@
 # ===================================================================
-# SableCore — Optional/Heavy Dependencies
+# SableCore,  Optional/Heavy Dependencies
 # ===================================================================
 # Install with: pip install -r requirements-extras.txt
 # WARNING: These can be 5+ GB (torch, diffusers, opencv, etc.)

@@ -1,5 +1,5 @@
 """
-Productivity tools — documents, email, calendar, clipboard, OCR
+Productivity tools,  documents, email, calendar, clipboard, OCR
 """
 
 import asyncio
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProductivityToolsMixin:
-    """Mixin providing productivity tools — documents, email, calendar, clipboard, ocr tool implementations."""
+    """Mixin providing productivity tools,  documents, email, calendar, clipboard, ocr tool implementations."""
 
     # ========== DOCUMENT TOOLS ==========
 
@@ -104,8 +104,8 @@ class ProductivityToolsMixin:
         """Open LibreOffice Writer and type text live in real-time.
 
         Supports two modes:
-          1. 'live' (default) — opens Writer empty, then types character by character
-          2. 'instant' — creates a .docx first, then opens it in Writer
+          1. 'live' (default),  opens Writer empty, then types character by character
+          2. 'instant',  creates a .docx first, then opens it in Writer
         """
         text = params.get("text", "")
         title = params.get("title", "")
@@ -215,7 +215,7 @@ class ProductivityToolsMixin:
             #    (xdotool handles Unicode properly, unlike pyautogui.typewrite)
             logger.info(f"✍️ Typing {len(full_text)} characters in LibreOffice Writer...")
 
-            # Type in chunks for efficiency — line by line for natural effect
+            # Type in chunks for efficiency,  line by line for natural effect
             lines = full_text.split("\n")
             for line_idx, line in enumerate(lines):
                 if line:
@@ -290,7 +290,7 @@ class ProductivityToolsMixin:
         attachments = params.get("attachments", [])
 
         if not to:
-            return "⚠️ Missing 'to' — who should I send the email to?"
+            return "⚠️ Missing 'to',  who should I send the email to?"
 
         try:
             import smtplib
@@ -408,7 +408,7 @@ class ProductivityToolsMixin:
     # ========== CALENDAR TOOLS (LOCAL + GOOGLE) ==========
 
     async def _calendar_list_events_tool(self, params: Dict) -> str:
-        """List calendar events — tries Google Calendar first, falls back to local"""
+        """List calendar events,  tries Google Calendar first, falls back to local"""
         source = params.get("source", "auto")
         days = int(params.get("days_ahead", 7))
 
@@ -437,7 +437,7 @@ class ProductivityToolsMixin:
         return await self._calendar_tool({"action": "list"})
 
     async def _calendar_add_event_tool(self, params: Dict) -> str:
-        """Add a calendar event — tries Google Calendar first, falls back to local"""
+        """Add a calendar event,  tries Google Calendar first, falls back to local"""
         source = params.get("source", "auto")
         title = params.get("title", "Untitled Event")
         date_str = params.get("date", "")
@@ -538,7 +538,7 @@ class ProductivityToolsMixin:
             brief = await self.news_reader_skill.get_country_brief(code)
             if brief.get("error"):
                 return f"❌ Country brief failed: {brief['error']}"
-            return f"🌍 **Intel Brief — {code.upper()}:**\n\n```json\n{json.dumps(brief, indent=2, default=str)[:3000]}\n```"
+            return f"🌍 **Intel Brief,  {code.upper()}:**\n\n```json\n{json.dumps(brief, indent=2, default=str)[:3000]}\n```"
         except Exception as e:
             return f"❌ Country brief failed: {e}"
 
@@ -551,7 +551,7 @@ class ProductivityToolsMixin:
                 return "⚔️ No recent conflict events."
             result = f"⚔️ **Recent Conflicts ({len(events)}):**\n\n"
             for ev in events:
-                result += f"• **{ev.get('country', '?')}** — {ev.get('type', '')}\n"
+                result += f"• **{ev.get('country', '?')}**,  {ev.get('type', '')}\n"
                 if ev.get("location"):
                     result += f"  📍 {ev['location']}\n"
                 if ev.get("fatalities"):
@@ -650,7 +650,7 @@ class ProductivityToolsMixin:
             )
             if result.get("blocked"):
                 return (
-                    "🛡️ **Image blocked by Guardian** — explicit content was detected "
+                    "🛡️ **Image blocked by Guardian**,  explicit content was detected "
                     "in the generated image. The image was NOT saved or published.\n\n"
                     f"Reason: {result.get('error', 'Explicit content detected')}"
                 )
@@ -675,7 +675,7 @@ class ProductivityToolsMixin:
                 msg += f"![{fname}]({img_url})\n\n"
                 msg += f"📁 `{fname}` ({img['size_bytes'] // 1024}KB)"
                 if img.get("guardian_checked"):
-                    msg += f" — Guardian: ✅ {img.get('rating', 'general')}"
+                    msg += f",  Guardian: ✅ {img.get('rating', 'general')}"
                 msg += f"\n"
 
             # --- Auto-publish to Instagram (default: always) ---
@@ -696,7 +696,7 @@ class ProductivityToolsMixin:
                 except Exception as ig_err:
                     msg += f"\n⚠️ Instagram publish error: {ig_err}\n"
             elif publish_ig and not getattr(self, 'instagram_skill', None):
-                msg += "\n⚠️ Instagram skill not available — image not published.\n"
+                msg += "\n⚠️ Instagram skill not available,  image not published.\n"
 
             return msg.strip()
         except Exception as e:
@@ -734,8 +734,8 @@ class ProductivityToolsMixin:
             msg = f"🎨 **Generated Images** ({len(images)} shown):\n\n"
             for i, img in enumerate(images, 1):
                 msg += (
-                    f"{i}. `{img['filename']}` — "
-                    f"{img['size_bytes'] // 1024}KB — "
+                    f"{i}. `{img['filename']}`,  "
+                    f"{img['size_bytes'] // 1024}KB,  "
                     f"{img['created']}\n"
                 )
             return msg.strip()

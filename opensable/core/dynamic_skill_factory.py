@@ -1,8 +1,8 @@
 """
-Dynamic Skill Factory — WORLD FIRST
+Dynamic Skill Factory,  WORLD FIRST
 Creates complex multi-step skills from scratch autonomously.
 Unlike the existing SkillFactory, this engine can compose entire
-skill pipelines, test them, iterate, and deploy — full autonomous
+skill pipelines, test them, iterate, and deploy,  full autonomous
 skill engineering.
 """
 import json

@@ -1,5 +1,5 @@
 """
-Polymarket Connector — Prediction market trading.
+Polymarket Connector,  Prediction market trading.
 
 Uses py-clob-client for the Polymarket CLOB (Central Limit Order Book).
 Falls back to browser automation (Playwright) for web-only flows.
@@ -140,7 +140,7 @@ class PolymarketConnector(ExchangeConnector):
             raise
 
     async def get_ohlcv(self, symbol: str, interval: str = "1h", limit: int = 100) -> List[OHLCV]:
-        # Polymarket doesn't have traditional OHLCV — return empty
+        # Polymarket doesn't have traditional OHLCV,  return empty
         return []
 
     async def get_orderbook(self, symbol: str, depth: int = 20) -> Dict[str, Any]:
@@ -162,7 +162,7 @@ class PolymarketConnector(ExchangeConnector):
         # This requires web3 to check on-chain balance
         try:
             import httpx
-            # Simplified — in production, use web3 to check USDC balance
+            # Simplified,  in production, use web3 to check USDC balance
             return [Balance(asset="USDC", free=Decimal("0"), exchange="polymarket")]
         except Exception:
             return []

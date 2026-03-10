@@ -1,5 +1,5 @@
 """
-Base abstractions for trading — data models and the ExchangeConnector ABC.
+Base abstractions for trading,  data models and the ExchangeConnector ABC.
 
 Every exchange connector (Binance, Polymarket, Alpaca …) implements
 the ExchangeConnector interface so the rest of the system (portfolio,
@@ -322,7 +322,7 @@ class ExchangeConnector(ABC):
         """Stream real-time price ticks. Override for WebSocket support."""
         raise NotImplementedError(f"{self.name} does not support price streaming")
         # Make it an async generator so callers can `async for tick in ...`
-        yield  # pragma: no cover — unreachable, makes this an async generator
+        yield  # pragma: no cover,  unreachable, makes this an async generator
 
     # ── Trade history ──
 

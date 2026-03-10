@@ -214,7 +214,7 @@ export function analyzeTaskForAgents(
   return tasks;
 }
 
-// Patterns that identify embedding / non-chat models — these CANNOT generate text
+// Patterns that identify embedding / non-chat models,  these CANNOT generate text
 const EMBEDDING_MODEL_PATTERNS = [
   'embed', 'nomic', 'bge-', 'e5-', 'gte-', 'instructor',
   'all-minilm', 'sentence-', 'text-embedding', 'mxbai-embed',

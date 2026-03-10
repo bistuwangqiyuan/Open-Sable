@@ -1,10 +1,10 @@
 """
-Conversation Persistence — Cross-session conversation memory.
+Conversation Persistence,  Cross-session conversation memory.
 
 Saves raw conversation history (including tool calls) per session and
 injects the last N sessions' conversation back into the context.
 
-This gives the agent continuity across sessions — it can remember what it
+This gives the agent continuity across sessions,  it can remember what it
 did 5, 10, or 25 conversations ago, including which tools it called and
 what results it got.
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ConversationTurn:
-    """One conversation turn — user message + agent response + tools used."""
+    """One conversation turn,  user message + agent response + tools used."""
 
     ts: float
     run_id: str
@@ -235,7 +235,7 @@ class ConversationLogger:
             return ""
 
         parts = [
-            f"CONVERSATION HISTORY (last {len(turns)} interactions — "
+            f"CONVERSATION HISTORY (last {len(turns)} interactions,  "
             "raw messages including tool calls):"
         ]
         total_chars = len(parts[0])

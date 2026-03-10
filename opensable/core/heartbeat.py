@@ -195,7 +195,7 @@ async def check_pending_tasks() -> Dict[str, Any]:
         if len(active) > 5:
             return {
                 "alert": True,
-                "message": f"{len(active)} active goals — consider prioritizing",
+                "message": f"{len(active)} active goals,  consider prioritizing",
                 "priority": "normal",
             }
         return {"alert": False}
@@ -225,7 +225,7 @@ async def check_idle_time() -> Dict[str, Any]:
             if hours > 12:
                 return {
                     "alert": True,
-                    "message": f"No interaction in {int(hours)}h — everything ok?",
+                    "message": f"No interaction in {int(hours)}h,  everything ok?",
                     "priority": "normal",
                 }
         return {"alert": False}

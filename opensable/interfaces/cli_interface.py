@@ -126,13 +126,13 @@ class CLIInterface:
             self.console.print(
                 Panel(
                     "[bold]Commands:[/bold]\n\n"
-                    "/help    — Show this help\n"
-                    "/clear   — Clear conversation history\n"
-                    "/model   — Show current model info\n"
-                    "/stats   — Show agent statistics\n"
-                    "/tools   — List available tools\n"
-                    "/memory  — Show memory stats\n"
-                    "/exit    — Exit CLI\n",
+                    "/help   ,  Show this help\n"
+                    "/clear  ,  Clear conversation history\n"
+                    "/model  ,  Show current model info\n"
+                    "/stats  ,  Show agent statistics\n"
+                    "/tools  ,  List available tools\n"
+                    "/memory ,  Show memory stats\n"
+                    "/exit   ,  Exit CLI\n",
                     title="📖 Help",
                     border_style="blue",
                 )

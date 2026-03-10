@@ -1,5 +1,5 @@
 """
-Mock LLM for testing — deterministic responses without Ollama or cloud APIs.
+Mock LLM for testing,  deterministic responses without Ollama or cloud APIs.
 
 Usage:
     from tests.mock_llm import MockLLM
@@ -109,7 +109,7 @@ class MockLLM:
             yield word + " "
 
     async def auto_switch_model(self, task_type: str) -> bool:
-        """Mock — never switches."""
+        """Mock,  never switches."""
         return False
 
     # ── Assertions ──

@@ -240,7 +240,7 @@ Args:
 class PatternLibrary:
     """
     Reusable code patterns extracted from previously-synthesised tools.
-    Works WITHOUT the LLM — pure AST analysis + template matching.
+    Works WITHOUT the LLM,  pure AST analysis + template matching.
     """
 
     # Common algorithmic building blocks keyed by semantic tag
@@ -377,7 +377,7 @@ class PatternLibrary:
 
 class ASTComposer:
     """
-    Compose tools by merging their ASTs — no LLM needed.
+    Compose tools by merging their ASTs,  no LLM needed.
 
     Takes multiple SynthesizedTool objects and produces a single combined
     tool whose body calls each sub-tool in sequence, threading results
@@ -436,7 +436,7 @@ class ASTComposer:
 
 class NeuralSynthesizer:
     """
-    Neural Tool Synthesis — goes beyond pure LLM prompting.
+    Neural Tool Synthesis,  goes beyond pure LLM prompting.
 
     Three-tier synthesis pipeline:
       1. Pattern matching: select reusable code blocks from PatternLibrary

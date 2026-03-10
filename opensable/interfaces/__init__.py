@@ -1,4 +1,4 @@
-"""Interfaces package for Open-Sable — chat platform integrations."""
+"""Interfaces package for Open-Sable,  chat platform integrations."""
 
 __all__ = [
     "TelegramBot",

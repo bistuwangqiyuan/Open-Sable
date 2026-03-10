@@ -1,5 +1,5 @@
 """
-Jupiter / Solana DEX Connector — Memecoin and token swaps.
+Jupiter / Solana DEX Connector,  Memecoin and token swaps.
 
 Uses the Jupiter Aggregator API for best-price routing across Solana DEXes.
 Ideal for memecoin trading (BONK, WIF, PEPE on Solana, etc.).
@@ -76,7 +76,7 @@ class JupiterConnector(ExchangeConnector):
                 kp = Keypair.from_base58_string(self._private_key)
                 self._wallet_address = str(kp.pubkey())
             except ImportError:
-                logger.warning("solders not installed — read-only mode")
+                logger.warning("solders not installed,  read-only mode")
             except Exception as e:
                 logger.error(f"Invalid Solana private key: {e}")
 
@@ -107,12 +107,12 @@ class JupiterConnector(ExchangeConnector):
             raise ValueError(f"Jupiter price fetch failed: {e}")
 
     async def get_ohlcv(self, symbol: str, interval: str = "1h", limit: int = 100) -> List[OHLCV]:
-        # Jupiter doesn't provide candles — use Birdeye or DexScreener as fallback
+        # Jupiter doesn't provide candles,  use Birdeye or DexScreener as fallback
         return []
 
     async def get_orderbook(self, symbol: str, depth: int = 20) -> Dict[str, Any]:
         # DEX swaps don't have traditional order books
-        return {"bids": [], "asks": [], "note": "DEX — use get_quote for swap pricing"}
+        return {"bids": [], "asks": [], "note": "DEX,  use get_quote for swap pricing"}
 
     async def get_markets(self) -> List[MarketInfo]:
         """Return known token markets."""
@@ -295,7 +295,7 @@ class JupiterConnector(ExchangeConnector):
             return None
 
     async def cancel_order(self, order_id: str, symbol: str = "") -> bool:
-        # DEX swaps are atomic — can't cancel after submission
+        # DEX swaps are atomic,  can't cancel after submission
         return False
 
     async def get_order(self, order_id: str, symbol: str = "") -> Order:

@@ -1,5 +1,5 @@
 """
-Evolution Engine — Autonomous code mutation and self-restart.
+Evolution Engine,  Autonomous code mutation and self-restart.
 
 Bridges the gap between evolution *analysis* (skill_evolution.py) and
 actual code generation / modification.  When the evolutionary pipeline
@@ -104,7 +104,7 @@ def _validate_code(source: str) -> Dict[str, Any]:
         if re.search(pattern, source):
             return {"valid": False, "error": f"Security: forbidden pattern '{pattern}'"}
 
-    # Sandbox load test — run in the venv to catch missing imports
+    # Sandbox load test,  run in the venv to catch missing imports
     import tempfile
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False,
@@ -211,13 +211,13 @@ def _build_mutation_prompt(
         "Python skill modules based on fitness data and error analysis.\n\n"
         "RULES:\n"
         "1. Return ONLY the complete improved Python source code.\n"
-        "2. Do NOT include ```python or ``` markers — raw code only.\n"
+        "2. Do NOT include ```python or ``` markers,  raw code only.\n"
         "3. Preserve the module's public API (function/class names, signatures).\n"
-        "4. Preserve all imports — add new ones if needed.\n"
+        "4. Preserve all imports,  add new ones if needed.\n"
         "5. Improve error handling, performance, and reliability.\n"
         "6. Fix known bugs from the error samples provided.\n"
         "7. Add or improve docstrings.\n"
-        "8. Keep all existing functionality — do not remove features.\n"
+        "8. Keep all existing functionality,  do not remove features.\n"
         "9. Do NOT use os.system(), eval(), exec(), or subprocess with shell=True.\n"
         "10. The code must parse as valid Python."
     )
@@ -277,7 +277,7 @@ class SelfRestart:
         self._last_restart_file = base_dir / "data" / f".last_restart_{profile}"
 
     def can_restart(self) -> bool:
-        """Check cooldown — prevent restart storms."""
+        """Check cooldown,  prevent restart storms."""
         if self._last_restart_file.exists():
             try:
                 ts = float(self._last_restart_file.read_text().strip())
@@ -336,7 +336,7 @@ class SelfRestart:
                 start_new_session=True,
             )
 
-            logger.warning("🔄 Restart process spawned — shutting down gracefully")
+            logger.warning("🔄 Restart process spawned,  shutting down gracefully")
 
             # Give the restart script a moment to register before we stop
             # The autonomous loop will pick up self._should_stop and exit
@@ -555,13 +555,13 @@ class EvolutionEngine:
                     "priority": 8,
                 })
 
-        # 3. Stagnant skills (lower priority — they work but haven't evolved)
+        # 3. Stagnant skills (lower priority,  they work but haven't evolved)
         for name in evolution_result.get("stagnant", []):
             if name not in {t["name"] for t in targets}:
                 targets.append({
                     "name": name,
                     "type": "improve",
-                    "reason": "Stagnant — used but never evolved",
+                    "reason": "Stagnant,  used but never evolved",
                     "fitness": fitness_lookup.get(name, {}),
                     "priority": 5,
                 })
@@ -620,7 +620,7 @@ class EvolutionEngine:
 
         original_hash = _hash_source(source)
 
-        # Skip very large files — LLM context would be too long
+        # Skip very large files,  LLM context would be too long
         if len(source) > 50_000:
             return MutationRecord(
                 tick=tick, timestamp=time.time(),
@@ -740,12 +740,12 @@ class EvolutionEngine:
                 logger.info(f"🧬 Hot-reloaded: {module_name}")
             except Exception as e:
                 logger.warning(
-                    f"🧬 Hot-reload failed for {module_name}: {e} — "
+                    f"🧬 Hot-reload failed for {module_name}: {e},  "
                     "will need restart"
                 )
                 restart_needed = True
         else:
-            # Module not loaded (or can't determine name) — restart for safety
+            # Module not loaded (or can't determine name),  restart for safety
             if module_name:
                 restart_needed = True
 

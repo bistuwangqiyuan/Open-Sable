@@ -1,5 +1,5 @@
 #!/bin/bash
-# Open-Sable — start / stop / status (all agents live in agents/)
+# Open-Sable,  start / stop / status (all agents live in agents/)
 # Usage:
 #   ./start.sh                         → start default agent (sable)
 #   ./start.sh stop                    → stop default agent (sable)
@@ -18,7 +18,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Default profile — all agents live in agents/
+# Default profile,  all agents live in agents/
 DEFAULT_PROFILE="sable"
 
 # Parse --profile and --all flags from any position
@@ -102,7 +102,7 @@ VITE_APP_API_SUPPORTED_TIMEFRAMES=5,10,15,30,60,180,300,900,1260,1800,3600,7200,
 AGGRENV
     fi
     (cd "$aggrdir" && npm install && npm run build) || {
-        echo "⚠️  Aggr.trade build failed — continuing without it"
+        echo "⚠️  Aggr.trade build failed,  continuing without it"
         return 0
     }
     # Strip tracking (GTM, analytics, etc)
@@ -148,7 +148,7 @@ ensure_dashboard() {
     fi
     echo "📊 Building React Dashboard..."
     (cd "$dashdir" && npm install && npm run build) || {
-        echo "⚠️  Dashboard build failed — continuing without it"
+        echo "⚠️  Dashboard build failed,  continuing without it"
         return 0
     }
     [ -f "$dashdir/dist/index.html" ] && echo "✅ Dashboard ready" || echo "⚠️  Dashboard dist not found"
@@ -186,19 +186,19 @@ start_desktop() {
 
     local deskdir="$DIR/desktop"
     if [ ! -f "$deskdir/package.json" ]; then
-        echo "⚠️  Desktop folder not found — set DESKTOP_ENABLED=false"
+        echo "⚠️  Desktop folder not found,  set DESKTOP_ENABLED=false"
         return 0
     fi
 
     if ! command -v npm &>/dev/null; then
-        echo "⚠️  npm not found — desktop requires Node.js"
+        echo "⚠️  npm not found,  desktop requires Node.js"
         return 0
     fi
 
     if ! command -v electron &>/dev/null && [ ! -f "$deskdir/node_modules/.bin/electron" ]; then
         echo "🖥️  Installing Desktop dependencies..."
         (cd "$deskdir" && npm install --silent) || {
-            echo "⚠️  Desktop npm install failed — skipping"
+            echo "⚠️  Desktop npm install failed,  skipping"
             return 0
         }
     fi
@@ -207,7 +207,7 @@ start_desktop() {
     if [ ! -f "$deskdir/dist/index.html" ]; then
         echo "🖥️  Building Desktop..."
         (cd "$deskdir" && npm run build) || {
-            echo "⚠️  Desktop build failed — skipping"
+            echo "⚠️  Desktop build failed,  skipping"
             return 0
         }
     fi
@@ -252,12 +252,12 @@ start_dev_studio() {
 
     local devdir="$DIR/sable_dev"
     if [ ! -f "$devdir/package.json" ]; then
-        echo "⚠️  sable_dev folder not found — set DEV_STUDIO_ENABLED=false"
+        echo "⚠️  sable_dev folder not found,  set DEV_STUDIO_ENABLED=false"
         return 0
     fi
 
     if ! command -v npm &>/dev/null; then
-        echo "⚠️  npm not found — Dev Studio requires Node.js"
+        echo "⚠️  npm not found,  Dev Studio requires Node.js"
         return 0
     fi
 
@@ -265,7 +265,7 @@ start_dev_studio() {
     if [ ! -f "$devdir/node_modules/.bin/next" ]; then
         echo "🛠️  Installing Dev Studio dependencies..."
         (cd "$devdir" && npm install --silent) || {
-            echo "⚠️  Dev Studio npm install failed — skipping"
+            echo "⚠️  Dev Studio npm install failed,  skipping"
             return 0
         }
     fi
@@ -465,10 +465,10 @@ do_list_profiles() {
             fi
             default_tag=""
             [[ "$name" == "$DEFAULT_PROFILE" ]] && default_tag=" (default)"
-            echo "  $status $name$default_tag  — soul: $soul, env: ${env_count} vars, tools: $tools_mode"
+            echo "  $status $name$default_tag ,  soul: $soul, env: ${env_count} vars, tools: $tools_mode"
         done
     else
-        echo "  (none — create with: cp -r agents/_template agents/my_agent)"
+        echo "  (none,  create with: cp -r agents/_template agents/my_agent)"
     fi
     echo ""
 }

@@ -1,18 +1,18 @@
 """
-YouTube Skill — Search, browse, upload and interact on YouTube via python-youtube.
+YouTube Skill,  Search, browse, upload and interact on YouTube via python-youtube.
 
 Uses the python-youtube (pyyoutube) library wrapping the official YouTube Data API V3.
 Supports both read-only (API key) and write (OAuth access token) operations.
 All requests use mobile device session headers for consistency.
 
-Features (Read — API key only):
+Features (Read,  API key only):
 - Search videos, channels, playlists
 - Get channel details and videos
 - Get video details, captions, comments
 - Get playlist items
 - Get trending videos
 
-Features (Write — OAuth token required):
+Features (Write,  OAuth token required):
 - Upload videos
 - Post comments and replies
 - Like/dislike videos
@@ -64,7 +64,7 @@ _MOBILE_UA = (
 class YouTubeSkill:
     """
     YouTube Data API v3 automation via python-youtube (pyyoutube).
-    Uses official Google API — API key for read, OAuth token for write.
+    Uses official Google API,  API key for read, OAuth token for write.
     All calls are synchronous (httpx), wrapped in run_in_executor for async.
     Mobile device headers applied for session consistency.
     """
@@ -79,7 +79,7 @@ class YouTubeSkill:
     async def initialize(self) -> bool:
         """Initialize YouTube API client with API key and optional OAuth token."""
         if not PYYOUTUBE_AVAILABLE:
-            logger.warning("python-youtube not available — YouTube skill disabled")
+            logger.warning("python-youtube not available,  YouTube skill disabled")
             return False
 
         api_key = (
@@ -99,12 +99,12 @@ class YouTubeSkill:
             return False
 
         try:
-            # Read client (API key) — for search, get info, etc.
+            # Read client (API key),  for search, get info, etc.
             if api_key:
                 self._client = YouTubeClient(api_key=api_key)
                 self._apply_mobile_session(self._client)
 
-            # Write client (OAuth token) — for upload, comment, like, subscribe
+            # Write client (OAuth token),  for upload, comment, like, subscribe
             if access_token:
                 self._write_client = YouTubeClient(access_token=access_token)
                 self._apply_mobile_session(self._write_client)

@@ -1,5 +1,5 @@
 """
-Portfolio Manager — Aggregates positions and balances across all exchanges.
+Portfolio Manager,  Aggregates positions and balances across all exchanges.
 
 Tracks P&L per position, per strategy, and overall.  Persists state to
 a local SQLite database so nothing is lost on restart.

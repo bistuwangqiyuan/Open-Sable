@@ -49,7 +49,7 @@ class ClipboardSkill:
             logger.info("ClipboardSkill initialized (clip.exe/PowerShell backend)")
             return True
         else:
-            # Linux — try xclip, xsel, or wl-copy (Wayland)
+            # Linux,  try xclip, xsel, or wl-copy (Wayland)
             for tool in ("xclip", "xsel", "wl-copy"):
                 if shutil.which(tool):
                     self._backend = "native"

@@ -128,14 +128,14 @@ class PermissionManager:
                         logger.info(f"❌ User {user_id} denied {action.value}")
                     return allowed
                 except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Confirmation timed out for {action.value} (user {user_id}) — denying")
+                    logger.warning(f"⏱️ Confirmation timed out for {action.value} (user {user_id}),  denying")
                     return False
                 except Exception as e:
-                    logger.warning(f"Confirmation callback error: {e} — denying")
+                    logger.warning(f"Confirmation callback error: {e},  denying")
                     return False
-            # No callback registered — deny by default for safety
+            # No callback registered,  deny by default for safety
             logger.warning(
-                f"Action {action.value} requires confirmation for user {user_id} — denied (no interactive prompt available)"
+                f"Action {action.value} requires confirmation for user {user_id},  denied (no interactive prompt available)"
             )
             return False
 
@@ -208,7 +208,7 @@ class Sandbox:
 
     @staticmethod
     def sanitize_input(text: str, max_length: int = 10000) -> str:
-        """Sanitize user input — strip HTML/JS injection vectors."""
+        """Sanitize user input,  strip HTML/JS injection vectors."""
         import re as _re
 
         # Truncate

@@ -28,7 +28,7 @@ export default function ChatArea() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentMessages.length, isWaiting])
 
-  // Welcome screen — no session selected
+  // Welcome screen,  no session selected
   if (!activeSessionId) {
     return (
       <div className="chat-area">

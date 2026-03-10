@@ -152,7 +152,7 @@ export default function HomePage() {
         router.push('/generation');
       }
     } else {
-      // It's a prompt — go directly to generation/creation mode
+      // It's a prompt,  go directly to generation/creation mode
       sessionStorage.setItem('selectedModel', selectedModel);
       sessionStorage.setItem('selectedTemplate', selectedTemplate);
       sessionStorage.setItem('creationPrompt', inputValue);

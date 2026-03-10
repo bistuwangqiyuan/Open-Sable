@@ -1,9 +1,9 @@
 """
-Cognitive Scar Tissue — permanent catastrophic failure markers.
+Cognitive Scar Tissue,  permanent catastrophic failure markers.
 
 WORLD FIRST: Unlike normal learning (which decays), cognitive scars are
 PERMANENT markers from catastrophic failures. They never fade and create
-hard boundaries the agent will never cross again. Like touching a hot stove —
+hard boundaries the agent will never cross again. Like touching a hot stove, 
 you learn once and never forget.
 
 Persistence: ``cognitive_scar_state.json`` in *data_dir*.
@@ -25,7 +25,7 @@ class Scar:
     description: str = ""
     original_action: str = ""
     consequence: str = ""
-    severity: float = 1.0  # Always high — these are serious
+    severity: float = 1.0  # Always high,  these are serious
     keywords: List[str] = field(default_factory=list)
     created: float = 0.0
     times_prevented: int = 0  # How many disasters we've prevented
@@ -33,7 +33,7 @@ class Scar:
 
 
 class CognitiveScar:
-    """Permanent markers from catastrophic failures — never decay."""
+    """Permanent markers from catastrophic failures,  never decay."""
 
     def __init__(self, data_dir: Path, pain_threshold: float = 0.8):
         self.data_dir = Path(data_dir)

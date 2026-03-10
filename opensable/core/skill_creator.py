@@ -1,5 +1,5 @@
 """
-Dynamic Skill Creation System — Enhanced with Auto-Wiring
+Dynamic Skill Creation System,  Enhanced with Auto-Wiring
 
 Allows Sable to create its own skills on-the-fly by generating Python code.
 Created skills are automatically wired into the live tool registry with:
@@ -12,10 +12,10 @@ Created skills are automatically wired into the live tool registry with:
 
 A skill module **may** define any combination of:
 
-  TOOL_SCHEMAS       list[dict]   — OpenAI function-calling schema dicts
-  TOOL_PERMISSIONS   dict         — tool_name → permission string
-  handle_<name>()    async func   — handler for each tool (params dict → str)
-  initialize()       async func   — one-time setup (DB tables, etc.)
+  TOOL_SCHEMAS       list[dict]  ,  OpenAI function-calling schema dicts
+  TOOL_PERMISSIONS   dict        ,  tool_name → permission string
+  handle_<name>()    async func  ,  handler for each tool (params dict → str)
+  initialize()       async func  ,  one-time setup (DB tables, etc.)
 
 If TOOL_SCHEMAS is omitted, minimal schemas are auto-generated from the
 handler functions' docstrings.  If TOOL_PERMISSIONS is omitted, all tools
@@ -260,7 +260,7 @@ class SkillCreator:
 
     def _check_security(self, code: str) -> Dict[str, Any]:
         """
-        Security check — blocks dangerous patterns while allowing
+        Security check,  blocks dangerous patterns while allowing
         legitimate imports (sqlite3, json, pathlib, etc.).
         """
         for pattern in FORBIDDEN_PATTERNS:
@@ -344,7 +344,7 @@ class SkillCreator:
 
         n_tools = len(tool_info["handlers"])
         logger.info(
-            f"✅ Skill '{name}' created — "
+            f"✅ Skill '{name}' created,  "
             f"{n_tools} tool(s), "
             f"{len(tool_info['schemas'])} schema(s)"
         )
@@ -374,7 +374,7 @@ class SkillCreator:
             skill_file = Path(entry["file"])
             if not skill_file.exists():
                 logger.warning(
-                    f"Dynamic skill '{name}' file missing — skipping"
+                    f"Dynamic skill '{name}' file missing,  skipping"
                 )
                 continue
             try:
@@ -385,7 +385,7 @@ class SkillCreator:
                     {"name": name, "module": module, "tool_info": tool_info}
                 )
                 logger.info(
-                    f"✅ Reloaded dynamic skill '{name}' — "
+                    f"✅ Reloaded dynamic skill '{name}',  "
                     f"{len(tool_info['handlers'])} tool(s)"
                 )
             except Exception as e:
@@ -492,10 +492,10 @@ SKILL_PROTOCOL_GUIDE = '''\
 #
 # A dynamic skill module should define:
 #
-#   TOOL_SCHEMAS       — list of OpenAI function-calling schema dicts
-#   TOOL_PERMISSIONS   — dict of tool_name → permission string
-#   handle_<name>()    — async handler for each tool  (params dict → str)
-#   initialize()       — optional async setup (DB tables, etc.)
+#   TOOL_SCHEMAS      ,  list of OpenAI function-calling schema dicts
+#   TOOL_PERMISSIONS  ,  dict of tool_name → permission string
+#   handle_<name>()   ,  async handler for each tool  (params dict → str)
+#   initialize()      ,  optional async setup (DB tables, etc.)
 #
 # The module-level variable  __skill_data_dir__  is injected automatically
 # and points to a persistent directory for this skill's data files / DBs.

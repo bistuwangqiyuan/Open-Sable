@@ -123,7 +123,7 @@ SCHEMAS = [
         "type": "function",
         "function": {
             "name": "github_repo_info",
-            "description": "Get information about a GitHub repository — stars, forks, language, description.",
+            "description": "Get information about a GitHub repository,  stars, forks, language, description.",
             "parameters": {
                 "type": "object",
                 "properties": {

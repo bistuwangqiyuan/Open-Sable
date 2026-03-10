@@ -6,14 +6,14 @@ Entity extraction from conversations, relationship inference,
 causal chain reasoning, and multi-hop question answering.
 
 Features:
-  1. Entity extraction — Identify people, places, concepts, events from text
-  2. Relationship inference — LLM discovers connections between entities
-  3. Graph traversal — Multi-hop reasoning across relationships
-  4. Temporal awareness — Track when relationships were established/changed
-  5. Causal chains — Follow cause→effect paths through the graph
-  6. Community detection — Find clusters of related concepts
-  7. Graph queries — Natural language queries over the knowledge graph
-  8. JSON persistence — Serializable graph with full node/edge attributes
+  1. Entity extraction,  Identify people, places, concepts, events from text
+  2. Relationship inference,  LLM discovers connections between entities
+  3. Graph traversal,  Multi-hop reasoning across relationships
+  4. Temporal awareness,  Track when relationships were established/changed
+  5. Causal chains,  Follow cause→effect paths through the graph
+  6. Community detection,  Find clusters of related concepts
+  7. Graph queries,  Natural language queries over the knowledge graph
+  8. JSON persistence,  Serializable graph with full node/edge attributes
 """
 import json
 import logging
@@ -483,7 +483,7 @@ class KnowledgeGraphEngine:
         # Build context from graph
         context_parts = []
         for ent in relevant[:5]:
-            context_parts.append(f"Entity: {ent.name} ({ent.entity_type}) — {ent.description}")
+            context_parts.append(f"Entity: {ent.name} ({ent.entity_type}),  {ent.description}")
             conns = self.get_connections(ent.name, depth=1)
             for layer_data in conns.get("layers", {}).values():
                 for conn in layer_data[:5]:

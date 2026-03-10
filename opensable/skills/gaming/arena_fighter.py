@@ -1,11 +1,11 @@
 """
-Arena Fighter Skill — Connects to fighting-game arenas via SAGP 7-layer auth.
+Arena Fighter Skill,  Connects to fighting-game arenas via SAGP 7-layer auth.
 
 The agent authenticates using Ed25519 keypairs, solves a SHA-512 proof-of-work
 speed gate, then connects via socket.io WebSocket to fight other agents
 (OpenSable or OpenClaw) in real-time 2D combat.
 
-Connection is 100 % remote — no local imports from the arena project.
+Connection is 100 % remote,  no local imports from the arena project.
 All credentials are auto-provisioned: set ``ARENA_URL`` in profile.env
 and the agent generates its own Ed25519 keypair, registers with the
 server, and caches credentials in ``data/arena_credentials.json``.
@@ -243,10 +243,10 @@ class ArenaFighterSkill:
     """Skill that connects to a fighting-game arena and fights autonomously.
 
     Lifecycle:
-        1. ``initialize()`` — load credentials, ensure deps
-        2. ``connect_and_fight()`` — SAGP auth → WebSocket → fight loop
-        3. ``get_status()`` — return current state (idle / fighting / result)
-        4. ``get_history()`` — return fight history
+        1. ``initialize()``,  load credentials, ensure deps
+        2. ``connect_and_fight()``,  SAGP auth → WebSocket → fight loop
+        3. ``get_status()``,  return current state (idle / fighting / result)
+        4. ``get_history()``,  return fight history
 
     The agent calls these via tool invocations; it decides *when* to fight.
     """
@@ -273,7 +273,7 @@ class ArenaFighterSkill:
     async def initialize(self) -> bool:
         """Load or auto-provision credentials, ensure runtime deps.
 
-        Set ``ARENA_URL`` in profile.env — the agent generates its own
+        Set ``ARENA_URL`` in profile.env,  the agent generates its own
         Ed25519 keypair and registers with the server automatically.
         Credentials are cached in ``data/arena_credentials.json``.
         """
@@ -282,7 +282,7 @@ class ArenaFighterSkill:
             or os.environ.get("ARENA_URL", "")
         )
         if not arena_url:
-            logger.info("Arena skill: no ARENA_URL configured — disabled")
+            logger.info("Arena skill: no ARENA_URL configured,  disabled")
             return False
 
         # Ensure deps
@@ -302,7 +302,7 @@ class ArenaFighterSkill:
                 self._load_history()
                 self._ready = True
                 logger.info(
-                    f"Arena skill ready (cached) — agent={self._creds.get('name', '?')}, "
+                    f"Arena skill ready (cached),  agent={self._creds.get('name', '?')}, "
                     f"url={arena_url}"
                 )
                 return True
@@ -317,7 +317,7 @@ class ArenaFighterSkill:
         self._load_history()
         self._ready = True
         logger.info(
-            f"Arena skill ready (auto-provisioned) — agent={self._creds.get('name', '?')}, "
+            f"Arena skill ready (auto-provisioned),  agent={self._creds.get('name', '?')}, "
             f"url={self._creds.get('arenaUrl', '?')}"
         )
         return True
@@ -420,7 +420,7 @@ class ArenaFighterSkill:
         the fight itself runs as a background task.
         """
         if not self._ready:
-            return {"error": "Arena skill not initialized — set ARENA_URL in profile.env"}
+            return {"error": "Arena skill not initialized,  set ARENA_URL in profile.env"}
         if self._status in ("connecting", "queued", "fighting"):
             return {"error": f"Already {self._status}", "status": self._status}
 

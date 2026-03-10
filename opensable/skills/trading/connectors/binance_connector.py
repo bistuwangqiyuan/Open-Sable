@@ -1,5 +1,5 @@
 """
-Binance Connector — Spot and futures trading via the ccxt library.
+Binance Connector,  Spot and futures trading via the ccxt library.
 
 Supports: spot, USDT-M futures, COIN-M futures.
 Requires: BINANCE_API_KEY and BINANCE_API_SECRET env vars.
@@ -247,7 +247,7 @@ class BinanceConnector(ExchangeConnector):
                 ))
             return result
         except Exception:
-            # Spot mode — derive positions from balances
+            # Spot mode,  derive positions from balances
             return []
 
     # ── Streaming ──

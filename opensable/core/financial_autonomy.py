@@ -1,5 +1,5 @@
 """
-Financial Autonomy — WORLD FIRST
+Financial Autonomy,  WORLD FIRST
 Full financial independence: invoicing, billing, fund management,
 budget optimization, and autonomous resource allocation.
 The agent manages its own economic survival and growth.

@@ -1,5 +1,5 @@
 """
-Strategic Goal Synthesis — autonomous long-term goal generation.
+Strategic Goal Synthesis,  autonomous long-term goal generation.
 
 Instead of just executing human-given goals, the agent surveys its
 accumulated wisdom, world state, and performance trends to autonomously
@@ -32,7 +32,7 @@ _GOAL_SYNTH_SYSTEM = """You are a strategic planning engine for an autonomous AI
 Given the agent's current state (performance scores, capability gaps, recent patterns,
 accumulated wisdom), propose 2-5 strategic goals the agent should pursue.
 
-Output ONLY valid JSON — an array of objects:
+Output ONLY valid JSON,  an array of objects:
 [
   {
     "goal": "concise goal description (5-20 words)",

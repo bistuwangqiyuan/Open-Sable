@@ -1,5 +1,5 @@
 """
-@function_tool — Auto-generate OpenAI-format tool schemas from Python functions.
+@function_tool,  Auto-generate OpenAI-format tool schemas from Python functions.
 
 Inspects type hints, docstrings, and default values to produce the JSON schema
 that LLMs need for function/tool calling.  No more hand-writing 20-line dicts.
@@ -13,7 +13,7 @@ Usage:
 
         Args:
             city: Name of the city (e.g. "Tokyo")
-            units: Temperature units — "celsius" or "fahrenheit"
+            units: Temperature units,  "celsius" or "fahrenheit"
         '''
         return f"Weather in {city}: 22°{units[0].upper()}"
 

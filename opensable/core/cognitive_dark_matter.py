@@ -1,9 +1,9 @@
 """
-Cognitive Dark Matter — WORLD FIRST
+Cognitive Dark Matter,  WORLD FIRST
 =====================================
 Detects the influence of HIDDEN, UNOBSERVABLE variables that affect
 the agent's performance but can't be directly measured. Like dark matter
-in physics — you can't see it, but you can see its gravitational effects.
+in physics,  you can't see it, but you can see its gravitational effects.
 
 Infers the existence of invisible factors from their effects.
 No AI agent detects cognitive dark matter. This one does.
@@ -44,7 +44,7 @@ class AnomalyRecord:
 class CognitiveDarkMatter:
     """
     Detects hidden variables that affect performance but can't be seen.
-    Like dark matter — invisible but real, detectable by their effects.
+    Like dark matter,  invisible but real, detectable by their effects.
     """
 
     def __init__(self, data_dir: str, anomaly_threshold: float = 0.3):

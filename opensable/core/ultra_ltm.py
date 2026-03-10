@@ -1,5 +1,5 @@
 """
-Ultra-Long-Term Memory Consolidation — Weeks/months pattern extraction.
+Ultra-Long-Term Memory Consolidation,  Weeks/months pattern extraction.
 
 Short-term cognitive memory stores individual events. This module:
   • Periodically scans accumulated memories (cognitive, task outcomes, reflections)
@@ -40,7 +40,7 @@ class ConsolidatedMemory:
     tags: List[str] = field(default_factory=list)
 
     def reinforce(self, boost: float = 0.05):
-        """Strengthen this memory — it was observed again or found useful."""
+        """Strengthen this memory,  it was observed again or found useful."""
         self.confidence = min(1.0, self.confidence + boost)
         self.reinforcement_count += 1
         self.last_reinforced = datetime.now().isoformat()
@@ -67,7 +67,7 @@ _CONSOLIDATION_PROMPT = """\
 You are an AI agent's long-term memory consolidation engine.
 You are reviewing a batch of raw memories accumulated over days/weeks of operation.
 
-Your job is to identify HIGH-LEVEL PATTERNS — durable insights that will remain
+Your job is to identify HIGH-LEVEL PATTERNS,  durable insights that will remain
 useful for months. Do NOT repeat individual events. Instead, extract:
 
 Categories:
@@ -83,11 +83,11 @@ For each pattern found, output:
    "confidence": 0.0-1.0, "tags": ["tag1", "tag2"], "supporting_count": <int>}
 
 Output ONLY a valid JSON array. If no meaningful patterns, return [].
-Be selective — only extract patterns supported by multiple data points.
+Be selective,  only extract patterns supported by multiple data points.
 """
 
 _WISDOM_SUMMARY_PROMPT = """\
-You are reviewing an AI agent's accumulated wisdom — long-term patterns extracted
+You are reviewing an AI agent's accumulated wisdom,  long-term patterns extracted
 over weeks/months of autonomous operation. Summarize the current state of knowledge
 in 3-5 sentences. Focus on: strongest patterns, biggest risks/weaknesses identified,
 and most reliable strategies discovered. Be concise and definitive.
@@ -216,7 +216,7 @@ class UltraLongTermMemory:
             self._save_state()
 
             logger.info(
-                f"🧠 UltraLTM: Consolidation cycle {cycle.cycle_id} — "
+                f"🧠 UltraLTM: Consolidation cycle {cycle.cycle_id},  "
                 f"{new_count} new patterns, {reinforced_count} reinforced, "
                 f"{len(forgotten)} forgotten ({duration_ms:.0f}ms)"
             )

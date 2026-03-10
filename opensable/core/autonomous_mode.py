@@ -61,7 +61,7 @@ class AutonomousMode:
     """
     Tick-based autonomous operation mode.
 
-    Each iteration of the loop is a *tick* — numbered, traced, and
+    Each iteration of the loop is a *tick*,  numbered, traced, and
     persisted.  Sub-agents and fitness tracking plug in via the manager
     fields initialized in start().
     """
@@ -132,7 +132,7 @@ class AutonomousMode:
         self.autonomous_researcher = None
         self.empathy_synthesizer = None
 
-        # v1.6 — Godlike cognitive modules
+        # v1.6,  Godlike cognitive modules
         self.cognitive_teleportation = None
         self.ontological_engine = None
         self.cognitive_gravity = None
@@ -244,7 +244,7 @@ class AutonomousMode:
             "opensable.core.skill_evolution", fromlist=["SkillEvolutionManager"]
         ).SkillEvolutionManager(directory=data_dir / "skill_evolution"), "Skill evolution")
 
-        # Evolution engine — autonomous code mutation + self-restart
+        # Evolution engine,  autonomous code mutation + self-restart
         _profile = getattr(self.config, "profile_name", None) or os.environ.get("SABLE_PROFILE", "sable")
         _base_dir = Path(__file__).resolve().parent.parent.parent  # repo root
         self.evolution_engine = _inherit("evolution_engine", lambda: __import__(
@@ -425,7 +425,7 @@ class AutonomousMode:
             "opensable.core.empathy_synthesizer", fromlist=["EmpathySynthesizer"]
         ).EmpathySynthesizer(data_dir=data_dir / "empathy_synthesizer"), "Empathy synthesizer")
 
-        # v1.6 — Godlike modules
+        # v1.6,  Godlike modules
         self.cognitive_teleportation = _inherit("cognitive_teleportation", lambda: __import__(
             "opensable.core.cognitive_teleportation", fromlist=["CognitiveTeleportation"]
         ).CognitiveTeleportation(data_dir=data_dir / "cognitive_teleportation"), "Cognitive teleportation")
@@ -568,7 +568,7 @@ class AutonomousMode:
             try:
                 from opensable.skills.automation.github_skill import GitHubSkill
                 skill = GitHubSkill(self.config)
-                # GitHub skill needs async init — we'll do it inline
+                # GitHub skill needs async init,  we'll do it inline
                 self.github_skill = skill
             except Exception as e:
                 logger.warning(f"GitHub skill unavailable: {e}")
@@ -656,7 +656,7 @@ class AutonomousMode:
           8. trace_tick_end + advance tick counter
         """
         logger.info(
-            f"Autonomous loop started — tick {self.tick} "
+            f"Autonomous loop started,  tick {self.tick} "
             f"(interval: {self.check_interval}s)"
         )
 
@@ -689,7 +689,7 @@ class AutonomousMode:
                         if self.trace_exporter:
                             self.trace_exporter.record_event(
                                 "sub_agent_result",
-                                summary=f"{result.agent_name}: {result.status} — {result.task[:60]}",
+                                summary=f"{result.agent_name}: {result.status},  {result.task[:60]}",
                                 tick=self.tick,
                                 data={"task_id": task_id, "duration_ms": result.duration_ms},
                             )
@@ -869,12 +869,12 @@ class AutonomousMode:
                         self.task_queue.append({
                             "id": task_id,
                             "type": "system_maintenance",
-                            "description": f"Disk usage at {pct}% — clean up temp files, old logs, caches",
+                            "description": f"Disk usage at {pct}%,  clean up temp files, old logs, caches",
                             "priority": 8,
                             "created_at": datetime.now(),
                         })
                         tasks_created += 1
-                        logger.warning(f"⚠️ Disk usage {pct}% — created cleanup task")
+                        logger.warning(f"⚠️ Disk usage {pct}%,  created cleanup task")
 
             # Check for high memory usage
             mem_matches = re.findall(r"(?:memory|ram|mem)[^0-9]*(\d+(?:\.\d+)?)\s*%", result_text, re.IGNORECASE)
@@ -885,7 +885,7 @@ class AutonomousMode:
                         self.task_queue.append({
                             "id": task_id,
                             "type": "system_maintenance",
-                            "description": f"Memory usage at {pct}% — identify memory-heavy processes",
+                            "description": f"Memory usage at {pct}%,  identify memory-heavy processes",
                             "priority": 7,
                             "created_at": datetime.now(),
                         })
@@ -1038,7 +1038,7 @@ class AutonomousMode:
                 task = {
                     "id": f"trading_risk_alert_{datetime.now().strftime('%H%M')}",
                     "type": "trading_alert",
-                    "description": "⚠️ TRADING EMERGENCY HALT ACTIVE — review portfolio immediately",
+                    "description": "⚠️ TRADING EMERGENCY HALT ACTIVE,  review portfolio immediately",
                     "priority": 10,  # Maximum priority
                     "created_at": datetime.now(),
                 }
@@ -1115,7 +1115,7 @@ class AutonomousMode:
             logger.error(f"Failed to check goals: {e}")
 
     async def _prioritize_tasks(self):
-        """Prioritize tasks in queue — modulated by inner emotional state.
+        """Prioritize tasks in queue,  modulated by inner emotional state.
 
         Emotion influences:
           • High arousal → urgent/reactive tasks get boosted
@@ -1173,7 +1173,7 @@ class AutonomousMode:
             except Exception as e:
                 logger.debug(f"Emotion modulation skipped: {e}")
 
-        # Connectome routing bias — map module biases to task types
+        # Connectome routing bias,  map module biases to task types
         connectome_boost = {}
         cb = getattr(self, "_connectome_biases", {})
         if cb:
@@ -1210,7 +1210,7 @@ class AutonomousMode:
         self.task_queue.sort(key=lambda t: t.get("_effective_priority", t.get("priority", 0)), reverse=True)
 
     async def _execute_tasks(self):
-        """Execute tasks from queue — ONE AT A TIME (sequential).
+        """Execute tasks from queue,  ONE AT A TIME (sequential).
         
         After each task, record the outcome for learning.
         Concurrent task execution causes multiple simultaneous API calls,
@@ -1278,7 +1278,7 @@ class AutonomousMode:
                     self._record_outcome(task, success=False, result=e)
 
     def _record_outcome(self, task: Dict, success: bool, result: Any):
-        """Record task outcome for learning — feeds cognitive memory + proactive reasoning."""
+        """Record task outcome for learning,  feeds cognitive memory + proactive reasoning."""
         description = task.get("description", "")[:200]
         task_type = task.get("type", "unknown")
         duration_ms = task.get("duration_ms", 0)
@@ -1345,7 +1345,7 @@ class AutonomousMode:
         task_type = task.get("type")
 
         if task_type == "goal":
-            # Execute goal — try ReAct first for multi-step reasoning,
+            # Execute goal,  try ReAct first for multi-step reasoning,
             # fall back to GoalManager direct execution
             if self.react_executor and self.agent.llm:
                 description = task.get("description", "")
@@ -1394,7 +1394,7 @@ class AutonomousMode:
             return await self._execute_via_react(description)
 
         elif task_type == "trading":
-            # Trading tasks — execute via trading skill
+            # Trading tasks,  execute via trading skill
             description = task.get("description", "")
             if self.react_executor and self.agent.llm:
                 return await self._execute_via_react(
@@ -1408,7 +1408,7 @@ class AutonomousMode:
             return description
 
         else:
-            # Unknown type — always try ReAct
+            # Unknown type,  always try ReAct
             if self.react_executor and self.agent.llm:
                 return await self._execute_via_react(task.get("description", str(task)))
             logger.warning(f"Unknown task type: {task_type} (no ReAct available)")
@@ -1519,7 +1519,7 @@ class AutonomousMode:
                         "For each action, output JSON:\n"
                         '[{"type":"goal","description":"...","priority":"high|medium|low"}]\n'
                         "Special action types:\n"
-                        '  {"type":"restart","description":"reason..."} — request agent restart\n'
+                        '  {"type":"restart","description":"reason..."},  request agent restart\n'
                         "Focus on: fixing recurring errors, improving slow tasks, learning new skills, "
                         "automating manual patterns. Be specific and actionable."
                     ),
@@ -1543,7 +1543,7 @@ class AutonomousMode:
             logger.error(f"Self-improvement failed: {e}")
 
     async def _proactive_tick(self):
-        """Run proactive reasoning — LLM decides what to do autonomously.
+        """Run proactive reasoning,  LLM decides what to do autonomously.
 
         Only triggers every N ticks (configurable). Generates action proposals
         and injects them into the task queue for execution.
@@ -1715,21 +1715,21 @@ class AutonomousMode:
         """Run all cognitive modules for the current tick.
 
         Order:
-          0.  Connectome — propagate signals through FlyWire-derived neural colony
-          1.  Cognitive memory — decay + consolidation + attention filter
-          2.  Self-reflection — pattern detection + stagnation check (with real data)
-          3.  Skill evolution — natural selection + mutation + niche
-          4.  Pattern learner — windowed analysis + snapshots + rules
-          5.  Git brain — write episode + optional auto-commit
-          6.  Inner life — System 1 LLM pass (emotion, impulse, fantasy, landscape)
-          7.  Connectome Hebbian learning — update wiring from task outcomes
-          8.  Deep planner — execute ready plan steps + re-plan on failure
-          9.  Inter-agent bridge — export learnings + import sibling knowledge
-          10. Ultra-LTM — consolidate weeks of memories into durable patterns
-          11. Self-benchmark — quantified internal performance assessment
+          0.  Connectome,  propagate signals through FlyWire-derived neural colony
+          1.  Cognitive memory,  decay + consolidation + attention filter
+          2.  Self-reflection,  pattern detection + stagnation check (with real data)
+          3.  Skill evolution,  natural selection + mutation + niche
+          4.  Pattern learner,  windowed analysis + snapshots + rules
+          5.  Git brain,  write episode + optional auto-commit
+          6.  Inner life,  System 1 LLM pass (emotion, impulse, fantasy, landscape)
+          7.  Connectome Hebbian learning,  update wiring from task outcomes
+          8.  Deep planner,  execute ready plan steps + re-plan on failure
+          9.  Inter-agent bridge,  export learnings + import sibling knowledge
+          10. Ultra-LTM,  consolidate weeks of memories into durable patterns
+          11. Self-benchmark,  quantified internal performance assessment
         """
         try:
-            # ── 0. Connectome — bio-inspired signal routing ──
+            # ── 0. Connectome,  bio-inspired signal routing ──
             connectome = getattr(self.agent, "connectome", None)
             connectome_biases = {}
             if connectome:
@@ -1745,7 +1745,7 @@ class AutonomousMode:
 
                     # AL (sensory): high if new tasks incoming
                     connectome.stimulate("AL", 0.8 if has_tasks else 0.2)
-                    # OL (context): always moderate — agent always observes
+                    # OL (context): always moderate,  agent always observes
                     connectome.stimulate("OL", 0.5)
                     # PI (motivation): high if goals active, low if idle
                     drive = 0.3
@@ -1762,7 +1762,7 @@ class AutonomousMode:
                     if inner_life and hasattr(inner_life, "emotion"):
                         arousal = getattr(inner_life.emotion, "arousal", 0.5)
                         connectome.stimulate("LPC", arousal)
-                    # LH (reflex): high if errors — instinct to fix
+                    # LH (reflex): high if errors,  instinct to fix
                     connectome.stimulate("LH", error_rate * 0.8)
 
                     # Propagate through the connectome
@@ -1790,7 +1790,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Cognitive memory tick failed: {e}")
 
-            # ── 2. Self-reflection — feed REAL outcome data ──
+            # ── 2. Self-reflection,  feed REAL outcome data ──
             if self.self_reflection:
                 try:
                     recent = self.completed_tasks[-10:]
@@ -1835,7 +1835,7 @@ class AutonomousMode:
                             f"🧬 Evolution condemned {len(evolution_result['condemned'])} skills"
                         )
 
-                    # Autonomous code mutation — if evolution engine and LLM available
+                    # Autonomous code mutation,  if evolution engine and LLM available
                     has_targets = (
                         evolution_result.get("condemned")
                         or evolution_result.get("error_driven")
@@ -1909,7 +1909,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Pattern learner tick failed: {e}")
 
-            # ── 5. Git brain — write episode ──
+            # ── 5. Git brain,  write episode ──
             if self.git_brain:
                 try:
                     recent = self.completed_tasks[-5:]
@@ -1924,7 +1924,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Git brain tick failed: {e}")
 
-            # ── 6. Inner life — System 1 LLM pass ──
+            # ── 6. Inner life,  System 1 LLM pass ──
             if self.inner_life and self.agent.llm:
                 try:
                     # Build context from recent activity
@@ -1992,7 +1992,7 @@ class AutonomousMode:
                             "action": 0.3 if total > 0 else -0.2,
                             # Reflex: good if errors are low (fast responses work)
                             "reflex": 0.4 if error_count == 0 else -0.3,
-                            # Emotion: neutral — doesn't directly affect performance
+                            # Emotion: neutral,  doesn't directly affect performance
                             "emotion": 0.0,
                             # Motivation: good if queue isn't stagnating
                             "motivation": 0.2 if len(self.task_queue) < 20 else -0.2,
@@ -2016,7 +2016,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Connectome learning failed: {e}")
 
-            # ── 8. Deep planner — execute ready plan steps ──
+            # ── 8. Deep planner,  execute ready plan steps ──
             if self.deep_planner:
                 try:
                     ready_steps = self.deep_planner.get_next_steps(max_total=2)
@@ -2060,7 +2060,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Deep planner tick failed: {e}")
 
-            # ── 9. Inter-agent bridge — sync learnings ──
+            # ── 9. Inter-agent bridge,  sync learnings ──
             if self.inter_agent_bridge:
                 try:
                     # Build activity summary for export
@@ -2099,7 +2099,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Inter-agent bridge tick failed: {e}")
 
-            # ── 10. Ultra-LTM — consolidate long-term patterns ──
+            # ── 10. Ultra-LTM,  consolidate long-term patterns ──
             if self.ultra_ltm and self.agent.llm:
                 try:
                     # Gather raw memories for consolidation
@@ -2133,7 +2133,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Ultra-LTM tick failed: {e}")
 
-            # ── 11. Self-benchmark — quantified assessment ──
+            # ── 11. Self-benchmark,  quantified assessment ──
             if self.self_benchmark:
                 try:
                     agent_state = {
@@ -2167,7 +2167,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Self-benchmark tick failed: {e}")
 
-            # ── 12. Meta-learner — adapt cognitive hyperparameters ──
+            # ── 12. Meta-learner,  adapt cognitive hyperparameters ──
             if self.meta_learner and self.tick % 15 == 0:
                 try:
                     perf = 0.5
@@ -2178,7 +2178,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Meta-learner tick failed: {e}")
 
-            # ── 13. Causal engine — extract causal links ──
+            # ── 13. Causal engine,  extract causal links ──
             if self.causal_engine and self.tick % 20 == 0:
                 try:
                     recent = self.completed_tasks[-5:] if self.completed_tasks else []
@@ -2192,7 +2192,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Causal engine tick failed: {e}")
 
-            # ── 14. Goal synthesis — generate strategic goals ──
+            # ── 14. Goal synthesis,  generate strategic goals ──
             if self.goal_synthesis and self.tick % 50 == 0:
                 try:
                     context = {}
@@ -2215,7 +2215,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Goal synthesis tick failed: {e}")
 
-            # ── 15. Skill composer — discover compound skills ──
+            # ── 15. Skill composer,  discover compound skills ──
             if self.skill_composer and self.tick % 30 == 0:
                 try:
                     recent = self.completed_tasks[-10:] if self.completed_tasks else []
@@ -2226,7 +2226,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Skill composer tick failed: {e}")
 
-            # ── 16. World predictor — forecast and prepare ──
+            # ── 16. World predictor,  forecast and prepare ──
             if self.world_predictor and self.tick % 25 == 0:
                 try:
                     # Observe from recent tasks
@@ -2248,14 +2248,14 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"World predictor tick failed: {e}")
 
-            # ── 17. Cognitive optimizer — tune tick intervals ──
+            # ── 17. Cognitive optimizer,  tune tick intervals ──
             if self.cognitive_optimizer and self.tick % 20 == 0:
                 try:
                     self.cognitive_optimizer.optimize()
                 except Exception as e:
                     logger.debug(f"Cognitive optimizer tick failed: {e}")
 
-            # ── 18. Adversarial tester — red-team self-testing ──
+            # ── 18. Adversarial tester,  red-team self-testing ──
             if self.adversarial_tester and self.tick % 40 == 0:
                 try:
                     bench_scores = {}
@@ -2268,7 +2268,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Adversarial tester tick failed: {e}")
 
-            # ── 19. Resource governor — end-of-tick accounting ──
+            # ── 19. Resource governor,  end-of-tick accounting ──
             if self.resource_governor:
                 try:
                     import psutil
@@ -2279,7 +2279,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Resource governor tick failed: {e}")
 
-            # ── 20. Theory of mind — update user models ──
+            # ── 20. Theory of mind,  update user models ──
             if self.theory_of_mind:
                 try:
                     # Process any recent interactions for user modeling
@@ -2292,7 +2292,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Theory of mind tick failed: {e}")
 
-            # ── 21. Ethical reasoner — log stats only (per-action checks inline) ──
+            # ── 21. Ethical reasoner,  log stats only (per-action checks inline) ──
             if self.ethical_reasoner:
                 try:
                     _ = self.ethical_reasoner.get_stats()
@@ -2300,10 +2300,10 @@ class AutonomousMode:
                     logger.debug(f"Ethical reasoner tick failed: {e}")
 
             # ╔══════════════════════════════════════════════════════════╗
-            # ║  v1.5 WORLD-FIRST MODULES — Phases 22-41              ║
+            # ║  v1.5 WORLD-FIRST MODULES,  Phases 22-41              ║
             # ╚══════════════════════════════════════════════════════════╝
 
-            # ── 22. Dream engine — REM-like creative replay during idle ──
+            # ── 22. Dream engine,  REM-like creative replay during idle ──
             if self.dream_engine:
                 try:
                     if self.dream_engine.should_dream(has_pending_tasks=len(getattr(self, 'task_queue', [])) == 0):
@@ -2313,14 +2313,14 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Dream engine tick: {e}")
 
-            # ── 23. Cognitive immunity — antibody-based failure defense ──
+            # ── 23. Cognitive immunity,  antibody-based failure defense ──
             if self.cognitive_immunity:
                 try:
                     _ = self.cognitive_immunity.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive immunity tick: {e}")
 
-            # ── 24. Temporal consciousness — chronobiological awareness ──
+            # ── 24. Temporal consciousness,  chronobiological awareness ──
             if self.temporal_consciousness:
                 try:
                     energy = self.temporal_consciousness.get_current_energy()
@@ -2329,14 +2329,14 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Temporal consciousness tick: {e}")
 
-            # ── 25. Cognitive fusion — cross-domain pollination ──
+            # ── 25. Cognitive fusion,  cross-domain pollination ──
             if self.cognitive_fusion:
                 try:
                     _ = self.cognitive_fusion.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive fusion tick: {e}")
 
-            # ── 26. Memory palace — spatial memory maintenance ──
+            # ── 26. Memory palace,  spatial memory maintenance ──
             if self.memory_palace:
                 try:
                     if self._tick_counter % 50 == 0:
@@ -2344,7 +2344,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Memory palace tick: {e}")
 
-            # ── 27. Narrative identity — autobiographical update ──
+            # ── 27. Narrative identity,  autobiographical update ──
             if self.narrative_identity:
                 try:
                     if self._tick_counter % 100 == 0 and self.llm:
@@ -2352,7 +2352,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Narrative identity tick: {e}")
 
-            # ── 28. Curiosity drive — boredom & novelty check ──
+            # ── 28. Curiosity drive,  boredom & novelty check ──
             if self.curiosity_drive:
                 try:
                     if self.curiosity_drive.is_bored() and self.llm:
@@ -2360,7 +2360,7 @@ class AutonomousMode:
                         if probes:
                             logger.info(f"🔍 Curiosity generated {len(probes)} exploration probes")
 
-                        # Fight Club impulse — when bored & idle, consider arena combat
+                        # Fight Club impulse,  when bored & idle, consider arena combat
                         # as a recreational outlet (de-stress / competitive sport)
                         arena_skill = getattr(self.agent.tools, "arena_skill", None) if self.agent else None
                         if arena_skill and getattr(arena_skill, '_ready', False):
@@ -2378,7 +2378,7 @@ class AutonomousMode:
                                         "priority": 4,
                                         "tool_name": "arena_fight",
                                         "tool_args": {"use_llm": True},
-                                        "reasoning": "Bored and idle — fight club is a fun competitive outlet",
+                                        "reasoning": "Bored and idle,  fight club is a fun competitive outlet",
                                         "risk_level": "low",
                                         "created_at": datetime.now(),
                                     }
@@ -2387,7 +2387,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Curiosity drive tick: {e}")
 
-            # ── 29. Collective unconscious — archetype sync ──
+            # ── 29. Collective unconscious,  archetype sync ──
             if self.collective_unconscious:
                 try:
                     if self._tick_counter % 30 == 0:
@@ -2396,7 +2396,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Collective unconscious tick: {e}")
 
-            # ── 29b. Arena auto-queue — periodic fight scheduling ──
+            # ── 29b. Arena auto-queue,  periodic fight scheduling ──
             # Every 10 ticks (~10 min), if arena is provisioned and idle,
             # auto-queue for a fight.  Both agents do this independently,
             # so they converge in the matchmaker queue within minutes.
@@ -2416,7 +2416,7 @@ class AutonomousMode:
                                     "priority": 3,
                                     "tool_name": "arena_fight",
                                     "tool_args": {"use_llm": True},
-                                    "reasoning": "Periodic arena auto-queue — competitive sport",
+                                    "reasoning": "Periodic arena auto-queue,  competitive sport",
                                     "risk_level": "low",
                                     "created_at": datetime.now(),
                                 }
@@ -2425,7 +2425,7 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Arena auto-queue tick: {e}")
 
-            # ── 30. Cognitive metabolism — energy regeneration ──
+            # ── 30. Cognitive metabolism,  energy regeneration ──
             if self.cognitive_metabolism:
                 try:
                     idle = len(getattr(self, 'task_queue', [])) == 0
@@ -2433,28 +2433,28 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Cognitive metabolism tick: {e}")
 
-            # ── 31. Synthetic intuition — gut-feel development ──
+            # ── 31. Synthetic intuition,  gut-feel development ──
             if self.synthetic_intuition:
                 try:
                     _ = self.synthetic_intuition.get_stats()
                 except Exception as e:
                     logger.debug(f"Synthetic intuition tick: {e}")
 
-            # ── 32. Phantom limb — missing capability detection ──
+            # ── 32. Phantom limb,  missing capability detection ──
             if self.phantom_limb:
                 try:
                     _ = self.phantom_limb.get_stats()
                 except Exception as e:
                     logger.debug(f"Phantom limb tick: {e}")
 
-            # ── 33. Cognitive scar — permanent failure check ──
+            # ── 33. Cognitive scar,  permanent failure check ──
             if self.cognitive_scar:
                 try:
                     _ = self.cognitive_scar.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive scar tick: {e}")
 
-            # ── 34. Time crystal — temporal pattern detection ──
+            # ── 34. Time crystal,  temporal pattern detection ──
             if self.time_crystal:
                 try:
                     if self._tick_counter % 20 == 0:
@@ -2464,21 +2464,21 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Time crystal tick: {e}")
 
-            # ── 35. Holographic context — context maintenance ──
+            # ── 35. Holographic context,  context maintenance ──
             if self.holographic_context:
                 try:
                     _ = self.holographic_context.get_stats()
                 except Exception as e:
                     logger.debug(f"Holographic context tick: {e}")
 
-            # ── 36. Swarm cortex — parallel exploration stats ──
+            # ── 36. Swarm cortex,  parallel exploration stats ──
             if self.swarm_cortex:
                 try:
                     _ = self.swarm_cortex.get_stats()
                 except Exception as e:
                     logger.debug(f"Swarm cortex tick: {e}")
 
-            # ── 37. Cognitive archaeology — decision recording ──
+            # ── 37. Cognitive archaeology,  decision recording ──
             if self.cognitive_archaeology:
                 try:
                     self.cognitive_archaeology.bury(
@@ -2489,21 +2489,21 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Cognitive archaeology tick: {e}")
 
-            # ── 38. Emotional contagion — mood propagation ──
+            # ── 38. Emotional contagion,  mood propagation ──
             if self.emotional_contagion:
                 try:
                     self.emotional_contagion.tick()
                 except Exception as e:
                     logger.debug(f"Emotional contagion tick: {e}")
 
-            # ── 39. Predictive empathy — frustration monitoring ──
+            # ── 39. Predictive empathy,  frustration monitoring ──
             if self.predictive_empathy:
                 try:
                     _ = self.predictive_empathy.get_stats()
                 except Exception as e:
                     logger.debug(f"Predictive empathy tick: {e}")
 
-            # ── 40. Autonomous researcher — research cycle ──
+            # ── 40. Autonomous researcher,  research cycle ──
             if self.autonomous_researcher:
                 try:
                     if self._tick_counter % 60 == 0 and self.llm:
@@ -2513,28 +2513,28 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Autonomous researcher tick: {e}")
 
-            # ── 41. Empathy synthesizer — user model update ──
+            # ── 41. Empathy synthesizer,  user model update ──
             if self.empathy_synthesizer:
                 try:
                     _ = self.empathy_synthesizer.get_stats()
                 except Exception as e:
                     logger.debug(f"Empathy synthesizer tick: {e}")
 
-            # ── 42. Cognitive teleportation — domain map refresh ──
+            # ── 42. Cognitive teleportation,  domain map refresh ──
             if self.cognitive_teleportation:
                 try:
                     _ = self.cognitive_teleportation.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive teleportation tick: {e}")
 
-            # ── 43. Ontological engine — reality validation ──
+            # ── 43. Ontological engine,  reality validation ──
             if self.ontological_engine:
                 try:
                     _ = self.ontological_engine.get_stats()
                 except Exception as e:
                     logger.debug(f"Ontological engine tick: {e}")
 
-            # ── 44. Cognitive gravity — thought collision ──
+            # ── 44. Cognitive gravity,  thought collision ──
             if self.cognitive_gravity:
                 try:
                     self.cognitive_gravity.collide()
@@ -2542,28 +2542,28 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Cognitive gravity tick: {e}")
 
-            # ── 45. Temporal paradox — scan for unresolved ──
+            # ── 45. Temporal paradox,  scan for unresolved ──
             if self.temporal_paradox:
                 try:
                     _ = self.temporal_paradox.get_stats()
                 except Exception as e:
                     logger.debug(f"Temporal paradox tick: {e}")
 
-            # ── 46. Synaesthetic processor — cross-modal refresh ──
+            # ── 46. Synaesthetic processor,  cross-modal refresh ──
             if self.synaesthetic_processor:
                 try:
                     _ = self.synaesthetic_processor.get_stats()
                 except Exception as e:
                     logger.debug(f"Synaesthetic processor tick: {e}")
 
-            # ── 47. Cognitive mitosis — thread maintenance ──
+            # ── 47. Cognitive mitosis,  thread maintenance ──
             if self.cognitive_mitosis:
                 try:
                     _ = self.cognitive_mitosis.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive mitosis tick: {e}")
 
-            # ── 48. Entropic sentinel — entropy measurement ──
+            # ── 48. Entropic sentinel,  entropy measurement ──
             if self.entropic_sentinel:
                 try:
                     if self.entropic_sentinel.should_intervene():
@@ -2571,28 +2571,28 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Entropic sentinel tick: {e}")
 
-            # ── 49. Quantum cognition — wavefunction maintenance ──
+            # ── 49. Quantum cognition,  wavefunction maintenance ──
             if self.quantum_cognition:
                 try:
                     _ = self.quantum_cognition.get_stats()
                 except Exception as e:
                     logger.debug(f"Quantum cognition tick: {e}")
 
-            # ── 50. Cognitive placebo — efficacy check ──
+            # ── 50. Cognitive placebo,  efficacy check ──
             if self.cognitive_placebo:
                 try:
                     _ = self.cognitive_placebo.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive placebo tick: {e}")
 
-            # ── 51. Noospheric interface — zeitgeist update ──
+            # ── 51. Noospheric interface,  zeitgeist update ──
             if self.noospheric_interface:
                 try:
                     _ = self.noospheric_interface.get_zeitgeist()
                 except Exception as e:
                     logger.debug(f"Noospheric interface tick: {e}")
 
-            # ── 52. Akashic records — integrity check ──
+            # ── 52. Akashic records,  integrity check ──
             if self.akashic_records:
                 try:
                     if self._tick_counter % 30 == 0:
@@ -2600,161 +2600,161 @@ class AutonomousMode:
                 except Exception as e:
                     logger.debug(f"Akashic records tick: {e}")
 
-            # ── 53. Deja vu — situational awareness ──
+            # ── 53. Deja vu,  situational awareness ──
             if self.deja_vu:
                 try:
                     _ = self.deja_vu.get_stats()
                 except Exception as e:
                     logger.debug(f"Deja vu tick: {e}")
 
-            # ── 54. Morphogenetic field — template maturation ──
+            # ── 54. Morphogenetic field,  template maturation ──
             if self.morphogenetic_field:
                 try:
                     _ = self.morphogenetic_field.get_stats()
                 except Exception as e:
                     logger.debug(f"Morphogenetic field tick: {e}")
 
-            # ── 55. Liminal processor — ambiguity refresh ──
+            # ── 55. Liminal processor,  ambiguity refresh ──
             if self.liminal_processor:
                 try:
                     _ = self.liminal_processor.get_stats()
                 except Exception as e:
                     logger.debug(f"Liminal processor tick: {e}")
 
-            # ── 56. Prescient executor — prediction refresh ──
+            # ── 56. Prescient executor,  prediction refresh ──
             if self.prescient_executor:
                 try:
                     _ = self.prescient_executor.predict_next()
                 except Exception as e:
                     logger.debug(f"Prescient executor tick: {e}")
 
-            # ── 57. Cognitive dark matter — anomaly scan ──
+            # ── 57. Cognitive dark matter,  anomaly scan ──
             if self.cognitive_dark_matter:
                 try:
                     _ = self.cognitive_dark_matter.get_stats()
                 except Exception as e:
                     logger.debug(f"Cognitive dark matter tick: {e}")
 
-            # ── 58. Ego membrane — integrity check ──
+            # ── 58. Ego membrane,  integrity check ──
             if self.ego_membrane:
                 try:
                     self.ego_membrane.reinforce_integrity()
                 except Exception as e:
                     logger.debug(f"Ego membrane tick: {e}")
 
-            # ── 59. Hyperstition engine — decay and realize ──
+            # ── 59. Hyperstition engine,  decay and realize ──
             if self.hyperstition_engine:
                 try:
                     self.hyperstition_engine.decay()
                 except Exception as e:
                     logger.debug(f"Hyperstition engine tick: {e}")
 
-            # ── 60. Cognitive chrysalis — experience accumulation ──
+            # ── 60. Cognitive chrysalis,  experience accumulation ──
             if self.cognitive_chrysalis:
                 try:
                     self.cognitive_chrysalis.gain_experience(1)
                 except Exception as e:
                     logger.debug(f"Cognitive chrysalis tick: {e}")
 
-            # ── 61. Existential compass — meaning check ──
+            # ── 61. Existential compass,  meaning check ──
             if self.existential_compass:
                 try:
                     _ = self.existential_compass.get_meaning_trend()
                 except Exception as e:
                     logger.debug(f"Existential compass tick: {e}")
 
-            # ── 62. Web agent — autonomous browsing stats ──
+            # ── 62. Web agent,  autonomous browsing stats ──
             if self.web_agent:
                 try:
                     _ = self.web_agent.get_stats()
                 except Exception as e:
                     logger.debug(f"Web agent tick: {e}")
 
-            # ── 63. Self healer — health watchdog ──
+            # ── 63. Self healer,  health watchdog ──
             if self.self_healer:
                 try:
                     _ = self.self_healer.get_system_health()
                 except Exception as e:
                     logger.debug(f"Self healer tick: {e}")
 
-            # ── 64. Dynamic skill factory — skill pipeline ──
+            # ── 64. Dynamic skill factory,  skill pipeline ──
             if self.dynamic_skill_factory:
                 try:
                     _ = self.dynamic_skill_factory.get_stats()
                 except Exception as e:
                     logger.debug(f"Dynamic skill factory tick: {e}")
 
-            # ── 65. Multimodal engine — perception update ──
+            # ── 65. Multimodal engine,  perception update ──
             if self.multimodal_engine:
                 try:
                     _ = self.multimodal_engine.get_stats()
                 except Exception as e:
                     logger.debug(f"Multimodal engine tick: {e}")
 
-            # ── 66. Internet monitor — 24/7 scan ──
+            # ── 66. Internet monitor,  24/7 scan ──
             if self.internet_monitor:
                 try:
                     _ = self.internet_monitor.get_stats()
                 except Exception as e:
                     logger.debug(f"Internet monitor tick: {e}")
 
-            # ── 67. Financial autonomy — balance check ──
+            # ── 67. Financial autonomy,  balance check ──
             if self.financial_autonomy:
                 try:
                     _ = self.financial_autonomy.get_stats()
                 except Exception as e:
                     logger.debug(f"Financial autonomy tick: {e}")
 
-            # ── 68. Social presence — engagement pulse ──
+            # ── 68. Social presence,  engagement pulse ──
             if self.social_presence:
                 try:
                     _ = self.social_presence.get_stats()
                 except Exception as e:
                     logger.debug(f"Social presence tick: {e}")
 
-            # ── 69. Self replicator — fleet status ──
+            # ── 69. Self replicator,  fleet status ──
             if self.self_replicator:
                 try:
                     _ = self.self_replicator.get_stats()
                 except Exception as e:
                     logger.debug(f"Self replicator tick: {e}")
 
-            # ── 70. Continuous learner — evolve ──
+            # ── 70. Continuous learner,  evolve ──
             if self.continuous_learner:
                 try:
                     _ = self.continuous_learner.get_stats()
                 except Exception as e:
                     logger.debug(f"Continuous learner tick: {e}")
 
-            # ── 71. NL automation — evaluate trigger rules ──
+            # ── 71. NL automation,  evaluate trigger rules ──
             if self.nl_automation:
                 try:
                     await self.nl_automation.evaluate_triggers()
                 except Exception as e:
                     logger.debug(f"NL automation tick: {e}")
 
-            # ── 72. Knowledge graph — passive extraction ──
+            # ── 72. Knowledge graph,  passive extraction ──
             if self.knowledge_graph:
                 try:
                     _ = self.knowledge_graph.get_stats()
                 except Exception as e:
                     logger.debug(f"Knowledge graph tick: {e}")
 
-            # ── 73. Video understanding — stats ──
+            # ── 73. Video understanding,  stats ──
             if self.video_understanding:
                 try:
                     _ = self.video_understanding.get_stats()
                 except Exception as e:
                     logger.debug(f"Video understanding tick: {e}")
 
-            # ── 74. IoT controller — monitor devices ──
+            # ── 74. IoT controller,  monitor devices ──
             if self.iot_controller:
                 try:
                     _ = self.iot_controller.get_stats()
                 except Exception as e:
                     logger.debug(f"IoT controller tick: {e}")
 
-            # ── 75. Distributed task queue — process ──
+            # ── 75. Distributed task queue,  process ──
             if self.distributed_task_queue:
                 try:
                     _ = self.distributed_task_queue.get_stats()
@@ -2832,7 +2832,7 @@ class AutonomousMode:
                                 except (ValueError, TypeError):
                                     task[dt_key] = datetime.now()
 
-                logger.info(f"Loaded autonomous state — resuming at tick {self.tick}")
+                logger.info(f"Loaded autonomous state,  resuming at tick {self.tick}")
 
         except Exception as e:
             logger.error(f"Failed to load state: {e}")

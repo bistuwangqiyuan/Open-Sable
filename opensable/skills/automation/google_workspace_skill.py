@@ -1,5 +1,5 @@
 """
-Google Workspace Skill — Drive, Gmail, Calendar, Sheets, Docs, Chat via `gws` CLI.
+Google Workspace Skill,  Drive, Gmail, Calendar, Sheets, Docs, Chat via `gws` CLI.
 
 Wraps the Google Workspace CLI (https://github.com/googleworkspace/cli) to give
 Sable full access to Google Workspace APIs with structured JSON output.

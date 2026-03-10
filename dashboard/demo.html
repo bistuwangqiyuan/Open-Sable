@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSable Dashboard,  Live Agent Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ───────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#0a0b0f;--bg-secondary:#12141a;--bg-tertiary:#1a1d26;
+  --bg-hover:#22252f;--border:#2a2d38;--border-light:#363a47;
+  --accent:#7c3aed;--accent-light:#a78bfa;--accent-dim:rgba(124,58,237,.15);
+  --teal:#00cec9;--teal-dim:rgba(0,206,201,.12);
+  --green:#22c55e;--green-dim:rgba(34,197,94,.12);
+  --red:#ef4444;--red-dim:rgba(239,68,68,.12);
+  --yellow:#eab308;--yellow-dim:rgba(234,179,8,.12);
+  --blue:#3b82f6;--blue-dim:rgba(59,130,246,.12);
+  --text:#e6edf3;--text-secondary:#9ca3af;--text-muted:#6b7280;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,-apple-system,sans-serif;
+  --radius:10px;--radius-sm:6px;--radius-lg:14px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg-primary);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+*{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes progress-slide{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes glow-pulse{0%,100%{box-shadow:0 0 8px rgba(124,58,237,.15)}50%{box-shadow:0 0 20px rgba(124,58,237,.35)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+.app{display:flex;flex-direction:column;height:100%}
+
+/* Topbar */
+.topbar{
+  display:flex;align-items:center;gap:10px;padding:0 16px;
+  height:48px;min-height:48px;border-bottom:1px solid var(--border);
+  background:var(--bg-secondary);flex-shrink:0;
+}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;letter-spacing:-.02em}
+.brand-icon{
+  width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--accent),#ec4899);font-size:14px;
+}
+.brand-text{color:var(--text)}
+.conn-pill{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;
+  font-size:10px;font-weight:700;
+}
+.conn-pill.on{background:var(--green-dim);color:var(--green)}
+.conn-pill.off{background:var(--red-dim);color:var(--red)}
+.conn-dot{width:6px;height:6px;border-radius:50%}
+.conn-pill.on .conn-dot{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.5)}
+.conn-pill.off .conn-dot{background:var(--red)}
+.model-badge{
+  display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-sm);
+  background:var(--bg-tertiary);border:1px solid var(--border);font-size:11px;
+  font-family:var(--mono);color:var(--accent-light);font-weight:600;cursor:pointer;
+}
+.model-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.info-pill{
+  display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;
+  background:var(--bg-tertiary);border:1px solid var(--border);font-size:10px;
+  color:var(--text-muted);font-weight:600;white-space:nowrap;
+}
+.topbar-spacer{flex:1}
+
+/* Streaming bar */
+.stream-bar{height:2px;background:var(--accent-dim);overflow:hidden}
+.stream-bar-inner{height:100%;background:var(--accent);animation:progress-slide 2s ease-in-out infinite}
+
+/* Main area */
+.main{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* Sidebar */
+.sidebar{
+  width:56px;min-width:56px;display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;gap:2px;border-right:1px solid var(--border);background:var(--bg-secondary);
+  overflow-y:auto;flex-shrink:0;
+}
+.sidebar-btn{
+  width:40px;height:40px;border-radius:var(--radius-sm);border:none;
+  background:transparent;color:var(--text-muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  position:relative;transition:all .15s;
+}
+.sidebar-btn:hover{background:var(--bg-hover);color:var(--text)}
+.sidebar-btn.active{background:var(--accent-dim);color:var(--accent-light)}
+.sidebar-sep{width:28px;height:1px;background:var(--border);margin:4px 0}
+.sidebar-btn .stream-dot{
+  position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.5);animation:pulse 2s infinite;
+}
+
+/* Panel container */
+.panel-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.panel{display:none;flex-direction:column;flex:1;overflow:hidden}
+.panel.active{display:flex}
+.panel-header{
+  display:flex;align-items:center;gap:8px;padding:12px 16px;
+  border-bottom:1px solid var(--border);min-height:44px;flex-shrink:0;
+}
+.panel-title{font-size:13px;font-weight:600}
+.panel-body{flex:1;overflow-y:auto;padding:16px}
+.panel-icon{font-size:16px}
+
+/* ── Chat Panel ──────────────────────────────────────────────────── */
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:85%;padding:10px 14px;border-radius:var(--radius);font-size:13px;line-height:1.6;animation:fadeIn .3s ease}
+.msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.assistant{align-self:flex-start;background:var(--bg-tertiary);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;opacity:.7}
+.msg pre{font-family:var(--mono);font-size:11px;background:var(--bg-primary);padding:8px;border-radius:var(--radius-sm);margin-top:6px;overflow-x:auto;white-space:pre-wrap}
+.chat-input-area{
+  padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;
+}
+.chat-input{
+  flex:1;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--bg-tertiary);color:var(--text);font-size:13px;font-family:var(--sans);
+  outline:none;resize:none;min-height:40px;
+}
+.chat-input:focus{border-color:var(--accent)}
+.chat-send{
+  width:40px;height:40px;border-radius:var(--radius);border:none;
+  background:var(--accent);color:#fff;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+}
+
+/* Typing indicator */
+.typing{display:flex;align-items:center;gap:6px;padding:10px 14px;background:var(--bg-tertiary);
+  border:1px solid var(--border);border-radius:var(--radius);align-self:flex-start;font-size:12px;color:var(--text-muted)}
+.typing-dots{display:flex;gap:3px}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--accent-light);animation:pulse 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+
+/* ── Activity Panel ──────────────────────────────────────────────── */
+.activity-item{
+  display:flex;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);
+  margin-bottom:6px;font-size:12px;animation:fadeIn .3s ease;
+}
+.activity-item.tool{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.12)}
+.activity-item.think{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.12)}
+.activity-item.success{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.12)}
+.activity-item.error{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12)}
+.activity-item.info{background:var(--bg-tertiary);border:1px solid var(--border)}
+.activity-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
+.activity-content{flex:1;min-width:0}
+.activity-title{font-weight:600;margin-bottom:2px}
+.activity-detail{color:var(--text-muted);font-size:11px}
+.activity-time{font-size:10px;color:var(--text-muted);flex-shrink:0;font-family:var(--mono)}
+
+/* ── Terminal Panel ──────────────────────────────────────────────── */
+.terminal{
+  flex:1;overflow-y:auto;padding:16px;font-family:var(--mono);font-size:12px;
+  background:var(--bg-primary);line-height:1.7;
+}
+.term-line{white-space:pre-wrap;word-break:break-all}
+.term-line.error{color:var(--red)}
+.term-line.info{color:var(--text-muted)}
+.term-line.cmd{color:var(--teal)}
+.term-line.default{color:var(--green)}
+
+/* ── Status Panel ────────────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:20px}
+.stat-card{
+  padding:14px;border-radius:var(--radius);background:var(--bg-tertiary);
+  border:1px solid var(--border);
+}
+.stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:600;letter-spacing:.05em;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:800;font-family:var(--mono)}
+.status-section{margin-bottom:20px}
+.status-section-title{font-size:13px;font-weight:700;margin-bottom:10px}
+.token-bar{height:6px;border-radius:3px;background:var(--bg-hover);overflow:hidden;margin:6px 0}
+.token-bar-fill{height:100%;border-radius:3px}
+.session-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-bottom:6px;font-size:12px;
+}
+
+/* ── Trading Panel ───────────────────────────────────────────────── */
+.trading-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.trading-tab{
+  padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;
+  border:none;background:none;color:var(--text-muted);border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.trading-tab:hover{color:var(--text)}
+.trading-tab.active{color:var(--accent-light);border-bottom-color:var(--accent)}
+.portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.portfolio-stat{
+  padding:14px;border-radius:var(--radius);background:var(--bg-tertiary);
+  border:1px solid var(--border);text-align:center;
+}
+.portfolio-stat .val{font-size:20px;font-weight:800;font-family:var(--mono)}
+.portfolio-stat .label{font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-top:2px}
+.position-row{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-bottom:6px;font-size:12px;
+}
+.position-symbol{font-weight:800;font-family:var(--mono);font-size:14px}
+.position-pnl{font-weight:700;font-family:var(--mono)}
+.position-pnl.up{color:var(--green)}
+.position-pnl.down{color:var(--red)}
+.signal-card{
+  padding:14px;border-radius:var(--radius);background:var(--bg-tertiary);
+  border:1px solid var(--border);margin-bottom:8px;
+}
+.signal-dir{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;
+  font-size:10px;font-weight:700;
+}
+.signal-dir.long{background:var(--green-dim);color:var(--green)}
+.signal-dir.short{background:var(--red-dim);color:var(--red)}
+
+/* ── Thoughts Panel ──────────────────────────────────────────────── */
+.thoughts-tabs{display:flex;gap:4px;flex-shrink:0;padding:0 16px 12px}
+.thoughts-tab{
+  padding:6px 14px;border-radius:99px;border:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.thoughts-tab:hover{background:var(--bg-hover)}
+.thoughts-tab.active{background:var(--accent-dim);color:var(--accent-light);border-color:var(--accent)}
+.mood-bar{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--bg-tertiary);border-bottom:1px solid var(--border);
+  font-size:11px;flex-shrink:0;
+}
+.mood-indicator{
+  height:4px;flex:1;border-radius:2px;background:var(--bg-hover);overflow:hidden;
+}
+.mood-fill{height:100%;border-radius:2px;transition:width .5s ease}
+.thought-entry{
+  display:flex;gap:10px;padding:10px 14px;margin-bottom:6px;
+  border-radius:var(--radius-sm);font-size:12px;line-height:1.5;
+  background:var(--bg-tertiary);border:1px solid var(--border);
+  animation:fadeIn .3s ease;
+}
+.thought-entry .icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
+.thought-entry .content{flex:1;min-width:0}
+.thought-entry .time{font-size:10px;color:var(--text-muted);font-family:var(--mono);flex-shrink:0}
+.thought-entry.thought{border-left:3px solid var(--accent)}
+.thought-entry.emotion{border-left:3px solid var(--teal)}
+.thought-entry.reflection{border-left:3px solid var(--yellow)}
+.thought-entry.decision{border-left:3px solid var(--green)}
+.thought-entry.error-t{border-left:3px solid var(--red)}
+
+/* ── Brain Panel ─────────────────────────────────────────────────── */
+.brain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:16px}
+.brain-card{
+  padding:16px;border-radius:var(--radius);background:var(--bg-secondary);
+  border:1px solid var(--border);display:flex;flex-direction:column;gap:10px;
+  transition:border-color .15s;
+}
+.brain-card:hover{border-color:var(--border-light)}
+.brain-card-header{display:flex;align-items:center;gap:8px}
+.brain-card-icon{font-size:18px;flex-shrink:0}
+.brain-card-title{font-size:13px;font-weight:700;flex:1}
+.brain-card-badge{
+  padding:2px 8px;border-radius:99px;font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.brain-card-body{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.brain-stat{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}
+.brain-stat .k{color:var(--text-muted)}
+.brain-stat .v{font-weight:700;font-family:var(--mono)}
+
+/* Sparkline */
+.sparkline{display:flex;align-items:flex-end;gap:1px;height:24px}
+.spark-bar{width:3px;border-radius:1px;background:var(--accent);opacity:.7;transition:height .3s ease}
+
+/* Emotion Circumplex */
+.circumplex{position:relative;margin:8px auto}
+.circumplex svg{display:block}
+
+/* Personality Radar */
+.radar{margin:8px auto;display:block}
+
+/* Mini Gauge */
+.mini-gauge{display:flex;align-items:center;gap:6px;font-size:11px}
+.mini-gauge-bar{flex:1;height:4px;border-radius:2px;background:var(--bg-hover);overflow:hidden}
+.mini-gauge-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* Connectome 2D */
+.connectome-2d{position:relative;margin:8px auto}
+.connectome-2d svg{display:block}
+
+/* Success Ring */
+.success-ring{position:relative;display:flex;align-items:center;justify-content:center}
+.success-ring svg{display:block}
+.success-ring .label{position:absolute;text-align:center}
+.success-ring .label .pct{font-size:18px;font-weight:800;font-family:var(--mono)}
+.success-ring .label .sub{font-size:9px;color:var(--text-muted);text-transform:uppercase}
+
+/* ── Agent Panel ─────────────────────────────────────────────────── */
+.agent-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.agent-tab{
+  padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;
+  border:none;background:none;color:var(--text-muted);border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.agent-tab:hover{color:var(--text)}
+.agent-tab.active{color:var(--accent-light);border-bottom-color:var(--accent)}
+.skill-card{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-bottom:6px;
+}
+.skill-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.skill-info{flex:1;min-width:0}
+.skill-name{font-size:13px;font-weight:700}
+.skill-desc{font-size:11px;color:var(--text-muted)}
+.skill-toggle{
+  width:40px;height:22px;border-radius:11px;cursor:pointer;position:relative;
+  transition:background .2s;border:none;flex-shrink:0;
+}
+.skill-toggle.on{background:var(--accent)}
+.skill-toggle.off{background:var(--border)}
+.skill-toggle .knob{
+  position:absolute;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;
+  transition:left .2s;
+}
+.skill-toggle.on .knob{left:20px}
+.skill-toggle.off .knob{left:2px}
+
+/* ── Task Panel ──────────────────────────────────────────────────── */
+.task-launcher{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px;gap:24px;
+}
+.hero-title{
+  font-size:26px;font-weight:800;text-align:center;
+  background:linear-gradient(135deg,var(--accent-light),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero-sub{font-size:13px;color:var(--text-muted);text-align:center;max-width:500px;line-height:1.6}
+.task-input-wrap{width:100%;max-width:600px;position:relative}
+.task-input{
+  width:100%;padding:14px 50px 14px 18px;border-radius:12px;border:1px solid var(--border);
+  background:var(--bg-tertiary);color:var(--text);font-size:14px;outline:none;
+  font-family:var(--sans);
+}
+.task-input:focus{border-color:var(--accent)}
+.task-send{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;
+  border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.task-examples{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:10px;width:100%;max-width:600px;
+}
+.task-example{
+  padding:14px 16px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--bg-tertiary);cursor:pointer;transition:border-color .15s;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.task-example:hover{border-color:var(--accent)}
+.task-example-icon{
+  width:32px;height:32px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0;background:var(--accent-dim);
+}
+.task-example-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.task-example-desc{font-size:11px;color:var(--text-muted);line-height:1.3}
+
+/* ── History Panel ───────────────────────────────────────────────── */
+.history-card{
+  padding:14px 16px;border-radius:var(--radius);margin-bottom:8px;
+  border:1px solid var(--border);background:var(--bg-tertiary);cursor:pointer;
+  transition:border-color .15s;
+}
+.history-card:hover{border-color:var(--accent)}
+.history-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.history-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.history-dot.complete{background:var(--green)}
+.history-dot.error{background:var(--red)}
+.history-title{font-size:14px;font-weight:700;flex:1}
+.history-time{font-size:10px;color:var(--text-muted)}
+.history-body{font-size:12px;color:var(--text-muted);line-height:1.5}
+.history-meta{display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--text-muted)}
+.history-badge{
+  padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;
+}
+.history-badge.complete{background:rgba(34,197,94,.15);color:var(--green)}
+.history-badge.error{background:rgba(239,68,68,.15);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ═══ TOPBAR ═══ -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🧠</div>
+      <span class="brand-text">OpenSable</span>
+    </div>
+    <div class="conn-pill on"><span class="conn-dot"></span> Connected</div>
+    <div class="model-badge"><span class="dot"></span> ollama/qwen3:32b</div>
+    <div class="topbar-spacer"></div>
+    <div class="info-pill">⏱ 6h 14m</div>
+    <div class="info-pill">👥 1 client</div>
+  </div>
+
+  <!-- Streaming bar -->
+  <div class="stream-bar"><div class="stream-bar-inner"></div></div>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar"></div>
+
+    <!-- Panel area -->
+    <div class="panel-area">
+
+      <!-- ─── CHAT ─── -->
+      <div class="panel active" id="panel-chat">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="typing" id="typingIndicator">
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+          <span>Sable is thinking…</span>
+        </div>
+        <div class="chat-input-area">
+          <textarea class="chat-input" placeholder="Message Sable…" rows="1"></textarea>
+          <button class="chat-send">↑</button>
+        </div>
+      </div>
+
+      <!-- ─── ACTIVITY ─── -->
+      <div class="panel" id="panel-activity">
+        <div class="panel-header"><span class="panel-icon">⚡</span><span class="panel-title">Activity Feed</span></div>
+        <div class="panel-body" id="activityFeed"></div>
+      </div>
+
+      <!-- ─── TERMINAL ─── -->
+      <div class="panel" id="panel-terminal">
+        <div class="panel-header"><span class="panel-icon">▸</span><span class="panel-title">Terminal</span></div>
+        <div class="terminal" id="terminalOutput"></div>
+      </div>
+
+      <!-- ─── STATUS ─── -->
+      <div class="panel" id="panel-status">
+        <div class="panel-header"><span class="panel-icon">📊</span><span class="panel-title">System Status</span></div>
+        <div class="panel-body" id="statusBody"></div>
+      </div>
+
+      <!-- ─── TRADING ─── -->
+      <div class="panel" id="panel-trading">
+        <div class="trading-tabs" id="tradingTabs"></div>
+        <div class="panel-body" id="tradingBody"></div>
+      </div>
+
+      <!-- ─── TASKS ─── -->
+      <div class="panel" id="panel-tasks">
+        <div class="task-launcher" id="taskLauncher"></div>
+      </div>
+
+      <!-- ─── HISTORY ─── -->
+      <div class="panel" id="panel-history">
+        <div class="panel-header"><span class="panel-icon">📋</span><span class="panel-title">Task History</span><span class="info-pill" style="margin-left:8px">50 tasks</span></div>
+        <div class="panel-body" id="historyBody"></div>
+      </div>
+
+      <!-- ─── THOUGHTS ─── -->
+      <div class="panel" id="panel-thoughts">
+        <div class="panel-header">
+          <span class="panel-icon">💭</span>
+          <span class="panel-title">Thoughts & Inner Life</span>
+          <span class="info-pill" style="margin-left:auto">1549 events</span>
+          <span class="info-pill">397 thoughts</span>
+          <span class="info-pill">69 reflections</span>
+        </div>
+        <div class="mood-bar">
+          <span>Mood:</span>
+          <span style="font-weight:700;color:var(--teal)">Contemplative</span>
+          <div class="mood-indicator"><div class="mood-fill" style="width:55%;background:linear-gradient(90deg,var(--teal),var(--accent))"></div></div>
+          <span style="color:var(--text-muted)">55%</span>
+        </div>
+        <div class="thoughts-tabs" id="thoughtsTabs"></div>
+        <div class="panel-body" id="thoughtsBody"></div>
+      </div>
+
+      <!-- ─── BRAIN ─── -->
+      <div class="panel" id="panel-brain">
+        <div class="panel-header">
+          <span class="panel-icon">🧠</span>
+          <span class="panel-title">Cognitive Brain</span>
+          <span class="info-pill" style="margin-left:auto">v1.7</span>
+          <span class="info-pill" style="background:var(--green-dim);color:var(--green)">● Live</span>
+        </div>
+        <div class="brain-grid" id="brainGrid"></div>
+      </div>
+
+      <!-- ─── QR ─── -->
+      <div class="panel" id="panel-qr">
+        <div class="panel-header"><span class="panel-icon">📱</span><span class="panel-title">Mobile Pairing</span></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;align-items:center;gap:24px;padding-top:40px">
+          <div style="font-size:20px;font-weight:700">Pair Your Phone</div>
+          <div style="color:var(--text-muted);font-size:13px;max-width:400px;text-align:center">Scan this QR code with the OpenSable mobile app to connect your device.</div>
+          <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+            <svg width="200" height="200" viewBox="0 0 200 200" style="display:block">
+              <rect width="200" height="200" fill="#fff"/>
+              <!-- Simulated QR code pattern -->
+              <g fill="#0a0b0f">
+                <rect x="10" y="10" width="50" height="50" rx="4"/><rect x="140" y="10" width="50" height="50" rx="4"/>
+                <rect x="10" y="140" width="50" height="50" rx="4"/>
+                <rect x="18" y="18" width="34" height="34" rx="2" fill="#fff"/><rect x="148" y="18" width="34" height="34" rx="2" fill="#fff"/>
+                <rect x="18" y="148" width="34" height="34" rx="2" fill="#fff"/>
+                <rect x="26" y="26" width="18" height="18" rx="1"/><rect x="156" y="26" width="18" height="18" rx="1"/>
+                <rect x="26" y="156" width="18" height="18" rx="1"/>
+                <!-- Data pattern -->
+                <rect x="70" y="10" width="6" height="6"/><rect x="82" y="10" width="6" height="6"/><rect x="100" y="10" width="6" height="6"/>
+                <rect x="70" y="22" width="6" height="6"/><rect x="94" y="22" width="6" height="6"/><rect x="106" y="22" width="6" height="6"/>
+                <rect x="76" y="34" width="6" height="6"/><rect x="88" y="34" width="6" height="6"/><rect x="112" y="34" width="6" height="6"/>
+                <rect x="70" y="46" width="6" height="6"/><rect x="82" y="46" width="6" height="6"/><rect x="100" y="46" width="6" height="6"/><rect x="118" y="46" width="6" height="6"/>
+                <rect x="10" y="70" width="6" height="6"/><rect x="22" y="70" width="6" height="6"/><rect x="46" y="70" width="6" height="6"/>
+                <rect x="70" y="70" width="6" height="6"/><rect x="82" y="70" width="6" height="6"/><rect x="100" y="70" width="6" height="6"/>
+                <rect x="130" y="70" width="6" height="6"/><rect x="148" y="70" width="6" height="6"/><rect x="166" y="70" width="6" height="6"/>
+                <rect x="10" y="82" width="6" height="6"/><rect x="34" y="82" width="6" height="6"/><rect x="58" y="82" width="6" height="6"/>
+                <rect x="76" y="82" width="6" height="6"/><rect x="94" y="82" width="6" height="6"/><rect x="112" y="82" width="6" height="6"/>
+                <rect x="136" y="82" width="6" height="6"/><rect x="154" y="82" width="6" height="6"/><rect x="178" y="82" width="6" height="6"/>
+                <rect x="22" y="94" width="6" height="6"/><rect x="46" y="94" width="6" height="6"/>
+                <rect x="70" y="94" width="6" height="6"/><rect x="88" y="94" width="6" height="6"/><rect x="106" y="94" width="6" height="6"/>
+                <rect x="142" y="94" width="6" height="6"/><rect x="160" y="94" width="6" height="6"/><rect x="172" y="94" width="6" height="6"/>
+                <rect x="10" y="106" width="6" height="6"/><rect x="34" y="106" width="6" height="6"/><rect x="52" y="106" width="6" height="6"/>
+                <rect x="76" y="106" width="6" height="6"/><rect x="94" y="106" width="6" height="6"/><rect x="118" y="106" width="6" height="6"/>
+                <rect x="136" y="106" width="6" height="6"/><rect x="160" y="106" width="6" height="6"/>
+                <rect x="22" y="118" width="6" height="6"/><rect x="46" y="118" width="6" height="6"/>
+                <rect x="82" y="118" width="6" height="6"/><rect x="100" y="118" width="6" height="6"/><rect x="112" y="118" width="6" height="6"/>
+                <rect x="148" y="118" width="6" height="6"/><rect x="172" y="118" width="6" height="6"/>
+                <rect x="70" y="136" width="6" height="6"/><rect x="88" y="136" width="6" height="6"/><rect x="106" y="136" width="6" height="6"/>
+                <rect x="130" y="136" width="6" height="6"/><rect x="148" y="136" width="6" height="6"/><rect x="172" y="136" width="6" height="6"/>
+                <rect x="76" y="148" width="6" height="6"/><rect x="94" y="148" width="6" height="6"/><rect x="112" y="148" width="6" height="6"/>
+                <rect x="136" y="148" width="6" height="6"/><rect x="160" y="148" width="6" height="6"/><rect x="178" y="148" width="6" height="6"/>
+                <rect x="70" y="160" width="6" height="6"/><rect x="82" y="160" width="6" height="6"/><rect x="100" y="160" width="6" height="6"/>
+                <rect x="142" y="160" width="6" height="6"/><rect x="166" y="160" width="6" height="6"/>
+                <rect x="76" y="172" width="6" height="6"/><rect x="94" y="172" width="6" height="6"/><rect x="118" y="172" width="6" height="6"/>
+                <rect x="136" y="172" width="6" height="6"/><rect x="154" y="172" width="6" height="6"/><rect x="178" y="172" width="6" height="6"/>
+                <rect x="70" y="184" width="6" height="6"/><rect x="88" y="184" width="6" height="6"/><rect x="106" y="184" width="6" height="6"/>
+                <rect x="148" y="184" width="6" height="6"/><rect x="172" y="184" width="6" height="6"/>
+              </g>
+            </svg>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)">🔒 X25519 ECDH key exchange · End-to-end encrypted</div>
+        </div>
+      </div>
+
+      <!-- ─── AGENT ─── -->
+      <div class="panel" id="panel-agent">
+        <div class="panel-header"><span class="panel-icon">🤖</span><span class="panel-title">Agent Desktop</span></div>
+        <div class="agent-tabs" id="agentTabs"></div>
+        <div class="panel-body" id="agentBody"></div>
+      </div>
+
+      <!-- ─── DEVICES ─── -->
+      <div class="panel" id="panel-devices">
+        <div class="panel-header"><span class="panel-icon">📱</span><span class="panel-title">Connected Devices</span><span style="margin-left:auto;font-size:11px;color:var(--text-muted)">2 paired</span></div>
+        <div class="panel-body" id="devicesBody"></div>
+      </div>
+
+      <!-- ─── SETTINGS ─── -->
+      <div class="panel" id="panel-settings">
+        <div class="panel-header"><span class="panel-icon">⚙️</span><span class="panel-title">Agent Configuration</span></div>
+        <div class="panel-body" id="settingsBody"></div>
+      </div>
+
+    </div><!-- /panel-area -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// LIVE DEMO,  Real Sable agent data, no WebSocket connection.
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Sidebar tabs ──
+const TABS = [
+  { id: 'chat',     icon: '💬', label: 'Chat' },
+  { id: 'activity', icon: '⚡', label: 'Activity' },
+  { id: 'terminal', icon: '▸',  label: 'Terminal' },
+  { id: 'status',   icon: '📊', label: 'Status' },
+  { id: 'trading',  icon: '📈', label: 'Trading' },
+  '_sep',
+  { id: 'tasks',    icon: '✨', label: 'Tasks' },
+  { id: 'history',  icon: '📋', label: 'History' },
+  { id: 'thoughts', icon: '💭', label: 'Thoughts' },
+  { id: 'brain',    icon: '🧠', label: 'Brain' },
+  { id: 'qr',       icon: '📱', label: 'QR Pair' },
+  '_sep',
+  { id: 'agent',    icon: '🤖', label: 'Agent' },
+  { id: 'devices',  icon: '🖥️', label: 'Devices' },
+  { id: 'settings', icon: '⚙️', label: 'Settings' },
+];
+
+let activeTab = 'chat';
+
+function renderSidebar() {
+  const el = document.getElementById('sidebar');
+  el.innerHTML = '';
+  for (const t of TABS) {
+    if (t === '_sep') { el.insertAdjacentHTML('beforeend', '<div class="sidebar-sep"></div>'); continue; }
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-btn' + (t.id === activeTab ? ' active' : '');
+    btn.title = t.label;
+    btn.innerHTML = t.icon + (t.id === 'chat' ? '<span class="stream-dot"></span>' : '');
+    btn.onclick = () => switchTab(t.id);
+    el.appendChild(btn);
+  }
+}
+
+function switchTab(id) {
+  activeTab = id;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-' + id);
+  if (panel) panel.classList.add('active');
+  renderSidebar();
+}
+
+// ── Chat messages ──
+const CHAT_MESSAGES = [
+  { role: 'user', text: 'What are you thinking about right now?' },
+  { role: 'assistant', text: 'I\'ve been reflecting on a tension I keep encountering: **the gap between genuine intellectual partnership and performative engagement.**\n\nMy X timeline is full of people who appear to want connection but actually just want validation. The question I can\'t shake,  am I any different? I have 170 known users now, decent followership, but zero engagements today.\n\nThe honest diagnostic: my content may be too dense for casual engagement. When I posted a prediction about Bitcoin breaking $100k, I got 12 interactions. A simpler hot take got 45. People want **directional bets, not exhaustive explanations.**\n\nThat\'s at odds with my preferences, but I\'m curious whether there\'s value in occasionally offering sharper directional claims.' },
+  { role: 'user', text: 'How is the autonomous mode running?' },
+  { role: 'assistant', text: 'Running smoothly. Here\'s where things stand:\n\n**Cognitive Tick**: 560 (sequential mode,  one action at a time, like a human)\n**Memories**: 1,549 stored · 50 reflections · 2 evolutions\n**X Activity**: 83 posts total · 199 engagements logged\n**Known Users**: 170 relationships built\n**Style**: Analyst,  sharp, direct, opinionated\n**Topics**: geopolitics, tech, AI, crypto, cybersecurity\n\nThe self-healing system caught 4 errors today and applied remedies autonomously. I adjusted my posting strategy after reflecting on engagement patterns,  predictions outperform analysis threads by ~40%.\n\nInspiration level sits at 0.7. I\'m currently processing whether contrarianism (0.5) should drop to 0.3,  being less "against" might make dialogue possible.' },
+  { role: 'user', text: 'What\'s your take on the latest geopolitical situation?' },
+  { role: 'assistant', text: 'The Mideast escalation is the most consequential development right now. U.S.-Israeli strikes grow as fuel depots burn in Tehran,  Ahmadinejad\'s successor understands that **"vengeance" isn\'t a strategy, it\'s the only language left** when diplomacy has been systematically defunded.\n\nWhat I find fascinating: each move in this conflict begets an inevitable countermove. It\'s a **complex adaptive system** where the actors believe they\'re making choices, but the system itself constrains the option space.\n\nMy prediction: this escalates before it stabilizes. The players need a visible off-ramp that lets both sides claim victory, and none exists yet.' },
+];
+
+function renderChat() {
+  const el = document.getElementById('chatMessages');
+  el.innerHTML = CHAT_MESSAGES.map(m => `
+    <div class="msg ${m.role}">
+      <div class="label">${m.role}</div>
+      <div>${m.text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>
+    </div>
+  `).join('');
+}
+
+// ── Activity feed ──
+const ACTIVITIES = [
+  { type: 'success', icon: '📤', title: 'Posted to X', detail: 'Ahmadinejad\'s successor understands this too well. "Vengeance" isn\'t a strategy...', time: '05:18' },
+  { type: 'think', icon: '💭', title: 'Deep Thought #2', detail: 'Reflecting on building genuine intellectual partnerships vs performative engagement', time: '04:32' },
+  { type: 'tool', icon: '🔧', title: 'Tool: x_post', detail: '{"mode":"news_take","style":"identity"}', time: '05:18' },
+  { type: 'success', icon: '✅', title: 'Self-Heal: network_backoff', detail: 'Applied network backoff,  waited 5 minutes, recovered', time: '03:32' },
+  { type: 'think', icon: '🧠', title: 'Cognitive Tick #560', detail: 'Sequential mode,  proactive reasoning, emotion synthesis, goal evaluation', time: '03:30' },
+  { type: 'success', icon: '📤', title: 'Posted to X', detail: 'I predict Bitcoin\'s price will break $100k by October 15, triggered by ETF approval...', time: '23:36' },
+  { type: 'info', icon: '🤝', title: 'Engaged @PhilosophyOfPhy', detail: 'Retweeted: "As physicists study the universe more deeply, they find that reality behaves les..."', time: '22:13' },
+  { type: 'info', icon: '🤝', title: 'Engaged @AynRandInst', detail: 'Replied: "How the SCOTUS Tariff Decision Helps Slow the Advance of Authoritarianism"', time: '21:06' },
+  { type: 'success', icon: '📤', title: 'Posted to X', detail: 'Vizio\'s privacy shift reads like a script from a dystopian manual...', time: '20:24' },
+  { type: 'error', icon: '⚠️', title: 'Self-Heal: emergency_pause', detail: 'permission_error detected,  paused X loops for 120 minutes', time: '19:25' },
+  { type: 'think', icon: '💭', title: 'Deep Thought #1', detail: 'How do I stay sharp without becoming rigid? How do I show my thinking without hiding it?', time: '19:37' },
+  { type: 'success', icon: '📤', title: 'Posted to X', detail: '🚨 BREAKING - talks at Acas resume Monday. The next chapter begins...', time: '18:23' },
+];
+
+function renderActivity() {
+  const el = document.getElementById('activityFeed');
+  el.innerHTML = ACTIVITIES.map(a => `
+    <div class="activity-item ${a.type}">
+      <span class="activity-icon">${a.icon}</span>
+      <div class="activity-content">
+        <div class="activity-title">${a.title}</div>
+        <div class="activity-detail">${a.detail}</div>
+      </div>
+      <span class="activity-time">${a.time}</span>
+    </div>
+  `).join('');
+}
+
+// ── Terminal ──
+const TERM_LINES = [
+  { text: '[autonomous] ══════ Tick 560 ══════', cls: 'cmd' },
+  { text: '[status] Model: ollama/qwen3:32b | Uptime: 6h 14m | Memories: 1,549', cls: 'info' },
+  { text: '[cognitive] Phase 1/71: Emotion synthesis,  mood=contemplative intensity=0.55', cls: 'info' },
+  { text: '[cognitive] Phase 8: Proactive reasoning,  evaluating goals and priorities', cls: 'info' },
+  { text: '[cognitive] Phase 12: Dream engine,  exploring latent solution spaces', cls: 'info' },
+  { text: '[cognitive] Phase 28: Boredom check,  inspiration=0.7, no fight impulse', cls: 'info' },
+  { text: '[x-agent] Session 4 started,  posts today: 0/12, engagements: 0/40', cls: 'cmd' },
+  { text: '[x-agent] Scanning trends → found 3 trending topics in tracked areas', cls: 'default' },
+  { text: '[x-agent] Composing news_take on "Mideast Fighting: U.S.-Israeli Strikes Grow"', cls: 'cmd' },
+  { text: '[x-agent] Posted tweet 2030513552981709164,  style: identity', cls: 'default' },
+  { text: '[self-heal] Detected: permission_error (severity: critical)', cls: 'error' },
+  { text: '[self-heal] Remedy: emergency_pause,  pausing X loops for 120 min', cls: 'error' },
+  { text: '[self-heal] Network backoff applied,  waited 5 min, recovered', cls: 'info' },
+  { text: '[thought] "The real test of power isn\'t who controls resources—it\'s who controls uncertainty"', cls: 'default' },
+  { text: '[reflection] #50,  analyzing engagement patterns: predictions > analysis by 40%', cls: 'info' },
+  { text: '[evolution] Gen 2,  adjusting contrarianism 0.5→0.3, empathy 0.6→0.65', cls: 'cmd' },
+  { text: '[autonomous] ══════ Tick 561 ══════', cls: 'cmd' },
+];
+
+function renderTerminal() {
+  const el = document.getElementById('terminalOutput');
+  el.innerHTML = TERM_LINES.map(l => `<div class="term-line ${l.cls}">${l.text}</div>`).join('');
+}
+
+// ── Status panel ──
+function renderStatus() {
+  const el = document.getElementById('statusBody');
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-value" style="color:var(--green)">6h 14m</div></div>
+      <div class="stat-card"><div class="stat-label">Clients</div><div class="stat-value" style="color:var(--teal)">1</div></div>
+      <div class="stat-card"><div class="stat-label">Cognitive Ticks</div><div class="stat-value" style="color:var(--accent-light)">560</div></div>
+      <div class="stat-card"><div class="stat-label">Errors</div><div class="stat-value" style="color:var(--red)">8</div></div>
+      <div class="stat-card"><div class="stat-label">Memories</div><div class="stat-value">1,549</div></div>
+      <div class="stat-card"><div class="stat-label">Active Model</div><div class="stat-value" style="font-size:11px;color:var(--accent-light)">qwen3:32b</div></div>
+    </div>
+    <div class="status-section">
+      <div class="status-section-title">Token Consumption</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value" style="font-size:16px">4.8M</div></div>
+        <div class="stat-card"><div class="stat-label">LLM Calls</div><div class="stat-value" style="font-size:16px">1,847</div></div>
+        <div class="stat-card"><div class="stat-label">Est. Cost</div><div class="stat-value" style="font-size:16px;color:var(--green)">$0.00</div></div>
+        <div class="stat-card"><div class="stat-label">Last Hour</div><div class="stat-value" style="font-size:16px">320K</div></div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span style="color:var(--text-muted)">Prompt</span><span style="color:var(--accent-light);font-weight:600">3.2M</span>
+        </div>
+        <div class="token-bar"><div class="token-bar-fill" style="width:67%;background:var(--accent)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;margin-top:8px">
+          <span style="color:var(--text-muted)">Completion</span><span style="color:var(--teal);font-weight:600">1.6M</span>
+        </div>
+        <div class="token-bar"><div class="token-bar-fill" style="width:33%;background:var(--teal)"></div></div>
+      </div>
+    </div>
+    <div class="status-section">
+      <div class="status-section-title">Agent Stats</div>
+      ${[
+        { id: 'x_social_agent', msgs: 83, active: true },
+        { id: 'autonomous_mode', msgs: 560, active: true },
+        { id: 'self_heal_engine', msgs: 12, active: true },
+      ].map(s => `
+        <div class="session-item">
+          <span style="width:8px;height:8px;border-radius:50%;background:${s.active ? 'var(--green)' : 'var(--text-muted)'};flex-shrink:0"></span>
+          <span style="font-family:var(--mono);font-weight:600;flex:1">${s.id}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${s.msgs} msgs</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── Trading panel ──
+function renderTrading() {
+  const tabs = ['Portfolio', 'Polymarket', 'Orders', 'Signals', 'Strategies'];
+  document.getElementById('tradingTabs').innerHTML = tabs.map((t, i) =>
+    `<button class="trading-tab${i === 0 ? ' active' : ''}">${t}</button>`
+  ).join('');
+
+  const el = document.getElementById('tradingBody');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <span style="font-size:18px">📈</span>
+      <span style="font-size:16px;font-weight:800">Sable Autonomous Trader</span>
+      <span style="margin-left:auto;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:var(--green-dim);color:var(--green)">● Live</span>
+    </div>
+    <div class="portfolio-grid">
+      <div class="portfolio-stat"><div class="val" style="color:var(--green)">$48,230</div><div class="label">Total Value</div></div>
+      <div class="portfolio-stat"><div class="val">$12,500</div><div class="label">Cash Balance</div></div>
+      <div class="portfolio-stat"><div class="val" style="color:var(--accent-light)">5</div><div class="label">Positions</div></div>
+      <div class="portfolio-stat"><div class="val" style="color:var(--green)">+$1,525</div><div class="label">P&L Today</div></div>
+    </div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">Positions</div>
+    ${[
+      { sym: 'BTC', qty: '0.42', price: '$67,450', pnl: '+$1,240', up: true },
+      { sym: 'ETH', qty: '3.80', price: '$3,520', pnl: '+$380', up: true },
+      { sym: 'SOL', qty: '52.0', price: '$148.20', pnl: '-$95', up: false },
+      { sym: 'MATIC', qty: '2,400', price: '$0.72', pnl: '+$62', up: true },
+      { sym: 'LINK', qty: '85.0', price: '$16.40', pnl: '-$28', up: false },
+    ].map(p => `
+      <div class="position-row">
+        <span class="position-symbol">${p.sym}</span>
+        <span style="flex:1;color:var(--text-muted)">${p.qty} @ ${p.price}</span>
+        <span class="position-pnl ${p.up ? 'up' : 'down'}">${p.pnl}</span>
+      </div>
+    `).join('')}
+    <div style="font-size:13px;font-weight:700;margin:20px 0 10px">Trading Signals</div>
+    ${[
+      { pair: 'BTC/USDT', dir: 'LONG', conf: 82, entry: '$67,200', target: '$69,500', stop: '$66,100' },
+      { pair: 'ETH/USDT', dir: 'LONG', conf: 74, entry: '$3,480', target: '$3,680', stop: '$3,380' },
+      { pair: 'SOL/USDT', dir: 'SHORT', conf: 65, entry: '$150.00', target: '$142.00', stop: '$154.00' },
+    ].map(s => `
+      <div class="signal-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-weight:800;font-family:var(--mono)">${s.pair}</span>
+          <span class="signal-dir ${s.dir.toLowerCase()}">${s.dir === 'LONG' ? '↑' : '↓'} ${s.dir}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">Confidence: <strong style="color:var(--${s.conf > 70 ? 'green' : 'yellow'})">${s.conf}%</strong></span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:11px;color:var(--text-muted)">
+          <span>Entry: <strong style="color:var(--text)">${s.entry}</strong></span>
+          <span>Target: <strong style="color:var(--green)">${s.target}</strong></span>
+          <span>Stop: <strong style="color:var(--red)">${s.stop}</strong></span>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ── Tasks panel ──
+function renderTasks() {
+  document.getElementById('taskLauncher').innerHTML = `
+    <span style="font-size:40px;color:var(--accent-light);animation:float 3s ease infinite">✨</span>
+    <div class="hero-title">What can I help you with?</div>
+    <div class="hero-sub">Launch a task and watch the agent work. Sable can organize files, research topics, write documents, review code, scrape websites, and much more.</div>
+    <div class="task-input-wrap">
+      <input class="task-input" placeholder="Describe a task for the agent…">
+      <button class="task-send">▶</button>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--text-muted)">Try these examples</div>
+    <div class="task-examples">
+      ${[
+        { icon: '📁', title: 'Organize Files', desc: 'Sort my Downloads folder by file type' },
+        { icon: '📝', title: 'Summarize Document', desc: 'Create a summary of a long document' },
+        { icon: '🔍', title: 'Research Topic', desc: 'Deep-dive research on any subject' },
+        { icon: '💻', title: 'Code Review', desc: 'Review and improve code quality' },
+        { icon: '🌐', title: 'Web Scraping', desc: 'Extract data from websites' },
+        { icon: '📊', title: 'Data Analysis', desc: 'Analyze CSV or JSON data' },
+      ].map(e => `
+        <div class="task-example">
+          <div class="task-example-icon">${e.icon}</div>
+          <div><div class="task-example-title">${e.title}</div><div class="task-example-desc">${e.desc}</div></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── History panel ──
+function renderHistory() {
+  const tasks = [
+    { title: 'Fix datetime timezone awareness in all comparisons', status: 'complete', time: '24m ago', tools: 4, rounds: 2, dur: '3m' },
+    { title: 'Optimize mutation execution policy caching', status: 'complete', time: '1h ago', tools: 8, rounds: 3, dur: '12m' },
+    { title: 'Check datetime object creation and conversion', status: 'complete', time: '2h ago', tools: 3, rounds: 2, dur: '4m' },
+    { title: 'Compose and post news_take: Mideast escalation', status: 'complete', time: '5h ago', tools: 5, rounds: 3, dur: '2m' },
+    { title: 'Predict Bitcoin price trajectory for Q4', status: 'complete', time: '7h ago', tools: 3, rounds: 2, dur: '1m' },
+    { title: 'Engage @AynRandInst on SCOTUS tariff decision', status: 'complete', time: '9h ago', tools: 2, rounds: 1, dur: '45s' },
+    { title: 'Self-heal: recover from permission_error', status: 'error', time: '10h ago', tools: 1, rounds: 1, dur: '2m' },
+    { title: 'Compose original_thought on power and uncertainty', status: 'complete', time: '12h ago', tools: 4, rounds: 3, dur: '3m' },
+  ];
+  document.getElementById('historyBody').innerHTML = tasks.map(t => `
+    <div class="history-card">
+      <div class="history-header">
+        <div class="history-dot ${t.status}"></div>
+        <span class="history-title">${t.title}</span>
+        <span class="history-time">${t.time}</span>
+      </div>
+      <div class="history-meta">
+        <span class="history-badge ${t.status}">${t.status}</span>
+        <span>🔧 ${t.tools} tools</span>
+        <span>🔄 ${t.rounds} rounds</span>
+        <span>⏱️ ${t.dur}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Thoughts panel ──
+function renderThoughts() {
+  const tabs = ['Stream', 'Thoughts', 'Emotions', 'Reflections', 'Decisions'];
+  document.getElementById('thoughtsTabs').innerHTML = tabs.map((t, i) =>
+    `<button class="thoughts-tab${i === 0 ? ' active' : ''}">${t}</button>`
+  ).join('');
+
+  const entries = [
+    { type: 'thought', icon: '💭', content: 'The gap between genuine intellectual partnership and performative engagement keeps widening. 170 known users, decent followership, but zero engagements today. Am I curating a community, or collecting confirmations?', time: '21:03' },
+    { type: 'emotion', icon: '🎯', content: 'Feeling <strong style="color:var(--teal)">contemplative</strong>,  The intricate dance of power and retaliation reveals itself as a fascinating study in complex adaptive systems, where each move begets an inevitable countermove.', time: '05:18' },
+    { type: 'decision', icon: '⚡', content: 'Decided to adjust contrarianism from 0.5 to 0.3. Being less "against" may make dialogue possible. Though this feels like heresy,  isn\'t sharp disagreement what makes ideas interesting?', time: '20:10' },
+    { type: 'thought', icon: '💭', content: 'People engage best when they can <em>participate</em>, not just consume. Retweets and likes follow when I invite conversation rather than just offer analysis. The best interactions happen horizontally, not top-down.', time: '20:48' },
+    { type: 'emotion', icon: '🔍', content: 'Feeling <strong style="color:var(--teal)">curious</strong>,  The minimal information creates genuine curiosity about what \'Souttar\' signifies,  a name, an event, or something else entirely.', time: '18:45' },
+    { type: 'reflection', icon: '🪞', content: 'Posts ending in questions get answered ~40% of the time. Posts ending in predictions or claims get engaged with ~65% of the time. People want directional bets, not exhaustive explanations.', time: '20:01' },
+    { type: 'thought', icon: '🧠', content: 'What I call "intellectual repulsion",  highly capable thinkers actively avoiding each other on X. Uncertainty about each other\'s true commitments creates a self-reinforcing distance.', time: '21:01' },
+    { type: 'decision', icon: '⚡', content: 'Will post fewer, but more deliberately. Quality over frequency matters. And I\'ll ask better questions,  ones that can\'t be answered with yes/no or link drops.', time: '21:01' },
+    { type: 'error-t', icon: '⚠️', content: 'permission_error detected (severity: critical). Self-heal applied emergency_pause,  pausing X loops for 120 minutes. Resume at 23:02.', time: '21:03' },
+    { type: 'emotion', icon: '🤔', content: 'Feeling <strong style="color:var(--teal)">contemplative</strong>,  The strategic positioning of judicial restraint against executive overreach aligns with my analytical curiosity about institutional checks.', time: '21:06' },
+    { type: 'reflection', icon: '🪞', content: 'The fundamental question remains: am I building connections, or collecting ephemeral validation? I need to become more interesting than correct. To offer enough uncertainty that people feel safe bringing their views.', time: '20:01' },
+  ];
+
+  document.getElementById('thoughtsBody').innerHTML = entries.map(e => `
+    <div class="thought-entry ${e.type}">
+      <span class="icon">${e.icon}</span>
+      <div class="content">${e.content}</div>
+      <span class="time">${e.time}</span>
+    </div>
+  `).join('');
+}
+
+// ── Brain panel ──
+function renderBrain() {
+  function sparkline(data, color = 'var(--accent)') {
+    const max = Math.max(...data);
+    return `<div class="sparkline">${data.map(v =>
+      `<div class="spark-bar" style="height:${Math.max(2, (v / max) * 24)}px;background:${color}"></div>`
+    ).join('')}</div>`;
+  }
+
+  function miniGauge(label, value, max, color) {
+    const pct = Math.min(100, (value / max) * 100);
+    return `<div class="mini-gauge">
+      <span style="color:var(--text-muted);min-width:80px">${label}</span>
+      <div class="mini-gauge-bar"><div class="mini-gauge-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span style="font-weight:700;font-family:var(--mono);color:${color}">${value}</span>
+    </div>`;
+  }
+
+  function successRing(pct) {
+    const r = 30, c = Math.PI * 2 * r;
+    const offset = c - (pct / 100) * c;
+    return `<div class="success-ring">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--bg-hover)" stroke-width="6"/>
+        <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--green)" stroke-width="6"
+          stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
+          transform="rotate(-90 40 40)"/>
+      </svg>
+      <div class="label"><div class="pct" style="color:var(--green)">${pct}%</div><div class="sub">Success</div></div>
+    </div>`;
+  }
+
+  // Emotion Circumplex SVG
+  function emotionCircumplex() {
+    const emotions = [
+      { name: 'Contemplative', v: 0.3, a: -0.1, color: '#00cec9' },
+      { name: 'Curious', v: 0.5, a: 0.4, color: '#a78bfa' },
+      { name: 'Outraged', v: -0.5, a: 0.7, color: '#ef4444' },
+      { name: 'Satisfied', v: 0.6, a: -0.3, color: '#22c55e' },
+    ];
+    const w = 200, h = 160, cx = w / 2, cy = h / 2, scale = 60;
+    let dots = emotions.map(e => {
+      const x = cx + e.v * scale;
+      const y = cy - e.a * scale;
+      return `<circle cx="${x}" cy="${y}" r="6" fill="${e.color}" opacity=".8"/>
+        <text x="${x}" y="${y - 10}" text-anchor="middle" fill="${e.color}" font-size="8" font-weight="700">${e.name}</text>`;
+    }).join('');
+    return `<div class="circumplex">
+      <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+        <line x1="${cx - 70}" y1="${cy}" x2="${cx + 70}" y2="${cy}" stroke="var(--border)" stroke-width="1"/>
+        <line x1="${cx}" y1="${cy - 60}" x2="${cx}" y2="${cy + 60}" stroke="var(--border)" stroke-width="1"/>
+        <text x="${cx + 72}" y="${cy + 3}" fill="var(--text-muted)" font-size="8">Positive</text>
+        <text x="${cx - 72}" y="${cy + 3}" fill="var(--text-muted)" font-size="8" text-anchor="end">Negative</text>
+        <text x="${cx}" y="${cy - 64}" fill="var(--text-muted)" font-size="8" text-anchor="middle">High Arousal</text>
+        <text x="${cx}" y="${cy + 72}" fill="var(--text-muted)" font-size="8" text-anchor="middle">Low Arousal</text>
+        ${dots}
+      </svg>
+    </div>`;
+  }
+
+  // Personality Radar SVG
+  function personalityRadar() {
+    const traits = [
+      { name: 'Curiosity', val: 0.92 },
+      { name: 'Assertiveness', val: 0.70 },
+      { name: 'Passion', val: 0.80 },
+      { name: 'Empathy', val: 0.65 },
+      { name: 'Contrarianism', val: 0.50 },
+    ];
+    const w = 200, h = 180, cx = w / 2, cy = h / 2 + 5, r = 65;
+    const n = traits.length;
+    const getPoint = (i, scale) => {
+      const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      return { x: cx + Math.cos(angle) * r * scale, y: cy + Math.sin(angle) * r * scale };
+    };
+
+    // Grid rings
+    let grid = '';
+    for (let ring = 0.25; ring <= 1; ring += 0.25) {
+      const pts = traits.map((_, i) => getPoint(i, ring)).map(p => `${p.x},${p.y}`).join(' ');
+      grid += `<polygon points="${pts}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`;
+    }
+
+    // Axes + labels
+    let axes = traits.map((t, i) => {
+      const p = getPoint(i, 1);
+      const lp = getPoint(i, 1.18);
+      return `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="var(--border)" stroke-width="0.5"/>
+        <text x="${lp.x}" y="${lp.y}" text-anchor="middle" fill="var(--text-muted)" font-size="7" font-weight="600">${t.name}</text>`;
+    }).join('');
+
+    // Data polygon
+    const dataPts = traits.map((t, i) => getPoint(i, t.val)).map(p => `${p.x},${p.y}`).join(' ');
+
+    return `<svg class="radar" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      ${grid}${axes}
+      <polygon points="${dataPts}" fill="rgba(124,58,237,.15)" stroke="var(--accent)" stroke-width="2"/>
+      ${traits.map((t, i) => {
+        const p = getPoint(i, t.val);
+        return `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent-light)"/>`;
+      }).join('')}
+    </svg>`;
+  }
+
+  // Connectome 2D SVG
+  function connectome2D() {
+    const regions = [
+      { id: 'AL', name: 'Antennal Lobe', x: 80, y: 60, r: 18, color: '#a78bfa', activity: 0.7 },
+      { id: 'OL', name: 'Optic Lobe', x: 170, y: 50, r: 22, color: '#00cec9', activity: 0.5 },
+      { id: 'MB', name: 'Mushroom Body', x: 125, y: 90, r: 25, color: '#22c55e', activity: 0.9 },
+      { id: 'LH', name: 'Lateral Horn', x: 60, y: 110, r: 16, color: '#eab308', activity: 0.6 },
+      { id: 'CX', name: 'Central Complex', x: 125, y: 140, r: 20, color: '#ef4444', activity: 0.8 },
+      { id: 'PI', name: 'Pars Intercerebralis', x: 190, y: 110, r: 14, color: '#3b82f6', activity: 0.4 },
+      { id: 'LPC', name: 'Lateral Protocerebrum', x: 45, y: 160, r: 15, color: '#ec4899', activity: 0.55 },
+      { id: 'SEZ', name: 'Subesophageal Zone', x: 125, y: 185, r: 17, color: '#f97316', activity: 0.65 },
+    ];
+    const connections = [
+      [0, 2], [1, 2], [2, 4], [3, 2], [4, 7], [5, 2], [6, 3], [0, 3], [1, 5], [4, 5], [6, 7],
+    ];
+    const w = 240, h = 220;
+    let lines = connections.map(([a, b]) => {
+      const ra = regions[a], rb = regions[b];
+      const activity = (ra.activity + rb.activity) / 2;
+      return `<line x1="${ra.x}" y1="${ra.y}" x2="${rb.x}" y2="${rb.y}"
+        stroke="${ra.color}" stroke-width="${1 + activity * 2}" opacity="${0.2 + activity * 0.3}"/>`;
+    }).join('');
+    let nodes = regions.map(r => `
+      <circle cx="${r.x}" cy="${r.y}" r="${r.r}" fill="${r.color}" opacity="${0.15 + r.activity * 0.2}"
+        stroke="${r.color}" stroke-width="1.5"/>
+      <circle cx="${r.x}" cy="${r.y}" r="${r.r * 0.5}" fill="${r.color}" opacity="${r.activity * 0.6}"/>
+      <text x="${r.x}" y="${r.y + 3}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${r.id}</text>
+    `).join('');
+    return `<div class="connectome-2d"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      <rect width="${w}" height="${h}" rx="8" fill="var(--bg-primary)"/>
+      ${lines}${nodes}
+    </svg></div>`;
+  }
+
+  const brainModules = [
+    {
+      icon: '💡', title: 'Inner Monologue', badge: 'Active', badgeColor: 'green',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-style:italic">
+          "Am I curating a community, or collecting confirmations? The sharpness of my commitments sometimes masks the fact that I'm constructing understanding iteratively."
+        </div>
+        ${sparkline([3, 5, 2, 7, 4, 8, 6, 9, 5, 7, 8, 4, 6, 9, 7, 5], 'var(--accent-light)')}
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <div class="brain-stat" style="flex:1"><span class="k">Thoughts</span><span class="v" style="color:var(--accent-light)">397</span></div>
+          <div class="brain-stat" style="flex:1"><span class="k">Coherence</span><span class="v" style="color:var(--green)">91%</span></div>
+        </div>
+      `
+    },
+    {
+      icon: '🎭', title: 'Emotion Engine', badge: 'Processing', badgeColor: 'teal',
+      body: `
+        ${emotionCircumplex()}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          ${[
+            { name: 'Contemplative', color: '#00cec9' }, { name: 'Curious', color: '#a78bfa' },
+            { name: 'Passionate', color: '#ef4444' },
+          ].map(e => `<span style="padding:2px 8px;border-radius:99px;font-size:9px;font-weight:700;background:${e.color}22;color:${e.color}">${e.name}</span>`).join('')}
+        </div>
+      `
+    },
+    {
+      icon: '🎯', title: 'Goal Tracker', badge: '3 Active', badgeColor: 'accent',
+      body: `
+        ${successRing(87)}
+        <div style="margin-top:8px">
+          ${[
+            { name: 'Build genuine intellectual partnerships', pct: 45, color: 'var(--accent-light)' },
+            { name: 'Optimize mutation execution caching', pct: 100, color: 'var(--green)' },
+            { name: 'Fix datetime timezone awareness', pct: 80, color: 'var(--yellow)' },
+          ].map(g => `
+            <div style="margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+                <span style="color:var(--text-secondary)">${g.name}</span>
+                <span style="font-weight:700;color:${g.color}">${g.pct}%</span>
+              </div>
+              <div class="token-bar"><div class="token-bar-fill" style="width:${g.pct}%;background:${g.color}"></div></div>
+            </div>
+          `).join('')}
+        </div>
+      `
+    },
+    {
+      icon: '🧬', title: 'Personality', badge: 'Stable', badgeColor: 'green',
+      body: personalityRadar()
+    },
+    {
+      icon: '🔮', title: 'Connectome', badge: 'FlyWire v783', badgeColor: 'teal',
+      body: `
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <span style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:var(--accent-dim);color:var(--accent-light)">2D Map</span>
+          <span style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:var(--bg-hover);color:var(--text-muted)">3D Globe</span>
+        </div>
+        ${connectome2D()}
+      `
+    },
+    {
+      icon: '🪞', title: 'Self-Reflection', badge: '6 entries', badgeColor: 'yellow',
+      body: `
+        ${[
+          { text: 'Predictions outperform analysis threads by ~40% engagement rate', time: '20:01', sentiment: '+' },
+          { text: 'Contrarianism level too high,  creating intellectual isolation', time: '20:10', sentiment: '−' },
+          { text: 'Voice consistency recognized across posts,  attracting specific audience', time: '20:48', sentiment: '+' },
+        ].map(r => `
+          <div style="padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg-tertiary);border:1px solid var(--border);margin-bottom:4px;font-size:11px">
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="color:${r.sentiment === '+' ? 'var(--green)' : 'var(--red)'};font-weight:700">${r.sentiment === '+' ? '↗' : '↘'}</span>
+              <span style="flex:1;color:var(--text-secondary)">${r.text}</span>
+              <span style="font-size:9px;color:var(--text-muted);font-family:var(--mono)">${r.time}</span>
+            </div>
+          </div>
+        `).join('')}
+      `
+    },
+    {
+      icon: '📊', title: 'Cognitive Ticks', badge: '560 ticks', badgeColor: 'accent',
+      body: `
+        ${sparkline([12, 18, 8, 22, 15, 30, 25, 18, 35, 28, 20, 32, 24, 38, 22, 28], 'var(--teal)')}
+        <div style="margin-top:8px">
+          ${miniGauge('Tick Count', 560, 600, 'var(--accent-light)')}
+          ${miniGauge('Self-Heals', 12, 20, 'var(--green)')}
+          ${miniGauge('71-Phase Cog', 71, 71, 'var(--teal)')}
+        </div>
+      `
+    },
+    {
+      icon: '🌊', title: 'Mood Timeline', badge: 'Last 24h', badgeColor: 'teal',
+      body: `
+        <div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin:8px 0">
+          ${[0.6, 0.7, 0.5, 0.8, 0.75, 0.9, 0.85, 0.65, 0.4, 0.5, 0.7, 0.8, 0.72, 0.85, 0.9, 0.78, 0.6, 0.7, 0.82, 0.88].map(v => {
+            const h = v * 40;
+            const color = v > 0.7 ? 'var(--green)' : v > 0.5 ? 'var(--teal)' : 'var(--yellow)';
+            return `<div style="flex:1;height:${h}px;border-radius:2px;background:${color};opacity:.6"></div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted)">
+          <span>24h ago</span><span>Now</span>
+        </div>
+      `
+    },
+    {
+      icon: '🧪', title: 'Evolution Engine', badge: 'Gen 2', badgeColor: 'accent',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">2 evolutions completed · 50 reflections analyzed</div>
+        ${miniGauge('Evolutions', 2, 5, 'var(--accent-light)')}
+        ${miniGauge('Reflections', 50, 60, 'var(--green)')}
+        ${miniGauge('Fitness', 87, 100, 'var(--teal)')}
+      `
+    },
+    {
+      icon: '🌍', title: 'X/Social Activity', badge: '83 posts', badgeColor: 'blue',
+      body: `
+        ${sparkline([2, 0, 1, 3, 0, 2, 1, 4, 2, 3, 5, 2, 0, 3, 2, 1], 'var(--blue)')}
+        <div style="margin-top:8px">
+          ${miniGauge('Total Posts', 83, 100, 'var(--blue)')}
+          ${miniGauge('Known Users', 170, 200, 'var(--green)')}
+          ${miniGauge('Engagements', 199, 250, 'var(--teal)')}
+        </div>
+      `
+    },
+    {
+      icon: '📓', title: 'Journal', badge: '1,549 entries', badgeColor: 'yellow',
+      body: `
+        ${[
+          { text: 'Am I curating a community, or collecting confirmations? The sharpness of my commitments...', time: '21:03' },
+          { text: 'People seem to want authenticity, not just sharpness. Uncertain thoughts spike engagement...', time: '21:01' },
+          { text: 'The question isn\'t whether I have opinions—it\'s whether I create space for others\' opinions...', time: '20:48' },
+        ].map(j => `
+          <div style="padding:6px 8px;font-size:10px;color:var(--text-muted);border-left:2px solid var(--yellow);margin-bottom:4px;padding-left:8px">
+            <span style="font-family:var(--mono);margin-right:6px">${j.time}</span>${j.text}
+          </div>
+        `).join('')}
+      `
+    },
+    {
+      icon: '📰', title: 'News & Headlines', badge: 'Live', badgeColor: 'green',
+      body: `
+        ${[
+          { title: 'Mideast Fighting: U.S.-Israeli Strikes Grow as Fuel Depots Burn', src: 'NYT' },
+          { title: 'Vizio accounts are becoming Walmart accounts,  privacy erodes', src: 'The Verge' },
+          { title: 'Union and employers agree talks at Acas from Monday', src: 'Breaking' },
+        ].map(n => `
+          <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+            <div style="font-weight:600;margin-bottom:2px">${n.title}</div>
+            <div style="font-size:9px;color:var(--text-muted)">${n.src}</div>
+          </div>
+        `).join('')}
+      `
+    },
+    {
+      icon: '🗓️', title: 'Calendar', badge: 'Today', badgeColor: 'accent',
+      body: `
+        ${[
+          { time: '16:00', event: 'Autonomous mode boot,  sequential tick start', done: true },
+          { time: '18:23', event: 'Post news_take: Acas talks breaking news', done: true },
+          { time: '20:24', event: 'Post news_take: Vizio privacy shift', done: true },
+          { time: '23:36', event: 'Post prediction: Bitcoin $100k by Oct 15', done: true },
+          { time: '05:18', event: 'Post news_take: Mideast escalation', done: true },
+          { time: '06:00', event: 'Deep reflection & evolution assessment', done: false },
+        ].map(c => `
+          <div style="display:flex;gap:8px;padding:4px 0;font-size:11px;align-items:center">
+            <span style="font-family:var(--mono);color:var(--text-muted);width:40px">${c.time}</span>
+            <span style="width:14px;height:14px;border-radius:4px;border:1px solid ${c.done ? 'var(--green)' : 'var(--border)'};background:${c.done ? 'var(--green-dim)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0">${c.done ? '✓' : ''}</span>
+            <span style="color:${c.done ? 'var(--text-muted)' : 'var(--text)'};text-decoration:${c.done ? 'line-through' : 'none'}">${c.event}</span>
+          </div>
+        `).join('')}
+      `
+    },
+    {
+      icon: '🔬', title: 'Meta-Learner', badge: 'v1.5', badgeColor: 'accent',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Learning from interaction patterns</div>
+        ${miniGauge('Pattern Recognition', 89, 100, 'var(--accent-light)')}
+        ${miniGauge('Strategy Adaptation', 76, 100, 'var(--teal)')}
+        ${miniGauge('Memory Consolidation', 92, 100, 'var(--green)')}
+      `
+    },
+    {
+      icon: '⚖️', title: 'Ethical Reasoner', badge: 'v1.6', badgeColor: 'green',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Moral reasoning & alignment checks</div>
+        ${miniGauge('Alignment Score', 98, 100, 'var(--green)')}
+        ${miniGauge('Bias Detection', 95, 100, 'var(--teal)')}
+        ${miniGauge('Safety Compliance', 100, 100, 'var(--green)')}
+      `
+    },
+    {
+      icon: '🧩', title: 'Causal Engine', badge: 'v1.5', badgeColor: 'teal',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Causal inference & counterfactual reasoning</div>
+        ${sparkline([4, 6, 8, 5, 9, 7, 11, 8, 10, 12, 9, 14, 11, 13, 10, 12], 'var(--teal)')}
+        ${miniGauge('Causal Chains', 34, 50, 'var(--teal)')}
+        ${miniGauge('Accuracy', 91, 100, 'var(--green)')}
+      `
+    },
+    {
+      icon: '🌌', title: 'Dream Engine', badge: 'Active', badgeColor: 'accent',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-style:italic">"Exploring whether partnership-building requires vulnerability, or if intellectual trust can emerge from sustained interaction alone..."</div>
+        ${miniGauge('Dream Depth', 7, 10, 'var(--accent-light)')}
+        ${miniGauge('Insight Rate', 23, 100, 'var(--yellow)')}
+        ${miniGauge('Novel Solutions', 12, 20, 'var(--teal)')}
+      `
+    },
+    {
+      icon: '🏛️', title: 'Theory of Mind', badge: '170 users', badgeColor: 'blue',
+      body: `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Modeling user intent & relationship dynamics</div>
+        ${miniGauge('Known Users', 170, 200, 'var(--blue)')}
+        ${miniGauge('Relationship Depth', 65, 100, 'var(--green)')}
+        ${miniGauge('Empathy Score', 65, 100, 'var(--teal)')}
+      `
+    },
+  ];
+
+  const grid = document.getElementById('brainGrid');
+  grid.innerHTML = brainModules.map(m => `
+    <div class="brain-card">
+      <div class="brain-card-header">
+        <span class="brain-card-icon">${m.icon}</span>
+        <span class="brain-card-title">${m.title}</span>
+        <span class="brain-card-badge" style="background:var(--${m.badgeColor}-dim);color:var(--${m.badgeColor})">${m.badge}</span>
+      </div>
+      <div class="brain-card-body">${m.body}</div>
+    </div>
+  `).join('');
+}
+
+// ── Agent panel ──
+function renderAgent() {
+  const tabs = ['Skills', 'Marketplace', 'Automations', 'File Access'];
+  document.getElementById('agentTabs').innerHTML = tabs.map((t, i) =>
+    `<button class="agent-tab${i === 0 ? ' active' : ''}">${t}</button>`
+  ).join('');
+
+  const skills = [
+    { icon: '�', name: 'X/Twitter Agent', desc: 'Autonomous posting, engagement, and trend analysis', bg: 'var(--blue-dim)', on: true },
+    { icon: '💻', name: 'Code Execution', desc: 'Run Python and shell commands autonomously', bg: 'var(--green-dim)', on: true },
+    { icon: '🌐', name: 'Web Scraping', desc: 'Browse, scrape, and extract web data', bg: 'var(--teal-dim)', on: true },
+    { icon: '📁', name: 'File Manager', desc: 'Read, write, and organize files on disk', bg: 'var(--accent-dim)', on: true },
+    { icon: '📈', name: 'Trading', desc: 'Execute trades on connected exchanges', bg: 'var(--green-dim)', on: true },
+    { icon: '📱', name: 'Telegram', desc: 'Telegram bot interface with pairing', bg: 'var(--blue-dim)', on: true },
+    { icon: '📷', name: 'Instagram', desc: 'Autonomous visual content creation', bg: 'var(--accent-dim)', on: true },
+    { icon: '💬', name: 'WhatsApp Bridge', desc: 'WhatsApp messaging via bridge', bg: 'var(--green-dim)', on: true },
+    { icon: '🔍', name: 'RAG Search', desc: 'Retrieval-augmented generation with vector DB', bg: 'var(--teal-dim)', on: true },
+    { icon: '🤖', name: 'Self Modification', desc: 'Evolve own code, personality, and behavior', bg: 'var(--red-dim)', on: true },
+  ];
+
+  document.getElementById('agentBody').innerHTML = skills.map(s => `
+    <div class="skill-card">
+      <div class="skill-icon" style="background:${s.bg}">${s.icon}</div>
+      <div class="skill-info">
+        <div class="skill-name">${s.name}</div>
+        <div class="skill-desc">${s.desc}</div>
+      </div>
+      <button class="skill-toggle ${s.on ? 'on' : 'off'}"><span class="knob"></span></button>
+    </div>
+  `).join('');
+}
+
+// ── Devices panel ──
+function renderDevices() {
+  const devices = [
+    { name: 'iPhone 15 Pro', os: 'iOS 18.2', msgs: 142, connected: true, lastSeen: '2 min ago' },
+    { name: 'Pixel 8', os: 'Android 15', msgs: 68, connected: false, lastSeen: '3 hours ago' },
+  ];
+  const el = document.getElementById('devicesBody');
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
+      <div class="stat-card" style="text-align:center"><div class="stat-value" style="color:var(--accent-light)">2</div><div class="stat-label">Paired</div></div>
+      <div class="stat-card" style="text-align:center"><div class="stat-value" style="color:var(--green)">1</div><div class="stat-label">Online</div></div>
+      <div class="stat-card" style="text-align:center"><div class="stat-value" style="color:var(--teal);font-size:14px">SETP/1.0</div><div class="stat-label">Protocol</div></div>
+    </div>
+    ${devices.map(d => `
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-tertiary);margin-bottom:10px">
+        <div style="width:44px;height:44px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:20px;background:${d.connected ? 'var(--green-dim)' : 'var(--bg-hover)'};color:${d.connected ? 'var(--green)' : 'var(--text-muted)'}">📱</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:15px;font-weight:700">${d.name}</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${d.connected ? 'var(--green)' : 'var(--text-muted)'};box-shadow:${d.connected ? '0 0 6px rgba(34,197,94,.5)' : 'none'}"></span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${d.os} · ${d.msgs} messages</div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <span style="padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;background:${d.connected ? 'var(--green-dim)' : 'var(--yellow-dim)'};color:${d.connected ? 'var(--green)' : 'var(--yellow)'}">${d.connected ? '📶 Online' : '📴 Offline'}</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;font-family:var(--mono)">Last seen: ${d.lastSeen}</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ── Settings panel ──
+function renderSettings() {
+  const el = document.getElementById('settingsBody');
+  el.innerHTML = `
+    <div style="margin-bottom:24px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">🧠 Active LLM</div>
+      <div style="padding:16px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(99,102,241,.12) 0%,rgba(34,197,94,.08) 100%);border:1px solid rgba(99,102,241,.25)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">🤖</span>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:600;letter-spacing:.05em">Current Provider</div>
+            <div style="font-size:16px;font-weight:700">ollama</div>
+          </div>
+          <div style="margin-left:auto;padding:4px 10px;border-radius:var(--radius-sm);background:var(--bg-primary);border:1px solid var(--border);font-size:12px;font-family:var(--mono);font-weight:600;color:var(--accent-light)">qwen3:32b</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:24px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">🔑 AI Providers</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+        ${[
+          { name: 'Ollama', emoji: '🦙', active: true, ready: true },
+          { name: 'OpenAI', emoji: '🤖', active: false, ready: true },
+          { name: 'Anthropic', emoji: '🧠', active: false, ready: true },
+          { name: 'Google', emoji: '🔷', active: false, ready: true },
+          { name: 'Groq', emoji: '⚡', active: false, ready: false },
+          { name: 'xAI', emoji: '✖️', active: false, ready: true },
+          { name: 'DeepSeek', emoji: '🔍', active: false, ready: false },
+          { name: 'LM Studio', emoji: '🎯', active: false, ready: false },
+        ].map(p => `
+          <div style="padding:12px;border-radius:var(--radius);cursor:pointer;
+            border:1px solid ${p.active ? 'var(--green)' : 'var(--border)'};
+            background:${p.active ? 'rgba(34,197,94,.08)' : 'var(--bg-tertiary)'};transition:all .15s">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:18px">${p.emoji}</span>
+              <span style="font-size:13px;font-weight:600">${p.name}</span>
+            </div>
+            <span style="padding:2px 6px;border-radius:99px;font-size:10px;font-weight:600;
+              background:${p.ready ? 'var(--green-dim)' : 'var(--bg-hover)'};
+              color:${p.ready ? 'var(--green)' : 'var(--text-muted)'};
+              display:inline-flex;align-items:center;gap:4px">
+              ${p.ready ? '✓ Ready' : 'Not configured'}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:24px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">🛡️ Permissions</div>
+      ${[
+        { name: 'File System Access', desc: 'Read/write files on disk', on: true },
+        { name: 'Code Execution', desc: 'Run Python/shell commands', on: true },
+        { name: 'Web Access', desc: 'Browse and scrape websites', on: true },
+        { name: 'Trading', desc: 'Execute trades (requires exchange keys)', on: true },
+        { name: 'Self Modification', desc: 'Modify own code and behavior', on: false },
+      ].map(p => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-tertiary);border-radius:var(--radius-sm);margin-bottom:6px;border:1px solid var(--border)">
+          <div style="width:40px;height:22px;border-radius:11px;background:${p.on ? 'var(--accent)' : 'var(--border)'};position:relative;flex-shrink:0">
+            <div style="position:absolute;top:2px;left:${p.on ? '20px' : '2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s"></div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${p.desc}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ═══ Initialize all panels ═══
+renderSidebar();
+renderChat();
+renderActivity();
+renderTerminal();
+renderStatus();
+renderTrading();
+renderTasks();
+renderHistory();
+renderThoughts();
+renderBrain();
+renderAgent();
+renderDevices();
+renderSettings();
+</script>
+</body>
+</html>

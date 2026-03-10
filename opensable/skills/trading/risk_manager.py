@@ -1,9 +1,9 @@
 """
-Risk Manager — Enforces hard safety limits before any trade executes.
+Risk Manager,  Enforces hard safety limits before any trade executes.
 
 Every order passes through RiskManager.check_trade() BEFORE hitting
 the exchange.  If the risk check fails, the trade is blocked.  This
-is the final safety net — no override is possible without changing
+is the final safety net,  no override is possible without changing
 code (by design).
 """
 
@@ -218,7 +218,7 @@ class RiskManager:
                 f"⚠️ Low liquidity: 24h volume ${volume_24h_usd} "
                 f"< min ${self.min_liquidity_usd}"
             )
-            # Don't reject, just warn — some memecoins have low volume
+            # Don't reject, just warn,  some memecoins have low volume
 
         # 10. All checks passed
         return RiskDecision(
@@ -257,7 +257,7 @@ class RiskManager:
     # ── Emergency controls ──
 
     def halt_trading(self, reason: str = "Manual halt") -> None:
-        """Emergency halt — no more trades until resumed."""
+        """Emergency halt,  no more trades until resumed."""
         self._halt = True
         self._halt_reason = reason
         logger.warning(f"🚨 TRADING HALTED: {reason}")

@@ -1,5 +1,5 @@
 """
-Market Data Service — Unified price feeds, candles, and order books.
+Market Data Service,  Unified price feeds, candles, and order books.
 
 Aggregates data from multiple exchanges and free APIs (CoinGecko, etc.).
 Provides caching to avoid hammering rate-limited APIs.
@@ -75,7 +75,7 @@ class MarketDataService:
             except Exception:
                 continue
 
-        # CoinGecko free API — preferred over paper for real prices
+        # CoinGecko free API,  preferred over paper for real prices
         try:
             tick = await self._fetch_coingecko_price(symbol)
             if tick:
@@ -196,7 +196,7 @@ class MarketDataService:
                 "BONK": "bonk", "FLOKI": "floki",
             }
 
-            # Parse symbol — handle BTC/USDT, BTCUSDT, BTC
+            # Parse symbol,  handle BTC/USDT, BTCUSDT, BTC
             base = symbol.upper().replace("/USDT", "").replace("/USD", "").replace("USDT", "").replace("USD", "")
             cg_id = cg_map.get(base, base.lower())
 

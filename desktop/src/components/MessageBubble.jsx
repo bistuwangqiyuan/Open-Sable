@@ -61,7 +61,7 @@ function VideoEmbed({ url, title }) {
     )
   }
 
-  // Generic video link — just show a styled link
+  // Generic video link,  just show a styled link
   return null
 }
 

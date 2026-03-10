@@ -1,5 +1,5 @@
 """
-Sentiment Strategy — LLM-powered news and social media analysis.
+Sentiment Strategy,  LLM-powered news and social media analysis.
 
 This is Open-Sable's unique edge over traditional bots: it uses the
 LLM to read news articles, tweets, and Reddit posts, then generates
@@ -45,7 +45,7 @@ class SentimentStrategy(Strategy):
         self.sentiment_threshold = self.config.get("sentiment_threshold", 0.6)
         self.max_news_age_hours = self.config.get("max_news_age_hours", 4)
 
-        # Injected callbacks — set these after construction
+        # Injected callbacks,  set these after construction
         self._llm_invoke: Optional[Callable[..., Coroutine]] = None
         self._web_search: Optional[Callable[..., Coroutine]] = None
         self._x_search: Optional[Callable[..., Coroutine]] = None

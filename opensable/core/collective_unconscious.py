@@ -1,5 +1,5 @@
 """
-Collective Unconscious — shared deep archetypes between agents (Jung-inspired).
+Collective Unconscious,  shared deep archetypes between agents (Jung-inspired).
 
 WORLD FIRST: Multiple agents share deep structural patterns (archetypes)
 that emerge from collective experience. Not just explicit learnings but
@@ -87,7 +87,7 @@ class CollectiveUnconscious:
             existing = [a.name for a in self.archetypes.values()]
             prompt = (
                 "You are analyzing an AI agent's deep behavioral patterns to discover "
-                "emergent ARCHETYPES — recurring fundamental patterns of behavior.\n\n"
+                "emergent ARCHETYPES,  recurring fundamental patterns of behavior.\n\n"
                 f"Recent experiences:\n" + "\n".join(f"- {e[:100]}" for e in experiences[-10:]) + "\n\n"
                 f"Existing archetypes: {existing}\n\n"
                 "Discover 1-2 NEW archetypes not already in the list. Respond in JSON:\n"

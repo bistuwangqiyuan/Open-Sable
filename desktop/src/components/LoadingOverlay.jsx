@@ -34,7 +34,7 @@ export default function LoadingOverlay() {
         setTimeout(() => setDismissed(true), 600)
       }, 1500)
     } else {
-      // Connection dropped — cancel the stable timer
+      // Connection dropped,  cancel the stable timer
       clearTimeout(stableTimer.current)
       // Only re-show if we haven't fully dismissed yet
       if (!wasEverConnected.current) {

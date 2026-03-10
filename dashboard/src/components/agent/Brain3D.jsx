@@ -1,5 +1,5 @@
 /**
- * Brain3D — Interactive 3D neural connectome visualisation
+ * Brain3D,  Interactive 3D neural connectome visualisation
  *
  * Renders the Drosophila-derived neural colony as a rotating 3D brain
  * with glowing nodes, animated synaptic connections, and live activation.
@@ -13,14 +13,14 @@ import * as THREE from 'three';
 
 // ── 3D positions for each brain region (mapped to approx brain anatomy) ──
 const NODE_3D = {
-  AL:  { x: -1.8, y:  1.4, z:  0.6 },   // Antennal Lobe — front-left
-  OL:  { x:  1.8, y:  1.4, z:  0.6 },   // Optic Lobe — front-right
-  MB:  { x: -0.8, y:  0.6, z: -0.2 },   // Mushroom Body — inner-left
-  LH:  { x:  0.8, y:  0.6, z: -0.2 },   // Lateral Horn — inner-right
-  CX:  { x:  0.0, y:  0.0, z:  0.0 },   // Central Complex — center
-  PI:  { x: -1.2, y: -1.0, z:  0.3 },   // Pars Intercerebralis — lower-left
-  LPC: { x:  1.2, y: -1.0, z:  0.3 },   // Lateral Protocerebrum — lower-right
-  SEZ: { x:  0.0, y: -1.6, z:  0.8 },   // Subesophageal Zone — bottom-center
+  AL:  { x: -1.8, y:  1.4, z:  0.6 },   // Antennal Lobe,  front-left
+  OL:  { x:  1.8, y:  1.4, z:  0.6 },   // Optic Lobe,  front-right
+  MB:  { x: -0.8, y:  0.6, z: -0.2 },   // Mushroom Body,  inner-left
+  LH:  { x:  0.8, y:  0.6, z: -0.2 },   // Lateral Horn,  inner-right
+  CX:  { x:  0.0, y:  0.0, z:  0.0 },   // Central Complex,  center
+  PI:  { x: -1.2, y: -1.0, z:  0.3 },   // Pars Intercerebralis,  lower-left
+  LPC: { x:  1.2, y: -1.0, z:  0.3 },   // Lateral Protocerebrum,  lower-right
+  SEZ: { x:  0.0, y: -1.6, z:  0.8 },   // Subesophageal Zone,  bottom-center
 };
 
 const REGION_LABELS = {
@@ -282,7 +282,7 @@ export default function Brain3D({ connectome }) {
         position: 'absolute', top: 10, right: 14, zIndex: 10,
         fontSize: 9, color: '#6c7a89', fontStyle: 'italic', pointerEvents: 'none',
       }}>
-        FlyWire FAFB v783 — Drosophila Connectome
+        FlyWire FAFB v783,  Drosophila Connectome
       </div>
 
       {/* Hovered info panel */}
@@ -294,7 +294,7 @@ export default function Brain3D({ connectome }) {
           backdropFilter: 'blur(8px)',
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: REGION_COLORS[hovered] || '#fff' }}>
-            {hovered} — {REGION_LABELS[hovered] || ''}
+            {hovered},  {REGION_LABELS[hovered] || ''}
           </div>
           <div style={{ fontSize: 9, color: '#8e99a4', marginTop: 2 }}>
             {MODULE_LABELS[hovered]} • Module: {hoveredNode.module}

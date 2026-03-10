@@ -1,5 +1,5 @@
 """
-Curiosity Drive — intrinsic motivation and boredom detection.
+Curiosity Drive,  intrinsic motivation and boredom detection.
 
 WORLD FIRST: The agent gets "bored" with repetitive tasks and actively
 seeks novel challenges. Drives self-directed exploration and prevents
@@ -29,7 +29,7 @@ class CuriosityProbe:
 
 
 class CuriosityDrive:
-    """Intrinsic motivation — boredom detection and novelty seeking."""
+    """Intrinsic motivation,  boredom detection and novelty seeking."""
 
     def __init__(self, data_dir: Path, boredom_threshold: int = 5,
                  novelty_decay: float = 0.02, max_probes: int = 200):
@@ -63,13 +63,13 @@ class CuriosityDrive:
         if len(self.novelty_scores) > 100:
             self.novelty_scores = self.novelty_scores[-100:]
 
-        # Update boredom — increases with repetition
+        # Update boredom,  increases with repetition
         if self.repetition_count[fingerprint] >= self.boredom_threshold:
             self.boredom_level = min(1.0, self.boredom_level + 0.1)
         else:
             self.boredom_level = max(0.0, self.boredom_level - 0.05)
 
-        # Update curiosity — increases with boredom, decreases with novelty
+        # Update curiosity,  increases with boredom, decreases with novelty
         self.curiosity_level = 0.3 + 0.4 * self.boredom_level + 0.3 * (1.0 - self._avg_novelty())
 
         if len(self.task_history) > 500:
@@ -93,7 +93,7 @@ class CuriosityDrive:
                 f"Boredom level: {self.boredom_level:.2f}\n"
                 f"Already explored domains: {explored}\n"
                 f"Context: {context[:300]}\n\n"
-                "Generate 3 curiosity probes — novel questions or challenges the agent "
+                "Generate 3 curiosity probes,  novel questions or challenges the agent "
                 "should explore to learn something new. Respond in JSON:\n"
                 '[{"question": "...", "domain": "...", "novelty_score": 0.0-1.0}]'
             )
@@ -125,7 +125,7 @@ class CuriosityDrive:
     def record_exploration(self, probe_question: str, domain: str, result: str):
         """Record the result of exploring a curiosity probe."""
         self.domains_explored[domain] = self.domains_explored.get(domain, 0) + 1
-        # Satisfy curiosity — reduce boredom
+        # Satisfy curiosity,  reduce boredom
         self.boredom_level = max(0.0, self.boredom_level - 0.15)
         for p in self.probes:
             if p.question == probe_question:

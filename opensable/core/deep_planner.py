@@ -1,5 +1,5 @@
 """
-Deep Multi-Step Planner — Plans 10+ steps ahead with dependency graphs.
+Deep Multi-Step Planner,  Plans 10+ steps ahead with dependency graphs.
 
 Unlike simple 1-2 step task queuing, the DeepPlanner:
   • Uses LLM to decompose complex goals into a DAG of ≤15 ordered steps
@@ -89,7 +89,7 @@ _PLAN_SYSTEM = """\
 You are a deep-planning engine for an autonomous AI agent.
 Given a high-level goal and context, decompose it into 5-15 concrete, sequential steps.
 Each step must specify what it does, and which previous step(s) it depends on (by step number).
-Steps should be actionable — not vague.  Parallelizable steps should share dependencies, not be chained linearly.
+Steps should be actionable,  not vague.  Parallelizable steps should share dependencies, not be chained linearly.
 
 Output ONLY valid JSON: an array of objects, each with:
   {"step": <int 1-N>, "description": "<what to do>", "depends_on": [<int step numbers>], "tool_hint": "<optional tool name>"}
@@ -98,7 +98,7 @@ Rules:
 - Step 1 always has depends_on: []
 - Steps can depend on multiple prior steps (parallel fan-in)
 - Keep steps granular but not trivially small
-- tool_hint is optional — suggest if you know a tool name
+- tool_hint is optional,  suggest if you know a tool name
 - If the goal is simple, use fewer steps (min 3)
 - If complex, use up to 15 steps
 """
@@ -179,7 +179,7 @@ class DeepPlanner:
         return plan
 
     async def replan(self, plan_id: str, llm) -> Optional[Plan]:
-        """Re-plan after failures — creates a new plan incorporating completed work."""
+        """Re-plan after failures,  creates a new plan incorporating completed work."""
         plan = self._plans.get(plan_id)
         if not plan or not llm:
             return None

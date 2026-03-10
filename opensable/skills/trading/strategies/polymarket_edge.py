@@ -1,5 +1,5 @@
 """
-Polymarket Edge Strategy — Find mispriced prediction markets.
+Polymarket Edge Strategy,  Find mispriced prediction markets.
 
 Uses the LLM to estimate the "true" probability of an event, then
 compares it to Polymarket's current price. When the gap exceeds a
@@ -31,12 +31,12 @@ class PolymarketEdgeStrategy(Strategy):
     4. If LLM estimate < market price - edge_threshold → BUY NO (sell YES)
 
     Context required:
-        market_question: str         — the actual prediction market question
-        market_description: str      — optional additional context
-        market_end_date: str         — when the market resolves
-        current_yes_price: Decimal   — current YES token price (0-1)
-        current_no_price: Decimal    — current NO token price (0-1)
-        market_volume: Decimal       — total volume traded
+        market_question: str        ,  the actual prediction market question
+        market_description: str     ,  optional additional context
+        market_end_date: str        ,  when the market resolves
+        current_yes_price: Decimal  ,  current YES token price (0-1)
+        current_no_price: Decimal   ,  current NO token price (0-1)
+        market_volume: Decimal      ,  total volume traded
     """
 
     name = "polymarket_edge"
@@ -82,7 +82,7 @@ class PolymarketEdgeStrategy(Strategy):
         if not question:
             return []
 
-        # Skip low-volume markets — too illiquid
+        # Skip low-volume markets,  too illiquid
         if volume < self.min_volume:
             return []
 
@@ -131,7 +131,7 @@ Respond with ONLY a JSON object (no markdown, no explanation):
 
         if abs(edge) >= self.edge_threshold_pct and confidence >= 0.5:
             if edge > 0:
-                # Market underprices YES — buy YES tokens
+                # Market underprices YES,  buy YES tokens
                 direction = SignalDirection.LONG
                 entry = yes_price
                 target_price = estimated_pct / 100
@@ -141,7 +141,7 @@ Respond with ONLY a JSON object (no markdown, no explanation):
                     f"BUY YES. {reasoning}"
                 )
             else:
-                # Market overprices YES — buy NO tokens
+                # Market overprices YES,  buy NO tokens
                 direction = SignalDirection.SHORT
                 entry = no_price
                 target_price = (100 - estimated_pct) / 100

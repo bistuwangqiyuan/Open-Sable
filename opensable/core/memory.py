@@ -63,7 +63,7 @@ class MemoryManager:
         self.structured_memory_path = Path(os.environ.get("_SABLE_DATA_DIR", "data")) / "memory.json"
         self.structured_memory = {}
 
-        # Encryption setup — Fernet is an optional dependency
+        # Encryption setup,  Fernet is an optional dependency
         self._fernet = None
         try:
             from cryptography.fernet import Fernet
@@ -71,7 +71,7 @@ class MemoryManager:
             self._fernet = Fernet(_derive_key(secret))
             logger.debug("Memory encryption enabled (Fernet)")
         except ImportError:
-            logger.info("cryptography package not installed — memory stored in plaintext. pip install cryptography to enable encryption.")
+            logger.info("cryptography package not installed,  memory stored in plaintext. pip install cryptography to enable encryption.")
 
     async def initialize(self):
         """Initialize memory systems"""
@@ -100,7 +100,7 @@ class MemoryManager:
                     self.structured_memory = json.loads(decrypted)
                     loaded = True
                 except Exception:
-                    pass  # Not encrypted yet — fall through to plaintext
+                    pass  # Not encrypted yet,  fall through to plaintext
 
             # Try plaintext JSON (legacy / migration path)
             if not loaded:
@@ -112,7 +112,7 @@ class MemoryManager:
                         self._save_structured_memory()
                         logger.info("Migrated plaintext memory.json to encrypted format")
                 except (json.JSONDecodeError, UnicodeDecodeError):
-                    logger.warning("Could not read memory.json — starting fresh")
+                    logger.warning("Could not read memory.json,  starting fresh")
 
             if not loaded:
                 self.structured_memory = {}

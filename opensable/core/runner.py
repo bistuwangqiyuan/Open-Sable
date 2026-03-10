@@ -1,5 +1,5 @@
 """
-Runner — The one-liner entry point for Open-Sable.
+Runner,  The one-liner entry point for Open-Sable.
 
 Inspired by the OpenAI Agents SDK ``Runner.run_sync()`` pattern, but with
 Open-Sable's full power underneath (planning, parallel tools, guardrails,
@@ -70,7 +70,7 @@ class Agent:
     """
     Lightweight agent configuration object.
 
-    This is the public-facing Agent — not to be confused with the internal
+    This is the public-facing Agent,  not to be confused with the internal
     ``SableAgent``.  It wraps SableAgent with a clean SDK surface.
 
     Args:
@@ -175,7 +175,7 @@ class Runner:
         history: List[dict] | None = None,
     ) -> RunResult:
         """
-        Synchronous convenience wrapper — creates/reuses an event loop.
+        Synchronous convenience wrapper,  creates/reuses an event loop.
 
         Perfect for scripts, notebooks, and one-liners:
             result = Runner.run_sync(Agent(), "Hello!")

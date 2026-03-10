@@ -105,7 +105,7 @@ class SkillsHub:
 
         self.skills_catalog: Dict[str, Skill] = {}
 
-        # Skill Factory — autonomous skill creation engine
+        # Skill Factory,  autonomous skill creation engine
         self.factory = SkillFactory(config)
 
     async def initialize(self):
@@ -408,7 +408,7 @@ Dependencies: {', '.join(skill.dependencies or ['None'])}
         return info.strip()
 
     # -------------------------------------------------------------------
-    # Skill Factory integration — create new skills autonomously
+    # Skill Factory integration,  create new skills autonomously
     # -------------------------------------------------------------------
 
     async def create_skill(
