@@ -1,6 +1,6 @@
 """
 Browser automation module for Open-Sable
-Handles web scraping, search, and page extraction
+PinchTab-accelerated with Playwright fallback
 """
 
 from .browser_engine import BrowserEngine

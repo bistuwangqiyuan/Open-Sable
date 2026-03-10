@@ -1,10 +1,17 @@
 """
-Browser automation engine using Playwright
-Provides web scraping, search, and content extraction capabilities
+Browser automation engine — PinchTab preferred, Playwright fallback.
+
+When PinchTab is available (local binary or external server), all browsing
+goes through its token-efficient HTTP API (~800 tokens/page, stealth mode,
+persistent sessions).  When PinchTab is not reachable, the engine falls back
+to bundled Playwright automatically — zero config change needed.
+
+Ref: https://github.com/pinchtab/pinchtab
 """
 
 import logging
 import asyncio
+import os
 import re
 import subprocess
 import sys
@@ -40,7 +47,7 @@ def sanitize_web_content(text: str) -> str:
 
 
 class BrowserEngine:
-    """Browser automation engine with auto-setup"""
+    """Browser automation engine — PinchTab first, Playwright fallback."""
 
     def __init__(self):
         self.playwright = None
@@ -50,6 +57,30 @@ class BrowserEngine:
         self._setup_lock = asyncio.Lock()
         self._element_refs = {}  # Map ref IDs to elements
         self._ref_counter = 0
+        # PinchTab client (lazy init)
+        self._pinchtab = None
+        self._pinchtab_available = None  # None = not checked yet
+
+    async def _try_pinchtab(self) -> bool:
+        """Try to connect to PinchTab. Returns True if available."""
+        if self._pinchtab_available is not None:
+            return self._pinchtab_available
+        # Skip if explicitly disabled
+        if os.environ.get("PINCHTAB_DISABLED", "").lower() in ("1", "true", "yes"):
+            self._pinchtab_available = False
+            return False
+        try:
+            from .pinchtab_client import PinchTabClient
+            self._pinchtab = PinchTabClient()
+            if await self._pinchtab.connect():
+                self._pinchtab_available = True
+                logger.info("🌐 Browser engine: PinchTab mode (token-efficient)")
+                return True
+        except Exception as e:
+            logger.debug(f"PinchTab not available: {e}")
+        self._pinchtab_available = False
+        self._pinchtab = None
+        return False
 
     async def _ensure_playwright_installed(self) -> bool:
         """Ensure Playwright is installed and browsers are available"""
@@ -81,13 +112,21 @@ class BrowserEngine:
                 return False
 
     async def initialize(self) -> bool:
-        """Initialize browser engine with auto-setup"""
+        """Initialize browser engine — PinchTab first, Playwright fallback."""
         if self._initialized:
             return True
 
         async with self._setup_lock:
             if self._initialized:
                 return True
+
+            # Try PinchTab first (fast, token-efficient, stealth)
+            if await self._try_pinchtab():
+                self._initialized = True
+                return True
+
+            # Fall back to Playwright
+            logger.debug("PinchTab not available, falling back to Playwright")
 
             # Ensure playwright is installed
             if not await self._ensure_playwright_installed():
@@ -117,17 +156,33 @@ class BrowserEngine:
 
     async def scrape_page(self, url: str, max_length: int = 3000) -> Dict[str, str]:
         """
-        Scrape content from a web page
-
-        Args:
-            url: URL to scrape
-            max_length: Maximum content length to return
-
-        Returns:
-            Dict with title, url, and content
+        Scrape content from a web page.
+        Uses PinchTab (token-efficient) when available, Playwright otherwise.
         """
         if not await self.initialize():
             return {"error": "Browser engine not available. Playwright installation failed."}
+
+        # ── PinchTab path (token-efficient) ──────────────────────────
+        if self._pinchtab and self._pinchtab.available:
+            try:
+                nav = await self._pinchtab.navigate(url)
+                if not nav.get("success"):
+                    raise RuntimeError(nav.get("error", "nav failed"))
+                tab_id = nav.get("tabId")
+                text_result = await self._pinchtab.text(tab_id)
+                content = text_result.get("text", "")
+                content = sanitize_web_content(content)
+                if len(content) > max_length:
+                    content = content[:max_length] + "...\n\n(Content truncated for brevity)"
+                # Try to get title from snapshot
+                title = text_result.get("title", url)
+                await self._pinchtab.close_tab(tab_id)
+                return {"title": title, "url": url, "content": content, "success": True,
+                        "engine": "pinchtab"}
+            except Exception as e:
+                logger.debug(f"PinchTab scrape failed, trying Playwright: {e}")
+
+        # ── Playwright path ──────────────────────────────────────────
 
         page = None
         try:
@@ -177,17 +232,38 @@ class BrowserEngine:
 
     async def search_web(self, query: str, num_results: int = 5) -> Dict[str, any]:
         """
-        Search using Brave (bypasses bot detection)
-
-        Args:
-            query: Search query
-            num_results: Number of results to return
-
-        Returns:
-            Dict with search results
+        Search the web. PinchTab uses Brave with stealth; Playwright as fallback.
         """
         if not await self.initialize():
             return {"error": "Browser engine not available"}
+
+        # ── PinchTab path (stealth, persistent sessions) ─────────────
+        if self._pinchtab and self._pinchtab.available:
+            try:
+                search_url = f"https://search.brave.com/search?q={query.replace(' ', '+')}&source=web"
+                nav = await self._pinchtab.navigate(search_url)
+                if not nav.get("success"):
+                    raise RuntimeError(nav.get("error", "nav failed"))
+                tab_id = nav.get("tabId")
+                await asyncio.sleep(2)  # Let results render
+                # Get snapshot for structured refs
+                snap = await self._pinchtab.snapshot(tab_id)
+                # Extract text for results
+                text_result = await self._pinchtab.text(tab_id)
+                raw = text_result.get("text", "")
+                raw = sanitize_web_content(raw)
+                # Parse search results from text
+                results = self._parse_search_text(raw, num_results)
+                await self._pinchtab.close_tab(tab_id)
+                if results:
+                    logger.info(f"✅ PinchTab Brave: {len(results)} results")
+                    return {"query": query, "results": results, "count": len(results),
+                            "success": True, "engine": "pinchtab"}
+                logger.debug("PinchTab search got no results, trying Playwright")
+            except Exception as e:
+                logger.debug(f"PinchTab search failed: {e}")
+
+        # ── Playwright path ──────────────────────────────────────────
 
         page = None
         try:
@@ -294,18 +370,30 @@ class BrowserEngine:
     async def get_page_screenshot(
         self, url: str, output_path: Optional[str] = None
     ) -> Dict[str, str]:
-        """
-        Take a screenshot of a web page
-
-        Args:
-            url: URL to capture
-            output_path: Optional path to save screenshot
-
-        Returns:
-            Dict with screenshot path or base64 data
-        """
+        """Take a screenshot of a web page."""
         if not await self.initialize():
             return {"error": "Browser engine not available"}
+
+        # ── PinchTab path ──────────────────────────────────────────
+        if self._pinchtab and self._pinchtab.available:
+            try:
+                nav = await self._pinchtab.navigate(url)
+                if nav.get("success"):
+                    tab_id = nav.get("tabId")
+                    await asyncio.sleep(1)
+                    png_data = await self._pinchtab.screenshot(tab_id)
+                    await self._pinchtab.close_tab(tab_id)
+                    if png_data:
+                        if not output_path:
+                            output_path = f"/tmp/screenshot_{hash(url)}.png"
+                        with open(output_path, "wb") as f:
+                            f.write(png_data)
+                        return {"path": output_path, "url": url, "success": True,
+                                "engine": "pinchtab"}
+            except Exception as e:
+                logger.debug(f"PinchTab screenshot failed: {e}")
+
+        # ── Playwright path ──────────────────────────────────────────
 
         page = None
         try:
@@ -327,8 +415,12 @@ class BrowserEngine:
                 await page.close()
 
     async def cleanup(self):
-        """Cleanup browser resources"""
+        """Cleanup browser resources (PinchTab + Playwright)."""
         try:
+            if self._pinchtab:
+                await self._pinchtab.shutdown()
+                self._pinchtab = None
+                self._pinchtab_available = None
             if self.browser:
                 await self.browser.close()
             if self.playwright:
@@ -340,11 +432,30 @@ class BrowserEngine:
 
     async def snapshot(self, url: str = None, format: str = "aria") -> Dict[str, Any]:
         """
-        Take a snapshot of the page (accessibility tree or AI format)
-        Returns stable refs for elements that can be used in actions
+        Take a snapshot of the page (accessibility tree or AI format).
+        PinchTab returns stable refs natively; Playwright builds them manually.
         """
         if not await self.initialize():
             return {"success": False, "error": "Browser not available"}
+
+        # ── PinchTab path (native stable refs) ──────────────────────
+        if self._pinchtab and self._pinchtab.available:
+            try:
+                tab_id = self._pinchtab._default_tab
+                if url:
+                    nav = await self._pinchtab.navigate(url)
+                    if nav.get("success"):
+                        tab_id = nav.get("tabId")
+                    await asyncio.sleep(1)
+                if tab_id:
+                    snap = await self._pinchtab.snapshot(tab_id, filter_type="interactive")
+                    if snap.get("success"):
+                        snap["engine"] = "pinchtab"
+                        return snap
+            except Exception as e:
+                logger.debug(f"PinchTab snapshot failed: {e}")
+
+        # ── Playwright path ──────────────────────────────────────────
 
         try:
             # Create or reuse page
@@ -454,11 +565,35 @@ class BrowserEngine:
         value: str = None,
     ) -> Dict[str, Any]:
         """
-        Execute interactive web actions using refs or selectors
-        Actions: click, type, hover, drag, select, fill, press, evaluate, wait
+        Execute interactive web actions using refs or selectors.
+        PinchTab handles refs natively; Playwright needs selector resolution.
         """
         if not await self.initialize():
             return {"success": False, "error": "Browser not available"}
+
+        # ── PinchTab path (native ref support) ──────────────────────
+        if self._pinchtab and self._pinchtab.available and ref:
+            try:
+                tab_id = self._pinchtab._default_tab
+                if url:
+                    nav = await self._pinchtab.navigate(url)
+                    if nav.get("success"):
+                        tab_id = nav.get("tabId")
+                    await asyncio.sleep(1)
+                if tab_id:
+                    if action == "click":
+                        result = await self._pinchtab.click(ref, tab_id)
+                        return {**result, "engine": "pinchtab"}
+                    elif action in ("fill", "type"):
+                        result = await self._pinchtab.fill(ref, value or "", tab_id)
+                        return {**result, "engine": "pinchtab"}
+                    elif action == "press":
+                        result = await self._pinchtab.press(ref, value or "Enter", tab_id)
+                        return {**result, "engine": "pinchtab"}
+            except Exception as e:
+                logger.debug(f"PinchTab action failed, trying Playwright: {e}")
+
+        # ── Playwright path ──────────────────────────────────────────
 
         try:
             # Create or reuse page
@@ -542,6 +677,43 @@ class BrowserEngine:
         except Exception as e:
             logger.error(f"Action error: {e}")
             return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def _parse_search_text(raw_text: str, max_results: int = 5) -> List[Dict[str, str]]:
+        """Parse search results from PinchTab text extraction.
+
+        Brave Search text output typically has title lines followed by URLs
+        and snippet text.  This is a best-effort parser.
+        """
+        results: List[Dict[str, str]] = []
+        lines = raw_text.split("\n")
+        i = 0
+        while i < len(lines) and len(results) < max_results:
+            line = lines[i].strip()
+            # Look for URLs (http/https)
+            url_match = re.search(r'(https?://\S+)', line)
+            if url_match:
+                url = url_match.group(1).rstrip(".,;)")
+                # Title is usually the line before the URL
+                title = lines[i - 1].strip() if i > 0 else url
+                # Snippet is usually the line(s) after
+                snippet_parts = []
+                for j in range(i + 1, min(i + 3, len(lines))):
+                    sl = lines[j].strip()
+                    if sl and not re.match(r'https?://', sl) and len(sl) > 10:
+                        snippet_parts.append(sl)
+                    else:
+                        break
+                snippet = " ".join(snippet_parts)
+                # De-duplicate
+                if not any(r["url"] == url for r in results):
+                    results.append({
+                        "title": title[:200],
+                        "url": url,
+                        "snippet": snippet[:500],
+                    })
+            i += 1
+        return results
 
     async def smart_search(self, query: str) -> Dict[str, Any]:
         """Smart search - automatically scrapes top result for detailed content"""

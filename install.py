@@ -505,6 +505,81 @@ def install_playwright() -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# 6b. PinchTab (browser control for AI agents)
+# ─────────────────────────────────────────────────────────────────────
+
+def _pinchtab_binary() -> Optional[Path]:
+    """Return path to pinchtab binary if installed inside project, else None."""
+    local = ROOT / "bin" / "pinchtab"
+    if local.exists() and os.access(str(local), os.X_OK):
+        return local
+    if cmd_exists("pinchtab"):
+        return Path(shutil.which("pinchtab"))  # type: ignore[arg-type]
+    return None
+
+
+def install_pinchtab() -> bool:
+    """Install PinchTab binary into project bin/ directory."""
+    step("PinchTab (token-efficient browser control)")
+
+    # Already installed?
+    existing = _pinchtab_binary()
+    if existing:
+        ver = cmd_version(str(existing))
+        ok(f"PinchTab {ver or '(found)'} at {existing}")
+        return True
+
+    substep("Installing PinchTab via official installer...")
+    bin_dir = ROOT / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine platform and arch for direct download
+    os_name = "linux" if IS_LINUX else ("darwin" if IS_MAC else "windows")
+    arch_name = "arm64" if ARCH in ("arm64", "aarch64") else "amd64"
+    ext = ".exe" if IS_WIN else ""
+    binary_name = f"pinchtab{ext}"
+    download_url = (
+        f"https://github.com/pinchtab/pinchtab/releases/latest/download/"
+        f"pinchtab_{os_name}_{arch_name}{ext}"
+    )
+
+    # Try direct download first (no shell pipe)
+    try:
+        import urllib.request
+        dest = bin_dir / binary_name
+        substep(f"Downloading {download_url}...")
+        urllib.request.urlretrieve(download_url, str(dest))
+        dest.chmod(0o755)
+        ok(f"PinchTab installed to {dest}")
+
+        # Verify it runs
+        r = run([str(dest), "--version"], capture=True, timeout=10)
+        if r.returncode == 0:
+            ver = re.search(r"(\d+\.\d+[\.\d]*)", r.stdout or "")
+            ok(f"PinchTab {ver.group(1) if ver else 'OK'} verified")
+        return True
+    except Exception as e1:
+        substep(f"Direct download failed ({e1}), trying install script...")
+
+    # Fallback: official install script into project bin
+    try:
+        env = {**os.environ, "INSTALL_DIR": str(bin_dir)}
+        r = run(
+            ["bash", "-c", "curl -fsSL https://pinchtab.com/install.sh | bash"],
+            capture=True, timeout=120, env=env,
+        )
+        if r.returncode == 0 and _pinchtab_binary():
+            ok("PinchTab installed via install script")
+            return True
+    except Exception:
+        pass
+
+    warn("PinchTab install failed (optional — Playwright fallback will be used)")
+    info("Manual install: curl -fsSL https://pinchtab.com/install.sh | bash")
+    return False
+
+
+# ─────────────────────────────────────────────────────────────────────
 # 7. Ollama (Local LLM)
 # ─────────────────────────────────────────────────────────────────────
 
@@ -859,6 +934,10 @@ def setup_env_file():
 
             # Dev Studio
             DEV_STUDIO_ENABLED=true
+
+            # PinchTab (browser control — auto-detected, no config needed)
+            # PINCHTAB_URL=http://127.0.0.1:9867
+            # PINCHTAB_DISABLED=false
         """))
         ok("Created minimal .env")
 
@@ -974,6 +1053,14 @@ def show_status():
         r = run([str(VENV_PYTHON), "-c", "import playwright; print('ok')"], capture=True)
         pw_ok = r.returncode == 0
     _status_line("Playwright", "installed" if pw_ok else "not installed", pw_ok)
+
+    # PinchTab
+    pt_bin = _pinchtab_binary()
+    if pt_bin:
+        pt_ver = cmd_version(str(pt_bin))
+        _status_line("PinchTab", f"{pt_ver or '(found)'} at {pt_bin}", True)
+    else:
+        _status_line("PinchTab", "not installed (optional)", None)
 
     # Python packages
     pkg_ok = False
@@ -1135,6 +1222,14 @@ def fix_install():
     else:
         ok(".env file present")
 
+    # Check PinchTab
+    if not _pinchtab_binary():
+        substep("PinchTab not found, attempting install...")
+        if install_pinchtab():
+            fixed += 1
+    else:
+        ok("PinchTab OK")
+
     # Check directories
     for d in ["data", "logs", "config"]:
         p = ROOT / d
@@ -1273,6 +1368,9 @@ def main():
 
     # 6. Playwright browsers (optional)
     tracker["playwright"] = install_playwright()
+
+    # 6b. PinchTab (token-efficient browser — optional, enhances browsing)
+    tracker["pinchtab"] = install_pinchtab()
 
     # 7. Directories & config
     setup_directories()
