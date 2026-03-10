@@ -1,7 +1,7 @@
 """
-Entropic Sentinel — WORLD FIRST
+Entropic Sentinel,  WORLD FIRST
 =================================
-Detects and fights cognitive entropy — the gradual degradation
+Detects and fights cognitive entropy,  the gradual degradation
 of cognitive systems over time. Monitors order vs chaos across
 all subsystems and actively intervenes to restore order.
 
@@ -115,7 +115,7 @@ class EntropicSentinel:
     def defragment(self, subsystem: str, actions: list = None) -> DefragEvent:
         """
         Perform cognitive defragmentation on a subsystem.
-        This is the anti-entropy operation — restoring order.
+        This is the anti-entropy operation,  restoring order.
         """
         before = self.subsystem_entropy.get(subsystem, 0.5)
         # Defrag reduces entropy by 30-50%

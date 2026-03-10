@@ -73,12 +73,12 @@ export default function WelcomeScreen({ wsStatus }) {
                 ? 'Starting up…'
                 : wsStatus === 'connecting'
                 ? 'Connecting…'
-                : 'Disconnected — check gateway'}
+                : 'Disconnected,  check gateway'}
             </span>
           </div>
         </div>
 
-        {/* ── Big input — first, like Claude ────────────────────── */}
+        {/* ── Big input,  first, like Claude ────────────────────── */}
         <div className="welcome-input-wrap">
           <InputBar
             input={input}

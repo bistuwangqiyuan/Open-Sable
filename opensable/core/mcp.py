@@ -1,5 +1,5 @@
 """
-MCP Client — Connect to Model Context Protocol servers.
+MCP Client,  Connect to Model Context Protocol servers.
 
 Allows Open-Sable to consume tools from any MCP-compliant server,
 giving it access to the entire MCP ecosystem (databases, APIs, file systems,
@@ -300,7 +300,7 @@ class MCPClient:
 
     async def _connect_sse(self) -> None:
         """Connect to an MCP server via SSE (Server-Sent Events)."""
-        # SSE transport is more complex — simplified implementation
+        # SSE transport is more complex,  simplified implementation
         # that posts JSON-RPC via HTTP
         self._sse_url = self._kwargs["url"]
         self._sse_headers = self._kwargs.get("headers", {})

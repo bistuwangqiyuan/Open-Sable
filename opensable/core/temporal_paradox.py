@@ -1,8 +1,8 @@
 """
-Temporal Paradox Resolver — WORLD FIRST
+Temporal Paradox Resolver,  WORLD FIRST
 =========================================
 When the agent encounters contradictory information from different
-time periods, it doesn't just pick the latest — it models the
+time periods, it doesn't just pick the latest,  it models the
 contradiction as a TEMPORAL PARADOX and resolves it through
 multi-timeline reasoning.
 

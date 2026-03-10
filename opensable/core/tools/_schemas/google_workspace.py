@@ -216,7 +216,7 @@ SCHEMAS = [
                     "range": {"type": "string", "description": "Target range in A1 notation (e.g. 'Sheet1!A1')"},
                     "values": {
                         "type": "array",
-                        "description": "2D array of values — each inner array is a row",
+                        "description": "2D array of values,  each inner array is a row",
                         "items": {"type": "array", "items": {"type": "string"}},
                     },
                 },

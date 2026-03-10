@@ -1,5 +1,5 @@
 """
-ReAct Executor — Reasoning + Acting loop for autonomous task execution.
+ReAct Executor,  Reasoning + Acting loop for autonomous task execution.
 
 Implements the ReAct paradigm (Yao et al. 2022):
   Thought → Action → Observation → Thought → ...
@@ -8,7 +8,7 @@ Instead of executing a single tool per task, the agent can chain multiple
 tool calls with intermediate reasoning until the task is complete or it
 decides to stop.
 
-This is the "hands" of the autonomous agent — the proactive reasoning engine
+This is the "hands" of the autonomous agent,  the proactive reasoning engine
 decides WHAT to do, the ReAct executor figures out HOW to do it, step by step.
 """
 
@@ -79,7 +79,7 @@ When you have enough information to complete the task, output:
 }
 
 Rules:
-1. Think step by step — reason about what you know and what you need
+1. Think step by step,  reason about what you know and what you need
 2. Use one tool at a time
 3. After each observation, reason about the result before acting again
 4. If a tool fails, try a different approach

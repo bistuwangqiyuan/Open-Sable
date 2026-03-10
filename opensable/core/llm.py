@@ -3,7 +3,7 @@ LLM integration for Open-Sable - Ollama with native tool calling
 Dynamic model switching based on task requirements.
 Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
           xAI (Grok), Mistral, Google Gemini, Cohere, Kimi (Moonshot),
-          Qwen (DashScope), OpenRouter — all with full tool calling.
+          Qwen (DashScope), OpenRouter,  all with full tool calling.
 """
 
 import asyncio
@@ -49,8 +49,8 @@ async def _ollama_lock():
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             acquired = True
         except BlockingIOError:
-            # Another process holds the lock — wait up to 10 s then proceed anyway
-            logger.warning("Ollama lock contended — waiting up to 10s...")
+            # Another process holds the lock,  wait up to 10 s then proceed anyway
+            logger.warning("Ollama lock contended,  waiting up to 10s...")
             try:
                 await asyncio.wait_for(
                     loop.run_in_executor(None, fcntl.flock, fd, fcntl.LOCK_EX),
@@ -58,7 +58,7 @@ async def _ollama_lock():
                 )
                 acquired = True
             except asyncio.TimeoutError:
-                logger.warning("Ollama lock wait timed out — proceeding without lock")
+                logger.warning("Ollama lock wait timed out,  proceeding without lock")
         logger.debug("Ollama lock acquired" if acquired else "Ollama lock skipped")
         yield
     finally:
@@ -88,7 +88,7 @@ def parse_thinking(text: str) -> Tuple[str, Optional[str]]:
     return clean, reasoning
 
 
-# Models where /no_think kills output — the distilled versions don't handle
+# Models where /no_think kills output,  the distilled versions don't handle
 # the Qwen3 /no_think token properly and produce empty responses.
 _NO_THINK_BLOCKLIST_PATTERNS = ["distill", "distilled", "claude.*opus.*distill", "opus.*distill"]
 
@@ -107,7 +107,7 @@ def _inject_no_think(messages: List[Dict], model_name: str = "") -> List[Dict]:
     """
     if _should_skip_no_think(model_name):
         return messages
-    messages = list(messages)  # shallow copy — don't mutate caller's list
+    messages = list(messages)  # shallow copy,  don't mutate caller's list
     for i in range(len(messages) - 1, -1, -1):
         if messages[i].get("role") == "user":
             content = messages[i].get("content", "")
@@ -120,7 +120,7 @@ def _inject_no_think(messages: List[Dict], model_name: str = "") -> List[Dict]:
 
 # ── Token & cost tracking ────────────────────────────────────────────
 
-# Approximate costs per 1M tokens (USD) — updated periodically
+# Approximate costs per 1M tokens (USD),  updated periodically
 _COST_PER_1M: Dict[str, Dict[str, float]] = {
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
@@ -256,7 +256,7 @@ class TokenTracker:
                     costs = val
                     break
         if not costs:
-            return 0.0  # Local model or unknown — free
+            return 0.0  # Local model or unknown,  free
         return (prompt_tokens * costs["input"] + completion_tokens * costs["output"]) / 1_000_000
 
 
@@ -285,7 +285,7 @@ MODEL_CAPABILITIES = {
 class AdaptiveLLM:
     """LLM that can switch models based on task requirements"""
 
-    # Shared across instances — remember which models don't support native tool calling
+    # Shared across instances,  remember which models don't support native tool calling
     _MODELS_WITHOUT_NATIVE_TOOLS: set = set()
 
     def __init__(self, config, initial_model: str):
@@ -454,7 +454,7 @@ class AdaptiveLLM:
             "</tool_call>\n\n"
             f"Available tools:\n{tools_json}\n\n"
             "Rules: If you need a tool, output the <tool_call> block first and stop. "
-            "Never describe what you are about to do — just output the tool call or the final answer."
+            "Never describe what you are about to do,  just output the tool call or the final answer."
         )
 
         # Inject tool instruction into system message
@@ -480,7 +480,7 @@ class AdaptiveLLM:
             async with _ollama_lock():
                 resp = await asyncio.wait_for(client.chat(**_chat_kwargs), timeout=120)
         except asyncio.TimeoutError:
-            logger.warning("Text-based tool calling timed out after 120s — returning empty")
+            logger.warning("Text-based tool calling timed out after 120s,  returning empty")
             return {"tool_call": None, "tool_calls": [], "text": ""}
         except Exception as _tbe:
             # If think:false is rejected, retry without it
@@ -497,7 +497,7 @@ class AdaptiveLLM:
         reasoning = (thinking_field.strip() or reasoning_from_tags) or None
 
         # If content is empty but reasoning exists, the model put its
-        # answer inside <think> tags — extract usable text from reasoning.
+        # answer inside <think> tags,  extract usable text from reasoning.
         if not clean_text.strip() and reasoning:
             logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
             clean_text = reasoning
@@ -529,7 +529,7 @@ class AdaptiveLLM:
                     "text": None,
                 }
 
-        # No tool call found — plain text answer
+        # No tool call found,  plain text answer
         result = {"tool_call": None, "tool_calls": [], "text": clean_text}
         if reasoning:
             result["reasoning"] = reasoning
@@ -563,7 +563,7 @@ class AdaptiveLLM:
                 "model": self.current_model,
                 "messages": messages,
             }
-            # Only include tools key when there are actual tools — some models
+            # Only include tools key when there are actual tools,  some models
             # reject even an empty list with HTTP 400.
             if tools:
                 _chat_kwargs["tools"] = tools
@@ -582,10 +582,10 @@ class AdaptiveLLM:
                 total_tokens=prompt_tokens + completion_tokens,
                 model=self.current_model,
                 provider="ollama",
-                estimated_cost_usd=0.0,  # local model — free
+                estimated_cost_usd=0.0,  # local model,  free
             ))
 
-            # Tool call path — collect ALL tool calls for parallel execution
+            # Tool call path,  collect ALL tool calls for parallel execution
             raw_calls = msg.get("tool_calls") or []
             if raw_calls:
                 parsed: list[dict] = []
@@ -614,7 +614,7 @@ class AdaptiveLLM:
             clean_text, reasoning_from_tags = parse_thinking(raw_text)
             reasoning = (thinking_field.strip() or reasoning_from_tags) or None
             # If content is empty but reasoning exists, the model put its
-            # answer inside <think> tags — extract usable text from reasoning.
+            # answer inside <think> tags,  extract usable text from reasoning.
             if not clean_text.strip() and reasoning:
                 logger.info("[LLM] Content empty after think-stripping, using reasoning as response")
                 clean_text = reasoning
@@ -671,7 +671,7 @@ class AdaptiveLLM:
 
     async def plain_chat(self, messages: List[Dict]) -> Dict[str, Any]:
         """
-        Simple chat completion *without* tools — used for the no-tools fast-path.
+        Simple chat completion *without* tools,  used for the no-tools fast-path.
 
         Unlike ``invoke_with_tools(msgs, [])``, this never sends a ``tools``
         key at all, which avoids 400 errors from models that reject even an
@@ -765,7 +765,7 @@ class AdaptiveLLM:
                             _buf = _buf[end_idx + 8:]  # skip </think>
                             _inside = False
                         else:
-                            # Still inside thinking — buffer everything
+                            # Still inside thinking,  buffer everything
                             _reasoning.append(_buf)
                             _buf = ""
                     else:
@@ -781,7 +781,7 @@ class AdaptiveLLM:
                             safe = True
                             for i in range(1, min(len("<think>"), len(_buf) + 1)):
                                 if _buf.endswith("<think>"[:i]):
-                                    # Might be start of a tag — hold back
+                                    # Might be start of a tag,  hold back
                                     yield _buf[:-i]
                                     _buf = _buf[-i:]
                                     safe = False
@@ -1009,7 +1009,7 @@ class CloudLLM:
         try:
             from openai import AsyncOpenAI
         except ImportError:
-            raise ImportError("pip install openai  — required for OpenAI-compatible providers")
+            raise ImportError("pip install openai ,  required for OpenAI-compatible providers")
 
         base_url, _, _ = self._PROVIDERS[self.provider]
         client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
@@ -1052,7 +1052,7 @@ class CloudLLM:
                 "text": None,
             }
 
-        # Check for DeepSeek reasoning — API may return reasoning_content or <think> tags
+        # Check for DeepSeek reasoning,  API may return reasoning_content or <think> tags
         raw_text = msg.content or ""
         reasoning = None
 
@@ -1078,7 +1078,7 @@ class CloudLLM:
         try:
             from anthropic import AsyncAnthropic
         except ImportError:
-            raise ImportError("pip install anthropic  — required for Anthropic provider")
+            raise ImportError("pip install anthropic ,  required for Anthropic provider")
 
         client = AsyncAnthropic(api_key=self._get_api_key())
 
@@ -1142,7 +1142,7 @@ class CloudLLM:
             from google import genai
             from google.genai import types
         except ImportError:
-            raise ImportError("pip install google-genai  — required for Gemini provider")
+            raise ImportError("pip install google-genai ,  required for Gemini provider")
 
         client = genai.Client(api_key=self._get_api_key())
 
@@ -1227,7 +1227,7 @@ class CloudLLM:
         try:
             import cohere
         except ImportError:
-            raise ImportError("pip install cohere  — required for Cohere provider")
+            raise ImportError("pip install cohere ,  required for Cohere provider")
 
         co = cohere.AsyncClientV2(self._get_api_key())
 
@@ -1408,7 +1408,7 @@ class CloudLLM:
         return SimpleNamespace(content=result.get("text", ""))
 
     def invoke(self, messages):
-        """Sync invoke — uses asyncio.run for simple scripts."""
+        """Sync invoke,  uses asyncio.run for simple scripts."""
         import asyncio
 
         return asyncio.run(self.ainvoke(messages))
@@ -1696,7 +1696,7 @@ async def list_all_models(config) -> dict:
         except Exception:
             pass
 
-    # Cloud providers — list the default model for each configured provider
+    # Cloud providers,  list the default model for each configured provider
     for provider, (_, key_attr, default_model) in CloudLLM._PROVIDERS.items():
         if provider in ("openwebui",):
             continue  # already handled above

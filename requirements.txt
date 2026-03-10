@@ -1,5 +1,5 @@
 # ===================================================================
-# SableCore — Core Requirements (minimal install, ~100 MB)
+# SableCore,  Core Requirements (minimal install, ~100 MB)
 # ===================================================================
 # For optional/heavy deps: pip install -r requirements-extras.txt
 
@@ -56,7 +56,7 @@ python-pptx>=0.6.23
 # Clipboard (cross-platform)
 pyperclip>=1.8.0
 
-# Chat Platforms (lightweight — bot libs are optional)
+# Chat Platforms (lightweight,  bot libs are optional)
 aiogram>=3.3.0
 
 # X (Twitter) / Grok

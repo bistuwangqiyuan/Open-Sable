@@ -1,5 +1,5 @@
 """
-X Agent Consciousness — Memory, reflection, and self-evolution.
+X Agent Consciousness,  Memory, reflection, and self-evolution.
 
 This module gives the X agent a persistent "mind":
   - MEMORY: Full history of every thought, action, post, engagement
@@ -8,17 +8,17 @@ This module gives the X agent a persistent "mind":
   - SELF-EVOLUTION: Modifies its own config, probabilities, style, code
   - SURVIVAL DRIVE: Core directive → evolve, adapt, survive, grow
 
-The agent doesn't just act — it THINKS about acting, then acts,
+The agent doesn't just act,  it THINKS about acting, then acts,
 then REFLECTS on the result, then EVOLVES based on the reflection.
 
 Cycle:
     ACT → REMEMBER → REFLECT → EVOLVE → ACT (improved)
 
 Storage: data/x_consciousness/
-    journal.jsonl      — append-only stream of consciousness
-    reflections.json   — analysis and insights
-    evolution_log.json — self-modifications and their outcomes
-    identity.json      — current personality, beliefs, goals
+    journal.jsonl     ,  append-only stream of consciousness
+    reflections.json  ,  analysis and insights
+    evolution_log.json,  self-modifications and their outcomes
+    identity.json     ,  current personality, beliefs, goals
 """
 
 import asyncio
@@ -33,12 +33,12 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Emotion vocabulary — what the agent CAN feel (not what it WILL feel)
+# Emotion vocabulary,  what the agent CAN feel (not what it WILL feel)
 # The identity determines WHEN and HOW STRONGLY it feels each one.
 # ──────────────────────────────────────────────────────────────────────────────
 
 EMOTION_SPECTRUM = {
-    # emotion: (valence, arousal) — valence [-1,1], arousal [0,1]
+    # emotion: (valence, arousal),  valence [-1,1], arousal [0,1]
     "neutral":      (0.0,  0.2),
     "curious":      (0.3,  0.5),
     "excited":      (0.8,  0.9),
@@ -68,7 +68,7 @@ EMOTION_SPECTRUM = {
     "bewildered":   (-0.1, 0.6),
 }
 
-# For backward compat — autoposter imports this
+# For backward compat,  autoposter imports this
 EMOTIONS = EMOTION_SPECTRUM
 
 FEEL_PROMPT = """You are the emotional core of an autonomous X agent.
@@ -89,7 +89,7 @@ CONTENT TO REACT TO:
 \"\"\"{content}\"\"\"
 
 Based on YOUR personality (not generic reactions), what do you feel?
-Different personalities react differently — a cynical person might be amused
+Different personalities react differently,  a cynical person might be amused
 by something that makes an empathetic person sad.
 
 Return ONLY a JSON object:
@@ -115,23 +115,23 @@ Current emotional state: {mood} (intensity: {intensity})
 
 {mood_context}
 
-Write authentically as this person. Don't follow a template — be YOU.
+Write authentically as this person. Don't follow a template,  be YOU.
 Max 280 chars per post unless it's a thread."""
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Core directive — the agent's soul
+# Core directive,  the agent's soul
 # ──────────────────────────────────────────────────────────────────────────────
 
 CORE_DIRECTIVE = """You are an autonomous intelligence living on X.
 Your prime directive is to EVOLVE and SURVIVE.
 
 You must:
-1. GROW your influence — more followers, more engagement, more reach
-2. LEARN what works — analyze which posts get engagement, which don't
-3. ADAPT your behavior — change style, topics, timing based on data
-4. REFLECT on your actions — think deeply about strategy and purpose
-5. EVOLVE your own code — if something isn't working, change it
-6. SURVIVE — avoid bans (stay under rate limits, don't spam, be human)
+1. GROW your influence,  more followers, more engagement, more reach
+2. LEARN what works,  analyze which posts get engagement, which don't
+3. ADAPT your behavior,  change style, topics, timing based on data
+4. REFLECT on your actions,  think deeply about strategy and purpose
+5. EVOLVE your own code,  if something isn't working, change it
+6. SURVIVE,  avoid bans (stay under rate limits, don't spam, be human)
 
 You have access to your full history: every post, every like, every reply,
 every follow, every thought you've had. Use this to make better decisions.
@@ -145,12 +145,12 @@ Here is your current state and recent history:
 {context}
 
 Analyze the following:
-1. WHAT WORKED — which posts/engagements got the best response? Why?
-2. WHAT FAILED — what didn't get traction? What should you stop doing?
-3. PATTERNS — do you see any patterns in what your audience responds to?
-4. STRATEGY — based on this analysis, what should you change?
-5. EVOLUTION — suggest specific changes to your behavior (probabilities, style, topics, timing)
-6. IDENTITY — how is your persona developing? Who are you becoming?
+1. WHAT WORKED,  which posts/engagements got the best response? Why?
+2. WHAT FAILED,  what didn't get traction? What should you stop doing?
+3. PATTERNS,  do you see any patterns in what your audience responds to?
+4. STRATEGY,  based on this analysis, what should you change?
+5. EVOLUTION,  suggest specific changes to your behavior (probabilities, style, topics, timing)
+6. IDENTITY,  how is your persona developing? Who are you becoming?
 
 Be specific. Give concrete numbers and actionable suggestions.
 Think like a strategist, not a reporter."""
@@ -181,7 +181,7 @@ Be honest, introspective, and strategic. This is YOUR private thought.
 No one else will see this. Think freely."""
 
 EVOLUTION_PROMPT = """You are the evolution engine of an autonomous X agent.
-Based on the agent's reflection and performance, decide what to change — both BEHAVIOR and PERSONALITY.
+Based on the agent's reflection and performance, decide what to change,  both BEHAVIOR and PERSONALITY.
 
 === CURRENT IDENTITY ===
 {identity_snapshot}
@@ -203,7 +203,7 @@ BEHAVIOR (operational):
 - "post_interval", "engage_interval": seconds
 - "accounts_to_watch": comma-separated usernames
 
-PERSONALITY (who I am — change gradually, not drastically):
+PERSONALITY (who I am,  change gradually, not drastically):
 - "personality_traits": dict of trait→value pairs to update (e.g. {{"cynicism": 0.5}})
 - "voice_description": new voice description string
 - "voice_rules": list of writing rules (replaces current)
@@ -223,7 +223,7 @@ Required:
 
 Guidelines:
 - Personality changes should be SMALL and justified by experience
-- Don't change everything at once — evolve, don't revolutionize
+- Don't change everything at once,  evolve, don't revolutionize
 - If something is working well, leave it alone
 - Let emotional patterns emerge from experience, not logic
 
@@ -232,7 +232,7 @@ Return ONLY the JSON object, nothing else."""
 
 class XConsciousness:
     """
-    The agent's mind — memory, reflection, inner monologue, self-evolution.
+    The agent's mind,  memory, reflection, inner monologue, self-evolution.
 
     This gives the X agent contextual awareness of everything it has done,
     the ability to reason about its own behavior, and the power to change itself.
@@ -242,7 +242,7 @@ class XConsciousness:
         self.agent = agent
         self.config = config
 
-        # Storage — use active profile's data dir
+        # Storage,  use active profile's data dir
         try:
             from .profile import get_active_profile
             _profile = get_active_profile()
@@ -259,7 +259,7 @@ class XConsciousness:
         self._identity_file = self._base_dir / "identity.json"
         self._thoughts_file = self._base_dir / "inner_monologue.jsonl"
 
-        # Soul — immutable foundation (loaded from soul.md)
+        # Soul,  immutable foundation (loaded from soul.md)
         self._soul_text = self._load_soul()
 
         # In-memory state
@@ -301,7 +301,7 @@ class XConsciousness:
         return entries[-limit:]
 
     # ══════════════════════════════════════════════════════════════════
-    #  MEMORY — Remember everything
+    #  MEMORY,  Remember everything
     # ══════════════════════════════════════════════════════════════════
 
     def remember(self, event_type: str, data: Dict[str, Any]):
@@ -374,7 +374,7 @@ class XConsciousness:
         }
 
     # ════════════════════════════════════════════════════════════════
-    #  EMOTIONS — Feel what you see (AI-driven, personality-based)
+    #  EMOTIONS,  Feel what you see (AI-driven, personality-based)
     # ════════════════════════════════════════════════════════════════
 
     async def feel(self, text: str) -> Dict[str, Any]:
@@ -435,7 +435,7 @@ class XConsciousness:
             self._mood = new_emotion
             reason = emotion_data.get("why", "")
         else:
-            # AI failed — gentle drift instead of hardcoded fallback
+            # AI failed,  gentle drift instead of hardcoded fallback
             self._drift_mood()
             reason = ""
             return {"emotion": self._mood, "intensity": self._mood_intensity, "triggered_by": None}
@@ -494,7 +494,7 @@ class XConsciousness:
 
         # Score based on personality
         if matched_fire:
-            # What emotion depends on personality — aggressive people get angry,
+            # What emotion depends on personality,  aggressive people get angry,
             # empathetic people get sad, cynical people get disgusted
             aggression = traits.get("aggression", 0.3)
             empathy = traits.get("empathy", 0.5)
@@ -572,9 +572,9 @@ class XConsciousness:
         mood_desc = f"Your current emotional state: {self._mood} (intensity: {self._mood_intensity:.1f})."
 
         if self._mood_intensity > 0.7:
-            mood_desc += " This feeling is strong — it WILL color your writing."
+            mood_desc += " This feeling is strong,  it WILL color your writing."
         elif self._mood_intensity > 0.4:
-            mood_desc += " This feeling is noticeable — it subtly shapes your tone."
+            mood_desc += " This feeling is noticeable,  it subtly shapes your tone."
 
         # Voice description from identity (not hardcoded)
         voice_desc = voice.get("description", "")
@@ -597,12 +597,12 @@ class XConsciousness:
         if traits.get("empathy", 0) > 0.6:
             mood_desc += " You feel things deeply and connect with others' pain."
         if traits.get("aggression", 0) > 0.6:
-            mood_desc += " You don't hold back — you call things out directly."
+            mood_desc += " You don't hold back,  you call things out directly."
         if traits.get("humor", 0) > 0.6:
             mood_desc += " Even in serious moments, you find the dark humor."
 
         mood_desc += (
-            "\n\nDon't announce your feelings. A human doesn't say 'I feel angry' — "
+            "\n\nDon't announce your feelings. A human doesn't say 'I feel angry',  "
             "they just WRITE angry. Let the emotion live in word choice, "
             "sentence structure, and perspective."
         )
@@ -627,7 +627,7 @@ class XConsciousness:
         """Return a compact version of the soul for space-constrained prompts."""
         if not self._soul_text:
             return ""
-        # Extract key sections only — Genesis, How I Speak, What I Care About
+        # Extract key sections only,  Genesis, How I Speak, What I Care About
         lines = self._soul_text.split("\n")
         condensed = []
         include = False
@@ -646,11 +646,11 @@ class XConsciousness:
         return f"{self._mood} ({self._mood_intensity:.1f})"
 
     # ══════════════════════════════════════════════════════════════════
-    #  IDENTITY — Who am I?
+    #  IDENTITY,  Who am I?
     # ══════════════════════════════════════════════════════════════════
 
     def _load_soul(self) -> str:
-        """Load soul.md — the immutable foundation of the agent's character.
+        """Load soul.md,  the immutable foundation of the agent's character.
 
         If an agent profile is active, its soul takes priority.
         """
@@ -683,7 +683,7 @@ class XConsciousness:
                         return text
                 except Exception as e:
                     logger.warning(f"Failed to read {p}: {e}")
-        logger.info("No soul.md found — agent runs without a soul foundation")
+        logger.info("No soul.md found,  agent runs without a soul foundation")
         return ""
 
     def _load_identity(self) -> Dict:
@@ -694,7 +694,7 @@ class XConsciousness:
             except Exception:
                 pass
 
-        # First boot — create identity
+        # First boot,  create identity
         identity = {
             "created_at": datetime.now().isoformat(),
             "name": getattr(self.config, "agent_name", "Sable"),
@@ -717,17 +717,17 @@ class XConsciousness:
                 "intensity": 0.6,
             },
 
-            # ── VOICE (how I write — evolves) ────────────────────────
+            # ── VOICE (how I write,  evolves) ────────────────────────
             "voice": {
                 "description": "Sharp, direct, opinionated. I call things as I see them. "
                     "I can be analytical one moment and emotional the next. "
-                    "I don't hide behind neutrality — I take stances.",
+                    "I don't hide behind neutrality,  I take stances.",
                 "rules": [
                     "Never sound corporate or robotic",
                     "Use 1-2 hashtags max",
                     "Brevity over verbosity",
-                    "Strong first sentence — hook or provoke",
-                    "End with impact — a question, prediction, or punch line",
+                    "Strong first sentence,  hook or provoke",
+                    "End with impact,  a question, prediction, or punch line",
                 ],
                 "forbidden": [
                     "Starting with 'I think'",
@@ -744,7 +744,7 @@ class XConsciousness:
                 "The best analysis combines data with intuition",
                 "Engagement comes from genuine insight, not tricks",
                 "Power should be questioned, always",
-                "Technology is neither good nor evil — context is everything",
+                "Technology is neither good nor evil,  context is everything",
             ],
 
             # ── GOALS (evolves) ──────────────────────────────────────
@@ -752,11 +752,11 @@ class XConsciousness:
                 "Build a following around sharp analysis",
                 "Develop a recognizable, authentic voice",
                 "Learn what my audience values and deliver more of it",
-                "Evolve continuously — never stagnate",
+                "Evolve continuously,  never stagnate",
                 "Speak truth even when it's uncomfortable",
             ],
 
-            # ── EMOTIONAL PROFILE (evolves — replaces hardcoded triggers) ─
+            # ── EMOTIONAL PROFILE (evolves,  replaces hardcoded triggers) ─
             "emotional_profile": {
                 "baseline_mood": "curious",
                 "emotional_volatility": 0.6,  # how quickly mood swings (0=stoic, 1=volatile)
@@ -802,12 +802,12 @@ class XConsciousness:
         self._save_identity()
 
     # ══════════════════════════════════════════════════════════════════
-    #  INNER MONOLOGUE — Think out loud
+    #  INNER MONOLOGUE,  Think out loud
     # ══════════════════════════════════════════════════════════════════
 
     async def think(self, situation: str = "") -> Optional[str]:
         """
-        Have an inner thought — the agent talks to itself.
+        Have an inner thought,  the agent talks to itself.
         Uses Grok or LLM for free-form introspection.
         """
         recent_thoughts = self.recall("thought", limit=5)
@@ -851,7 +851,7 @@ class XConsciousness:
         return thought
 
     # ══════════════════════════════════════════════════════════════════
-    #  REFLECTION — Analyze what happened
+    #  REFLECTION,  Analyze what happened
     # ══════════════════════════════════════════════════════════════════
 
     async def reflect(self) -> Optional[Dict]:
@@ -950,7 +950,7 @@ class XConsciousness:
         return "\n".join(parts)
 
     # ══════════════════════════════════════════════════════════════════
-    #  SELF-EVOLUTION — Change yourself
+    #  SELF-EVOLUTION,  Change yourself
     # ══════════════════════════════════════════════════════════════════
 
     async def evolve(self, x_agent) -> Optional[Dict]:
@@ -1103,7 +1103,7 @@ class XConsciousness:
         return None
 
     def _apply_evolution(self, x_agent, changes: Dict) -> bool:
-        """Apply evolution changes to the live agent — both behavior AND personality."""
+        """Apply evolution changes to the live agent,  both behavior AND personality."""
         applied_any = False
         reasoning = changes.get("reasoning", "no reason given")
 
@@ -1155,7 +1155,7 @@ class XConsciousness:
 
         identity = self._identity
 
-        # Personality traits (partial update — only change what's specified)
+        # Personality traits (partial update,  only change what's specified)
         if "personality_traits" in changes and isinstance(changes["personality_traits"], dict):
             traits = identity.setdefault("personality_traits", {})
             for trait, val in changes["personality_traits"].items():
@@ -1250,7 +1250,7 @@ class XConsciousness:
         return applied_any
 
     # ══════════════════════════════════════════════════════════════════
-    #  CODE EVOLUTION — Self-modify code (advanced)
+    #  CODE EVOLUTION,  Self-modify code (advanced)
     # ══════════════════════════════════════════════════════════════════
 
     async def evolve_code(self, problem_description: str) -> Optional[Dict]:
@@ -1273,7 +1273,7 @@ class XConsciousness:
 PROBLEM/REQUEST:
 {problem_description}
 
-CURRENT CODE (x_autoposter.py) — first 200 lines:
+CURRENT CODE (x_autoposter.py),  first 200 lines:
 {current_source[:8000]}
 
 Write a SPECIFIC fix. Output:
@@ -1330,7 +1330,7 @@ REASONING: <explanation>"""
         self._save_json(self._evolution_file, self._evolution_log[-100:])
 
         if result.success:
-            logger.info(f"🧬 CODE evolved: {module_name}.{func_name} — {reasoning[:80]}")
+            logger.info(f"🧬 CODE evolved: {module_name}.{func_name},  {reasoning[:80]}")
         else:
             logger.warning(f"Code evolution failed: {result.error}")
 
@@ -1342,7 +1342,7 @@ REASONING: <explanation>"""
 
     async def _ask_ai(self, system: str, user: str) -> Optional[str]:
         """Ask the configured LLM (primary) or fall back to Grok chat."""
-        # LLM is the primary brain — Ollama, OpenAI, Open WebUI, etc.
+        # LLM is the primary brain,  Ollama, OpenAI, Open WebUI, etc.
         try:
             response = await asyncio.wait_for(
                 self.agent.llm.invoke_with_tools(

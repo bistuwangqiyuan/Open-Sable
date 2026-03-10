@@ -169,10 +169,10 @@ class OpenSableConfig(BaseModel):
 
     # Mobile relay
     # Sable generates a QR code on first run; the mobile app scans it once.
-    # The relay listens on 127.0.0.1 ONLY (never 0.0.0.0) — safe on a VPS.
+    # The relay listens on 127.0.0.1 ONLY (never 0.0.0.0),  safe on a VPS.
     # For remote access: either use Tailscale, or expose via Tor hidden service.
     mobile_relay_enabled: bool = False  # disabled until mobile app exists
-    mobile_relay_host: str = "127.0.0.1"  # loopback only — never 0.0.0.0
+    mobile_relay_host: str = "127.0.0.1"  # loopback only,  never 0.0.0.0
     mobile_relay_port: int = 7891  # arbitrary high port
     mobile_relay_secret: Optional[str] = None  # auto-generated if None
     mobile_relay_tor_enabled: bool = False  # expose via Tor hidden service
@@ -362,7 +362,7 @@ class OpenSableConfig(BaseModel):
             )
         if self.trading_auto_trade and not self.trading_enabled:
             logger.warning(
-                "trading_auto_trade is True but trading_enabled is False — "
+                "trading_auto_trade is True but trading_enabled is False,  "
                 "auto-trading will not activate."
             )
         return self

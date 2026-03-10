@@ -1,16 +1,16 @@
 """
-Vision Tools — autonomous screen understanding and computer control.
+Vision Tools,  autonomous screen understanding and computer control.
 
 Uses Ollama vision models (Qwen2.5-VL, LLaVA, chat-gph-vision) to "see"
 the screen, find UI elements by description and interact with them.
 
 New tools added to the agent:
-  screen_analyze   — screenshot + VLM → describe what's on screen
-  screen_find      — find UI element by text description → (x, y) coords
-  screen_click_on  — one shot: "click on Login button" → find → click
-  open_app         — open an application by name (Firefox, terminal, etc.)
-  window_list      — list all open windows
-  window_focus     — bring a window to front by title
+  screen_analyze  ,  screenshot + VLM → describe what's on screen
+  screen_find     ,  find UI element by text description → (x, y) coords
+  screen_click_on ,  one shot: "click on Login button" → find → click
+  open_app        ,  open an application by name (Firefox, terminal, etc.)
+  window_list     ,  list all open windows
+  window_focus    ,  bring a window to front by title
 """
 
 import asyncio
@@ -22,7 +22,7 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Vision model priority order — best first
+# Vision model priority order,  best first
 # The user has qwen2.5-vl-7b (redule26) and chat-gph-vision already installed
 _VISION_MODEL_PRIORITY = [
     "redule26/huihui_ai_qwen2.5-vl-7b-abliterated",
@@ -39,7 +39,7 @@ _VISION_MODEL_PRIORITY = [
 
 class VisionTools:
     """
-    Gives the agent eyes — screenshot → VLM → understand → act.
+    Gives the agent eyes,  screenshot → VLM → understand → act.
 
     All methods return {success: bool, ...} dicts, same pattern as ComputerTools.
     """
@@ -130,7 +130,7 @@ class VisionTools:
             else:
                 img = pyautogui.screenshot()
 
-            # Resize to max 1280px wide — keeps VLM fast but readable
+            # Resize to max 1280px wide,  keeps VLM fast but readable
             w, h = img.size
             if w > 1280:
                 scale = 1280 / w
@@ -224,7 +224,7 @@ class VisionTools:
                          "error message", "close button"
 
         Returns:
-            {success, x, y, description}  — (x,y) are pixel coordinates
+            {success, x, y, description} ,  (x,y) are pixel coordinates
         """
         client, model = await self._get_client()
         if not client or not model:
@@ -270,7 +270,7 @@ class VisionTools:
                 x, y = int(m.group(1)), int(m.group(2))
                 return {"success": True, "x": x, "y": y, "description": description}
 
-            # Some models return percentages — convert to pixels
+            # Some models return percentages,  convert to pixels
             pm = re.search(r"(\d+(?:\.\d+)?)\s*%[,\s]+(\d+(?:\.\d+)?)\s*%", text)
             if pm:
                 x = int(float(pm.group(1)) / 100 * sw)
@@ -332,7 +332,7 @@ class VisionTools:
         Examples: "firefox", "terminal", "vscode", "gnome-calculator", "spotify"
         """
         # Common app name → executable mappings
-        # NOTE: Firefox is intentionally excluded — always use Chromium/Chrome.
+        # NOTE: Firefox is intentionally excluded,  always use Chromium/Chrome.
         _ALIASES = {
             "browser":  ["chromium-browser", "chromium", "google-chrome"],
             "chrome":   ["chromium-browser", "chromium", "google-chrome"],
@@ -377,7 +377,7 @@ class VisionTools:
             def _looks_like_arg(s):
                 return s.startswith(("-", "/", "http", "file:")) or bool(_domain_re.match(s))
             if extra_args and not any(_looks_like_arg(a) for a in extra_args):
-                logger.debug(f"open_app: ignoring non-arg text '{' '.join(extra_args)}' — open '{app_name}' only")
+                logger.debug(f"open_app: ignoring non-arg text '{' '.join(extra_args)}',  open '{app_name}' only")
                 extra_args = []
             # Prepend https:// to bare domains so Chrome opens them as URLs
             extra_args = [
@@ -448,7 +448,7 @@ class VisionTools:
 
     async def open_url(self, url: str) -> Dict[str, Any]:
         """
-        Open a URL in Chromium (always — never Firefox or other browsers).
+        Open a URL in Chromium (always,  never Firefox or other browsers).
         Prepends https:// if no scheme is given.
         """
         if not url.startswith(("http://", "https://", "file://")):

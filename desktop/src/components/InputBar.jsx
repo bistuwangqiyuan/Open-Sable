@@ -68,7 +68,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
       parts.push(`[Attached image: ${f.name}]`)
     }
     for (const f of largeFiles) {
-      parts.push(`[Attached file: ${f.name} (${formatBytes(f.size)}) — too large to embed]`)
+      parts.push(`[Attached file: ${f.name} (${formatBytes(f.size)}),  too large to embed]`)
     }
     if (parts.length > 0) {
       text = parts.join('\n\n') + (text ? '\n\n' + text : '')

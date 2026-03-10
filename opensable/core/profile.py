@@ -1,11 +1,11 @@
 """
-Agent Profile Loader — multi-agent profile management.
+Agent Profile Loader,  multi-agent profile management.
 
 Each profile lives in ``agents/<name>/`` and contains:
-  - ``soul.md``      — the agent's immutable identity
-  - ``profile.env``  — env-var overrides (merged on top of root ``.env``)
-  - ``tools.json``   — allowlist / denylist of tool names
-  - ``data/``        — profile-specific memory, consciousness, checkpoints
+  - ``soul.md``     ,  the agent's immutable identity
+  - ``profile.env`` ,  env-var overrides (merged on top of root ``.env``)
+  - ``tools.json``  ,  allowlist / denylist of tool names
+  - ``data/``       ,  profile-specific memory, consciousness, checkpoints
 
 Usage::
 
@@ -240,7 +240,7 @@ def list_profiles() -> List[str]:
     )
 
 
-# Default profile name — used when no --profile is specified
+# Default profile name,  used when no --profile is specified
 DEFAULT_PROFILE = "sable"
 
 
@@ -270,7 +270,7 @@ def load_profile(name: str | None = None) -> AgentProfile:
         soul_text = soul_path.read_text(encoding="utf-8").strip()
         logger.info(f"[Profile:{name}] Soul loaded ({len(soul_text)} chars)")
     else:
-        logger.warning(f"[Profile:{name}] No soul.md — agent will run without a soul")
+        logger.warning(f"[Profile:{name}] No soul.md,  agent will run without a soul")
 
     # Env overrides
     env_overrides = _parse_env_file(profile_dir / "profile.env")
@@ -292,7 +292,7 @@ def load_profile(name: str | None = None) -> AgentProfile:
     )
     _active_profile = profile
     logger.info(
-        f"[Profile:{name}] loaded — "
+        f"[Profile:{name}] loaded,  "
         f"soul={bool(soul_text)}, "
         f"env_overrides={len(env_overrides)}, "
         f"tools_mode={tool_filter.mode}"

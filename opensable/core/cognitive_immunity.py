@@ -1,5 +1,5 @@
 """
-Cognitive Immune System — antibody-based failure defense.
+Cognitive Immune System,  antibody-based failure defense.
 
 WORLD FIRST: Like biological immune systems, the agent develops
 "antibodies" (pattern-action rules) against failure patterns.
@@ -105,7 +105,7 @@ class CognitiveImmunity:
         try:
             prompt = (
                 "You are an IMMUNE SYSTEM for an AI agent. A failure just occurred. "
-                "Generate an 'antibody' — a pattern-action rule to prevent this failure in the future.\n\n"
+                "Generate an 'antibody',  a pattern-action rule to prevent this failure in the future.\n\n"
                 f"Failure: {failure}\n"
                 f"Context: {context}\n\n"
                 "Respond in JSON:\n"

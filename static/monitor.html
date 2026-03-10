@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open-Sable — Agent Monitor</title>
+    <title>Open-Sable,  Agent Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -192,7 +192,7 @@ function connect() {
     ws.onclose = () => {
         state.connected = false;
         updateStatus(false);
-        addLog('error', '🔴 Disconnected — reconnecting...');
+        addLog('error', '🔴 Disconnected,  reconnecting...');
         setTimeout(connect, 3000);
     };
 
@@ -349,7 +349,7 @@ function updateStatus(connected) {
     if (connected) {
         dot.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400';
         dot.innerHTML = '<div class="pulse-ring absolute inset-0 rounded-full bg-emerald-400"></div>';
-        txt.textContent = 'Connected — Monitoring live';
+        txt.textContent = 'Connected,  Monitoring live';
         txt.className = 'text-xs text-emerald-400';
     } else {
         dot.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500';

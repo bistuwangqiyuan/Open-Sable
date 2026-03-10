@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  Open-Sable — 1-Click Setup (Linux / macOS)
+#  Open-Sable,  1-Click Setup (Linux / macOS)
 #  This script ensures Python 3.11+ exists, then delegates
 #  everything to install.py which handles the full setup.
 # ============================================================
@@ -20,7 +20,7 @@ fail()   { echo -e "  ${RED}✗${RESET} $1"; }
 
 echo -e "${BOLD}${CYAN}"
 echo "╔═══════════════════════════════════════════╗"
-echo "║     Open-Sable  —  1-Click Setup          ║"
+echo "║     Open-Sable ,   1-Click Setup          ║"
 echo "╚═══════════════════════════════════════════╝"
 echo -e "${RESET}"
 
@@ -50,7 +50,7 @@ if [ "$need_python" = true ]; then
     header "Installing Python 3..."
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS — try Homebrew first, then Xcode Command Line Tools
+        # macOS,  try Homebrew first, then Xcode Command Line Tools
         if command -v brew &>/dev/null; then
             echo "  Installing via Homebrew..."
             brew install python@3.12
@@ -68,7 +68,7 @@ if [ "$need_python" = true ]; then
             ok "Homebrew + Python installed"
         fi
     else
-        # Linux — try package manager
+        # Linux,  try package manager
         if command -v apt-get &>/dev/null; then
             echo "  Installing via apt (may ask for sudo password)..."
             sudo apt-get update -qq

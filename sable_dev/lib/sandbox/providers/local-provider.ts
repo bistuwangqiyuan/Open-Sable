@@ -8,7 +8,7 @@ import * as net from 'net';
 import { randomUUID } from 'crypto';
 import { getTemplate, DEFAULT_TEMPLATE, type TemplateId, type ProjectTemplate } from '../templates';
 
-// Global Vite error buffer — accessible by API routes
+// Global Vite error buffer,  accessible by API routes
 declare global {
   var lastViteError: { error: string; file: string; timestamp: number } | null;
 }
@@ -420,7 +420,7 @@ export class LocalProcessProvider extends SandboxProvider {
 
         // Clear error when Vite successfully recompiles (HMR update or page reload)
         if (global.lastViteError && (output.includes('hmr update') || output.includes('page reload') || output.includes('vite:hmr'))) {
-          console.log('[LocalProcessProvider] Vite recompiled successfully — clearing error');
+          console.log('[LocalProcessProvider] Vite recompiled successfully,  clearing error');
           global.lastViteError = null;
         }
 

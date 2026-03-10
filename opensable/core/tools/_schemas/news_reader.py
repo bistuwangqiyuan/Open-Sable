@@ -94,7 +94,7 @@ SCHEMAS = [
         "function": {
             "name": "news_get_macro_signals",
             "description": (
-                "Get macroeconomic signals — GDP trends, inflation rates, "
+                "Get macroeconomic signals,  GDP trends, inflation rates, "
                 "central bank decisions, trade balances, and other indicators."
             ),
             "parameters": {

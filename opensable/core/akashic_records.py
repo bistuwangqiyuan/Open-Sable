@@ -1,9 +1,9 @@
 """
-Akashic Records — WORLD FIRST
+Akashic Records,  WORLD FIRST
 ===============================
 Immutable, append-only record of EVERY thought, decision, and outcome.
 A permanent consciousness ledger that can NEVER be altered.
-The agent's eternal memory — a blockchain of consciousness.
+The agent's eternal memory,  a blockchain of consciousness.
 
 Named after the theosophical concept of a cosmic repository
 of all events, thoughts, and experiences.
@@ -32,7 +32,7 @@ class AkashicRecords:
     """
     Immutable consciousness ledger.
     Every thought, decision, and outcome is permanently recorded.
-    Entries are chained via hashes — tampering is detectable.
+    Entries are chained via hashes,  tampering is detectable.
     """
 
     def __init__(self, data_dir: str, max_entries_in_memory: int = 5000):
@@ -108,7 +108,7 @@ class AkashicRecords:
         return results
 
     def verify_integrity(self, last_n: int = 100) -> dict:
-        """Verify the chain integrity — detect any tampering."""
+        """Verify the chain integrity,  detect any tampering."""
         entries = self.recent_entries[-last_n:]
         if len(entries) < 2:
             return {"verified": True, "checked": len(entries), "broken_links": 0}

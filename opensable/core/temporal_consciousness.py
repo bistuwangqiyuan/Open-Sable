@@ -1,5 +1,5 @@
 """
-Temporal Consciousness — chronobiological awareness.
+Temporal Consciousness,  chronobiological awareness.
 
 WORLD FIRST: The agent has a biological clock. It knows time of day,
 day of week, seasonal patterns, and adapts behavior accordingly.
@@ -47,7 +47,7 @@ class CircadianProfile:
 
 
 class TemporalConsciousness:
-    """Chronobiological awareness — the agent knows what time it is and adapts."""
+    """Chronobiological awareness,  the agent knows what time it is and adapts."""
 
     def __init__(self, data_dir: Path):
         self.data_dir = Path(data_dir)

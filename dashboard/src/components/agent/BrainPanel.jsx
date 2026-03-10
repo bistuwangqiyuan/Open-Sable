@@ -1204,7 +1204,7 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
   const autonomousResearcher = data?.autonomous_researcher || null;
   const empathySynthesizer   = data?.empathy_synthesizer || null;
 
-  // v1.6 — Godlike cognitive modules
+  // v1.6,  Godlike cognitive modules
   const cognitiveTeleportation = data?.cognitive_teleportation || null;
   const ontologicalEngine      = data?.ontological_engine || null;
   const cognitiveGravity       = data?.cognitive_gravity || null;
@@ -1273,7 +1273,7 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
     return (
       <div style={{ ...s.panel, alignItems: 'center', justifyContent: 'center' }}>
         <Cpu size={40} style={{ color: 'var(--text-muted)', marginBottom: 12 }} />
-        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Disconnected — waiting for agent...</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Disconnected,  waiting for agent...</span>
       </div>
     );
   }
@@ -1603,7 +1603,7 @@ export default function BrainPanel({ ws, brainData, connected, profile, isLocal 
           {autonomousResearcher && <GenericModulePanel icon={Crosshair} title="Autonomous Researcher" color="var(--green)" data={autonomousResearcher} fields={['hypotheses','confirmed','rejected','experiments_run','findings']} />}
           {empathySynthesizer && <GenericModulePanel icon={User} title="Empathy Synthesizer" color="var(--indigo)" data={empathySynthesizer} fields={['simulations_run','accuracy']} />}
 
-          {/* v1.6 — Godlike cognitive modules */}
+          {/* v1.6,  Godlike cognitive modules */}
           {cognitiveTeleportation && <GenericModulePanel icon={Zap} title="Cognitive Teleportation" color="var(--cyan)" data={cognitiveTeleportation} fields={['total_teleports','domains_known','last_domain']} />}
           {ontologicalEngine && <GenericModulePanel icon={Globe} title="Ontological Engine" color="var(--purple)" data={ontologicalEngine} fields={['total_entities','total_relations','impossible_declared','laws_discovered']} />}
           {cognitiveGravity && <GenericModulePanel icon={Target} title="Cognitive Gravity" color="var(--orange)" data={cognitiveGravity} fields={['total_bodies','collisions','black_holes','nebulae']} />}
@@ -1677,7 +1677,7 @@ function SelfBenchmarkPanel({ benchmark }) {
 
   return (
     <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-      <div style={s.sectionTitle}><BarChart3 size={12} /> Self-Benchmark — Autonomy Score</div>
+      <div style={s.sectionTitle}><BarChart3 size={12} /> Self-Benchmark,  Autonomy Score</div>
 
       {/* Big score */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16 }}>
@@ -1732,7 +1732,7 @@ function DeepPlannerPanel({ planner }) {
 
   return (
     <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-      <div style={s.sectionTitle}><Route size={12} /> Deep Planner — Multi-Step Plans</div>
+      <div style={s.sectionTitle}><Route size={12} /> Deep Planner,  Multi-Step Plans</div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
         <_Stat label="Plans" value={totalPlans} color="#7c3aed" />
@@ -1914,7 +1914,7 @@ function UltraLtmPanel({ ltm }) {
         </div>
       )}
 
-      {totalPatterns === 0 && <div style={s.empty}>No patterns consolidated yet — needs more operating time</div>}
+      {totalPatterns === 0 && <div style={s.empty}>No patterns consolidated yet,  needs more operating time</div>}
     </div>
   );
 }
@@ -2090,7 +2090,7 @@ function ConnectomeMonitor2D({ connectome }) {
           </svg>
         </div>
 
-        {/* Right panel — Region details + connection table */}
+        {/* Right panel,  Region details + connection table */}
         <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* Region cards */}
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Brain Regions</div>
@@ -2427,7 +2427,7 @@ function EthicalReasonerPanel({ data }) {
 }
 
 // ── Generic Module Panel (v1.5 World-First) ──────────────────────────
-// ── Emotional Contagion Panel (custom — shows emotion bars) ──────────
+// ── Emotional Contagion Panel (custom,  shows emotion bars) ──────────
 function EmotionalContagionPanel({ data }) {
   if (!data) return null;
   const emotions = data.emotions || {};

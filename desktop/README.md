@@ -52,7 +52,7 @@ When running multiple agent profiles, each profile uses a different `WEBCHAT_POR
 desktop/
 ├── electron/          # Electron main process (main.cjs)
 ├── src/               # React app source
-│   ├── hooks/         # useSable.js — WebSocket + zustand store
+│   ├── hooks/         # useSable.js,  WebSocket + zustand store
 │   ├── components/    # Chat UI components
 │   └── App.jsx        # Root component
 ├── public/            # Static assets

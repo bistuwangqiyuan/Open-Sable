@@ -6,16 +6,16 @@ Enables distributing CPU-intensive or long-running tasks across
 multiple workers with result collection, retry logic, and monitoring.
 
 Features:
-  1. Task submission — Push tasks to named queues with priority
-  2. Worker pattern — Process tasks with configurable concurrency
-  3. Result collection — Retrieve results by task ID
-  4. Retry logic — Auto-retry failed tasks with exponential backoff
-  5. Priority queues — High/medium/low priority routing
-  6. Task routing — Route to specific workers by capability
-  7. Dead letter queue — Failed tasks after max retries
-  8. Progress tracking — Real-time task progress updates
-  9. Queue monitoring — Depth, throughput, error rates
-  10. Graceful shutdown — Finish in-progress tasks before stopping
+  1. Task submission,  Push tasks to named queues with priority
+  2. Worker pattern,  Process tasks with configurable concurrency
+  3. Result collection,  Retrieve results by task ID
+  4. Retry logic,  Auto-retry failed tasks with exponential backoff
+  5. Priority queues,  High/medium/low priority routing
+  6. Task routing,  Route to specific workers by capability
+  7. Dead letter queue,  Failed tasks after max retries
+  8. Progress tracking,  Real-time task progress updates
+  9. Queue monitoring,  Depth, throughput, error rates
+  10. Graceful shutdown,  Finish in-progress tasks before stopping
 """
 import json
 import logging

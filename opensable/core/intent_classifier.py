@@ -1,27 +1,27 @@
 """
-IntentClassifier — Fast, zero-LLM intent detection for SableCore.
+IntentClassifier,  Fast, zero-LLM intent detection for SableCore.
 
 Exactly what GitHub Copilot does internally: before answering, classify
 the message to decide WHAT to do and WHERE to look.
 
 Intent hierarchy (checked in order):
-  code_question      — "why does X fail", "how does Y work", "fix the bug"
-  self_modify        — "add feature to yourself", "implement RAG in your code"
-  desktop_screenshot — "take a screenshot", "what's on screen"
-  desktop_type       — "type hello world", "write this text"
-  desktop_click      — "click on X", "click the submit button"
-  desktop_hotkey     — "press Ctrl+C", "alt+tab", "keyboard shortcut"
-  window_list        — "list open windows", "what's running"
-  window_focus       — "focus on terminal", "switch to chrome"
-  navigate_url       — "go to youtube.com", "open https://..."
-  open_app           — "open chrome", "launch terminal"
-  system_command     — "run ls -la", "execute bash command"
-  file_operation     — "read file", "list files in /home"
-  image_request      — "analyze screenshot", "what do you see"
-  web_search         — "search for", "what's the weather", "price of BTC"
-  trading            — "buy BTC", "portfolio", "price of ETH"
-  social_media       — "tweet", "post to instagram", "like that"
-  general_chat       — fallback
+  code_question     ,  "why does X fail", "how does Y work", "fix the bug"
+  self_modify       ,  "add feature to yourself", "implement RAG in your code"
+  desktop_screenshot,  "take a screenshot", "what's on screen"
+  desktop_type      ,  "type hello world", "write this text"
+  desktop_click     ,  "click on X", "click the submit button"
+  desktop_hotkey    ,  "press Ctrl+C", "alt+tab", "keyboard shortcut"
+  window_list       ,  "list open windows", "what's running"
+  window_focus      ,  "focus on terminal", "switch to chrome"
+  navigate_url      ,  "go to youtube.com", "open https://..."
+  open_app          ,  "open chrome", "launch terminal"
+  system_command    ,  "run ls -la", "execute bash command"
+  file_operation    ,  "read file", "list files in /home"
+  image_request     ,  "analyze screenshot", "what do you see"
+  web_search        ,  "search for", "what's the weather", "price of BTC"
+  trading           ,  "buy BTC", "portfolio", "price of ETH"
+  social_media      ,  "tweet", "post to instagram", "like that"
+  general_chat      ,  fallback
 
 Returns IntentResult with:
   intent, confidence, entities (extracted values), needs_code_context, needs_web_search

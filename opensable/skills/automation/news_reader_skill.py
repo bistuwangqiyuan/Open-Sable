@@ -1,14 +1,14 @@
 """
-News Reader Skill — fetches world news from news.zunvra.com (WorldMonitor)
+News Reader Skill,  fetches world news from news.zunvra.com (WorldMonitor)
 
 Endpoints used:
-  POST /api/intelligence/v1/get-country-intel-brief   — country OSINT briefs
-  POST /api/intelligence/v1/search-gdelt-documents     — GDELT news search
-  POST /api/conflict/v1/list-acled-events              — armed conflict events
-  POST /api/economic/v1/get-macro-signals              — macroeconomic signals
-  POST /api/market/v1/list-market-quotes               — stock market quotes
-  POST /api/market/v1/list-crypto-quotes               — crypto prices
-  GET  /api/rss-proxy?url=...                          — proxied RSS feeds
+  POST /api/intelligence/v1/get-country-intel-brief  ,  country OSINT briefs
+  POST /api/intelligence/v1/search-gdelt-documents    ,  GDELT news search
+  POST /api/conflict/v1/list-acled-events             ,  armed conflict events
+  POST /api/economic/v1/get-macro-signals             ,  macroeconomic signals
+  POST /api/market/v1/list-market-quotes              ,  stock market quotes
+  POST /api/market/v1/list-crypto-quotes              ,  crypto prices
+  GET  /api/rss-proxy?url=...                         ,  proxied RSS feeds
 
 Results are cached to data/news_cache.json so the agent doesn't hammer
 the API every tick.  Cache TTL is configurable (default 30 min).
@@ -146,7 +146,7 @@ class NewsReaderSkill:
             return await resp.text()
 
     # ══════════════════════════════════════════════════════════════════
-    #  PUBLIC API — called by tool bridge or autonomous loop
+    #  PUBLIC API,  called by tool bridge or autonomous loop
     # ══════════════════════════════════════════════════════════════════
 
     async def get_world_news(self, max_items: int = 20) -> List[Dict]:
@@ -347,7 +347,7 @@ class NewsReaderSkill:
             parts.append("\n── CONFLICT EVENTS ──")
             for c in conflicts:
                 parts.append(
-                    f"  • {c.get('country','')} — {c.get('type','')}: "
+                    f"  • {c.get('country','')},  {c.get('type','')}: "
                     f"{c.get('notes','')[:100]}"
                 )
 

@@ -1,8 +1,8 @@
 """
-Multi-Modal Engine — WORLD FIRST
+Multi-Modal Engine,  WORLD FIRST
 Real multi-modal perception: image analysis, audio processing,
 video understanding, and cross-modal generation.
-Not just text — sees, hears, and creates across modalities.
+Not just text,  sees, hears, and creates across modalities.
 """
 import json
 import logging
@@ -107,7 +107,7 @@ class MultiModalEngine:
                         )
                         result["description"] = analysis
             except ImportError:
-                result["note"] = "PIL not available — basic analysis only"
+                result["note"] = "PIL not available,  basic analysis only"
 
             # If LLM available and supports base64 vision
             if llm and not result.get("description"):
@@ -205,7 +205,7 @@ class MultiModalEngine:
                             result["codec"] = stream.get("codec_name", "unknown")
                             break
             except Exception:
-                result["note"] = "ffprobe not available — basic analysis only"
+                result["note"] = "ffprobe not available,  basic analysis only"
 
             self.total_video_processed += 1
             perception = ModalPerception(

@@ -1,11 +1,11 @@
 """
-Morphogenetic Field — WORLD FIRST
+Morphogenetic Field,  WORLD FIRST
 ===================================
 Template patterns that guide the formation of new capabilities.
 When the agent needs a new ability, it grows one following the
 structural blueprint of its most successful existing capabilities.
 
-Like biological morphogenesis — new organs grow following
+Like biological morphogenesis,  new organs grow following
 the field patterns of existing ones. No AI does this.
 """
 
@@ -84,7 +84,7 @@ class MorphogeneticField:
 
         if llm:
             prompt = (
-                f"MORPHOGENETIC GROWTH — grow a new capability from a template:\n\n"
+                f"MORPHOGENETIC GROWTH,  grow a new capability from a template:\n\n"
                 f"Need: {need[:200]}\n"
                 f"Template source: {best_template.source_capability}\n"
                 f"Template structure: {json.dumps(best_template.structure)}\n\n"

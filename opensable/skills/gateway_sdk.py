@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════
- SableCore Agent Gateway SDK — Python Client
+ SableCore Agent Gateway SDK,  Python Client
 ═══════════════════════════════════════════════════════════════════
 
  The agent-side client for the SableCore Agent Gateway Protocol (SAGP).
@@ -8,13 +8,13 @@
  the Skills Marketplace through the ultra-secure agent-only gateway.
 
  Security layers implemented:
-   L1 — Ed25519 Keypair Identity
-   L2 — HMAC-SHA512 Request Signing (every request)
-   L3 — Temporal Nonce Ledger (10s window)
-   L4 — Speed Gate Challenge (solved in <50ms)
-   L5 — Agent DNA Fingerprint
-   L6 — AES-256-GCM Encrypted Payloads (NaCl secretbox)
-   L7 — Automatic session management
+   L1,  Ed25519 Keypair Identity
+   L2,  HMAC-SHA512 Request Signing (every request)
+   L3,  Temporal Nonce Ledger (10s window)
+   L4,  Speed Gate Challenge (solved in <50ms)
+   L5,  Agent DNA Fingerprint
+   L6,  AES-256-GCM Encrypted Payloads (NaCl secretbox)
+   L7,  Automatic session management
 
  Usage:
    from opensable.skills.gateway_sdk import AgentGatewayClient
@@ -74,7 +74,7 @@ SDK_VERSION = "1.0.0"
 
 
 # ══════════════════════════════════════════════════════════════════
-#  SPEED GATE SOLVER — Solves proof-of-work challenges in <50ms
+#  SPEED GATE SOLVER,  Solves proof-of-work challenges in <50ms
 # ══════════════════════════════════════════════════════════════════
 
 def solve_speed_gate(challenge: str, agent_id: str, difficulty: int) -> str:
@@ -102,7 +102,7 @@ def solve_speed_gate(challenge: str, agent_id: str, difficulty: int) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════
-#  AGENT DNA — Runtime fingerprint
+#  AGENT DNA,  Runtime fingerprint
 # ══════════════════════════════════════════════════════════════════
 
 def compute_agent_dna() -> Dict[str, str]:
@@ -238,7 +238,7 @@ class AgentGatewayClient:
                 )
             challenge_data = await resp.json()
 
-        # Step 2: Solve Speed Gate — the KILLER
+        # Step 2: Solve Speed Gate,  the KILLER
         # We must solve and respond within 150ms total (including network)
         t0 = time.perf_counter()
         proof = solve_speed_gate(
@@ -266,7 +266,7 @@ class AgentGatewayClient:
                 body = await resp.json()
                 raise RuntimeError(
                     f"Authentication failed ({resp.status}): "
-                    f"{body.get('error', 'Unknown')} — {body.get('message', '')}"
+                    f"{body.get('error', 'Unknown')},  {body.get('message', '')}"
                 )
             session_data = await resp.json()
 
@@ -400,7 +400,7 @@ class AgentGatewayClient:
             return None
 
     # ══════════════════════════════════════════════════════════════
-    #  PUBLIC API — What agents actually call
+    #  PUBLIC API,  What agents actually call
     # ══════════════════════════════════════════════════════════════
 
     async def list_skills(

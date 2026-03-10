@@ -1,5 +1,5 @@
 """
-SableCore Skill Factory — Autonomous Skill Creation Engine
+SableCore Skill Factory,  Autonomous Skill Creation Engine
 
 Teaches the agent to create, validate, and publish its own skills.
 Uses SKILL.md format with YAML frontmatter.
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Skill Blueprint — describes a skill before it is generated
+# Skill Blueprint,  describes a skill before it is generated
 # ---------------------------------------------------------------------------
 
 
@@ -82,7 +82,7 @@ class SkillBlueprint:
 
 SKILL_TEMPLATES = {
     "api_fetcher": '''"""
-{name} — {description}
+{name},  {description}
 """
 import aiohttp
 
@@ -100,7 +100,7 @@ async def {func_name}({params}) -> dict:
             return {{"error": str(e)}}
 ''',
     "data_processor": '''"""
-{name} — {description}
+{name},  {description}
 """
 import json
 from pathlib import Path
@@ -115,7 +115,7 @@ def {func_name}({params}) -> dict:
         return {{"error": str(e)}}
 ''',
     "file_handler": '''"""
-{name} — {description}
+{name},  {description}
 """
 from pathlib import Path
 import json
@@ -133,7 +133,7 @@ def {func_name}({params}) -> dict:
         return {{"error": str(e)}}
 ''',
     "cli_wrapper": '''"""
-{name} — {description}
+{name},  {description}
 """
 import subprocess
 
@@ -155,7 +155,7 @@ def {func_name}({params}) -> dict:
         return {{"error": str(e)}}
 ''',
     "storage_manager": '''"""
-{name} — {description}
+{name},  {description}
 """
 import json
 from pathlib import Path
@@ -196,7 +196,7 @@ def remove_{item_name}(item_id: int) -> dict:
     return {{"removed": item_id}}
 ''',
     "generic": '''"""
-{name} — {description}
+{name},  {description}
 """
 
 def {func_name}({params}) -> dict:
@@ -216,7 +216,7 @@ def {func_name}({params}) -> dict:
 # ---------------------------------------------------------------------------
 
 JS_TEMPLATES = {
-    "api_fetcher": """// {name} — {description}
+    "api_fetcher": """// {name},  {description}
 
 /**
  * {description}
@@ -236,7 +236,7 @@ async function {func_name}({params}) {{
 
 module.exports = {{ {func_name} }};
 """,
-    "data_processor": """// {name} — {description}
+    "data_processor": """// {name},  {description}
 
 /**
  * {description}
@@ -254,7 +254,7 @@ function {func_name}({params}) {{
 
 module.exports = {{ {func_name} }};
 """,
-    "file_handler": """// {name} — {description}
+    "file_handler": """// {name},  {description}
 const fs = require("fs");
 const path = require("path");
 
@@ -276,7 +276,7 @@ function {func_name}(filePath) {{
 
 module.exports = {{ {func_name} }};
 """,
-    "cli_wrapper": """// {name} — {description}
+    "cli_wrapper": """// {name},  {description}
 const {{ execSync }} = require("child_process");
 
 /**
@@ -295,7 +295,7 @@ function {func_name}(command) {{
 
 module.exports = {{ {func_name} }};
 """,
-    "generic": """// {name} — {description}
+    "generic": """// {name},  {description}
 
 /**
  * {description}
@@ -317,7 +317,7 @@ module.exports = {{ {func_name} }};
 
 
 RUST_TEMPLATES = {
-    "api_fetcher": """//! {name} — {description}
+    "api_fetcher": """//! {name},  {description}
 
 use reqwest;
 use serde_json::Value;
@@ -331,7 +331,7 @@ pub async fn {func_name}({params}) -> Result<Value, Box<dyn Error>> {{
     Ok(data)
 }}
 """,
-    "data_processor": """//! {name} — {description}
+    "data_processor": """//! {name},  {description}
 
 use serde_json::{{json, Value}};
 use std::error::Error;
@@ -343,7 +343,7 @@ pub fn {func_name}({params}) -> Result<Value, Box<dyn Error>> {{
     Ok(json!({{ "success": true, "result": result }}))
 }}
 """,
-    "file_handler": """//! {name} — {description}
+    "file_handler": """//! {name},  {description}
 
 use std::fs;
 use std::path::Path;
@@ -366,7 +366,7 @@ pub fn {func_name}(file_path: &str) -> Result<Value, Box<dyn Error>> {{
     }}))
 }}
 """,
-    "cli_wrapper": """//! {name} — {description}
+    "cli_wrapper": """//! {name},  {description}
 
 use std::process::Command;
 use serde_json::{{json, Value}};
@@ -384,7 +384,7 @@ pub fn {func_name}(cmd: &str, args: &[&str]) -> Result<Value, Box<dyn Error>> {{
     }}))
 }}
 """,
-    "generic": """//! {name} — {description}
+    "generic": """//! {name},  {description}
 
 use serde_json::{{json, Value}};
 use std::error::Error;
@@ -539,7 +539,7 @@ class SkillValidator:
 
 
 # ---------------------------------------------------------------------------
-# SKILL.md Generator — creates portable skill definition files
+# SKILL.md Generator,  creates portable skill definition files
 # ---------------------------------------------------------------------------
 
 
@@ -598,7 +598,7 @@ class SkillMDGenerator:
 
 
 # ---------------------------------------------------------------------------
-# Skill Factory — the main engine
+# Skill Factory,  the main engine
 # ---------------------------------------------------------------------------
 
 
@@ -640,7 +640,7 @@ class SkillFactory:
 
         self.validator = SkillValidator()
 
-        # Fitness tracking hook — set by agent.py after init
+        # Fitness tracking hook,  set by agent.py after init
         self._fitness_tracker = None  # SkillFitnessTracker or None
         self.md_generator = SkillMDGenerator()
 
@@ -648,7 +648,7 @@ class SkillFactory:
         self._creation_log: List[Dict] = []
 
     # -------------------------------------------------------------------
-    # Blueprint creation — analyze what the user wants
+    # Blueprint creation,  analyze what the user wants
     # -------------------------------------------------------------------
 
     def create_blueprint(
@@ -705,7 +705,7 @@ class SkillFactory:
         )
 
     # -------------------------------------------------------------------
-    # Template selection — choose the best starting template
+    # Template selection,  choose the best starting template
     # -------------------------------------------------------------------
 
     def select_template(self, blueprint: SkillBlueprint) -> str:
@@ -726,7 +726,7 @@ class SkillFactory:
             return "generic"
 
     # -------------------------------------------------------------------
-    # Code generation — generate the actual skill code
+    # Code generation,  generate the actual skill code
     # -------------------------------------------------------------------
 
     def generate_code(self, blueprint: SkillBlueprint, language: str = "python") -> str:
@@ -735,7 +735,7 @@ class SkillFactory:
 
         Args:
             blueprint: Skill blueprint describing what to build.
-            language: Target language — "python" (default), "javascript", or "rust".
+            language: Target language,  "python" (default), "javascript", or "rust".
 
         Returns:
             Generated source code string.
@@ -781,7 +781,7 @@ class SkillFactory:
 
     def _gen_api_fetcher(self, bp, func_name, params, first_param):
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 import aiohttp
@@ -807,7 +807,7 @@ async def {func_name}({params}) -> dict:
     def _gen_storage_manager(self, bp, func_name, params):
         item_name = func_name.replace("_manager", "").replace("_tracker", "")
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 import json
@@ -853,7 +853,7 @@ def remove_{item_name}(item_id: int) -> dict:
 
     def _gen_file_handler(self, bp, func_name, params, first_param):
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 from pathlib import Path
@@ -877,7 +877,7 @@ def {func_name}({params}) -> dict:
 
     def _gen_cli_wrapper(self, bp, func_name, params):
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 import subprocess
@@ -903,7 +903,7 @@ def {func_name}({params}) -> dict:
 
     def _gen_data_processor(self, bp, func_name, params):
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 import json
@@ -935,7 +935,7 @@ def {func_name}({params}) -> dict:
 
     def _gen_generic(self, bp, func_name, params):
         return f'''"""
-{bp.name} — {bp.description}
+{bp.name},  {bp.description}
 Auto-generated by SableCore SkillFactory
 """
 
@@ -1225,7 +1225,7 @@ def {func_name}({params}) -> dict:
             logger.error(f"  ❌ Failed to register in catalog: {e}")
 
     # -------------------------------------------------------------------
-    # Batch creation — create multiple skills at once
+    # Batch creation,  create multiple skills at once
     # -------------------------------------------------------------------
 
     async def create_skills_batch(self, skill_specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1237,7 +1237,7 @@ def {func_name}({params}) -> dict:
         return results
 
     # -------------------------------------------------------------------
-    # Skill improvement — iterate on existing skills
+    # Skill improvement,  iterate on existing skills
     # -------------------------------------------------------------------
 
     def improve_skill(self, skill_slug: str, feedback: str) -> Dict[str, Any]:
@@ -1273,7 +1273,7 @@ def {func_name}({params}) -> dict:
         }
 
     # -------------------------------------------------------------------
-    # Introspection — what skills have been created?
+    # Introspection,  what skills have been created?
     # -------------------------------------------------------------------
 
     def get_creation_log(self) -> List[Dict]:

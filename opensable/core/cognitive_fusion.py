@@ -1,5 +1,5 @@
 """
-Cognitive Fusion Reactor — cross-domain creative pollination.
+Cognitive Fusion Reactor,  cross-domain creative pollination.
 
 WORLD FIRST: Takes solutions/patterns from one domain and applies them
 to completely unrelated domains. Like biomimicry but for any knowledge.

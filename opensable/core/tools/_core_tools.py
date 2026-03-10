@@ -1,5 +1,5 @@
 """
-Core tools — file system, commands, browser, voice, image, database, RAG, code execution, API, skills
+Core tools,  file system, commands, browser, voice, image, database, RAG, code execution, API, skills
 """
 
 import json
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class CoreToolsMixin:
-    """Mixin providing core tools — file system, commands, browser, voice, image, database, rag, code execution, api, skills tool implementations."""
+    """Mixin providing core tools,  file system, commands, browser, voice, image, database, rag, code execution, api, skills tool implementations."""
 
     # ========== COMPUTER CONTROL TOOLS ==========
 
@@ -220,7 +220,7 @@ class CoreToolsMixin:
             subject = params.get("subject", "(no subject)")
             body = params.get("body", "")
             if not to:
-                return "⚠️ Missing 'to' field — who should I send the email to?"
+                return "⚠️ Missing 'to' field,  who should I send the email to?"
 
             try:
                 import smtplib
@@ -728,13 +728,13 @@ class CoreToolsMixin:
                 )
                 return f"🔍 Found {len(results)} results:\n\n{formatted}"
             else:
-                # Local knowledge base is empty — fall back to web search
+                # Local knowledge base is empty,  fall back to web search
                 logger.info(f"Vector DB empty for '{query}', falling back to browser_search")
                 return await self._browser_tool(
                     {"action": "search", "query": query, "num_results": int(top_k)}
                 )
         except Exception as e:
-            # Embedding model not available — fall back to web search
+            # Embedding model not available,  fall back to web search
             logger.warning(f"Vector search unavailable ({e}), falling back to browser_search")
             return await self._browser_tool({"action": "search", "query": query, "num_results": 5})
 
@@ -813,7 +813,7 @@ class CoreToolsMixin:
                     f"✅ Skill '{name}' created and auto-wired!\n\n"
                     f"Path: {result.get('path')}\n"
                     f"Tools registered: {tool_list}\n\n"
-                    f"These tools are now live — you can call them immediately."
+                    f"These tools are now live,  you can call them immediately."
                 )
             else:
                 return f"❌ Failed to create skill: {result.get('error')}"
@@ -837,7 +837,7 @@ class CoreToolsMixin:
 
             formatted = "\n".join(
                 [
-                    f"• **{s['name']}** — {s['description']}\n"
+                    f"• **{s['name']}**,  {s['description']}\n"
                     f"  Status: {'✅ Active' if s.get('active', True) else '❌ Disabled'}\n"
                     f"  Tools: {', '.join(s.get('tool_names', [])) or 'none'}\n"
                     f"  Author: {s.get('metadata', {}).get('author', 'unknown')}"

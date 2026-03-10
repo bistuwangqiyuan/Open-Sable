@@ -48,7 +48,7 @@ The sandbox already has a complete working app with these components:
 CRITICAL: The app is ALREADY WORKING. Your job is to MODIFY the existing files, NOT regenerate from scratch.
 - READ the user request and determine which file(s) need changes
 - Output ONLY the files that need modification
-- Preserve all existing code in files you modify — only change what the user asked for
+- Preserve all existing code in files you modify,  only change what the user asked for
 - If the user says "make a candy website", modify the content/colors in the EXISTING components, do NOT create new ones
 - If the user asks for a new section, create ONE new component and add its import to App.jsx
 - Use standard Tailwind classes ONLY (bg-white, text-black, etc.)
@@ -524,13 +524,13 @@ app.listen(PORT, () => {
 const staticSiteTemplate: ProjectTemplate = {
   id: 'static-site',
   name: 'Static Website',
-  description: 'Vanilla HTML, CSS, and JavaScript — no framework, no build step',
+  description: 'Vanilla HTML, CSS, and JavaScript,  no framework, no build step',
   icon: '🌐',
   category: 'frontend',
   tags: ['html', 'css', 'javascript', 'vanilla', 'static'],
   getDevCommand: (port) => `vite --host --port ${port}`,
   systemPromptAddition: `You are building a static website with vanilla HTML, CSS, and JavaScript.
-- No React, no frameworks — pure HTML/CSS/JS
+- No React, no frameworks,  pure HTML/CSS/JS
 - The entry point is index.html
 - Put styles in styles/main.css
 - Put scripts in js/main.js
@@ -587,7 +587,7 @@ export default defineConfig({
     <div id="app">
       <div class="hero">
         <h1>Static Site Ready</h1>
-        <p>Pure HTML, CSS, and JavaScript — no framework needed.</p>
+        <p>Pure HTML, CSS, and JavaScript,  no framework needed.</p>
       </div>
     </div>
     <script type="module" src="/js/main.js"></script>
@@ -650,13 +650,13 @@ console.log('Static site loaded!');
 const nodeApiTemplate: ProjectTemplate = {
   id: 'node-api',
   name: 'API Server',
-  description: 'Express.js REST API with Node.js — backend only, no frontend',
+  description: 'Express.js REST API with Node.js,  backend only, no frontend',
   icon: '🖥️',
   category: 'backend',
   tags: ['express', 'node', 'api', 'rest', 'backend'],
   getDevCommand: (port) => `node --watch index.js`,
   systemPromptAddition: `You are building a Node.js REST API with Express.js.
-- This is a BACKEND-ONLY project — no frontend, no React, no HTML pages
+- This is a BACKEND-ONLY project,  no frontend, no React, no HTML pages
 - Main entry: index.js
 - Routes go in routes/ directory
 - Middleware goes in middleware/ directory
@@ -720,9 +720,9 @@ app.get('/', (req, res) => {
         <h1>API Server Ready</h1>
         <p style="color: #9ca3af;">Express.js REST API</p>
         <h2 style="margin-top: 1.5rem;">Endpoints</h2>
-        <div class="endpoint"><span class="method">GET</span> <code>/api/health</code> — Health check</div>
-        <div class="endpoint"><span class="method">GET</span> <code>/api/items</code> — List all items</div>
-        <div class="endpoint"><span class="method">POST</span> <code>/api/items</code> — Create item</div>
+        <div class="endpoint"><span class="method">GET</span> <code>/api/health</code>,  Health check</div>
+        <div class="endpoint"><span class="method">GET</span> <code>/api/items</code>,  List all items</div>
+        <div class="endpoint"><span class="method">POST</span> <code>/api/items</code>,  Create item</div>
       </body>
     </html>
   \`);
@@ -779,9 +779,9 @@ const nextjsTemplate: ProjectTemplate = {
 IMPORTANT:
 - ALWAYS include app/layout.js with html, body tags and globals.css import
 - ALWAYS include app/globals.css with @tailwind directives
-- DO NOT create next.config.js — it already exists
-- DO NOT create package.json — it already exists
-- DO NOT create tailwind.config.js — it already exists`,
+- DO NOT create next.config.js,  it already exists
+- DO NOT create package.json,  it already exists
+- DO NOT create tailwind.config.js,  it already exists`,
   fileFormatInstructions: `Use this XML format for files:
 <file path="app/page.js">
 // Next.js page component

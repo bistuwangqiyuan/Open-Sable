@@ -344,7 +344,7 @@ def test_onboarding_wizard():
 
 
 def test_skill_factory():
-    """Test 9: Skill Factory — Autonomous Skill Creation Engine"""
+    """Test 9: Skill Factory,  Autonomous Skill Creation Engine"""
     print("\n🏭 TEST 9: Skill Factory")
     print("=" * 60)
 
@@ -377,23 +377,23 @@ def test_skill_factory():
         assert len(code) > 100
         print(f"✅ Code generation: {len(code)} chars, has function definition")
 
-        # 4. Validator — syntax
+        # 4. Validator,  syntax
         syntax = SkillValidator.validate_syntax(code)
         assert syntax["valid"] is True
         print("✅ Syntax validation passed")
 
-        # 5. Validator — safety
+        # 5. Validator,  safety
         safety = SkillValidator.validate_safety(code)
         assert safety["safe"] is True
         print("✅ Safety validation passed (no dangerous patterns)")
 
-        # 6. Validator — structure
+        # 6. Validator,  structure
         structure = SkillValidator.validate_structure(code)
         assert structure["has_functions"] is True
         assert "url_shortener" in structure["functions"]
         print(f"✅ Structure validation: functions = {structure['functions']}")
 
-        # 7. Validator — sandbox
+        # 7. Validator,  sandbox
         sandbox = SkillValidator.run_sandbox_test(code)
         assert sandbox["loadable"] is True
         print("✅ Sandbox test passed (code loads cleanly)")

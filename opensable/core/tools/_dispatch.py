@@ -5,7 +5,7 @@ Maps schema_name → (internal_tool_name, argument_mapper).
 
 from typing import Dict, Tuple, Callable, Any
 
-# Passthrough mapper — arguments are forwarded as-is
+# Passthrough mapper,  arguments are forwarded as-is
 _p = lambda a: a  # noqa: E731
 
 
@@ -243,7 +243,7 @@ SCHEMA_TO_TOOL: Dict[str, Tuple[str, Callable]] = {
     "followup_summary": ("followup_summary", _p),
 }
 
-# Genelia v2 (Image Generation) — optional private skill
+# Genelia v2 (Image Generation),  optional private skill
 try:
     import importlib
     importlib.import_module("opensable.skills.media.genelia_skill")

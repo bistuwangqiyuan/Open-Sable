@@ -1,5 +1,5 @@
 """
-Momentum Strategy — Trend-following using RSI, MACD, and volume.
+Momentum Strategy,  Trend-following using RSI, MACD, and volume.
 
 Buys when momentum is strong and rising, sells when it weakens.
 Best for: crypto, memecoins, trending assets.
@@ -130,7 +130,7 @@ class MomentumStrategy(Strategy):
         if rsi > self.rsi_buy_threshold and rsi < self.rsi_overbought:
             rsi_score = min((rsi - 50) / 30, 1.0)  # Higher RSI = stronger momentum
         elif rsi >= self.rsi_overbought:
-            rsi_score = -0.5  # Overbought — potential reversal
+            rsi_score = -0.5  # Overbought,  potential reversal
 
         macd_score = 0.0
         if histogram > 0:

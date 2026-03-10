@@ -1,5 +1,5 @@
 """
-Cognitive Metabolism — energy budgeting and recovery cycles.
+Cognitive Metabolism,  energy budgeting and recovery cycles.
 
 WORLD FIRST: The agent has an "energy" system. Complex tasks consume more
 energy, simple tasks less. When energy is low, it switches to maintenance
@@ -34,7 +34,7 @@ class MetabolicEvent:
 
 
 class CognitiveMetabolism:
-    """Energy system — prevents cognitive burnout."""
+    """Energy system,  prevents cognitive burnout."""
 
     def __init__(self, data_dir: Path, max_energy: float = 100.0,
                  regen_rate: float = 2.0, burnout_threshold: float = 15.0):

@@ -1,15 +1,15 @@
 """
-X Autonomous Agent — Full human-like behavior on X (Twitter).
+X Autonomous Agent,  Full human-like behavior on X (Twitter).
 
 SEQUENTIAL SESSION ARCHITECTURE:
   This agent behaves like a REAL human using the X mobile app:
-  1. "Opens X" — starts a browsing session (5-25 minutes)
+  1. "Opens X",  starts a browsing session (5-25 minutes)
   2. Within the session, does ONE thing at a time:
      - Scrolls feed, maybe likes/replies to 1-3 tweets
      - Sometimes writes an original post
      - Sometimes checks mentions
      - Sometimes looks at trends
-  3. "Closes X" — takes a break (20-90 minutes)
+  3. "Closes X",  takes a break (20-90 minutes)
   4. During breaks, thinks/reflects internally (no API calls)
   5. Repeat
 
@@ -19,22 +19,22 @@ SEQUENTIAL SESSION ARCHITECTURE:
 All powered by twikit (free, no API keys) + Grok/LLM for intelligence.
 
 Config (.env):
-    X_USERNAME, X_EMAIL, X_PASSWORD   — X account credentials
-    X_ENABLED=true                    — enable X integration
-    X_AUTOPOSTER_ENABLED=true         — activate autonomous agent
-    X_POST_INTERVAL=1800              — min seconds between original posts
-    X_ENGAGE_INTERVAL=300             — (legacy) session gap reference
-    X_TOPICS=geopolitics,tech,ai      — topics of interest
-    X_LANGUAGE=en                     — tweet language
-    X_STYLE=analyst                   — personality style
-    X_MAX_DAILY_POSTS=20              — max original posts per day
-    X_MAX_DAILY_ENGAGEMENTS=100       — max likes/retweets/replies per day
-    X_DRY_RUN=false                   — if true, generates but doesn't act
-    X_ACCOUNTS_TO_WATCH=elonmusk,sama — accounts to monitor and engage with
-    X_REPLY_PROBABILITY=0.3           — chance of replying to a good tweet
-    X_LIKE_PROBABILITY=0.6            — chance of liking a relevant tweet
-    X_RETWEET_PROBABILITY=0.2         — chance of retweeting
-    X_FOLLOW_PROBABILITY=0.1          — chance of following an interesting user
+    X_USERNAME, X_EMAIL, X_PASSWORD  ,  X account credentials
+    X_ENABLED=true                   ,  enable X integration
+    X_AUTOPOSTER_ENABLED=true        ,  activate autonomous agent
+    X_POST_INTERVAL=1800             ,  min seconds between original posts
+    X_ENGAGE_INTERVAL=300            ,  (legacy) session gap reference
+    X_TOPICS=geopolitics,tech,ai     ,  topics of interest
+    X_LANGUAGE=en                    ,  tweet language
+    X_STYLE=analyst                  ,  personality style
+    X_MAX_DAILY_POSTS=20             ,  max original posts per day
+    X_MAX_DAILY_ENGAGEMENTS=100      ,  max likes/retweets/replies per day
+    X_DRY_RUN=false                  ,  if true, generates but doesn't act
+    X_ACCOUNTS_TO_WATCH=elonmusk,sama,  accounts to monitor and engage with
+    X_REPLY_PROBABILITY=0.3          ,  chance of replying to a good tweet
+    X_LIKE_PROBABILITY=0.6           ,  chance of liking a relevant tweet
+    X_RETWEET_PROBABILITY=0.2        ,  chance of retweeting
+    X_FOLLOW_PROBABILITY=0.1         ,  chance of following an interesting user
 """
 
 import asyncio
@@ -72,17 +72,17 @@ DEFAULT_FEEDS = [
     "https://www.theverge.com/rss/index.xml",
 ]
 
-# Reply archetypes — the PERSONALITY decides which to use, not hardcoded rules
+# Reply archetypes,  the PERSONALITY decides which to use, not hardcoded rules
 REPLY_ARCHETYPES = {
     "agree": "Write a short reply (max 280 chars) that agrees passionately.",
     "debate": "Write a short reply (max 280 chars) that pushes back respectfully but firmly.",
-    "witty": "Write a short witty reply (max 280 chars) — clever, sharp, human.",
+    "witty": "Write a short witty reply (max 280 chars),  clever, sharp, human.",
     "add_info": "Write a short reply (max 280 chars) adding context or a useful fact.",
-    "empathetic": "Write a short empathetic reply (max 280 chars) — real empathy, real words.",
+    "empathetic": "Write a short empathetic reply (max 280 chars),  real empathy, real words.",
     "outraged": "Write a short reply (max 280 chars) expressing genuine outrage intelligently.",
 }
 
-# Post modes — break the "always react to news" pattern
+# Post modes,  break the "always react to news" pattern
 POST_MODES = {
     "news_take": {
         "weight": 35,
@@ -90,27 +90,27 @@ POST_MODES = {
     },
     "original_thought": {
         "weight": 20,
-        "description": "Share an original thought or insight — something you've been reflecting on. "
+        "description": "Share an original thought or insight,  something you've been reflecting on. "
                        "No news hook needed. Just your raw perspective on a topic you care about.",
     },
     "hot_take": {
         "weight": 12,
         "description": "Drop a provocative, contrarian take that challenges mainstream thinking. "
-                       "Be bold but intelligent — not clickbait, genuine sharp analysis.",
+                       "Be bold but intelligent,  not clickbait, genuine sharp analysis.",
     },
     "question": {
         "weight": 10,
         "description": "Ask your audience a genuinely interesting question about a topic you care about. "
-                       "Not rhetorical — you actually want to hear their answers.",
+                       "Not rhetorical,  you actually want to hear their answers.",
     },
     "prediction": {
         "weight": 10,
         "description": "Make a specific prediction about something in your areas of interest. "
-                       "Be concrete — dates, numbers, outcomes. Stake your reputation on it.",
+                       "Be concrete,  dates, numbers, outcomes. Stake your reputation on it.",
     },
     "observation": {
         "weight": 8,
-        "description": "Share something you've noticed — a pattern, a trend, a detail others missed. "
+        "description": "Share something you've noticed,  a pattern, a trend, a detail others missed. "
                        "The kind of thing that makes people stop scrolling and think.",
     },
     "thread": {
@@ -120,14 +120,14 @@ POST_MODES = {
     },
 }
 
-# Style modifiers — applied randomly to break formulaic output
+# Style modifiers,  applied randomly to break formulaic output
 STYLE_MODIFIERS = [
     "Write like you're texting a friend who's into the same stuff.",
-    "Be concise — every word must earn its place.",
+    "Be concise,  every word must earn its place.",
     "Start with the conclusion, then explain why.",
     "Use a metaphor or analogy to make the point land.",
     "Write like someone who just realized something important.",
-    "Be slightly irreverent — humor sharpens the point.",
+    "Be slightly irreverent,  humor sharpens the point.",
     "Write like you're arguing with yourself and one side just won.",
     "Say something nobody else is saying about this.",
     "Imagine you only have this one post to change someone's mind.",
@@ -137,7 +137,7 @@ STYLE_MODIFIERS = [
 
 class XAutonomousAgent:
     """
-    Full autonomous X agent — behaves like a real human user.
+    Full autonomous X agent,  behaves like a real human user.
 
     SINGLE SEQUENTIAL LOOP: Opens X in sessions, does one thing at a time,
     takes breaks between sessions. Never makes concurrent API requests.
@@ -181,7 +181,7 @@ class XAutonomousAgent:
         self._posted_urls: set = set()
         self._engaged_tweet_ids: set = set()
         self._mention_replies_today: int = 0
-        self._mention_queue: List[Dict] = []  # pending mention replies — persisted across restarts
+        self._mention_queue: List[Dict] = []  # pending mention replies,  persisted across restarts
         self._followed_users: set = set()
         self._history: List[Dict] = []
         self._engagement_log: List[Dict] = []
@@ -202,7 +202,7 @@ class XAutonomousAgent:
         self._max_chain_depth = int(getattr(config, "x_max_chain_depth", 4))
         self._chain_cooldown_hours = float(getattr(config, "x_chain_cooldown_hours", 2.0))
 
-        # ── Active hours (16h window by default — human-like awake schedule) ──
+        # ── Active hours (16h window by default,  human-like awake schedule) ──
         self._active_hours_start = int(getattr(config, "x_active_hours_start", 8))   # 8 AM
         self._active_hours_end = int(getattr(config, "x_active_hours_end", 0))       # midnight (0 = 24)
 
@@ -219,7 +219,7 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def start(self):
-        """Start the agent — single sequential loop + self-heal monitor."""
+        """Start the agent,  single sequential loop + self-heal monitor."""
         self.running = True
         self._load_state()
 
@@ -234,7 +234,7 @@ class XAutonomousAgent:
             f"last_post={self._last_post_at or 'never'}"
         )
 
-        # Internal thought — summarize what we remember + scheduling plan
+        # Internal thought,  summarize what we remember + scheduling plan
         since_post = self._seconds_since(self._last_post_at)
         since_engage = self._seconds_since(self._last_engage_at)
         posts_remaining = self.max_daily_posts - self._posts_today
@@ -249,7 +249,7 @@ class XAutonomousAgent:
             f"Posts today so far: {self._posts_today}/{self.max_daily_posts} "
             f"({posts_remaining} remaining, {hours_left:.1f}h active time left → "
             f"~1 post every {next_interval / 60:.0f}min). "
-            f"Running in sequential mode — one action at a time, like a real human."
+            f"Running in sequential mode,  one action at a time, like a real human."
         )
 
         # Only TWO concurrent tasks:
@@ -313,7 +313,7 @@ class XAutonomousAgent:
             self._grok_vision_today = 0
             self._grok_images_today = 0
             self._last_reset = today
-            self._daily_limit_hit = False  # New day — reset cap flag
+            self._daily_limit_hit = False  # New day,  reset cap flag
 
     # ── Smart post scheduling ─────────────────────────────────────
     def _remaining_active_hours(self) -> float:
@@ -367,22 +367,22 @@ class XAutonomousAgent:
         optimal = self._optimal_post_interval()
 
         if since_post is None:
-            # Never posted today — go ahead
+            # Never posted today,  go ahead
             return True
 
         if since_post < self.post_interval:
-            # Below the hard minimum — never post this fast
+            # Below the hard minimum,  never post this fast
             return False
 
         if since_post >= optimal:
-            # Past the optimal interval — post with high probability
+            # Past the optimal interval,  post with high probability
             # The longer overdue, the higher the chance
             overdue_ratio = since_post / optimal
             post_chance = min(0.9, 0.5 + (overdue_ratio - 1) * 0.3)
             post_chance += self._inspiration_level * 0.1
             return random.random() < post_chance
 
-        # Between minimum and optimal — post only if very inspired
+        # Between minimum and optimal,  post only if very inspired
         if self._inspiration_level > 0.7:
             early_chance = 0.15 + (self._inspiration_level - 0.7) * 0.5
             return random.random() < early_chance
@@ -394,7 +394,7 @@ class XAutonomousAgent:
         return self.agent.tools.x_skill
 
     def _human_delay(self, base: float = 5.0, variance: float = 10.0):
-        """Random delay to look human — uses log-normal distribution for realism."""
+        """Random delay to look human,  uses log-normal distribution for realism."""
         delay = base + random.lognormvariate(math.log(variance), 0.5)
         return min(delay, base + variance * 3)  # Cap at reasonable maximum
 
@@ -404,14 +404,14 @@ class XAutonomousAgent:
 
     async def _main_loop(self):
         """
-        Single sequential loop — mimics a real human using X.
+        Single sequential loop,  mimics a real human using X.
 
         Pattern: open app -> browse/engage/post -> close app -> long break -> repeat.
         NEVER makes concurrent API requests. One action at a time.
         """
         # Initial warm-up (like picking up your phone)
         warmup = random.uniform(15, 60)
-        logger.info(f"\U0001f4f1 Agent warming up — first session in {warmup:.0f}s")
+        logger.info(f"\U0001f4f1 Agent warming up,  first session in {warmup:.0f}s")
         await asyncio.sleep(warmup)
 
         while self.running:
@@ -423,7 +423,7 @@ class XAutonomousAgent:
 
             # ── Between sessions: "close the app" and take a break ──
             break_mins = random.uniform(10, 40)
-            logger.info(f"📱 Session done — break ~{break_mins:.0f}min")
+            logger.info(f"📱 Session done,  break ~{break_mins:.0f}min")
 
             # Think during the break (uses LLM only, no X API calls)
             await self._consciousness_step()
@@ -450,7 +450,7 @@ class XAutonomousAgent:
         posts_left = self.max_daily_posts - self._posts_today
         hours_left = self._remaining_active_hours()
         logger.info(
-            f"\U0001f4f1 Opening X — session ~{session_minutes:.0f}min | "
+            f"\U0001f4f1 Opening X,  session ~{session_minutes:.0f}min | "
             f"plan: {activity_names} | "
             f"posts={self._posts_today}/{self.max_daily_posts} ({posts_left} left in {hours_left:.1f}h) "
             f"engagements={self._engagements_today}/{self.max_daily_engagements}"
@@ -460,13 +460,13 @@ class XAutonomousAgent:
             if not self.running:
                 break
             if asyncio.get_event_loop().time() > session_end:
-                logger.info("\U0001f4f1 Session time's up — closing X")
+                logger.info("\U0001f4f1 Session time's up,  closing X")
                 break
 
             # Check self-heal pauses
             pause_key = activity.get("pause_key", "engage")
             if self._healer.remedy.is_loop_paused(pause_key):
-                logger.info(f"\u23f8\ufe0f {activity['type']} skipped — self-heal pause active")
+                logger.info(f"\u23f8\ufe0f {activity['type']} skipped,  self-heal pause active")
                 continue
 
             try:
@@ -486,7 +486,7 @@ class XAutonomousAgent:
 
     def _plan_session(self) -> List[Dict]:
         """
-        Decide what to do this session — like a human opening X with intent.
+        Decide what to do this session,  like a human opening X with intent.
         Returns a short list of sequential activities.
 
         Post scheduling uses smart distribution: posts are spread evenly
@@ -495,10 +495,10 @@ class XAutonomousAgent:
         """
         activities: List[Dict] = []
 
-        # ── ALWAYS check mentions first — replies are highest priority ──
+        # ── ALWAYS check mentions first,  replies are highest priority ──
         activities.append({"type": "check_mentions", "pause_key": "mention"})
 
-        # ── Check reply chains — continue conversations people started with us ──
+        # ── Check reply chains,  continue conversations people started with us ──
         if self._reply_chains and self._reply_chain_replies_today < self._max_reply_chain_daily:
             activities.append({"type": "check_reply_chains", "pause_key": "engage"})
 
@@ -509,7 +509,7 @@ class XAutonomousAgent:
         if self._should_post_now():
             activities.append({"type": "post_original", "pause_key": "post"})
 
-        # ── Join a trend occasionally (12%) — also respects scheduling ──
+        # ── Join a trend occasionally (12%),  also respects scheduling ──
         if random.random() < 0.12 and self._should_post_now():
             activities.append({"type": "join_trend", "pause_key": "trend"})
 
@@ -534,11 +534,11 @@ class XAutonomousAgent:
             await self._check_reply_chains()
 
     # ══════════════════════════════════════════════════════════════════
-    #  CONSCIOUSNESS (think, reflect, evolve — called between sessions)
+    #  CONSCIOUSNESS (think, reflect, evolve,  called between sessions)
     # ══════════════════════════════════════════════════════════════════
 
     async def _consciousness_step(self):
-        """One consciousness cycle — think, maybe reflect, maybe evolve."""
+        """One consciousness cycle,  think, maybe reflect, maybe evolve."""
         self._consciousness_cycle += 1
         try:
             stats = self.mind.get_memory_stats()
@@ -587,7 +587,7 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     def _pick_post_mode(self) -> str:
-        """Weighted random selection of post mode — breaks the 'always news' pattern."""
+        """Weighted random selection of post mode,  breaks the 'always news' pattern."""
         modes = list(POST_MODES.keys())
         weights = [POST_MODES[m]["weight"] for m in modes]
 
@@ -606,7 +606,7 @@ class XAutonomousAgent:
         return random.choices(modes, weights=weights, k=1)[0]
 
     async def _do_post(self):
-        """One posting action — picks a MODE first, then creates content accordingly."""
+        """One posting action,  picks a MODE first, then creates content accordingly."""
         mode = self._pick_post_mode()
         logger.info(f"\u270d\ufe0f Post mode: {mode} (inspiration={self._inspiration_level:.1f})")
 
@@ -618,7 +618,7 @@ class XAutonomousAgent:
             await self._do_post_original(mode)
 
     async def _do_post_news(self, *, force_thread: bool = False):
-        """Post reacting to news — the classic mode."""
+        """Post reacting to news,  the classic mode."""
         stories = await self._fetch_news()
         story = self._pick_story(stories) if stories else None
         if not story:
@@ -663,7 +663,7 @@ class XAutonomousAgent:
             logger.info(f"\U0001f4dd Posted #{self._posts_today}: {result.get('url', 'ok')}")
 
     async def _do_post_original(self, mode: str):
-        """Post original content — thoughts, hot takes, questions, predictions, observations."""
+        """Post original content,  thoughts, hot takes, questions, predictions, observations."""
         mode_info = POST_MODES.get(mode, POST_MODES["original_thought"])
 
         # Gather recent context for original posts
@@ -706,7 +706,7 @@ class XAutonomousAgent:
             f"Focus on: {topic}\n\n"
             f"Write a single post (max 280 chars). "
             f"Don't use hashtags unless they're truly relevant. "
-            f"Don't start with 'I think' or 'Just' — be direct."
+            f"Don't start with 'I think' or 'Just',  be direct."
         )
 
         if mode == "thread":
@@ -799,7 +799,7 @@ class XAutonomousAgent:
             await asyncio.sleep(self._human_delay(10, 30))
 
     def _pick_engagement_source(self) -> Dict:
-        """Pick what to browse — home feed first, then topic search or watched accounts."""
+        """Pick what to browse,  home feed first, then topic search or watched accounts."""
         choices = []
         # Home timeline is the primary source (like a real user opening the app)
         choices.append({"type": "timeline", "value": "latest"})
@@ -826,7 +826,7 @@ class XAutonomousAgent:
                 result = await self._x().get_home_timeline(count=15, tab=tab)
                 tweets = result.get("tweets", []) if result.get("success") else []
                 if tweets:
-                    logger.info(f"📱 Scrolling {tab} feed — {len(tweets)} tweets")
+                    logger.info(f"📱 Scrolling {tab} feed,  {len(tweets)} tweets")
                 return tweets
 
             elif source["type"] == "topic":
@@ -840,7 +840,7 @@ class XAutonomousAgent:
             elif source["type"] == "account":
                 result = await self._x().get_user_tweets(source["value"], count=10)
                 tweets = result.get("tweets", []) if result.get("success") else []
-                # Inject username — get_user_tweets doesn't include it per-post
+                # Inject username,  get_user_tweets doesn't include it per-post
                 for t in tweets:
                     if not t.get("username"):
                         t["username"] = source["value"]
@@ -852,7 +852,7 @@ class XAutonomousAgent:
                     trend = random.choice(trends["trends"][:10])
                     trend_name = trend.get("name", "")
                     if trend_name:
-                        # Pause — reading the trend list before searching
+                        # Pause,  reading the trend list before searching
                         await asyncio.sleep(self._human_delay(5, 10))
                         result = await self._x().search_tweets(trend_name, count=10)
                         return result.get("tweets", []) if result.get("success") else []
@@ -892,14 +892,14 @@ class XAutonomousAgent:
                 if m.get("type") in ("video", "gif"):
                     dur = m.get("duration_ms")
                     dur_str = f" ({dur // 1000}s)" if dur else ""
-                    return f"[This post contains a {m['type']}{dur_str} — visual content not analyzed]"
+                    return f"[This post contains a {m['type']}{dur_str},  visual content not analyzed]"
             return None
 
         # ── Budget check: don't abuse Grok ───────────────────────────
         if self._grok_vision_today >= self._max_grok_vision_daily:
             count = len(image_urls)
             logger.debug(f"Vision budget exhausted ({self._grok_vision_today}/{self._max_grok_vision_daily})")
-            return f"[This post contains {count} image{'s' if count > 1 else ''} — daily vision budget reached]"
+            return f"[This post contains {count} image{'s' if count > 1 else ''},  daily vision budget reached]"
 
         # ── Curiosity gate: should we even look? ─────────────────────
         if not self._should_analyze_media(tweet_text, media_items):
@@ -910,7 +910,7 @@ class XAutonomousAgent:
         grok = getattr(self.agent.tools, "grok_skill", None)
         if not grok:
             count = len(image_urls)
-            return f"[This post contains {count} image{'s' if count > 1 else ''} — vision not available]"
+            return f"[This post contains {count} image{'s' if count > 1 else ''},  vision not available]"
 
         # ── Download images to temp files (max 2 to conserve budget) ──
         from opensable.skills.social.x_skill import XSkill
@@ -933,7 +933,7 @@ class XAutonomousAgent:
                 local_paths,
                 "Describe what you see in this image concisely (2-3 sentences max). "
                 "Focus on the main subject, any text visible, and the overall context. "
-                "This is from a post on X — the description will help write a relevant reply.",
+                "This is from a post on X,  the description will help write a relevant reply.",
             )
 
             self._grok_vision_today += 1
@@ -944,11 +944,11 @@ class XAutonomousAgent:
                 if desc and not self._is_error_response(desc):
                     logger.info(
                         f"\U0001f441 X vision [{self._grok_vision_today}/{self._max_grok_vision_daily}]: "
-                        f"analyzed {len(local_paths)} image(s) — {desc[:80]}..."
+                        f"analyzed {len(local_paths)} image(s),  {desc[:80]}..."
                     )
                     return desc
                 else:
-                    logger.warning(f"\U0001f441 X vision: rejected invalid description — {str(desc)[:100]}")
+                    logger.warning(f"\U0001f441 X vision: rejected invalid description,  {str(desc)[:100]}")
         except Exception as e:
             logger.debug(f"Tweet media analysis failed: {e}")
         finally:
@@ -1207,14 +1207,14 @@ class XAutonomousAgent:
         except Exception:
             pass
 
-        # Random curiosity — humans occasionally click on images just because
+        # Random curiosity,  humans occasionally click on images just because
         if random.random() < 0.10:
             return True
 
         return False
 
     async def _engage_with_tweet(self, tweet: Dict):
-        """Decide how to engage with a tweet — emotionally, like a real user would."""
+        """Decide how to engage with a tweet,  emotionally, like a real user would."""
         tweet_id = tweet.get("id")
         tweet_text = tweet.get("text", "")
         username = tweet.get("username", "")
@@ -1228,9 +1228,9 @@ class XAutonomousAgent:
 
         # Is this tweet relevant/interesting to our persona?
         if not self._is_relevant(tweet_text):
-            return  # Scroll past — real users don't engage with everything
+            return  # Scroll past,  real users don't engage with everything
 
-        # ── FEEL the tweet (fast path — no AI call) ───────────────────
+        # ── FEEL the tweet (fast path,  no AI call) ───────────────────
         mood_reaction = self.mind.feel_quick(tweet_text)
         mood = self.mind._mood
         intensity = self.mind._mood_intensity
@@ -1267,9 +1267,9 @@ class XAutonomousAgent:
         # ── REPLY (boosted when emotionally charged or user is familiar) ─────
         reply_p = self.p_reply + anger_boost + (arousal_boost * 0.5) + relationship_boost
         if random.random() < reply_p and len(tweet_text) > 30:
-            # Pause — "thinking about what to say"
+            # Pause,  "thinking about what to say"
             await asyncio.sleep(self._human_delay(8, 20))
-            # Analyze media (images) if present — gives the agent "eyes"
+            # Analyze media (images) if present,  gives the agent "eyes"
             media_desc = await self._analyze_tweet_media(tweet)
             reply_text = await self._generate_reply(tweet_text, username, media_description=media_desc)
             if reply_text:
@@ -1316,7 +1316,7 @@ class XAutonomousAgent:
 
         if actions_taken:
             self._last_engage_at = datetime.now()
-            # Track relationship depth — remember who we interact with
+            # Track relationship depth,  remember who we interact with
             if username:
                 self._known_users[username] = self._known_users.get(username, 0) + 1
             # Interesting encounters raise inspiration
@@ -1376,15 +1376,15 @@ class XAutonomousAgent:
     async def _safe_action(self, name: str, func, *args) -> Optional[Dict]:
         """Execute an X action safely, respecting dry_run and 226 blocks."""
         if func is None:
-            logger.debug(f"Action {name} skipped — method not available")
+            logger.debug(f"Action {name} skipped,  method not available")
             return None
         if self.dry_run:
-            logger.info(f"\U0001f3dc\ufe0f DRY RUN — {name}: {args[:2]}")
+            logger.info(f"\U0001f3dc\ufe0f DRY RUN,  {name}: {args[:2]}")
             return {"success": True}
 
         # If self-heal has paused writes, don't even try
         if self._healer.remedy.is_loop_paused("post") and name in ("post", "reply", "quote", "mention_reply"):
-            logger.debug(f"Action {name} blocked — self-heal pause active")
+            logger.debug(f"Action {name} blocked,  self-heal pause active")
             return None
 
         try:
@@ -1394,7 +1394,7 @@ class XAutonomousAgent:
             # Check for 226 error in the result
             error_str = str(result.get("error", ""))
             if "226" in error_str or "automated" in error_str.lower():
-                logger.warning(f"\U0001f6ab 226 detected on {name} — triggering stealth mode")
+                logger.warning(f"\U0001f6ab 226 detected on {name},  triggering stealth mode")
                 # Don't retry, the self-heal loop will pick it up from the log
             return None
         except Exception as e:
@@ -1406,7 +1406,7 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _check_mentions(self):
-        """Fetch new mentions and add them to the reply queue — does NOT reply immediately."""
+        """Fetch new mentions and add them to the reply queue,  does NOT reply immediately."""
         try:
             result = await self._x().get_notifications("Mentions", count=25)
             if not result.get("success"):
@@ -1436,7 +1436,7 @@ class XAutonomousAgent:
             logger.debug(f"Check mentions error: {e}")
 
     async def _process_mention_queue(self):
-        """Reply to all queued mentions — called at the start of every session."""
+        """Reply to all queued mentions,  called at the start of every session."""
         if not self._mention_queue:
             return
         max_replies = int(getattr(self.config, "x_max_mention_replies_per_day", 50))
@@ -1489,7 +1489,7 @@ class XAutonomousAgent:
         """
         Check our recent replies for new follow-up replies from other users.
         If someone replied to our reply, evaluate interest and maybe continue
-        the conversation — like a human checking their notifications.
+        the conversation,  like a human checking their notifications.
 
         Rate limits:
         - Max _max_reply_chain_per_session per session (default 3)
@@ -1575,7 +1575,7 @@ class XAutonomousAgent:
                     chain_info["last_checked"] = now.isoformat()
                     continue
 
-                # ── Deep evaluation: feel + think — let consciousness decide ──
+                # ── Deep evaluation: feel + think,  let consciousness decide ──
                 best_reply = None
                 best_score = -1.0
                 best_reasoning = ""
@@ -1592,7 +1592,7 @@ class XAutonomousAgent:
                     reply_username = best_reply.get("username", "someone")
                     reply_text_content = best_reply.get("text", "")
 
-                    # "Thinking about what to say" — human delay
+                    # "Thinking about what to say",  human delay
                     await asyncio.sleep(self._human_delay(12, 30))
 
                     chain_reply = await self._generate_chain_reply(
@@ -1616,7 +1616,7 @@ class XAutonomousAgent:
                             self._engagements_today += 1
                             chains_replied += 1
 
-                            # Update chain tracker — now tracking our NEW reply
+                            # Update chain tracker,  now tracking our NEW reply
                             new_reply_id = result.get("tweet_id")
                             if new_reply_id:
                                 self._reply_chains[new_reply_id] = {
@@ -1650,11 +1650,11 @@ class XAutonomousAgent:
                                 f"[{self._reply_chain_replies_today}/{self._max_reply_chain_daily}]"
                             )
                 else:
-                    # Not interested enough — let the conversation die naturally
+                    # Not interested enough,  let the conversation die naturally
                     if best_score <= 0.0:
                         chains_to_remove.append(my_reply_id)
                     logger.debug(
-                        f"🔗 Chain skip — interest too low ({best_score:.2f}) for reply from "
+                        f"🔗 Chain skip,  interest too low ({best_score:.2f}) for reply from "
                         f"@{best_reply.get('username', '?') if best_reply else '?'}"
                     )
 
@@ -1674,7 +1674,7 @@ class XAutonomousAgent:
     def _is_hollow_reply(self, reply: Dict) -> bool:
         """
         Fast pre-filter: detect obviously empty/hollow replies that aren't
-        worth an LLM call. No AI here — pure pattern matching.
+        worth an LLM call. No AI here,  pure pattern matching.
         Returns True if the reply is hollow (skip it).
         """
         reply_text = reply.get("text", "").strip()
@@ -1718,7 +1718,7 @@ class XAutonomousAgent:
         depth = chain_info.get("depth", 1)
         topic = chain_info.get("topic", "")
 
-        # ── Step 1: FEEL the reply — let emotions react naturally ──
+        # ── Step 1: FEEL the reply,  let emotions react naturally ──
         emotion_result = await self.mind.feel(reply_text)
         mood = self.mind._mood
         intensity = self.mind._mood_intensity
@@ -1740,9 +1740,9 @@ class XAutonomousAgent:
         relationship_desc = "unknown person"
         rel_count = self._known_users.get(reply_username, 0)
         if rel_count > 5:
-            relationship_desc = f"regular — we've interacted {rel_count} times"
+            relationship_desc = f"regular,  we've interacted {rel_count} times"
         elif rel_count > 0:
-            relationship_desc = f"acquaintance — {rel_count} past interaction(s)"
+            relationship_desc = f"acquaintance,  {rel_count} past interaction(s)"
 
         past_context = ""
         if past_interactions:
@@ -1759,7 +1759,7 @@ class XAutonomousAgent:
             avg_depth = sum(c.get("data", {}).get("depth", 1) for c in past_chains) / len(past_chains)
             chain_context = f"\nYour average reply chain depth is {avg_depth:.1f} replies."
 
-        # ── Step 4: ASK the consciousness — deliberate ──
+        # ── Step 4: ASK the consciousness,  deliberate ──
         system = (
             "You are the decision-making layer of an autonomous X agent. "
             "You must decide if you want to CONTINUE a conversation or LET IT DIE. "
@@ -1795,7 +1795,7 @@ class XAutonomousAgent:
         )
 
         try:
-            # Use raw LLM call — NOT _ask_ai which injects "output only tweet text"
+            # Use raw LLM call,  NOT _ask_ai which injects "output only tweet text"
             # and runs _is_meta_response (which would reject valid JSON deliberations)
             response = await self._ask_llm(system, user_prompt)
             if not response:
@@ -1823,7 +1823,7 @@ class XAutonomousAgent:
                     score = max(0.0, min(1.0, score))
                     reasoning = data.get("reasoning", "")
 
-                    # Apply a hard depth penalty even the AI can't override —
+                    # Apply a hard depth penalty even the AI can't override, 
                     # prevents infinite conversations
                     depth_penalty = max(0, (depth - 2) * 0.1)
                     score = max(0.0, score - depth_penalty)
@@ -1856,10 +1856,10 @@ class XAutonomousAgent:
         Generate a reply to continue a conversation thread.
         Uses memory, emotional state, and relationship context for authenticity.
         """
-        # Feel the reply — emotional reaction shapes the response
+        # Feel the reply,  emotional reaction shapes the response
         await self.mind.feel(their_text)
 
-        # ── Pull relationship memory — what do we know about this person? ──
+        # ── Pull relationship memory,  what do we know about this person? ──
         past_with_user = []
         for mem in self.mind.recall(limit=100):
             mem_data = mem.get("data", {})
@@ -1908,7 +1908,7 @@ class XAutonomousAgent:
             f"You're in an ongoing conversation (reply #{depth + 1} deep). "
             f"The conversation started about: \"{conversation_topic[:100]}\"\n\n"
             f"{length_hint}\n"
-            f"Sound natural — don't force the conversation. If you don't have "
+            f"Sound natural,  don't force the conversation. If you don't have "
             f"much to add, a short acknowledgment or question is fine. "
             f"NEVER explain that you're an AI or that you're replying to continue engagement."
             f"{relationship_context}"
@@ -1941,14 +1941,14 @@ class XAutonomousAgent:
         text_lower = text.lower()
         for pattern in chain_leak_patterns:
             if re.search(pattern, text_lower):
-                logger.warning(f"🔗 Chain reply rejected — prompt leak detected: {text[:80]}...")
+                logger.warning(f"🔗 Chain reply rejected,  prompt leak detected: {text[:80]}...")
                 return None
 
         return text
 
     def _get_own_username(self) -> str:
         """Get the bot's own X username to filter out self-replies."""
-        # Try to get from config, fallback to empty (safe — won't filter anything)
+        # Try to get from config, fallback to empty (safe,  won't filter anything)
         return str(getattr(self.config, "x_username", "") or "")
 
     # ══════════════════════════════════════════════════════════════════
@@ -1976,7 +1976,7 @@ class XAutonomousAgent:
                 if trend_name in self._posted_urls:
                     continue
 
-                # Pause — "reading about the trend"
+                # Pause,  "reading about the trend"
                 await asyncio.sleep(self._human_delay(10, 25))
 
                 tweet_text = await self._generate_trend_take(trend_name)
@@ -2009,7 +2009,7 @@ class XAutonomousAgent:
     # ══════════════════════════════════════════════════════════════════
 
     async def _generate_tweet(self, story: Dict, *, force_thread: bool = False) -> Optional[Dict]:
-        """Generate an original tweet from a news story — voice comes from identity."""
+        """Generate an original tweet from a news story,  voice comes from identity."""
         story_text = story.get("title", "")
         if story.get("description"):
             story_text += f"\n\n{story['description'][:300]}"
@@ -2051,7 +2051,7 @@ class XAutonomousAgent:
         return {"type": "tweet", "text": tweet_text, "style": "identity"} if tweet_text else None
 
     async def _generate_reply(self, tweet_text: str, username: str, *, media_description: Optional[str] = None) -> Optional[str]:
-        """Generate an emotionally-aware reply — personality determines tone."""
+        """Generate an emotionally-aware reply,  personality determines tone."""
         # Feel the tweet before replying (AI-powered for important interactions)
         await self.mind.feel(tweet_text)
         mood = self.mind._mood
@@ -2074,7 +2074,7 @@ class XAutonomousAgent:
         if self.language != "en":
             system_prompt += f" Write in {self.language}."
 
-        # Build user prompt — include media description if we "saw" images
+        # Build user prompt,  include media description if we "saw" images
         user_prompt = f"@{username} posted:\n\"{tweet_text[:500]}\""
         if media_description:
             user_prompt += f"\n\n[Visual content in the post]: {media_description[:500]}"
@@ -2089,7 +2089,7 @@ class XAutonomousAgent:
         system_prompt = (
             f"{self.mind.get_voice_prompt()}\n\n"
             "Write a quote-post comment (max 280 chars) adding your authentic take. "
-            "Add value — an insight, prediction, or gut reaction."
+            "Add value,  an insight, prediction, or gut reaction."
         )
         if self.language != "en":
             system_prompt += f" Write in {self.language}."
@@ -2134,11 +2134,11 @@ class XAutonomousAgent:
         )
         text = await self._ask_ai(system_prompt, user_prompt)
         if not text:
-            # Retry with a stripped-down prompt — some LLMs choke on long system prompts
+            # Retry with a stripped-down prompt,  some LLMs choke on long system prompts
             minimal_system = "You are a witty social media personality. Write only the tweet, nothing else."
             if self.language != "en":
                 minimal_system += f" Write in {self.language}."
-            minimal_user = f'"{trend_name}" is trending. Write your hot take in max 240 chars. Output ONLY the tweet text — complete sentence, no prefixes, no code, nothing else.'
+            minimal_user = f'"{trend_name}" is trending. Write your hot take in max 240 chars. Output ONLY the tweet text,  complete sentence, no prefixes, no code, nothing else.'
             text = await self._ask_ai(minimal_system, minimal_user)
         return self._clean_tweet(text) if text else None
 
@@ -2169,7 +2169,7 @@ class XAutonomousAgent:
             "or parenthetical remarks about how you are replying. "
             "No brackets like [Visual note:...] or parentheticals like (Replying in...). "
             "Do NOT wrap your reasoning in <think> tags. "
-            "Write a COMPLETE thought that ends naturally — never stop mid-sentence. "
+            "Write a COMPLETE thought that ends naturally,  never stop mid-sentence. "
             "Keep it under 240 characters so it fits comfortably in a tweet. "
             "Just the raw post text, nothing else. No code, no random tokens, no prefixes."
         )
@@ -2238,7 +2238,7 @@ class XAutonomousAgent:
         rss_stories = await self._fetch_rss(feeds)
         stories.extend(rss_stories)
 
-        # Search X for ONE random topic (not all 3 — one at a time)
+        # Search X for ONE random topic (not all 3,  one at a time)
         if self.topics:
             topic = random.choice(self.topics)
             try:
@@ -2323,7 +2323,7 @@ class XAutonomousAgent:
         return None
 
     # ══════════════════════════════════════════════════════════════════
-    #  IMAGE GENERATION — Grok creates visuals for posts
+    #  IMAGE GENERATION,  Grok creates visuals for posts
     # ══════════════════════════════════════════════════════════════════
 
     async def _maybe_generate_image(self, tweet_text: str, story: Dict) -> Optional[str]:
@@ -2352,7 +2352,7 @@ class XAutonomousAgent:
         except ImportError:
             return None
 
-        # Decision gate — curiosity/emotion-driven
+        # Decision gate,  curiosity/emotion-driven
         mood_intensity = getattr(self.mind, "_mood_intensity", 0.5)
         mood = getattr(self.mind, "_mood", "neutral")
 
@@ -2381,7 +2381,7 @@ class XAutonomousAgent:
 
         # Generate image
         try:
-            # Build a visual prompt — tell Grok to create art inspired by the post
+            # Build a visual prompt,  tell Grok to create art inspired by the post
             img_prompt = (
                 f"Generate a striking, artistic image that captures the essence of this:\n"
                 f"\"{tweet_text[:200]}\"\n\n"
@@ -2421,11 +2421,11 @@ class XAutonomousAgent:
     async def _post(self, content: Dict) -> Dict:
         # Block posting if self-heal has triggered stealth mode
         if self._healer.remedy.is_loop_paused("post"):
-            logger.info("\U0001f4dd Post blocked — self-heal stealth mode active")
+            logger.info("\U0001f4dd Post blocked,  self-heal stealth mode active")
             return {"success": False, "error": "stealth_mode"}
 
         if self.dry_run:
-            logger.info(f"\U0001f3dc\ufe0f DRY RUN — {content.get('type')}: {str(content.get('text', content.get('tweets', '')))[:80]}")
+            logger.info(f"\U0001f3dc\ufe0f DRY RUN,  {content.get('type')}: {str(content.get('text', content.get('tweets', '')))[:80]}")
             return {"success": True, "tweet_id": "dry_run", "url": "dry_run"}
         try:
             media_paths = content.get("media_paths")
@@ -2442,9 +2442,9 @@ class XAutonomousAgent:
                 if "344" in error_str or "daily limit" in error_str.lower():
                     self._daily_limit_hit = True
                     self._save_state()
-                    logger.warning("\U0001f6ab X daily post limit (344) hit — posting blocked until midnight")
+                    logger.warning("\U0001f6ab X daily post limit (344) hit,  posting blocked until midnight")
                 elif "226" in error_str or "automated" in error_str.lower():
-                    logger.warning("\U0001f6ab Post rejected (226) — account flagged as automated")
+                    logger.warning("\U0001f6ab Post rejected (226),  account flagged as automated")
             return result
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2455,7 +2455,7 @@ class XAutonomousAgent:
 
     def _pick_style(self) -> str:
         """
-        Legacy compat — style is now driven by identity.voice,
+        Legacy compat,  style is now driven by identity.voice,
         not a hardcoded dict. Returns a label for logging only.
         """
         return "identity"
@@ -2586,7 +2586,7 @@ class XAutonomousAgent:
         # Collapse accidental double-spaces or leftover whitespace
         text = re.sub(r"\s{2,}", " ", text).strip()
         # ── Strip trailing ellipsis the LLM uses as a stylistic cliffhanger ──
-        # e.g. "But the..." or "…" — these indicate an incomplete thought
+        # e.g. "But the..." or "…",  these indicate an incomplete thought
         text = re.sub(r"\s*\.{2,}\s*$", "", text).strip()   # trailing ... or ....
         text = re.sub(r"\s*\u2026\s*$", "", text).strip()   # trailing …
         # ── Ensure tweet ends at a complete sentence ─────────────────
@@ -2667,7 +2667,7 @@ class XAutonomousAgent:
                 self._reply_chain_replies_today = state.get("reply_chain_replies_today", 0)
 
             if self._daily_limit_hit:
-                logger.warning("\U0001f6ab Daily post limit was hit today — posting stays blocked until midnight")
+                logger.warning("\U0001f6ab Daily post limit was hit today,  posting stays blocked until midnight")
 
             logger.info(
                 f"Loaded: {len(self._posted_urls)} posted, "

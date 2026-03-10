@@ -1,5 +1,5 @@
 """
-Theory of Mind — user preference and intention modeling.
+Theory of Mind,  user preference and intention modeling.
 
 Builds and maintains models of each user the agent interacts with,
 tracking their preferences, communication style, satisfaction signals,
@@ -280,9 +280,9 @@ class TheoryOfMind:
         if user.formality == "casual":
             hints["tone"] = "Use casual/friendly tone"
         if user.satisfaction_score < 0.3:
-            hints["recovery"] = "User seems dissatisfied — be extra careful and helpful"
+            hints["recovery"] = "User seems dissatisfied,  be extra careful and helpful"
         if user.rapport_score > 0.8:
-            hints["rapport"] = "Strong rapport — user trusts the agent"
+            hints["rapport"] = "Strong rapport,  user trusts the agent"
 
         return hints
 

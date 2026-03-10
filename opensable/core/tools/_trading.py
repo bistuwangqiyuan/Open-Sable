@@ -1,5 +1,5 @@
 """
-Trading tools — portfolio, prices, analysis, orders
+Trading tools,  portfolio, prices, analysis, orders
 """
 
 import logging
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class TradingToolsMixin:
-    """Mixin providing trading tools — portfolio, prices, analysis, orders tool implementations."""
+    """Mixin providing trading tools,  portfolio, prices, analysis, orders tool implementations."""
 
     # ========== TRADING TOOLS ==========
 

@@ -61,7 +61,7 @@ export default function App() {
   const isLocal = !ma.currentAgent || ma.agents.some(a => a.is_current && a.name === ma.currentAgent);
   const remoteState = !isLocal ? (ma.agentStates[ma.currentAgent] || {}) : null;
 
-  // Build panel props — for current agent use live ws data, for remote use proxied state
+  // Build panel props,  for current agent use live ws data, for remote use proxied state
   // (no useMemo: ws is a new object every render so the memo never saves work)
   let panelProps;
   if (isLocal) {
@@ -81,7 +81,7 @@ export default function App() {
       settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected },
     };
   } else {
-    // Remote agent — interactive view via proxy
+    // Remote agent,  interactive view via proxy
     const rs = remoteState || {};
     const sendToRemote = (text) => ma.sendToAgent(ma.currentAgent, text);
     const clearRemoteMsgs = () => {};

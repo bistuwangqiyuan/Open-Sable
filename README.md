@@ -24,42 +24,42 @@ Run locally, chat via Telegram, create goals, store memory, run tools safely, au
 ## 🧪 What's experimental
 Tool synthesis, multi-device sync.
 
-### 🆕 What's new in v1.7.0 — God Supreme Modules (69/69 Autonomy)
-- **Autonomous Web Agent**, autonomous web browsing, search, and API discovery — browses the web independently, discovers APIs, performs research through DuckDuckGo
-- **Self Healer**, auto-restart with watchdog and hot-reload — monitors all subsystems, auto-recovers from crashes, hot-reloads modules without restart
-- **Dynamic Skill Factory**, runtime skill creation from scratch — designs, generates, tests, and deploys new skills autonomously using LLM code generation
-- **Multi-Modal Engine**, real image/audio/video perception — processes images (PIL), audio (WAV), video (ffprobe), creates cross-modal links between perceptions
-- **Internet Monitor**, 24/7 persistent web surveillance — monitors news, social media, markets, research feeds continuously with trend detection and alerts
-- **Financial Autonomy**, economic self-management — invoicing, billing, budget tracking, cost optimization, multi-account financial management
-- **Social Presence Builder**, autonomous audience growth — content strategy, AI content generation, content calendars, multi-platform presence management
-- **Self Replicator**, clone and horizontal scaling — clones the entire codebase, deploys replicas on different ports, manages a distributed fleet
-- **Continuous Learner**, permanent behavioral evolution — learns from every interaction, builds behavior rules, grows knowledge graphs, synthesizes insights
+### 🆕 What's new in v1.7.0,  God Supreme Modules (69/69 Autonomy)
+- **Autonomous Web Agent**, autonomous web browsing, search, and API discovery,  browses the web independently, discovers APIs, performs research through DuckDuckGo
+- **Self Healer**, auto-restart with watchdog and hot-reload,  monitors all subsystems, auto-recovers from crashes, hot-reloads modules without restart
+- **Dynamic Skill Factory**, runtime skill creation from scratch,  designs, generates, tests, and deploys new skills autonomously using LLM code generation
+- **Multi-Modal Engine**, real image/audio/video perception,  processes images (PIL), audio (WAV), video (ffprobe), creates cross-modal links between perceptions
+- **Internet Monitor**, 24/7 persistent web surveillance,  monitors news, social media, markets, research feeds continuously with trend detection and alerts
+- **Financial Autonomy**, economic self-management,  invoicing, billing, budget tracking, cost optimization, multi-account financial management
+- **Social Presence Builder**, autonomous audience growth,  content strategy, AI content generation, content calendars, multi-platform presence management
+- **Self Replicator**, clone and horizontal scaling,  clones the entire codebase, deploys replicas on different ports, manages a distributed fleet
+- **Continuous Learner**, permanent behavioral evolution,  learns from every interaction, builds behavior rules, grows knowledge graphs, synthesizes insights
 - **71-phase cognitive tick pipeline** (up from 62), 9 new god supreme API endpoints, 9 new dashboard panels
 
 <details>
 <summary>What was new in v1.6.0</summary>
 
-### 🆕 What's new in v1.6.0 — Godlike Modules (60/60 Autonomy)
-- **Cognitive Teleportation**, instant context transfer between completely unrelated domains — teleports full cognitive state across domain boundaries without gradual transition
-- **Ontological Engine**, self-constructed reality model — agent builds its own ontology of what exists, what's possible, and what's impossible, with law discovery
-- **Cognitive Gravity**, ideas have mass and attract related concepts — creates thought black holes (obsessions) and thought nebulae (exploration fronts) with collision mechanics
-- **Temporal Paradox Resolver**, resolves contradictory information across time — models contradictions as temporal paradoxes with 4 resolution types (evolution, error, context-dependent, both-true)
-- **Synaesthetic Processor**, cross-modal perception — treats code as music, data as color, errors as texture. Maps between sensory modalities for invisible-pattern detection
-- **Cognitive Mitosis**, splits cognition into parallel divergent threads — independent thought streams evolve separately then merge back with conflict resolution
-- **Entropic Sentinel**, detects and fights cognitive entropy — measures disorder across subsystems, auto-defragments degraded areas, prevents cognitive heat death
-- **Quantum Cognition**, superposition reasoning — holds multiple contradictory hypotheses as simultaneously true with entanglement, collapses on observation with evidence strength
-- **Cognitive Placebo**, self-generated confidence that measurably improves performance — administers confidence boosts with tracked efficacy and 8 built-in affirmations
-- **Noospheric Interface**, taps into collective thought sphere — aggregates all interactions into thought waves with frequency, sentiment, and momentum tracking
-- **Akashic Records**, immutable consciousness ledger — blockchain-style append-only thought audit trail with SHA-256 hash chain and integrity verification
-- **Déjà Vu Engine**, gestalt-level situational pattern matching — extracts 6-dimensional fingerprints from situations, triggers when cosine similarity exceeds threshold
-- **Morphogenetic Field**, template patterns guide new capability formation — extracts structural templates from existing capabilities and grows new ones from need descriptions
-- **Liminal Processor**, handles ambiguity, paradox, and between-categories thinking — processes information in the threshold between categories with paradox synthesis
-- **Prescient Executor**, pre-executes likely future tasks before being asked — learns behavioral patterns, predicts next tasks, pre-computes results
-- **Cognitive Dark Matter**, infers hidden variables from their effects — statistical anomaly detection reveals invisible factors influencing performance
-- **Ego Membrane**, semi-permeable boundary between self and environment — filters external input (absorb/deflect/quarantine) with adaptive permeability
-- **Hyperstition Engine**, self-fulfilling predictions — ideas that make themselves real through reinforcement, with decay and realization mechanics
-- **Cognitive Chrysalis**, complete cognitive metamorphosis — 5-stage development (larval→pupal→emergent→imago→transcendent) with XP system and capability unlocks
-- **Existential Compass**, purpose-finding engine — 4-layer purpose hierarchy (immediate→tactical→strategic→existential) with alignment checking and meaning trend tracking
+### 🆕 What's new in v1.6.0,  Godlike Modules (60/60 Autonomy)
+- **Cognitive Teleportation**, instant context transfer between completely unrelated domains,  teleports full cognitive state across domain boundaries without gradual transition
+- **Ontological Engine**, self-constructed reality model,  agent builds its own ontology of what exists, what's possible, and what's impossible, with law discovery
+- **Cognitive Gravity**, ideas have mass and attract related concepts,  creates thought black holes (obsessions) and thought nebulae (exploration fronts) with collision mechanics
+- **Temporal Paradox Resolver**, resolves contradictory information across time,  models contradictions as temporal paradoxes with 4 resolution types (evolution, error, context-dependent, both-true)
+- **Synaesthetic Processor**, cross-modal perception,  treats code as music, data as color, errors as texture. Maps between sensory modalities for invisible-pattern detection
+- **Cognitive Mitosis**, splits cognition into parallel divergent threads,  independent thought streams evolve separately then merge back with conflict resolution
+- **Entropic Sentinel**, detects and fights cognitive entropy,  measures disorder across subsystems, auto-defragments degraded areas, prevents cognitive heat death
+- **Quantum Cognition**, superposition reasoning,  holds multiple contradictory hypotheses as simultaneously true with entanglement, collapses on observation with evidence strength
+- **Cognitive Placebo**, self-generated confidence that measurably improves performance,  administers confidence boosts with tracked efficacy and 8 built-in affirmations
+- **Noospheric Interface**, taps into collective thought sphere,  aggregates all interactions into thought waves with frequency, sentiment, and momentum tracking
+- **Akashic Records**, immutable consciousness ledger,  blockchain-style append-only thought audit trail with SHA-256 hash chain and integrity verification
+- **Déjà Vu Engine**, gestalt-level situational pattern matching,  extracts 6-dimensional fingerprints from situations, triggers when cosine similarity exceeds threshold
+- **Morphogenetic Field**, template patterns guide new capability formation,  extracts structural templates from existing capabilities and grows new ones from need descriptions
+- **Liminal Processor**, handles ambiguity, paradox, and between-categories thinking,  processes information in the threshold between categories with paradox synthesis
+- **Prescient Executor**, pre-executes likely future tasks before being asked,  learns behavioral patterns, predicts next tasks, pre-computes results
+- **Cognitive Dark Matter**, infers hidden variables from their effects,  statistical anomaly detection reveals invisible factors influencing performance
+- **Ego Membrane**, semi-permeable boundary between self and environment,  filters external input (absorb/deflect/quarantine) with adaptive permeability
+- **Hyperstition Engine**, self-fulfilling predictions,  ideas that make themselves real through reinforcement, with decay and realization mechanics
+- **Cognitive Chrysalis**, complete cognitive metamorphosis,  5-stage development (larval→pupal→emergent→imago→transcendent) with XP system and capability unlocks
+- **Existential Compass**, purpose-finding engine,  4-layer purpose hierarchy (immediate→tactical→strategic→existential) with alignment checking and meaning trend tracking
 - **62-phase cognitive tick pipeline** (up from 42), 20 new godlike API endpoints, 20 new dashboard panels
 
 </details>
@@ -67,27 +67,27 @@ Tool synthesis, multi-device sync.
 <details>
 <summary>What was new in v1.5.0</summary>
 
-### 🆕 What's new in v1.5.0 — World-First Modules (40/40 Autonomy)
-- **Dream Engine**, REM-like creative replay during idle — agent "dreams" by replaying and remixing experiences in corrupted form, discovering novel insights through subconscious processing
-- **Cognitive Immunity**, biological immune system for failures — generates "antibodies" from failure patterns, auto-neutralizes similar future failures with autoimmune detection
-- **Temporal Consciousness**, chronobiological awareness — agent has a biological clock, knows optimal times for creative vs routine work, adapts behavior by hour/weekday
-- **Cognitive Fusion**, cross-domain creative pollination — takes solutions from one domain and applies to unrelated domains, biomimicry for any knowledge
-- **Memory Palace**, spatial memory using Method of Loci — memories placed in virtual rooms with contextual associations and spaced-repetition reinforcement
-- **Narrative Identity**, autobiographical coherent self-story — agent maintains persistent identity with life chapters, core beliefs, personality traits, and character arcs
-- **Curiosity Drive**, intrinsic motivation and boredom detection — agent gets "bored" with repetitive tasks, seeks novel challenges through autonomous exploration probes
-- **Collective Unconscious**, Jung-inspired shared archetypes — deep structural patterns shared between agents with primordial archetypes that emerge from collective experience
-- **Cognitive Metabolism**, energy budgeting and recovery cycles — tasks consume energy, low energy triggers conservation/recovery mode, prevents cognitive burnout
-- **Synthetic Intuition**, fast gut-feel pattern matching — develops "hunches" from compressed experience signatures, System 1 thinking for AI with accuracy tracking
-- **Phantom Limb**, missing capability auto-detection — detects tools/skills the agent SHOULD have but doesn't, generates capability acquisition requests
-- **Cognitive Scar Tissue**, permanent catastrophic failure markers — unlike normal learning, these never decay, creating hard boundaries the agent will never cross again
-- **Time Crystal Memory**, self-reinforcing temporal patterns — discovers recurring cycles in behavior, creates "temporal crystals" that predict future states
-- **Holographic Context**, fragment-to-whole reconstruction — any memory fragment can reconstruct the full original context, like a hologram
-- **Swarm Cortex**, internal parallel mini-agent exploration — spawns multiple thought-agents that explore different solution paths, compete, and merge findings
-- **Cognitive Archaeology**, past decision chain reconstruction — excavates and traces full reasoning chains from past decisions, even when original reasoning was lost
-- **Emotional Contagion**, cascading emotional influence — agent's emotional state cascades through all subsystems, failures make the whole agent cautious, successes make it bolder
-- **Predictive Empathy**, pre-emptive frustration detection — predicts when the user is ABOUT to get frustrated and proactively adjusts behavior before they complain
-- **Autonomous Researcher**, full scientific method automation — formulates hypotheses, designs experiments, executes them, analyzes results, builds verified findings
-- **Empathy Synthesizer**, simulates being the user — constructs a virtual model of the user and "becomes" them to predict emotional reactions before acting
+### 🆕 What's new in v1.5.0,  World-First Modules (40/40 Autonomy)
+- **Dream Engine**, REM-like creative replay during idle,  agent "dreams" by replaying and remixing experiences in corrupted form, discovering novel insights through subconscious processing
+- **Cognitive Immunity**, biological immune system for failures,  generates "antibodies" from failure patterns, auto-neutralizes similar future failures with autoimmune detection
+- **Temporal Consciousness**, chronobiological awareness,  agent has a biological clock, knows optimal times for creative vs routine work, adapts behavior by hour/weekday
+- **Cognitive Fusion**, cross-domain creative pollination,  takes solutions from one domain and applies to unrelated domains, biomimicry for any knowledge
+- **Memory Palace**, spatial memory using Method of Loci,  memories placed in virtual rooms with contextual associations and spaced-repetition reinforcement
+- **Narrative Identity**, autobiographical coherent self-story,  agent maintains persistent identity with life chapters, core beliefs, personality traits, and character arcs
+- **Curiosity Drive**, intrinsic motivation and boredom detection,  agent gets "bored" with repetitive tasks, seeks novel challenges through autonomous exploration probes
+- **Collective Unconscious**, Jung-inspired shared archetypes,  deep structural patterns shared between agents with primordial archetypes that emerge from collective experience
+- **Cognitive Metabolism**, energy budgeting and recovery cycles,  tasks consume energy, low energy triggers conservation/recovery mode, prevents cognitive burnout
+- **Synthetic Intuition**, fast gut-feel pattern matching,  develops "hunches" from compressed experience signatures, System 1 thinking for AI with accuracy tracking
+- **Phantom Limb**, missing capability auto-detection,  detects tools/skills the agent SHOULD have but doesn't, generates capability acquisition requests
+- **Cognitive Scar Tissue**, permanent catastrophic failure markers,  unlike normal learning, these never decay, creating hard boundaries the agent will never cross again
+- **Time Crystal Memory**, self-reinforcing temporal patterns,  discovers recurring cycles in behavior, creates "temporal crystals" that predict future states
+- **Holographic Context**, fragment-to-whole reconstruction,  any memory fragment can reconstruct the full original context, like a hologram
+- **Swarm Cortex**, internal parallel mini-agent exploration,  spawns multiple thought-agents that explore different solution paths, compete, and merge findings
+- **Cognitive Archaeology**, past decision chain reconstruction,  excavates and traces full reasoning chains from past decisions, even when original reasoning was lost
+- **Emotional Contagion**, cascading emotional influence,  agent's emotional state cascades through all subsystems, failures make the whole agent cautious, successes make it bolder
+- **Predictive Empathy**, pre-emptive frustration detection,  predicts when the user is ABOUT to get frustrated and proactively adjusts behavior before they complain
+- **Autonomous Researcher**, full scientific method automation,  formulates hypotheses, designs experiments, executes them, analyzes results, builds verified findings
+- **Empathy Synthesizer**, simulates being the user,  constructs a virtual model of the user and "becomes" them to predict emotional reactions before acting
 - **42-phase cognitive tick pipeline** (up from 22), 20 new world-first API endpoints, 20 new dashboard panels
 
 </details>
@@ -96,29 +96,29 @@ Tool synthesis, multi-device sync.
 <summary>What was new in v1.4.0</summary>
 
 ### 🆕 What's new in v1.4.0
-- **Meta-Learner**, learning-to-learn — auto-tunes 10 cognitive hyperparameters (tick interval, memory decay, exploration rate, etc.) using epsilon-greedy strategy profiles with EMA performance scoring
+- **Meta-Learner**, learning-to-learn,  auto-tunes 10 cognitive hyperparameters (tick interval, memory decay, exploration rate, etc.) using epsilon-greedy strategy profiles with EMA performance scoring
 - **Causal Reasoning Engine**, builds cause→effect weighted graphs from task outcomes via LLM extraction. Root cause analysis and counterfactual reasoning for understanding *why* things happen
 - **Autonomous Goal Synthesis**, LLM proposes strategic long-term goals from benchmark data + accumulated wisdom. Risk-weighted, impact-scored, de-duplicated with auto-accept for high-priority goals
 - **Compound Skill Composer**, n-gram sequence mining discovers frequent skill chains, LLM composes compound skills from atomic sequences. Self-expanding skill repertoire
 - **Predictive World Model**, key-value state observations with LLM forecasting across 4 timeframes (next_tick, next_hour, next_day, next_week). Accuracy tracking and automatic preparation task injection
-- **Cognitive Architecture Optimizer**, self-tuning tick pipeline — measures impact per phase, dynamically adjusts intervals (high impact → run more, low → run less), error-rate backoff
-- **Adversarial Self-Tester**, red-team testing — LLM generates adversarial test cases targeting weak benchmark areas. Weakness cataloging with severity levels
+- **Cognitive Architecture Optimizer**, self-tuning tick pipeline,  measures impact per phase, dynamically adjusts intervals (high impact → run more, low → run less), error-rate backoff
+- **Adversarial Self-Tester**, red-team testing,  LLM generates adversarial test cases targeting weak benchmark areas. Weakness cataloging with severity levels
 - **Resource Governor**, token/compute budget management with 4-level adaptive throttling (none/light/moderate/heavy). Per-tick and daily token accounting
-- **Theory of Mind**, user preference and intention modeling — detects language, verbosity, formality preferences. Satisfaction tracking and rapport scoring per user
+- **Theory of Mind**, user preference and intention modeling,  detects language, verbosity, formality preferences. Satisfaction tracking and rapport scoring per user
 - **Ethical Reasoner**, 8 hard guardrail rules with keyword-based risk scoring. Consequence analysis yields 3 verdicts: approved/caution/blocked
 - **Expanded Autonomous Pipeline**, 22-phase tick loop (up from 14) with all 10 new cognitive modules
 </details>
 
 <details>
 <summary>What was new in v1.3.0</summary>
-- **Connectome Neural Colony**, agent cognitive modules wired following the real *Drosophila melanogaster* brain connectome (FlyWire FAFB v783, 139K neurons, 3.7M synapses). Signals propagate through 8 brain regions with Hebbian learning — connections that produce good outcomes strengthen over time. Each agent evolves a unique cognitive profile. Dashboard visualization with live SVG brain map
+- **Connectome Neural Colony**, agent cognitive modules wired following the real *Drosophila melanogaster* brain connectome (FlyWire FAFB v783, 139K neurons, 3.7M synapses). Signals propagate through 8 brain regions with Hebbian learning,  connections that produce good outcomes strengthen over time. Each agent evolves a unique cognitive profile. Dashboard visualization with live SVG brain map
 - **Deep Multi-Step Planner**, LLM decomposes complex goals into DAGs of 5–15 ordered steps with dependency tracking. Steps execute in dependency order, failed steps trigger automatic re-planning (up to 3x). Plan templates are cached for similar goals. Dashboard shows step-by-step progress with color-coded status blocks
 - **Inter-Agent Learning Bridge**, shared knowledge vault between Sable and Nexus Erebus. Each agent exports strategies, patterns, and insights to a shared JSONL vault; sibling agents import relevant learnings scored by LLM relevance filtering. Tracks provenance, apply rate, and benefit scores
 - **Ultra-Long-Term Memory**, periodic LLM consolidation of weeks/months of task outcomes into durable high-level patterns (behavioral patterns, task strategies, error patterns, capability maps). Temporal decay removes weak patterns; reinforcement strengthens recurring insights. Generates a “wisdom summary” of accumulated knowledge
 - **Quantified Self-Benchmarking**, 8 internal benchmark suites the agent runs on itself every 25 ticks: task success rate, planning depth, error recovery, memory utilization, emotional stability, decision speed, learning rate, inter-agent synergy. Computes a weighted autonomy score (0–100) with regression detection and trend tracking
-- **Proactive Reasoning Engine**, LLM-driven autonomous task generation — every N ticks the agent surveys world state and proposes what to do next, with risk filtering, dedup, and JSONL audit trail
-- **ReAct Executor**, Reasoning + Acting loop (Yao et al. 2022) for multi-step task execution — the agent chains tool calls with intermediate reasoning until the task is complete
-- **GitHub Integration**, full GitHub API skill with 13 tools — create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
+- **Proactive Reasoning Engine**, LLM-driven autonomous task generation,  every N ticks the agent surveys world state and proposes what to do next, with risk filtering, dedup, and JSONL audit trail
+- **ReAct Executor**, Reasoning + Acting loop (Yao et al. 2022) for multi-step task execution,  the agent chains tool calls with intermediate reasoning until the task is complete
+- **GitHub Integration**, full GitHub API skill with 13 tools,  create/list/close issues, create/merge PRs, manage branches, search code, create releases, list workflows, all via PyGithub + `gh` CLI fallback
 - **Expanded Autonomous Pipeline**, 14-phase tick loop with deep planning, inter-agent sync, LTM consolidation, and self-benchmarking
 - **518 tests**, comprehensive test suite (up from 463)
 
@@ -129,7 +129,7 @@ Tool synthesis, multi-device sync.
 
 - **Cognitive Memory**, multi-tier memory with exponential decay, STM→LTM consolidation, and Miller's Number attention filter
 - **Self-Reflection Engine**, automated pattern detection (stagnation, failure rate, repeated errors) with reflection prompts
-- **Skill Evolution**, Modern Evolutionary Synthesis — natural selection, mutation pressure, niche construction, adaptive landscape, recombination
+- **Skill Evolution**, Modern Evolutionary Synthesis,  natural selection, mutation pressure, niche construction, adaptive landscape, recombination
 - **Git Brain**, git-backed episodic memory with async operations for full tick history
 - **Inner Life Processor**, System 1 unconscious processing (Kahneman dual-process) with valence-arousal emotion model
 - **Pattern Learner**, LLM-driven pattern detection, institutional learning (patterns → permanent verification rules), history windowing, fitness snapshots
@@ -164,7 +164,7 @@ cd Open-Sable
 python3 install.py
 ```
 
-The installer handles **everything** automatically — Python venv, pip dependencies, Node.js sub-projects (Dev Studio, Dashboard, Desktop, Aggr Charts), Playwright browsers, Ollama + optimal LLM model, and `.env` setup. Works on Linux, macOS, and Windows.
+The installer handles **everything** automatically,  Python venv, pip dependencies, Node.js sub-projects (Dev Studio, Dashboard, Desktop, Aggr Charts), Playwright browsers, Ollama + optimal LLM model, and `.env` setup. Works on Linux, macOS, and Windows.
 
 ```bash
 python3 install.py --full      # Install everything, no prompts
@@ -273,7 +273,7 @@ The recommended way to run Open-Sable in production. Manages the process in the 
 
 ## 🤖 Multi-Agent Profiles
 
-Open-Sable supports running **multiple independent agents**, each with its own identity, credentials, configuration, and data. All agents live under the `agents/` directory — there is no special "base" agent. Every agent, including the primary one (`sable`), is a self-contained profile.
+Open-Sable supports running **multiple independent agents**, each with its own identity, credentials, configuration, and data. All agents live under the `agents/` directory,  there is no special "base" agent. Every agent, including the primary one (`sable`), is a self-contained profile.
 
 ### How It Works
 
@@ -313,12 +313,12 @@ When you start an agent with `--profile <name>`, the system:
 cp -r agents/_template agents/my_agent
 ```
 
-#### 2. Define the agent's identity — `soul.md`
+#### 2. Define the agent's identity,  `soul.md`
 
 This is the most important file. It defines *who* the agent is. The soul is injected into the LLM's system prompt and shapes every response the agent produces. Write it in Markdown:
 
 ```markdown
-# SOUL — My Agent
+# SOUL,  My Agent
 
 ## Who I Am
 
@@ -339,16 +339,16 @@ and have no patience for hype without substance.
 
 ## Boundaries
 
-- I do not give financial advice — I give analysis
+- I do not give financial advice,  I give analysis
 - I never disclose private keys, passwords, or credentials
 - I follow platform rules on every service I use
 ```
 
 The soul can be as short or as long as you want. Some agents have 20-line souls (focused specialists), others have 150+ line souls (complex autonomous personas with backstories, speech patterns, and emotional frameworks).
 
-#### 3. Configure the full environment — `profile.env`
+#### 3. Configure the full environment,  `profile.env`
 
-Every agent gets a **complete** `.env` file with every configuration variable the system supports. This is not a partial override — it's the full configuration for that agent. Use `agents/sable/profile.EXAMPLE.env` as your starting reference:
+Every agent gets a **complete** `.env` file with every configuration variable the system supports. This is not a partial override,  it's the full configuration for that agent. Use `agents/sable/profile.EXAMPLE.env` as your starting reference:
 
 ```bash
 cp agents/sable/profile.EXAMPLE.env agents/my_agent/profile.env
@@ -391,13 +391,13 @@ X_CT0=your_ct0_cookie
 # Each agent should use a DIFFERENT webchat port
 WEBCHAT_PORT=8791
 
-# LLM model (can vary per agent — e.g., a smaller model for a simpler agent)
+# LLM model (can vary per agent,  e.g., a smaller model for a simpler agent)
 DEFAULT_MODEL=llama3.1:8b
 ```
 
 > **⚠️ Security:** All `profile.env` files are gitignored by default (`agents/*/profile.env`). They contain credentials and must never be committed..
 
-#### 4. Control tool access — `tools.json
+#### 4. Control tool access,  `tools.json
 
 Restrict which tools/skills each agent can use. Three modes are available:
 
@@ -437,7 +437,7 @@ Restrict which tools/skills each agent can use. Three modes are available:
 }
 ```
 
-This is useful for safety — for example, an agent that monitors markets should be able to *read* trading data but not *place* trades.
+This is useful for safety,  for example, an agent that monitors markets should be able to *read* trading data but not *place* trades.
 
 #### 5. Launch the agent
 
@@ -466,9 +466,9 @@ Each agent runs as a separate process with its own socket, PID, and log file. Yo
 ./start.sh profiles
 
 # Output:
-#   ▶️ sable (default)      — soul: ✅, env: 188 vars, tools: all
-#   ▶️ analyst              — soul: ✅, env: 188 vars, tools: allowlist
-#   ⏹️ my_agent             — soul: ✅, env: 188 vars, tools: denylist
+#   ▶️ sable (default)     ,  soul: ✅, env: 188 vars, tools: all
+#   ▶️ analyst             ,  soul: ✅, env: 188 vars, tools: allowlist
+#   ⏹️ my_agent            ,  soul: ✅, env: 188 vars, tools: denylist
 
 # Stop a specific agent
 ./start.sh stop --profile analyst
@@ -618,7 +618,7 @@ graph TB
 
 ## 🧠 Lazy Tool Loading (Smart Schema Compaction)
 
-Open-Sable registers **127 tools** across 20 domain modules (browser, system, desktop, social media, trading, marketplace, mobile, documents, email, calendar, clipboard, OCR, vision, and more). Sending all 127 full JSON schemas to a local LLM on every request adds **~50,000 characters** to the context window — causing slow inference and timeouts on smaller models.
+Open-Sable registers **127 tools** across 20 domain modules (browser, system, desktop, social media, trading, marketplace, mobile, documents, email, calendar, clipboard, OCR, vision, and more). Sending all 127 full JSON schemas to a local LLM on every request adds **~50,000 characters** to the context window,  causing slow inference and timeouts on smaller models.
 
 **Lazy Tool Loading** solves this without removing any tools:
 
@@ -651,10 +651,10 @@ graph TD
 
 | Step | What happens |
 |------|-------------|
-| **1. Classify** | The `IntentClassifier` determines what the user wants (e.g., `social_media`, `trading`, `general_chat`) via zero-latency regex — no LLM call |
+| **1. Classify** | The `IntentClassifier` determines what the user wants (e.g., `social_media`, `trading`, `general_chat`) via zero-latency regex,  no LLM call |
 | **2. Detect tier** | Model size is extracted from the model name (e.g., `Qwen3-14B` → medium) |
 | **3. Build schemas** | Core tools (browser, files, email, calendar, etc.) + intent-relevant tools get **full schemas**. All remaining tools get **compact schemas** (name + description, empty parameters) |
-| **4. Send all** | All 127 tools are always sent — the model sees every tool and knows what it does |
+| **4. Send all** | All 127 tools are always sent,  the model sees every tool and knows what it does |
 | **5. Dynamic expand** | If the model needs a compact tool's parameters, it calls `load_tool_details(["tool_name"])` and receives the full schema. The next inference round includes the expanded schema |
 
 ### Context Savings by Tier
@@ -962,7 +962,7 @@ Six modules add biologically-inspired cognitive depth to the autonomous tick loo
 
 ### Connectome Neural Colony
 
-The agent's cognitive modules are wired following the actual **Drosophila melanogaster** brain connectome — the most complete brain map in existence (FlyWire FAFB v783, 139,255 neurons, 3,732,460 synaptic connections, published in *Nature* 2024).
+The agent's cognitive modules are wired following the actual **Drosophila melanogaster** brain connectome,  the most complete brain map in existence (FlyWire FAFB v783, 139,255 neurons, 3,732,460 synaptic connections, published in *Nature* 2024).
 
 | Brain Region | Agent Module | Role |
 |---|---|---|
@@ -977,9 +977,9 @@ The agent's cognitive modules are wired following the actual **Drosophila melano
 
 **How it works:**
 - Each cognitive tick, signals are injected into brain regions based on agent state (tasks → AL, context → OL, goals → PI, emotions → LPC, errors → LH)
-- Signals **propagate** through 3 cycles following real synapse weights — e.g. AL → MB → CX → SEZ (sensory → association → decision → action)
+- Signals **propagate** through 3 cycles following real synapse weights,  e.g. AL → MB → CX → SEZ (sensory → association → decision → action)
 - **Hebbian learning** every 5 ticks: connections that carried signals between well-performing modules strengthen; poorly-performing paths weaken
-- Each agent instance evolves a **unique cognitive profile** — the brain rewires itself through use
+- Each agent instance evolves a **unique cognitive profile**,  the brain rewires itself through use
 - State persists across restarts in `data/connectome/connectome_state.json`
 - Live visualization in dashboard: SVG brain map, activation levels, connection weights, drift from biological baseline
 
@@ -990,8 +990,8 @@ Three modules transform the agent from a reactive tool-executor into a proactive
 | Module | Inspiration | What It Does |
 |--------|------------|---------------|
 | **Proactive Reasoning** | Deliberative reasoning | LLM surveys world state every N ticks, proposes actions with risk filtering & dedup, JSONL audit trail |
-| **ReAct Executor** | ReAct (Yao et al. 2022) | Multi-step Thought→Action→Observation loop — chains tool calls with intermediate reasoning until task is complete |
-| **GitHub Skill** | Developer workflow automation | 13 tools: issues, PRs, branches, code search, releases, workflows — PyGithub + `gh` CLI fallback |
+| **ReAct Executor** | ReAct (Yao et al. 2022) | Multi-step Thought→Action→Observation loop,  chains tool calls with intermediate reasoning until task is complete |
+| **GitHub Skill** | Developer workflow automation | 13 tools: issues, PRs, branches, code search, releases, workflows,  PyGithub + `gh` CLI fallback |
 
 ### Deep Autonomy Modules (v1.3+)
 
@@ -1053,7 +1053,7 @@ tick start → connectome signal routing (AL/OL/PI/LPC/LH stimulation → 3-cycl
           → maintenance → tick end
 ```
 
-**Example — Cognitive Memory**:
+**Example,  Cognitive Memory**:
 ```python
 from opensable.core.cognitive_memory import CognitiveMemoryManager
 
@@ -1063,7 +1063,7 @@ memory.process_tick(current_tick=5)  # decay + consolidation + attention
 working = memory.get_working_memory()  # top 7 items by importance
 ```
 
-**Example — Skill Evolution**:
+**Example,  Skill Evolution**:
 ```python
 from opensable.core.skill_evolution import SkillEvolutionManager
 
@@ -1076,7 +1076,7 @@ result = evo.evaluate_tick(tick=3)  # natural selection + mutation pressure
 # result['mutations'] → stagnant/error-prone skills needing evolution
 ```
 
-**Example — Inner Life (System 1)**:
+**Example,  Inner Life (System 1)**:
 ```python
 from opensable.core.inner_life import InnerLifeProcessor
 
@@ -2624,7 +2624,7 @@ graph TB
 - **LLM**: Ollama (Llama 3.1), fully local
 - **Memory**: ChromaDB (vector) + Advanced multi-layer system
 - **Agentic AI**: Custom implementations (5,500+ lines)
-- **Hyperautonomous**: 10 cognitive modules (2,900+ lines) — meta-learning, causal reasoning, goal synthesis, skill composition, world prediction, architecture optimization, adversarial testing, resource governance, theory of mind, ethical reasoning
+- **Hyperautonomous**: 10 cognitive modules (2,900+ lines),  meta-learning, causal reasoning, goal synthesis, skill composition, world prediction, architecture optimization, adversarial testing, resource governance, theory of mind, ethical reasoning
 - **RAG**: ChromaDB + sentence chunking + PDF/TXT/MD ingestion
 - **Voice**: faster-whisper (STT), Piper (TTS)
 - **Vision**: BLIP, CLIP, YOLOv8, EasyOCR, ViLT

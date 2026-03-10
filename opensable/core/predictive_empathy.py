@@ -1,5 +1,5 @@
 """
-Predictive Empathy — pre-emptive user frustration detection.
+Predictive Empathy,  pre-emptive user frustration detection.
 
 WORLD FIRST: The agent predicts when the user is ABOUT to get frustrated
 BEFORE it happens, and proactively adjusts its behavior. It learns

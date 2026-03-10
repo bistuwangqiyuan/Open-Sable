@@ -85,7 +85,7 @@ export default function App() {
           connect(config)
         }
       } else {
-        // Running in browser preview — connect with defaults
+        // Running in browser preview,  connect with defaults
         connect(config)
       }
     }
@@ -102,7 +102,7 @@ export default function App() {
       e.preventDefault()
       toggleSidebar()
     }
-    // Ctrl+Shift+D → Dev Studio (check first — more specific)
+    // Ctrl+Shift+D → Dev Studio (check first,  more specific)
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
       e.preventDefault()
       setDevStudioOpen(v => !v)

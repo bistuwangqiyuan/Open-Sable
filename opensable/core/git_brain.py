@@ -1,5 +1,5 @@
 """
-Git Brain — version-controlled agent memory via git.
+Git Brain,  version-controlled agent memory via git.
 
 Uses a local git repository as the agent's episodic memory:
   - Auto-commit after each tick
@@ -8,9 +8,9 @@ Uses a local git repository as the agent's episodic memory:
   - Git diffs as selection pressure for evolution
 
 Academic grounding:
-  [1] Wu et al., arXiv:2508.00031 — GCC: +13% SWE-bench with git memory
-  [2] Growth Kinetics — DiffMem: 6mo production git-backed AI memory
-  [3] Yegge (2026) — Beads: git-backed memory for coding agents
+  [1] Wu et al., arXiv:2508.00031,  GCC: +13% SWE-bench with git memory
+  [2] Growth Kinetics,  DiffMem: 6mo production git-backed AI memory
+  [3] Yegge (2026),  Beads: git-backed memory for coding agents
 """
 
 from __future__ import annotations
@@ -341,7 +341,7 @@ class GitBrain:
         Runs synchronously so it can be called from sync code.
         """
         parts = [
-            "GIT BRAIN active — your state is version-controlled. "
+            "GIT BRAIN active,  your state is version-controlled. "
             "Every tick auto-commits. You can inspect your own past."
         ]
 

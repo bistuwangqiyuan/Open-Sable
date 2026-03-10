@@ -1,7 +1,7 @@
 """
-Quantum Cognition — WORLD FIRST
+Quantum Cognition,  WORLD FIRST
 =================================
-Superposition reasoning — holds multiple CONTRADICTORY hypotheses
+Superposition reasoning,  holds multiple CONTRADICTORY hypotheses
 as simultaneously true until observation collapses them.
 True quantum-inspired reasoning: entanglement, superposition, collapse.
 
@@ -89,7 +89,7 @@ class QuantumCognition:
         return ids
 
     def entangle(self, qh_id_a: str, qh_id_b: str):
-        """Entangle two hypotheses — measuring one affects the other."""
+        """Entangle two hypotheses,  measuring one affects the other."""
         if qh_id_a in self.hypotheses and qh_id_b in self.hypotheses:
             a = self.hypotheses[qh_id_a]
             b = self.hypotheses[qh_id_b]
@@ -102,7 +102,7 @@ class QuantumCognition:
     def observe(self, qh_id: str, evidence_supports: bool = True,
                 evidence_strength: float = 0.5) -> dict:
         """
-        Observe a hypothesis — this may cause wavefunction collapse.
+        Observe a hypothesis,  this may cause wavefunction collapse.
         Evidence modifies amplitudes. Strong enough evidence collapses.
         """
         if qh_id not in self.hypotheses:

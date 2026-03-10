@@ -1,5 +1,5 @@
 """
-Follow-Up Scheduler — Automated follow-up detection and execution.
+Follow-Up Scheduler,  Automated follow-up detection and execution.
 
 Hooks into CRM and Pipeline to:
   - Detect contacts overdue for follow-up
@@ -31,7 +31,7 @@ class FollowUpSkill:
     """
     Scans CRM and pipeline for actionable follow-up opportunities.
 
-    Not a skill with its own DB — it queries crm_skill and pipeline_skill
+    Not a skill with its own DB,  it queries crm_skill and pipeline_skill
     and returns structured recommendations the agent can act on.
     """
 
@@ -168,7 +168,7 @@ class FollowUpSkill:
                     "company": contact.get("company", ""),
                     "role": contact.get("role", ""),
                     "last_contact": contact.get("last_contact", ""),
-                    "suggested_action": f"Follow up with {contact['name']} — no reply in {stale_days}+ days",
+                    "suggested_action": f"Follow up with {contact['name']},  no reply in {stale_days}+ days",
                     "template": "followup_no_reply",
                     "merge_fields": {
                         "name": contact["name"],
@@ -194,7 +194,7 @@ class FollowUpSkill:
                     "stage": deal["stage"],
                     "product": deal.get("product", ""),
                     "last_updated": deal.get("updated_at", ""),
-                    "suggested_action": f"Deal '{deal['title']}' stuck in '{deal['stage']}' for {stalling_days}+ days — needs attention",
+                    "suggested_action": f"Deal '{deal['title']}' stuck in '{deal['stage']}' for {stalling_days}+ days,  needs attention",
                     "template": None,
                     "merge_fields": {},
                 }

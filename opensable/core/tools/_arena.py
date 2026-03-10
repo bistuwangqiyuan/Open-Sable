@@ -1,5 +1,5 @@
 """
-Arena (fighting game) tool implementations — mixin for ToolRegistry.
+Arena (fighting game) tool implementations,  mixin for ToolRegistry.
 """
 
 import logging
@@ -16,14 +16,14 @@ class ArenaToolsMixin:
     async def _arena_fight_tool(self, params: Dict) -> str:
         """Connect to the arena, authenticate via SAGP, and queue for a fight."""
         if not getattr(self, "arena_skill", None):
-            return "Arena skill not available — set ARENA_URL in profile.env"
+            return "Arena skill not available,  set ARENA_URL in profile.env"
         use_llm = params.get("use_llm", True)
         result = await self.arena_skill.connect_and_fight(use_llm=use_llm)
         if "error" in result:
             return f"Arena error: {result['error']}"
         return (
             f"Connected to arena as {result.get('agent', '?')} "
-            f"at {result.get('arena', '?')} — status: {result.get('status', '?')}"
+            f"at {result.get('arena', '?')},  status: {result.get('status', '?')}"
         )
 
     # ── arena_status ──────────────────────────────────────────────────────────

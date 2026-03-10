@@ -1,10 +1,10 @@
 """Skills package for Open-Sable - High-level wrappers for all advanced capabilities.
 
 Organized into subpackages:
-  - social/   — X (Twitter), Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
-  - media/    — Image, Voice, OCR
-  - data/     — Database, RAG, File Manager, Documents, Clipboard
-  - automation/ — Code Executor, API Client, Browser, Scraper, Email, Calendar
+  - social/  ,  X (Twitter), Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
+  - media/   ,  Image, Voice, OCR
+  - data/    ,  Database, RAG, File Manager, Documents, Clipboard
+  - automation/,  Code Executor, API Client, Browser, Scraper, Email, Calendar
 
 All classes are re-exported here for backward compatibility.
 """
@@ -294,7 +294,7 @@ class APIClient:
 
 # X (Twitter) & Grok skills
 class XSkill:
-    """X/Twitter automation wrapper — ALL API calls go through a global FIFO queue.
+    """X/Twitter automation wrapper,  ALL API calls go through a global FIFO queue.
     
     Every call from anywhere (autoposter, Telegram, autonomous mode) is enqueued.
     The queue processes them ONE AT A TIME with adaptive cooldowns that learn
@@ -382,7 +382,7 @@ class XSkill:
 
 
 class GrokSkill:
-    """Grok AI via X account wrapper — ALL calls go through the X API queue.
+    """Grok AI via X account wrapper,  ALL calls go through the X API queue.
     
     Grok uses the same X session/cookies, so concurrent Grok + X API calls
     look like parallel automation to X's detection systems.
@@ -429,7 +429,7 @@ class GrokSkill:
 # ── Social media skills (Instagram, Facebook, LinkedIn, TikTok) ──────
 
 class InstagramSkill:
-    """Instagram automation wrapper — uses instagrapi (unofficial Private API)."""
+    """Instagram automation wrapper,  uses instagrapi (unofficial Private API)."""
 
     def __init__(self, config):
         self.config = config
@@ -529,7 +529,7 @@ class InstagramSkill:
 
 
 class FacebookSkill:
-    """Facebook Graph API wrapper — uses facebook-sdk."""
+    """Facebook Graph API wrapper,  uses facebook-sdk."""
 
     def __init__(self, config):
         self.config = config
@@ -593,7 +593,7 @@ class FacebookSkill:
 
 
 class LinkedInSkill:
-    """LinkedIn automation wrapper — uses linkedin-api (Voyager API, unofficial)."""
+    """LinkedIn automation wrapper,  uses linkedin-api (Voyager API, unofficial)."""
 
     def __init__(self, config):
         self.config = config
@@ -665,7 +665,7 @@ class LinkedInSkill:
 
 
 class TikTokSkill:
-    """TikTok data retrieval wrapper — uses TikTokApi (read-only, no posting)."""
+    """TikTok data retrieval wrapper,  uses TikTokApi (read-only, no posting)."""
 
     def __init__(self, config):
         self.config = config
@@ -725,7 +725,7 @@ class TikTokSkill:
 
 
 class YouTubeSkill:
-    """YouTube wrapper — uses python-youtube (pyyoutube) for YouTube Data API v3."""
+    """YouTube wrapper,  uses python-youtube (pyyoutube) for YouTube Data API v3."""
 
     def __init__(self, config):
         self.config = config

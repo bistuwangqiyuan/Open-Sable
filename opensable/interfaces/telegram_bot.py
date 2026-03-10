@@ -1,17 +1,17 @@
 """
-Telegram Bot Interface — Sable
+Telegram Bot Interface,  Sable
 
 Features:
 - Persistent conversation history per user (survives restarts)
-- Streaming responses — bot edits the message token-by-token via Ollama
+- Streaming responses,  bot edits the message token-by-token via Ollama
 - Slash commands: /status /reset /new /compact /think /verbose /voice /model /usage /help
 - Pairing/allowlist system:
     * If TELEGRAM_ALLOWED_USERS is empty → first user is auto-authorized (owner)
     * New users receive a pairing code; owner must /pair approve <code>
-    * No open ports — pairing is pure in-bot DM exchange
+    * No open ports,  pairing is pure in-bot DM exchange
 - Group support with activation mode (mention|always)
 - Markdown-safe replies (falls back to plain text on parse errors)
-- NO external ports opened — only Telegram long-polling
+- NO external ports opened,  only Telegram long-polling
 """
 
 import asyncio
@@ -68,7 +68,7 @@ class PairingStore:
       - After that, new senders get a pairing code in their DM
       - Owner approves with /pair approve <code>
       - Approved users are added to the allowlist and persisted to disk
-      - No ports, no HTTP — all via Telegram DMs
+      - No ports, no HTTP,  all via Telegram DMs
     """
 
     def __init__(self, config):
@@ -242,7 +242,7 @@ class TelegramInterface:
         self.bot = Bot(token=self.config.telegram_bot_token)
         self.dp = Dispatcher()
 
-        # Register handlers (order matters — specific filters first, catch-all last)
+        # Register handlers (order matters,  specific filters first, catch-all last)
         self.dp.message.register(self._h_start, CommandStart())
         self.dp.message.register(self._h_voice, F.voice)
         self.dp.message.register(self._h_photo, F.photo)
@@ -273,6 +273,24 @@ class TelegramInterface:
                     logger.debug(f"Heartbeat Telegram notify failed: {e}")
 
             self.agent._telegram_notify = _tg_notify
+
+            # Wire photo sending for IG autoposter → Telegram forwarding
+            _bot_ref = self.bot
+            _owner_int = int(owner_id)
+
+            async def _tg_send_photo(photo_path: str, caption: str = ""):
+                try:
+                    from aiogram.types import FSInputFile
+                    photo = FSInputFile(photo_path)
+                    await _bot_ref.send_photo(
+                        chat_id=_owner_int,
+                        photo=photo,
+                        caption=caption[:1024] if caption else "",
+                    )
+                except Exception as e:
+                    logger.debug(f"Telegram send_photo failed: {e}")
+
+            self.agent._telegram_send_photo = _tg_send_photo
 
             # Also wire notifications to X API queue for error alerts
             try:
@@ -310,7 +328,7 @@ class TelegramInterface:
             self.pairing.approve_first(user_id, username)
             await message.answer(
                 f"👋 **Welcome, {username}!**\n\n"
-                f"You're the first user — auto-approved as **owner**.\n"
+                f"You're the first user,  auto-approved as **owner**.\n"
                 f"Your ID: `{user_id}`\n\n"
                 f"Use /help to see available commands.",
                 parse_mode=ParseMode.MARKDOWN,
@@ -320,7 +338,7 @@ class TelegramInterface:
         if self.pairing.is_allowed(user_id):
             return True
 
-        # Unknown user — issue pairing code
+        # Unknown user,  issue pairing code
         code = self.pairing.create_pairing_code(user_id, username)
         await message.answer(
             f"🔐 **Pairing required**\n\n"
@@ -387,17 +405,17 @@ class TelegramInterface:
             return
         text = (
             "🤖 **Sable Commands**\n\n"
-            "/status — session info (model, tokens, uptime)\n"
-            "/reset  — clear conversation history\n"
-            "/new    — same as /reset\n"
-            "/compact — summarise old messages\n"
-            "/think `<level>` — off|minimal|low|medium|high|xhigh\n"
-            "/verbose `on|off` — toggle detailed output\n"
-            "/voice `on|off` — toggle voice mode\n"
-            "/model `<name>` — switch AI model\n"
-            "/usage `full|tokens|off` — usage footer\n"
-            "/pair `approve|deny <code>` — manage pairing\n"
-            "/help — this message\n\n"
+            "/status,  session info (model, tokens, uptime)\n"
+            "/reset ,  clear conversation history\n"
+            "/new   ,  same as /reset\n"
+            "/compact,  summarise old messages\n"
+            "/think `<level>`,  off|minimal|low|medium|high|xhigh\n"
+            "/verbose `on|off`,  toggle detailed output\n"
+            "/voice `on|off`,  toggle voice mode\n"
+            "/model `<name>`,  switch AI model\n"
+            "/usage `full|tokens|off`,  usage footer\n"
+            "/pair `approve|deny <code>`,  manage pairing\n"
+            "/help,  this message\n\n"
             "Just chat naturally for everything else!"
         )
 
@@ -422,9 +440,9 @@ class TelegramInterface:
         if not args:
             await message.answer(
                 "Usage:\n"
-                "`/pair approve <CODE>` — approve a pending user\n"
-                "`/pair deny <CODE>` — deny a pending user\n"
-                "`/pair revoke <USER_ID>` — revoke existing user",
+                "`/pair approve <CODE>`,  approve a pending user\n"
+                "`/pair deny <CODE>`,  deny a pending user\n"
+                "`/pair revoke <USER_ID>`,  revoke existing user",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
@@ -591,7 +609,7 @@ class TelegramInterface:
             await message.answer(f"❌ Image analysis error: {str(e)}")
 
     async def _h_message(self, message: Message):
-        """Main message handler — slash commands + regular chat with streaming."""
+        """Main message handler,  slash commands + regular chat with streaming."""
         if not message.text:
             return
 
@@ -616,7 +634,7 @@ class TelegramInterface:
                 if f"@{bot_username}" not in (message.text or ""):
                     return
 
-        # Session — per user, per channel
+        # Session,  per user, per channel
         channel_key = f"telegram_group_{message.chat.id}" if is_group else "telegram"
         session = self.session_manager.get_or_create_session(
             user_id=user_id,
@@ -637,7 +655,7 @@ class TelegramInterface:
             if not result.should_continue:
                 return
 
-        # ── Regular message — streamed response ─────────────────────────
+        # ── Regular message,  streamed response ─────────────────────────
         await message.bot.send_chat_action(message.chat.id, "typing")
 
         # Add user message to session history
@@ -656,13 +674,13 @@ class TelegramInterface:
 
         # ── Follow-through: if the agent promised to investigate, do it ──
         if response and self._promises_followup(response):
-            logger.info("[Telegram] Agent promised a follow-up — auto-continuing")
+            logger.info("[Telegram] Agent promised a follow-up,  auto-continuing")
             await asyncio.sleep(1.5)
             await message.bot.send_chat_action(message.chat.id, "typing")
 
             followup_prompt = (
                 "You just said you would investigate / look into something. "
-                "Do it NOW — use your tools (web search, etc.) and report "
+                "Do it NOW,  use your tools (web search, etc.) and report "
                 "the results. Do NOT say you will do it later. Act immediately."
             )
             session.add_message("user", followup_prompt)
@@ -717,10 +735,10 @@ class TelegramInterface:
     ) -> str:
         """
         Two-phase streaming:
-          Phase 1 — Run the full agent pipeline (``process_message``) with a
+          Phase 1,  Run the full agent pipeline (``process_message``) with a
                     live ``progress_callback`` that edits the placeholder to
                     show tool steps ("🔍 Searching…", "📄 Reading…" etc.).
-          Phase 2 — Re-stream the final response token-by-token via
+          Phase 2,  Re-stream the final response token-by-token via
                     ``llm.astream`` so the text appears progressively in chat.
 
         Falls back to a single send if streaming is unavailable.
@@ -811,7 +829,7 @@ class TelegramInterface:
                             buffer = ""
                             last_edit = now
 
-                # Final edit — use the REAL agent response (not the astream
+                # Final edit,  use the REAL agent response (not the astream
                 # replay which might drift), with Markdown formatting
                 await self._safe_edit(placeholder, response)
                 return response.strip()
@@ -820,7 +838,7 @@ class TelegramInterface:
                 logger.debug(f"astream replay failed ({e}), sending final directly")
                 # Fall through to direct send below
 
-        # ── No streaming available — just show the final response ───────
+        # ── No streaming available,  just show the final response ───────
         try:
             await placeholder.delete()
         except Exception:
@@ -855,7 +873,7 @@ class TelegramInterface:
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     async def _safe_reply(self, message: Message, text: str, buttons: list = None):
-        """Send reply — try Markdown, fall back to plain text. Optionally add inline buttons."""
+        """Send reply,  try Markdown, fall back to plain text. Optionally add inline buttons."""
         reply_markup = self._build_inline_keyboard(buttons) if buttons else None
 
         try:
@@ -869,7 +887,7 @@ class TelegramInterface:
                 await message.answer(text, reply_markup=reply_markup)
 
     async def _safe_edit(self, msg: Message, text: str):
-        """Edit existing message — try Markdown, fall back to plain text."""
+        """Edit existing message,  try Markdown, fall back to plain text."""
         try:
             await msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
         except Exception:

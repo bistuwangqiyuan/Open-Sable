@@ -1,5 +1,5 @@
 """
-Open-Sable Trading Skill — Multi-exchange automated trading.
+Open-Sable Trading Skill,  Multi-exchange automated trading.
 
 Supports crypto (Binance, Coinbase, Hyperliquid, Jupiter/Solana),
 prediction markets (Polymarket), and traditional markets (Alpaca, IBKR).

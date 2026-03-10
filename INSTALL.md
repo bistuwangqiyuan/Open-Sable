@@ -1,6 +1,6 @@
 # Installing Open-Sable
 
-## Automated Install (Recommended — Any OS)
+## Automated Install (Recommended,  Any OS)
 
 ```bash
 git clone https://github.com/IdeoaLabs/Open-Sable.git
@@ -32,7 +32,7 @@ python3 install.py --fix       # Auto-detect and repair broken installs
 
 - **Python 3.11+**
 - **Ollama** (for local LLM): https://ollama.com
-- **Node.js 18+** (optional — for dashboard, marketplace, desktop app)
+- **Node.js 18+** (optional,  for dashboard, marketplace, desktop app)
 
 ### Steps
 
@@ -52,7 +52,7 @@ pip install -e ".[core]"
 
 # 4. Set up environment
 cp .env.example .env
-# Edit .env — at minimum set TELEGRAM_BOT_TOKEN if using Telegram
+# Edit .env,  at minimum set TELEGRAM_BOT_TOKEN if using Telegram
 
 # 5. Create required directories
 mkdir -p data logs config

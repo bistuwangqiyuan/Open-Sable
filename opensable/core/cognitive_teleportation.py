@@ -1,5 +1,5 @@
 """
-Cognitive Teleportation — WORLD FIRST
+Cognitive Teleportation,  WORLD FIRST
 ======================================
 Instant context transfer between completely unrelated cognitive domains.
 Unlike gradual context switching, this teleports the ENTIRE cognitive state
@@ -87,7 +87,7 @@ class CognitiveTeleportation:
 
         if llm:
             prompt = (
-                f"You are performing COGNITIVE TELEPORTATION — transferring deep "
+                f"You are performing COGNITIVE TELEPORTATION,  transferring deep "
                 f"structural patterns from '{source.domain}' to '{target_domain}'.\n\n"
                 f"Source domain assumptions: {json.dumps(source.assumptions[:5])}\n"
                 f"Source heuristics: {json.dumps(source.heuristics[:5])}\n"

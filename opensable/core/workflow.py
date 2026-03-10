@@ -1,5 +1,5 @@
 """
-Workflow Engine — Define, execute, and manage multi-step workflows.
+Workflow Engine,  Define, execute, and manage multi-step workflows.
 
 Core orchestration module that wraps WorkflowPersistence with a clean API.
 

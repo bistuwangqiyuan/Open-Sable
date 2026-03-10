@@ -1,9 +1,9 @@
 """
-Synthetic Intuition — fast gut-feel pattern matching.
+Synthetic Intuition,  fast gut-feel pattern matching.
 
 WORLD FIRST: The agent develops "hunches" by building compressed pattern
 signatures from past experiences. Instead of full reasoning chains, it
-can make instant probabilistic judgments — System 1 thinking for AI.
+can make instant probabilistic judgments,  System 1 thinking for AI.
 
 Persistence: ``synthetic_intuition_state.json`` in *data_dir*.
 """
@@ -31,7 +31,7 @@ class Hunch:
 
 
 class SyntheticIntuition:
-    """Fast gut-feel pattern matching — System 1 for AI."""
+    """Fast gut-feel pattern matching,  System 1 for AI."""
 
     def __init__(self, data_dir: Path, max_hunches: int = 300,
                  confidence_threshold: float = 0.6):
@@ -88,7 +88,7 @@ class SyntheticIntuition:
                     self.gut_feelings = self.gut_feelings[-100:]
                 return feeling
 
-        # Fuzzy matching — check partial overlaps
+        # Fuzzy matching,  check partial overlaps
         words = set(situation.lower().split())
         best_match = None
         best_overlap = 0
@@ -118,7 +118,7 @@ class SyntheticIntuition:
             return
         exp_text = "\n".join(f"- {e}" for e in experiences[:10])
         prompt = (
-            f"Analyze these experiences and extract 3 reusable 'gut feelings' — "
+            f"Analyze these experiences and extract 3 reusable 'gut feelings',  "
             f"quick pattern→outcome rules that could apply in future:\n{exp_text}\n\n"
             f"Return JSON array: [{{\"pattern\": \"...\", \"prediction\": \"...\", \"confidence\": 0.X}}]"
         )

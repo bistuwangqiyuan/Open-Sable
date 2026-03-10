@@ -1,5 +1,5 @@
 """
-Startup Wizard — runs automatically when critical config is missing.
+Startup Wizard,  runs automatically when critical config is missing.
 
 Unlike the full OnboardingWizard (7 interactive steps for first-time setup),
 this is a lightweight checker that:
@@ -179,7 +179,7 @@ async def run_startup_wizard(config) -> bool:
     """
     issues = await gather_issues(config)
     if not issues:
-        return True  # nothing missing — carry on
+        return True  # nothing missing,  carry on
 
     # ── Show what's missing ────────────────────────────────────────
     critical = [i for i in issues if i.critical]
@@ -210,7 +210,7 @@ async def run_startup_wizard(config) -> bool:
     # ── Handle critical issues ─────────────────────────────────────
     for issue in critical:
         if issue.key.startswith("__"):
-            # Info-only issue (like "no models installed") — just show the hint
+            # Info-only issue (like "no models installed"),  just show the hint
             console.print(f"[bold red]❌ {issue.label}[/bold red]")
             console.print(f"[dim]{issue.hint}[/dim]")
             console.print()
@@ -256,7 +256,7 @@ async def run_startup_wizard(config) -> bool:
                     os.environ[issue.key] = value.strip()
                     console.print(f"[green]✅ Saved {issue.key}[/green]")
                 else:
-                    console.print("[dim]Skipped — you can add it later in .env[/dim]")
+                    console.print("[dim]Skipped,  you can add it later in .env[/dim]")
         else:
             console.print("[dim]You can configure them later in .env[/dim]")
 
@@ -264,7 +264,7 @@ async def run_startup_wizard(config) -> bool:
     console.print(
         Panel(
             "[bold green]✅ Configuration updated![/bold green]\n"
-            "[dim]Changes saved to .env — reloading config...[/dim]",
+            "[dim]Changes saved to .env,  reloading config...[/dim]",
             border_style="green",
         )
     )

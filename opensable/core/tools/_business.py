@@ -1,5 +1,5 @@
 """
-Business automation tools — CRM, pipeline, email templates, follow-ups.
+Business automation tools,  CRM, pipeline, email templates, follow-ups.
 
 Provides tool handlers that delegate to CRMSkill, PipelineSkill,
 EmailTemplatesSkill, and FollowUpSkill, following the mixin pattern.
@@ -119,7 +119,7 @@ class BusinessToolsMixin:
                     line += f" @ {c['company']}"
                 if c.get("country"):
                     line += f" ({c['country']})"
-                line += f" — {c['role']}/{c['status']}"
+                line += f",  {c['role']}/{c['status']}"
                 lines.append(line)
             return "\n".join(lines)
         except Exception as e:
@@ -240,7 +240,7 @@ class BusinessToolsMixin:
                 return "❌ Deal not found"
             lines = [f"💼 {deal['title']} [{deal['stage'].upper()}]"]
             if deal.get("product"):
-                lines.append(f"  📦 {deal['product']} — {deal.get('quantity', '?')} {deal.get('unit', '')}")
+                lines.append(f"  📦 {deal['product']},  {deal.get('quantity', '?')} {deal.get('unit', '')}")
             if deal.get("quality_requirements"):
                 lines.append(f"  ✅ Quality: {deal['quality_requirements']}")
             if deal.get("delivery_date"):
@@ -271,7 +271,7 @@ class BusinessToolsMixin:
             lines = [f"💼 {len(deals)} deals:"]
             for d in deals:
                 val = f" (€{d.get('value_estimate', 0):,.0f})" if d.get("value_estimate") else ""
-                lines.append(f"  • [{d['id']}] {d['title']} — {d['stage']}{val}")
+                lines.append(f"  • [{d['id']}] {d['title']},  {d['stage']}{val}")
             return "\n".join(lines)
         except Exception as e:
             return f"❌ Error: {e}"
@@ -316,7 +316,7 @@ class BusinessToolsMixin:
             buyer = result.get("buyer")
             mfr = result.get("manufacturer")
             lines = [f"🔗 Match for deal: {deal['title']}"]
-            lines.append(f"  Product: {deal.get('product', '?')} — {deal.get('quantity', '?')} {deal.get('unit', '')}")
+            lines.append(f"  Product: {deal.get('product', '?')},  {deal.get('quantity', '?')} {deal.get('unit', '')}")
             if buyer:
                 lines.append(f"  🛒 Buyer: {buyer['name']} @ {buyer.get('company', '?')} ({buyer.get('country', '?')})")
             else:
@@ -344,7 +344,7 @@ class BusinessToolsMixin:
                 return "📭 No templates found."
             lines = [f"📋 {len(templates)} email templates:"]
             for t in templates:
-                lines.append(f"  • {t['name']} [{t['category']}] — {t['subject'][:60]}")
+                lines.append(f"  • {t['name']} [{t['category']}],  {t['subject'][:60]}")
             return "\n".join(lines)
         except Exception as e:
             return f"❌ Error: {e}"
@@ -427,7 +427,7 @@ class BusinessToolsMixin:
                 stalling_days=params.get("stalling_days", 7),
             )
             if not recs:
-                return "✅ No follow-ups needed — everything is up to date!"
+                return "✅ No follow-ups needed,  everything is up to date!"
             lines = [f"📋 {len(recs)} follow-up recommendations:"]
             for i, r in enumerate(recs, 1):
                 priority_icon = "🔴" if r["priority"] == "high" else "🟡"
@@ -451,7 +451,7 @@ class BusinessToolsMixin:
             for c in contacts:
                 lines.append(
                     f"  • {c['name']} @ {c.get('company', '?')} "
-                    f"({c.get('email', 'no email')}) — due: {c.get('next_followup', '?')[:10]}"
+                    f"({c.get('email', 'no email')}),  due: {c.get('next_followup', '?')[:10]}"
                 )
             return "\n".join(lines)
         except Exception as e:

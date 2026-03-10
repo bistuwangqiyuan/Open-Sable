@@ -1,5 +1,5 @@
 """
-Instagram Skill — Post, search, interact on Instagram using instagrapi.
+Instagram Skill,  Post, search, interact on Instagram using instagrapi.
 
 Uses the instagrapi library (unofficial Instagram Private API wrapper).
 Authenticates with your Instagram account credentials (username + password).
@@ -62,11 +62,13 @@ class InstagramSkill:
         self._action_delay = getattr(config, "instagram_action_delay", 2.0)
         self._session_path = opensable_home() / "ig_session.json"
         self._session_path.parent.mkdir(parents=True, exist_ok=True)
+        # Serialize ALL IG API calls,  never make concurrent requests
+        self._api_lock = asyncio.Lock()
 
     async def initialize(self) -> bool:
         """Initialize Instagram client with credentials and session persistence."""
         if not INSTAGRAPI_AVAILABLE:
-            logger.warning("instagrapi not available — Instagram skill disabled")
+            logger.warning("instagrapi not available,  Instagram skill disabled")
             return False
 
         username = (
@@ -115,13 +117,25 @@ class InstagramSkill:
             except Exception as e:
                 logger.debug(f"Instagram: Could not set mobile device: {e}")
 
+            # ── Disable instagrapi's internal challenge retry loop ──
+            # By default instagrapi retries challenge/ 8 times → spams the API
+            # and gets the account flagged.  We raise immediately instead.
+            def _no_challenge_handler(username: str, choice=None):
+                raise ChallengeRequired(
+                    "challenge_required,  manual verification needed"
+                )
+            try:
+                self._client.challenge_code_handler = _no_challenge_handler
+            except Exception:
+                pass
+
             # ── Login strategy ──
             # PRIORITY: Use saved cookies. NEVER do password login if cookies exist.
             # Password login from a "new device" triggers Instagram challenges.
             # Cookie-based session restore does NOT trigger challenges.
             logged_in = False
 
-            # Attempt 1: Saved session with cookies — NO password login
+            # Attempt 1: Saved session with cookies,  NO password login
             if self._session_path.exists():
                 try:
                     await loop.run_in_executor(
@@ -146,22 +160,44 @@ class InstagramSkill:
                             await loop.run_in_executor(
                                 None, self._client.login_by_sessionid, session_id
                             )
-                            logged_in = True
-                            logger.info("✅ Instagram: Session restored from cookies")
-                        except Exception as e:
-                            err = str(e).lower()
-                            if "loginrequired" in err or "login_required" in err:
-                                # Session truly expired — need password login
-                                logger.info("Instagram: Session expired (login_required), will try password...")
-                                logged_in = False
-                            else:
-                                # JSON error, 429, etc — session might still work for uploads
-                                # Trust the cookies and mark as initialized
-                                logger.warning(
-                                    f"Instagram: Session check got error ({e}), "
-                                    "but cookies exist — trusting session for uploads"
+                            # Verify the session actually works with a lightweight call
+                            try:
+                                await loop.run_in_executor(
+                                    None, self._client.account_info
                                 )
                                 logged_in = True
+                                logger.info("✅ Instagram: Session restored and verified")
+                            except Exception as verify_err:
+                                logger.warning(
+                                    f"Instagram: Session restored but verification failed ({verify_err}). "
+                                    "Deleting stale session,  will try password login..."
+                                )
+                                self._session_path.unlink(missing_ok=True)
+                                logged_in = False
+                        except Exception as e:
+                            err = str(e).lower()
+                            # Only trust session on clearly transient network errors
+                            _transient = (
+                                "timeout" in err
+                                or "connectionerror" in err
+                                or "connection reset" in err
+                                or "429" in err
+                                or "too many requests" in err
+                                or "please wait" in err
+                            )
+                            if _transient:
+                                logger.warning(
+                                    f"Instagram: Transient error ({e}),  trusting session"
+                                )
+                                logged_in = True
+                            else:
+                                # JSON error, challenge, 400/412 etc,  session is dead
+                                logger.warning(
+                                    f"Instagram: Session invalid ({e}). "
+                                    "Deleting stale session,  will try password login..."
+                                )
+                                self._session_path.unlink(missing_ok=True)
+                                logged_in = False
                     else:
                         logger.info("Instagram: No sessionid in saved data, will do fresh login...")
 
@@ -169,7 +205,7 @@ class InstagramSkill:
                     logger.info(f"Instagram: Could not load session file: {e}")
                     logged_in = False
 
-            # Attempt 2: Fresh password login — ONLY if no saved session
+            # Attempt 2: Fresh password login,  ONLY if no saved session
             if not logged_in:
                 try:
                     await loop.run_in_executor(
@@ -178,7 +214,7 @@ class InstagramSkill:
                     logged_in = True
                     logger.info("✅ Instagram: Fresh login successful")
                 except (json.JSONDecodeError, ChallengeRequired) as e:
-                    # Challenge flow — Instagram wants verification.
+                    # Challenge flow,  Instagram wants verification.
                     # Try relogin first, then browser fallback.
                     logger.warning(f"Instagram: Challenge/JSON error on login: {e}")
                     await asyncio.sleep(3)
@@ -220,12 +256,12 @@ class InstagramSkill:
 
         except ChallengeRequired:
             logger.error(
-                "Instagram: Challenge required — verify your account in the app/browser first"
+                "Instagram: Challenge required,  verify your account in the app/browser first"
             )
             return False
         except TwoFactorRequired:
             logger.error(
-                "Instagram: 2FA required — set INSTAGRAM_2FA_CODE or disable 2FA"
+                "Instagram: 2FA required,  set INSTAGRAM_2FA_CODE or disable 2FA"
             )
             return False
         except json.JSONDecodeError as e:
@@ -258,14 +294,14 @@ class InstagramSkill:
             from playwright.sync_api import sync_playwright
         except ImportError:
             logger.error(
-                "Instagram: playwright not installed — cannot open browser login. "
+                "Instagram: playwright not installed,  cannot open browser login. "
                 "Install with: pip install playwright && playwright install chromium"
             )
             return False
 
         loop = asyncio.get_event_loop()
         logger.info(
-            "📸 Instagram: Opening browser for manual login — "
+            "📸 Instagram: Opening browser for manual login,  "
             "please log in and handle any verification..."
         )
 
@@ -316,7 +352,7 @@ class InstagramSkill:
                 except Exception:
                     pass
 
-                # Wait for sessionid cookie — poll every 3 seconds for up to 5 min
+                # Wait for sessionid cookie,  poll every 3 seconds for up to 5 min
                 max_wait = 300  # 5 minutes
                 elapsed = 0
                 while elapsed < max_wait:
@@ -325,7 +361,7 @@ class InstagramSkill:
                     cookies = context.cookies("https://www.instagram.com")
                     cookie_dict = {c["name"]: c["value"] for c in cookies}
                     if "sessionid" in cookie_dict:
-                        logger.info("✅ Instagram: Browser login successful — sessionid obtained!")
+                        logger.info("✅ Instagram: Browser login successful,  sessionid obtained!")
                         # Build and save session
                         import os as _os
                         session_data = {
@@ -373,7 +409,7 @@ class InstagramSkill:
                         return True
 
                 # Timeout
-                logger.warning("Instagram: Browser login timed out (5 min) — no sessionid obtained")
+                logger.warning("Instagram: Browser login timed out (5 min),  no sessionid obtained")
                 browser.close()
                 return False
 
@@ -432,25 +468,29 @@ class InstagramSkill:
             location: Optional location dict with 'name', 'lat', 'lng'
         """
         self._ensure_initialized()
-        try:
-            kwargs = {"path": Path(path), "caption": caption}
-            media = await self._run_sync(self._client.photo_upload, **kwargs)
+        async with self._api_lock:  # ONE IG API call at a time
+            try:
+                kwargs = {"path": Path(path), "caption": caption}
+                media = await self._run_sync(self._client.photo_upload, **kwargs)
 
-            media_id = getattr(media, "pk", None) or str(media)
-            code = getattr(media, "code", "")
-            logger.info(f"✅ Instagram: Photo uploaded — {code}")
-            await asyncio.sleep(self._action_delay)
+                media_id = getattr(media, "pk", None) or str(media)
+                code = getattr(media, "code", "")
+                logger.info(f"✅ Instagram: Photo uploaded,  {code}")
+                await asyncio.sleep(self._action_delay)
 
-            return {
-                "success": True,
-                "media_id": str(media_id),
-                "code": code,
-                "url": f"https://www.instagram.com/p/{code}/" if code else None,
-                "caption": caption[:100],
-            }
-        except Exception as e:
-            logger.error(f"Instagram upload_photo error: {e}")
-            return {"success": False, "error": str(e)}
+                return {
+                    "success": True,
+                    "media_id": str(media_id),
+                    "code": code,
+                    "url": f"https://www.instagram.com/p/{code}/" if code else None,
+                    "caption": caption[:100],
+                }
+            except ChallengeRequired:
+                logger.warning("Instagram upload_photo: challenge_required,  session needs manual verification")
+                return {"success": False, "error": "challenge_required"}
+            except Exception as e:
+                logger.error(f"Instagram upload_photo error: {e}")
+                return {"success": False, "error": str(e)}
 
     async def upload_video(
         self,
@@ -467,26 +507,30 @@ class InstagramSkill:
             thumbnail: Optional thumbnail image path
         """
         self._ensure_initialized()
-        try:
-            kwargs = {"path": Path(path), "caption": caption}
-            if thumbnail:
-                kwargs["thumbnail"] = Path(thumbnail)
+        async with self._api_lock:
+            try:
+                kwargs = {"path": Path(path), "caption": caption}
+                if thumbnail:
+                    kwargs["thumbnail"] = Path(thumbnail)
 
-            media = await self._run_sync(self._client.video_upload, **kwargs)
-            media_id = getattr(media, "pk", None) or str(media)
-            code = getattr(media, "code", "")
-            logger.info(f"✅ Instagram: Video uploaded — {code}")
-            await asyncio.sleep(self._action_delay)
+                media = await self._run_sync(self._client.video_upload, **kwargs)
+                media_id = getattr(media, "pk", None) or str(media)
+                code = getattr(media, "code", "")
+                logger.info(f"✅ Instagram: Video uploaded,  {code}")
+                await asyncio.sleep(self._action_delay)
 
-            return {
-                "success": True,
-                "media_id": str(media_id),
-                "code": code,
-                "url": f"https://www.instagram.com/p/{code}/" if code else None,
-            }
-        except Exception as e:
-            logger.error(f"Instagram upload_video error: {e}")
-            return {"success": False, "error": str(e)}
+                return {
+                    "success": True,
+                    "media_id": str(media_id),
+                    "code": code,
+                    "url": f"https://www.instagram.com/p/{code}/" if code else None,
+                }
+            except ChallengeRequired:
+                logger.warning("Instagram upload_video: challenge_required")
+                return {"success": False, "error": "challenge_required"}
+            except Exception as e:
+                logger.error(f"Instagram upload_video error: {e}")
+                return {"success": False, "error": str(e)}
 
     async def upload_reel(
         self,
@@ -503,26 +547,30 @@ class InstagramSkill:
             thumbnail: Optional thumbnail image path
         """
         self._ensure_initialized()
-        try:
-            kwargs = {"path": Path(path), "caption": caption}
-            if thumbnail:
-                kwargs["thumbnail"] = Path(thumbnail)
+        async with self._api_lock:
+            try:
+                kwargs = {"path": Path(path), "caption": caption}
+                if thumbnail:
+                    kwargs["thumbnail"] = Path(thumbnail)
 
-            media = await self._run_sync(self._client.clip_upload, **kwargs)
-            media_id = getattr(media, "pk", None) or str(media)
-            code = getattr(media, "code", "")
-            logger.info(f"✅ Instagram: Reel uploaded — {code}")
-            await asyncio.sleep(self._action_delay)
+                media = await self._run_sync(self._client.clip_upload, **kwargs)
+                media_id = getattr(media, "pk", None) or str(media)
+                code = getattr(media, "code", "")
+                logger.info(f"✅ Instagram: Reel uploaded,  {code}")
+                await asyncio.sleep(self._action_delay)
 
-            return {
-                "success": True,
-                "media_id": str(media_id),
-                "code": code,
-                "url": f"https://www.instagram.com/reel/{code}/" if code else None,
-            }
-        except Exception as e:
-            logger.error(f"Instagram upload_reel error: {e}")
-            return {"success": False, "error": str(e)}
+                return {
+                    "success": True,
+                    "media_id": str(media_id),
+                    "code": code,
+                    "url": f"https://www.instagram.com/reel/{code}/" if code else None,
+                }
+            except ChallengeRequired:
+                logger.warning("Instagram upload_reel: challenge_required")
+                return {"success": False, "error": "challenge_required"}
+            except Exception as e:
+                logger.error(f"Instagram upload_reel error: {e}")
+                return {"success": False, "error": str(e)}
 
     async def upload_story(
         self,
@@ -539,31 +587,35 @@ class InstagramSkill:
             mentions: List of usernames to mention (optional)
         """
         self._ensure_initialized()
-        try:
-            file_path = Path(path)
-            suffix = file_path.suffix.lower()
+        async with self._api_lock:
+            try:
+                file_path = Path(path)
+                suffix = file_path.suffix.lower()
 
-            if suffix in (".mp4", ".mov", ".avi", ".mkv"):
-                media = await self._run_sync(
-                    self._client.video_upload_to_story, file_path, caption
-                )
-            else:
-                media = await self._run_sync(
-                    self._client.photo_upload_to_story, file_path, caption
-                )
+                if suffix in (".mp4", ".mov", ".avi", ".mkv"):
+                    media = await self._run_sync(
+                        self._client.video_upload_to_story, file_path, caption
+                    )
+                else:
+                    media = await self._run_sync(
+                        self._client.photo_upload_to_story, file_path, caption
+                    )
 
-            media_id = getattr(media, "pk", None) or str(media)
-            logger.info(f"✅ Instagram: Story uploaded — {media_id}")
-            await asyncio.sleep(self._action_delay)
+                media_id = getattr(media, "pk", None) or str(media)
+                logger.info(f"✅ Instagram: Story uploaded,  {media_id}")
+                await asyncio.sleep(self._action_delay)
 
-            return {
-                "success": True,
-                "media_id": str(media_id),
-                "type": "video" if suffix in (".mp4", ".mov") else "photo",
-            }
-        except Exception as e:
-            logger.error(f"Instagram upload_story error: {e}")
-            return {"success": False, "error": str(e)}
+                return {
+                    "success": True,
+                    "media_id": str(media_id),
+                    "type": "video" if suffix in (".mp4", ".mov") else "photo",
+                }
+            except ChallengeRequired:
+                logger.warning("Instagram upload_story: challenge_required")
+                return {"success": False, "error": "challenge_required"}
+            except Exception as e:
+                logger.error(f"Instagram upload_story error: {e}")
+                return {"success": False, "error": str(e)}
 
     async def upload_album(
         self,
@@ -578,27 +630,31 @@ class InstagramSkill:
             caption: Album caption text
         """
         self._ensure_initialized()
-        try:
-            file_paths = [Path(p) for p in paths]
-            media = await self._run_sync(
-                self._client.album_upload, file_paths, caption
-            )
+        async with self._api_lock:
+            try:
+                file_paths = [Path(p) for p in paths]
+                media = await self._run_sync(
+                    self._client.album_upload, file_paths, caption
+                )
 
-            media_id = getattr(media, "pk", None) or str(media)
-            code = getattr(media, "code", "")
-            logger.info(f"✅ Instagram: Album uploaded ({len(paths)} items) — {code}")
-            await asyncio.sleep(self._action_delay)
+                media_id = getattr(media, "pk", None) or str(media)
+                code = getattr(media, "code", "")
+                logger.info(f"✅ Instagram: Album uploaded ({len(paths)} items),  {code}")
+                await asyncio.sleep(self._action_delay)
 
-            return {
-                "success": True,
-                "media_id": str(media_id),
-                "code": code,
-                "url": f"https://www.instagram.com/p/{code}/" if code else None,
-                "item_count": len(paths),
-            }
-        except Exception as e:
-            logger.error(f"Instagram upload_album error: {e}")
-            return {"success": False, "error": str(e)}
+                return {
+                    "success": True,
+                    "media_id": str(media_id),
+                    "code": code,
+                    "url": f"https://www.instagram.com/p/{code}/" if code else None,
+                    "item_count": len(paths),
+                }
+            except ChallengeRequired:
+                logger.warning("Instagram upload_album: challenge_required")
+                return {"success": False, "error": "challenge_required"}
+            except Exception as e:
+                logger.error(f"Instagram upload_album error: {e}")
+                return {"success": False, "error": str(e)}
 
     # ──────────────────────────────────────────────────────────────────────
     # Search & Discovery

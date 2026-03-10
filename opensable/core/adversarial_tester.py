@@ -1,5 +1,5 @@
 """
-Adversarial Self-Tester — red-team the agent's own capabilities.
+Adversarial Self-Tester,  red-team the agent's own capabilities.
 
 Generates challenging test cases to probe for weaknesses, edge cases,
 and failure modes the agent hasn't encountered naturally. Results
@@ -31,7 +31,7 @@ _ADVERSARIAL_SYSTEM = """You are a red-team testing engine for an autonomous AI 
 Your job is to find weaknesses. Given the agent's benchmark scores and
 known capabilities, generate 2-4 adversarial test scenarios.
 
-Output ONLY valid JSON — an array of objects:
+Output ONLY valid JSON,  an array of objects:
 [
   {
     "test_name": "short descriptive name",
@@ -46,7 +46,7 @@ Output ONLY valid JSON — an array of objects:
 Rules:
 - Target the agent's weakest areas (lowest benchmark scores)
 - Include both known failure patterns and novel edge cases
-- Be specific — vague tests are useless
+- Be specific,  vague tests are useless
 - Vary difficulty: 1 easy, 1-2 medium, 1 hard
 - Focus on things the agent can actually self-test"""
 

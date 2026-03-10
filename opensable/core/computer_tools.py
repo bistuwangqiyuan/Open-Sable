@@ -70,7 +70,7 @@ class ComputerTools:
     }
 
     def _resolve_write_path(self, path: str) -> Path:
-        """Resolve a file path for WRITE operations — always stays inside workspace.
+        """Resolve a file path for WRITE operations,  always stays inside workspace.
 
         Rules:
         1. The resolved path MUST be inside the workspace.
@@ -85,13 +85,13 @@ class ComputerTools:
         try:
             p.relative_to(ws)
         except ValueError:
-            # Outside workspace — re-anchor
+            # Outside workspace,  re-anchor
             relative = path.lstrip("/")
             p = (ws / relative).resolve()
             try:
                 p.relative_to(ws)
             except ValueError:
-                # Still escapes (e.g. ../../) — fallback to filename only
+                # Still escapes (e.g. ../../),  fallback to filename only
                 basename = Path(path).name or "output.txt"
                 p = (ws / "data" / "agent_output" / basename).resolve()
 
@@ -728,7 +728,7 @@ class ComputerTools:
             return {"success": False, "error": str(e)}
 
     # ═══════════════════════════════════════════════════════════════════
-    #  DESKTOP CONTROL — mouse, keyboard, screenshots
+    #  DESKTOP CONTROL,  mouse, keyboard, screenshots
     #  Requires: pip install pyautogui Pillow
     #  Gracefully degrades if unavailable (headless servers, CI, etc.)
     # ═══════════════════════════════════════════════════════════════════
@@ -757,7 +757,7 @@ class ComputerTools:
         if not _HAS_PYAUTOGUI or not _HAS_PILLOW:
             return {
                 "success": False,
-                "error": "pyautogui/Pillow not installed — run: pip install pyautogui Pillow",
+                "error": "pyautogui/Pillow not installed,  run: pip install pyautogui Pillow",
             }
 
         try:

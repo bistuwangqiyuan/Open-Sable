@@ -1,5 +1,5 @@
 """
-Skill Composer — automatic compound skill creation.
+Skill Composer,  automatic compound skill creation.
 
 Discovers which atomic skills are frequently chained together and
 creates reusable compound skill recipes. For example, if the agent

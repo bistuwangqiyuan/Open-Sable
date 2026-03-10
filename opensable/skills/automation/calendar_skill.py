@@ -1,5 +1,5 @@
 """
-Calendar skill for Open-Sable — local JSON-based calendar (no Google API dependency)
+Calendar skill for Open-Sable,  local JSON-based calendar (no Google API dependency)
 """
 
 import json

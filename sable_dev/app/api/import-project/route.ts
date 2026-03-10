@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { exec } from 'child_process';
 
-/* globals: activeSandboxProvider, sandboxState — declared in other route files */
+/* globals: activeSandboxProvider, sandboxState,  declared in other route files */
 
 const TEXT_EXTENSIONS = new Set([
   '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.less',

@@ -154,7 +154,7 @@ class AgentPool:
         self._initialized = False
 
     async def initialize(self):
-        """Initialize the agent pool — agents are created lazily on first use"""
+        """Initialize the agent pool,  agents are created lazily on first use"""
         self._initialized = True
         logger.info(f"Initialized {len(self.ROLE_PROMPTS)} specialized agents")
         return self
@@ -709,7 +709,7 @@ class Crew:
 
         if self.verbose:
             roles = [ct.assigned_to.value for ct in self.crew_tasks]
-            logger.info(f"🚀 Crew kickoff — {len(self.crew_tasks)} tasks, roles: {roles}")
+            logger.info(f"🚀 Crew kickoff,  {len(self.crew_tasks)} tasks, roles: {roles}")
 
         # Execute the workflow
         result = await self._orchestrator.execute_workflow(agent_tasks)

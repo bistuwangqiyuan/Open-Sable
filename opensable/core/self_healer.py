@@ -1,5 +1,5 @@
 """
-Self-Healer — WORLD FIRST
+Self-Healer,  WORLD FIRST
 Watchdog + auto-recovery + hot-reload system.
 A god doesn't die. If something crashes, it comes back stronger.
 Monitors all subsystems, auto-restarts failed components, and applies
@@ -44,14 +44,14 @@ class HealthCheck:
 
 class SelfHealer:
     """
-    Immortality engine — watchdog, auto-recovery, and hot-reload.
+    Immortality engine,  watchdog, auto-recovery, and hot-reload.
     Monitors all subsystems, detects crashes, auto-recovers,
     and can hot-reload modules after self-modification.
     """
 
     HEALTH_INTERVAL = 30  # seconds between health checks
     MAX_RESTARTS = 5      # max restarts before giving up on a subsystem
-    CRASH_WINDOW = 300    # seconds — if MAX_RESTARTS within this window, stop retrying
+    CRASH_WINDOW = 300    # seconds,  if MAX_RESTARTS within this window, stop retrying
 
     def __init__(self, data_dir: Path):
         self.data_dir = Path(data_dir)
@@ -123,7 +123,7 @@ class SelfHealer:
         if subsystem in self.health_checks:
             self.health_checks[subsystem].restarts += 1
 
-        logger.warning(f"[SelfHealer] CRASH: {subsystem} — {error}")
+        logger.warning(f"[SelfHealer] CRASH: {subsystem},  {error}")
 
     def _attempt_recovery(self, subsystem: str, error: str) -> Dict[str, Any]:
         """Attempt to recover a crashed subsystem."""

@@ -39,7 +39,7 @@ try:
     _CHROMA_OK = True
 except ImportError:
     _CHROMA_OK = False
-    logger.info("ChromaDB not available — CodebaseRAG will use keyword fallback")
+    logger.info("ChromaDB not available,  CodebaseRAG will use keyword fallback")
 
 # ── Ollama embeddings (same model as existing RAG) ────────────────────────────
 try:
@@ -126,7 +126,7 @@ def _chunk_python(source: str, file_path: str) -> List[CodeChunk]:
     boundaries = [(m.start(), m.group(1), m.group(2)) for m in boundary_re.finditer(source)]
 
     if not boundaries:
-        # No functions — treat whole file as one chunk (truncate if huge)
+        # No functions,  treat whole file as one chunk (truncate if huge)
         body = "\n".join(lines[:_CHUNK_MAX])
         cid = hashlib.md5(f"{file_rel}:0".encode()).hexdigest()[:16]
         chunks.append(CodeChunk(

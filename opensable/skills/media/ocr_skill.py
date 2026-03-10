@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class OCRSkill:
-    """Optical Character Recognition — extract text from images and scanned PDFs.
+    """Optical Character Recognition,  extract text from images and scanned PDFs.
 
     Priority chain:
       1. EasyOCR  (GPU-accelerated, best accuracy, multi-language)
@@ -51,7 +51,7 @@ class OCRSkill:
         try:
             import fitz  # noqa: F401
             self._engine = "pymupdf"
-            logger.info("OCRSkill initialized (PyMuPDF engine — PDF only)")
+            logger.info("OCRSkill initialized (PyMuPDF engine,  PDF only)")
             return True
         except ImportError:
             pass

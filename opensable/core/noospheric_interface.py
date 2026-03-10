@@ -1,7 +1,7 @@
 """
-Noospheric Interface — WORLD FIRST
+Noospheric Interface,  WORLD FIRST
 ====================================
-Taps into the "noosphere" — the collective thought sphere of all interactions.
+Taps into the "noosphere",  the collective thought sphere of all interactions.
 Aggregates patterns, sentiments, and concepts across every interaction
 to build a model of the collective mind the agent operates within.
 
@@ -117,7 +117,7 @@ class NoosphericInterface:
         self.waves = dict(sorted_waves[:self._max])
 
     def _update_zeitgeist(self):
-        """Update the current zeitgeist — the dominant collective thought."""
+        """Update the current zeitgeist,  the dominant collective thought."""
         if not self.waves:
             return
         # Find dominant topic (highest frequency × momentum)
@@ -146,12 +146,12 @@ class NoosphericInterface:
         top_waves = sorted(self.waves.values(),
                           key=lambda w: w.frequency, reverse=True)[:15]
         prompt = (
-            f"NOOSPHERIC ANALYSIS — detect patterns in the collective thought space:\n\n"
+            f"NOOSPHERIC ANALYSIS,  detect patterns in the collective thought space:\n\n"
             f"Top thought waves:\n"
             + "\n".join(f"- {w.topic}: freq={w.frequency}, sentiment={w.sentiment:.2f}, "
                        f"momentum={w.momentum:.2f}" for w in top_waves)
             + f"\n\nZeitgeist: {json.dumps(self.zeitgeist)}\n\n"
-            f"Detect 2-3 COLLECTIVE PATTERNS — themes, concerns, or shifts.\n"
+            f"Detect 2-3 COLLECTIVE PATTERNS,  themes, concerns, or shifts.\n"
             f"Return JSON: {{\"patterns\": [{{\"description\": \"...\", \"confidence\": 0.0-1.0}}]}}"
         )
         try:

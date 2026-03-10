@@ -1,5 +1,5 @@
 """
-Hyperliquid Connector — On-chain perpetual futures.
+Hyperliquid Connector,  On-chain perpetual futures.
 
 Hyperliquid is a decentralized perps exchange with a central order book.
 No KYC, fast execution, popular for degen/memecoin futures.
@@ -244,7 +244,7 @@ class HyperliquidConnector(ExchangeConnector):
             return False
 
     async def get_order(self, order_id: str, symbol: str = "") -> Order:
-        # Hyperliquid doesn't have a direct get_order — check open orders
+        # Hyperliquid doesn't have a direct get_order,  check open orders
         open_orders = await self.get_open_orders(symbol)
         for o in open_orders:
             if o.order_id == order_id:

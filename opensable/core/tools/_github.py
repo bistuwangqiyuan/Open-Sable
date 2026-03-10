@@ -1,5 +1,5 @@
 """
-GitHub tools — Issues, PRs, repos, branches, code search, releases.
+GitHub tools,  Issues, PRs, repos, branches, code search, releases.
 
 Provides tool handlers for the GitHub skill, following the same mixin
 pattern as _social.py, _trading.py, etc.
@@ -26,7 +26,7 @@ class GitHubToolsMixin:
             assignees=params.get("assignees"),
         )
         if result.success:
-            return f"✅ Issue created: #{result.data.get('number', '?')} — {result.data.get('title', '')}\n🔗 {result.url}"
+            return f"✅ Issue created: #{result.data.get('number', '?')},  {result.data.get('title', '')}\n🔗 {result.url}"
         return f"❌ {result.error}"
 
     async def _github_list_issues_tool(self, params: Dict) -> str:
@@ -90,7 +90,7 @@ class GitHubToolsMixin:
             draft=params.get("draft", False),
         )
         if result.success:
-            return f"✅ PR created: #{result.data.get('number', '?')} — {result.data.get('title', '')}\n🔗 {result.url}"
+            return f"✅ PR created: #{result.data.get('number', '?')},  {result.data.get('title', '')}\n🔗 {result.url}"
         return f"❌ {result.error}"
 
     async def _github_list_prs_tool(self, params: Dict) -> str:
@@ -156,7 +156,7 @@ class GitHubToolsMixin:
                 return "No repositories found."
             lines = [f"📦 {result.data.get('count', 0)} repos:"]
             for r in repos:
-                lines.append(f"  {r.get('name', '?')} ⭐{r.get('stars', 0)} — {r.get('description', '')[:60]}")
+                lines.append(f"  {r.get('name', '?')} ⭐{r.get('stars', 0)},  {r.get('description', '')[:60]}")
             return "\n".join(lines)
         return f"❌ {result.error}"
 
@@ -188,7 +188,7 @@ class GitHubToolsMixin:
                 return "No code matches found."
             lines = [f"🔍 {result.data.get('count', 0)} results:"]
             for r in results:
-                lines.append(f"  {r.get('repo', '')}/{r.get('path', '')} — {r.get('name', '')}")
+                lines.append(f"  {r.get('repo', '')}/{r.get('path', '')},  {r.get('name', '')}")
             return "\n".join(lines)
         return f"❌ {result.error}"
 

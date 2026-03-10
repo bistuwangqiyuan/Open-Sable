@@ -10,7 +10,7 @@ Architecture:
                     │
               ResponseAdapter (adjusts tone, empathy, pacing)
 
-Works fully offline — no external API needed.
+Works fully offline,  no external API needed.
 """
 
 import logging

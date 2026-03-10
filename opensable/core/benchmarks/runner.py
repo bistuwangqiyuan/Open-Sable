@@ -1,5 +1,5 @@
 """
-Benchmark Runner — Core evaluation harness for Open-Sable.
+Benchmark Runner,  Core evaluation harness for Open-Sable.
 
 Executes benchmark suites against the agent, collects results,
 computes metrics, and generates reports.
@@ -293,7 +293,7 @@ class BenchmarkRunner:
         if max_tasks:
             tasks = tasks[:max_tasks]
 
-        logger.info(f"[Benchmark] Running {suite.name} — {len(tasks)} tasks")
+        logger.info(f"[Benchmark] Running {suite.name},  {len(tasks)} tasks")
 
         # Execute tasks
         results: List[TaskResult] = []
@@ -426,7 +426,7 @@ class BenchmarkRunner:
             agent_version=version,
         )
 
-        # Breakdown by difficulty / category (using metadata from tasks — 
+        # Breakdown by difficulty / category (using metadata from tasks,  
         # we don't store tasks on TaskResult, so we index by task_id)
         return result
 

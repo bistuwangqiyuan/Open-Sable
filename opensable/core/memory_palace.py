@@ -1,5 +1,5 @@
 """
-Memory Palace — spatial memory using Method of Loci.
+Memory Palace,  spatial memory using Method of Loci.
 
 WORLD FIRST: Memories organized in virtual "rooms" with spatial associations.
 Dramatically better recall than flat vector search because memories are
@@ -93,7 +93,7 @@ class MemoryPalace:
         room.loci.append(locus)
         self.total_loci += 1
 
-        # Enforce capacity — remove least vivid
+        # Enforce capacity,  remove least vivid
         if len(room.loci) > room.capacity:
             room.loci.sort(key=lambda l: l.vividness * (l.visits + 1), reverse=True)
             room.loci = room.loci[:room.capacity]

@@ -1,5 +1,5 @@
 """
-Self-Modification Engine — Allows the agent to inspect and modify its own code.
+Self-Modification Engine,  Allows the agent to inspect and modify its own code.
 
 Features:
 - Hot-reload modules at runtime
@@ -54,11 +54,11 @@ class SelfModificationEngine:
     Enables the agent to safely modify its own behavior at runtime.
 
     Safety layers:
-    1. AST validation — new code must parse cleanly
-    2. Signature check — replacement functions must match the original signature
-    3. Snapshot — original code is saved before any change
-    4. Rollback — any failed modification is automatically reverted
-    5. Audit log — every change is recorded with timestamp and diff
+    1. AST validation,  new code must parse cleanly
+    2. Signature check,  replacement functions must match the original signature
+    3. Snapshot,  original code is saved before any change
+    4. Rollback,  any failed modification is automatically reverted
+    5. Audit log,  every change is recorded with timestamp and diff
     """
 
     def __init__(self, config=None):

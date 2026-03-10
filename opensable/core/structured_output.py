@@ -1,5 +1,5 @@
 """
-Structured Output — Force LLM responses into typed Pydantic models.
+Structured Output,  Force LLM responses into typed Pydantic models.
 
 Guarantees that agent output conforms to a user-defined schema, enabling
 reliable downstream processing (JSON APIs, database inserts, UI rendering).

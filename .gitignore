@@ -121,10 +121,10 @@ trading_backtest_results/
 *.portfolio.db
 
 
-# Dashboard (React app — keep dist/ for gateway, ignore node_modules)
+# Dashboard (React app,  keep dist/ for gateway, ignore node_modules)
 dashboard/node_modules/
 
-# Website (built separately — root-level only, not aggr subcomponents)
+# Website (built separately,  root-level only, not aggr subcomponents)
 /website/
 
 # MkDocs build output
@@ -142,7 +142,7 @@ desktop/.env
 .desktop.pid
 agents/nexus_erebus/
 /agents/sable/data
-# All agent profile.env files contain credentials — only EXAMPLE files go to repo
+# All agent profile.env files contain credentials,  only EXAMPLE files go to repo
 agents/*/profile.env
 .sable-analyst.pid
 .sable-nexus_erebus.pid
@@ -177,6 +177,6 @@ data/*
 epistemic_uncertainty_framework.md
 epistemic_wary.png
 
-# Agent autonomous write sandbox — all LLM-generated files land here
+# Agent autonomous write sandbox,  all LLM-generated files land here
 data/agent_output/
 /agents/nano/

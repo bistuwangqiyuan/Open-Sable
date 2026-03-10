@@ -160,7 +160,7 @@ async def async_main():
             except Exception as e:
                 logger.warning(f"Pixel-Bridge failed to start: {e}")
 
-        # ── Mobile Relay (optional — needs Tailscale or Tor for remote access) ─
+        # ── Mobile Relay (optional,  needs Tailscale or Tor for remote access) ─
         mobile_relay = None
         if getattr(config, "mobile_relay_enabled", False):
             try:

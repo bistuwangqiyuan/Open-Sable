@@ -8,7 +8,7 @@ SCHEMAS = [
     "type": "function",
     "function": {
     "name": "trading_portfolio",
-    "description": "Get the current trading portfolio summary — balances, positions, P&L, performance stats",
+    "description": "Get the current trading portfolio summary,  balances, positions, P&L, performance stats",
     "parameters": {"type": "object", "properties": {}, "required": []},
     },
     },
@@ -108,7 +108,7 @@ SCHEMAS = [
     "type": "function",
     "function": {
     "name": "trading_start_scan",
-    "description": "Start background market scanning — continuously monitors watchlist for trading opportunities",
+    "description": "Start background market scanning,  continuously monitors watchlist for trading opportunities",
     "parameters": {"type": "object", "properties": {}, "required": []},
     },
     },
@@ -126,7 +126,7 @@ SCHEMAS = [
     "type": "function",
     "function": {
     "name": "trading_risk_status",
-    "description": "Show the current risk manager status — limits, daily P&L, drawdown, emergency halt status",
+    "description": "Show the current risk manager status,  limits, daily P&L, drawdown, emergency halt status",
     "parameters": {"type": "object", "properties": {}, "required": []},
     },
     },

@@ -1,5 +1,5 @@
 """
-Core Open-Sable Agent — The brain of the operation
+Core Open-Sable Agent,  The brain of the operation
 
 v2: Multi-step planning, parallel tool calls, streaming progress,
     advanced memory retrieval, progress callbacks.
@@ -28,7 +28,7 @@ from .codebase_rag import CodebaseRAG
 
 logger = logging.getLogger(__name__)
 
-_LLM_TIMEOUT = 120  # 2 min — reasonable cap for small/medium local models on CPU
+_LLM_TIMEOUT = 120  # 2 min,  reasonable cap for small/medium local models on CPU
 
 # ── Untagged reasoning stripper ──────────────────────────────────────────────
 
@@ -70,7 +70,7 @@ def _strip_untagged_reasoning(text: str) -> str:
 
     paragraphs = re.split(r"\n{2,}", text)
     if len(paragraphs) <= 1:
-        # Single-block response — check if the WHOLE thing is reasoning with
+        # Single-block response,  check if the WHOLE thing is reasoning with
         # a final user-facing sentence appended after a line-break.
         lines = text.splitlines()
         keep_from = 0
@@ -78,7 +78,7 @@ def _strip_untagged_reasoning(text: str) -> str:
             if line.strip() and _REASONING_LINE_RE.match(line):
                 keep_from = i + 1  # this line is reasoning, skip it
             else:
-                break  # first non-reasoning line — stop
+                break  # first non-reasoning line,  stop
         if keep_from:
             result = "\n".join(lines[keep_from:]).strip()
             return result if result else text  # never return empty
@@ -96,7 +96,7 @@ def _strip_untagged_reasoning(text: str) -> str:
             continue
         reasoning_lines = sum(1 for l in lines if _REASONING_LINE_RE.match(l))
         if reasoning_lines == len(lines):
-            # Entire paragraph is reasoning — skip it
+            # Entire paragraph is reasoning,  skip it
             logger.debug(f"🧹 Stripped reasoning paragraph: {para[:80]!r}")
             continue
         found_real_content = True
@@ -166,6 +166,7 @@ class SableAgent:
         self.heartbeat_task = None
         self._progress_callback: ProgressCallback = None
         self._telegram_notify = None
+        self._telegram_send_photo = None  # (chat_id, photo_path, caption) → send image
 
         # Production primitives
         self.guardrails = GuardrailsEngine.default()
@@ -190,7 +191,7 @@ class SableAgent:
             self.approval_gate.risk_map["marketplace_install"] = RiskLevel.MEDIUM
             logger.info("🏪 Skills Marketplace auto-approve mode ENABLED")
 
-        # Monitor event bus — subscribers receive (event_name, data_dict)
+        # Monitor event bus,  subscribers receive (event_name, data_dict)
         self._monitor_subscribers: list = []
         self._monitor_stats = {"messages": 0, "tool_calls": 0, "errors": 0}
 
@@ -259,7 +260,7 @@ class SableAgent:
         self.autonomous_researcher = None   # AutonomousResearcher (scientific method)
         self.empathy_synthesizer = None     # EmpathySynthesizer (user simulation)
 
-        # v1.6 — Godlike cognitive modules
+        # v1.6,  Godlike cognitive modules
         self.cognitive_teleportation = None  # CognitiveTeleportation (instant domain transfer)
         self.ontological_engine = None       # OntologicalEngine (reality model)
         self.cognitive_gravity = None        # CognitiveGravity (idea mass & attraction)
@@ -321,7 +322,7 @@ class SableAgent:
                 logger.debug(f"Could not wire fitness tracker: {e}")
 
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        # Index the codebase in the background — but only if explicitly enabled,
+        # Index the codebase in the background,  but only if explicitly enabled,
         # since it can take minutes and spams embedding requests on slow machines.
         import os as _os
         _rag_enabled = _os.environ.get("SABLE_CODEBASE_RAG", "false").lower() == "true"
@@ -1044,7 +1045,7 @@ class SableAgent:
     # the full tool-augmented pipeline.
     #
     # This covers ALL conversational messages (greetings, math, knowledge
-    # questions, small talk, etc.) — not just a hardcoded regex list.
+    # questions, small talk, etc.),  not just a hardcoded regex list.
     # ------------------------------------------------------------------
 
     # Phrases in an LLM response that signal it actually wants tools.
@@ -1063,17 +1064,17 @@ class SableAgent:
     # Lazy tool loading  (OpenClaw-inspired)
     # ------------------------------------------------------------------
     # LOCAL mode (Ollama / free inference):
-    #   ALL 127 tools are ALWAYS sent — none are ever removed.
+    #   ALL 127 tools are ALWAYS sent,  none are ever removed.
     #   Intent-relevant tools get full schemas (with parameters).
     #   The rest get *compact* schemas (name + description only).
     #
-    # CLOUD mode (OpenAI, Anthropic, etc. — pay-per-token):
+    # CLOUD mode (OpenAI, Anthropic, etc.,  pay-per-token):
     #   Only intent-relevant tools are sent (full schemas).
     #   Non-relevant tools are OMITTED entirely to save tokens/cost.
     #   The meta-tool ``load_tool_details`` is always included so the
     #   model can request any tool it needs mid-conversation.
     #
-    # Detection is automatic — CloudLLM sets self.provider, AdaptiveLLM
+    # Detection is automatic,  CloudLLM sets self.provider, AdaptiveLLM
     # (Ollama) does not.  Users can override via TOOL_POLICY env var.
     # ------------------------------------------------------------------
 
@@ -1167,7 +1168,7 @@ class SableAgent:
     ) -> list[dict]:
         """Return tool schemas optimized for the current provider.
 
-        LOCAL mode:  ALL schemas returned — full for priority, compact for rest.
+        LOCAL mode:  ALL schemas returned,  full for priority, compact for rest.
         CLOUD mode:  Only intent-relevant tools returned (full schemas) to save
                      API costs.  ``load_tool_details`` is always included.
 
@@ -1218,7 +1219,7 @@ class SableAgent:
                 n_full += 1
             elif is_cloud or model_tier == "small":
                 # CLOUD mode: omit non-relevant tools entirely to save cost.
-                # SMALL local models (≤8B): also omit — compact schemas still
+                # SMALL local models (≤8B): also omit,  compact schemas still
                 # add ~15k chars that overwhelm the tiny context window.
                 # The model can call load_tool_details to expand any tool.
                 n_omitted += 1
@@ -1563,7 +1564,7 @@ class SableAgent:
                     direction = "📈" if change >= 0 else "📉"
                     mcap_str = f"${mcap / 1e9:.2f}B" if mcap > 1e9 else f"${mcap / 1e6:.1f}M"
                     return (
-                        f"{direction} **{symbol}** — ${price:,.2f} USD\n"
+                        f"{direction} **{symbol}**,  ${price:,.2f} USD\n"
                         f"24h change: {change:+.2f}%\n"
                         f"Market cap: {mcap_str}\n"
                         f"Source: CoinGecko (real-time)"
@@ -1585,9 +1586,9 @@ class SableAgent:
                     user_id=user_id,
                 )
                 if not decision.approved:
-                    return f"**{name}:** ⛔ Blocked by approval gate — {decision.reason}"
+                    return f"**{name}:** ⛔ Blocked by approval gate,  {decision.reason}"
             except HumanApprovalRequired as e:
-                # No handler configured — for HIGH/CRITICAL actions,
+                # No handler configured,  for HIGH/CRITICAL actions,
                 # inform the user that approval is needed.
                 if name == "marketplace_install":
                     skill_id = arguments.get("skill_id", "unknown")
@@ -1601,7 +1602,7 @@ class SableAgent:
                         f"To enable auto-install mode, set `SKILL_INSTALL_AUTO_APPROVE=true` "
                         f"in your environment or config."
                     )
-                # Other tools with no handler — default to allow (original behavior)
+                # Other tools with no handler,  default to allow (original behavior)
                 pass
 
         await self._notify_progress(f"{emoji} {label}...")
@@ -1664,12 +1665,12 @@ class SableAgent:
 
         names = [tc["name"] for tc in tool_calls]
 
-        # Check if ANY tool is X-related — if so, run ALL sequentially.
+        # Check if ANY tool is X-related,  if so, run ALL sequentially.
         # A real human only does one thing at a time on X.
         has_x_tool = any(tc["name"] in self._X_TOOLS for tc in tool_calls)
 
         if has_x_tool:
-            logger.info(f"🔒 X tool(s) detected in batch {names} — executing ALL sequentially")
+            logger.info(f"🔒 X tool(s) detected in batch {names},  executing ALL sequentially")
             results = []
             for tc in tool_calls:
                 r = await self._execute_tool(tc["name"], tc["arguments"], user_id=user_id)
@@ -1714,7 +1715,7 @@ class SableAgent:
                     "timestamp": datetime.now().isoformat(),
                 })
                 return state
-            # Sanitised or warned — use the (possibly modified) text
+            # Sanitised or warned,  use the (possibly modified) text
             for r in input_check.results:
                 if r.action == GuardrailAction.SANITIZE and r.sanitized:
                     task = r.sanitized
@@ -1725,7 +1726,7 @@ class SableAgent:
             original_message=task,
         )
 
-        # ── Early intent classification — used to skip expensive ops ──────
+        # ── Early intent classification,  used to skip expensive ops ──────
         # Classify BEFORE memory recall so we can skip ChromaDB embedding
         # for pure conversational messages on small local models.
         _early_intent = self.intent_classifier.classify(task)
@@ -1741,7 +1742,7 @@ class SableAgent:
         )
         # ─────────────────────────────────────────────────────────────────────
 
-        # Memory context (advanced) — skip for simple chat on local small models
+        # Memory context (advanced),  skip for simple chat on local small models
         if _skip_memory_recall:
             memory_ctx = ""
             logger.info("⚡ Memory recall skipped for general_chat (fast chat path)")
@@ -1826,7 +1827,7 @@ class SableAgent:
                 "\n- The marketplace contains community and official skills you can search, browse, install, and review."
                 "\n- Connection uses the ultra-secure Agent Gateway Protocol (SAGP/1.0) with Ed25519 + NaCl encryption."
                 "\n- Available tools: marketplace_search (browse/find skills), marketplace_info (detailed skill info), "
-                "marketplace_install (install a skill — REQUIRES USER APPROVAL), marketplace_review (rate a skill)."
+                "marketplace_install (install a skill,  REQUIRES USER APPROVAL), marketplace_review (rate a skill)."
                 "\n- When a user asks about available skills, extensions, or new capabilities → use marketplace_search."
                 "\n- When a user asks to install a skill → use marketplace_install (you MUST inform the user and wait for approval)."
                 "\n- After installing and testing a skill, you can leave a review with marketplace_review."
@@ -1844,14 +1845,14 @@ class SableAgent:
                 "\n- For location-based reminders (e.g. 'remind me to buy X when near a pharmacy'), use phone_reminder with type='geo'."
                 "\n- You can send proactive notifications for important events, trade alerts, or task completions."
                 "\n- Check phone_device to adapt behavior when battery is low or connectivity is poor."
-                "\n- The user's phone location and battery status are periodically updated — use them for context-aware responses."
+                "\n- The user's phone location and battery status are periodically updated,  use them for context-aware responses."
                 "\n- All phone communication is encrypted end-to-end. No data passes through third parties."
             )
 
-        # ── System prompt — use minimal version for fast chat to reduce prefill ──
+        # ── System prompt,  use minimal version for fast chat to reduce prefill ──
         if _skip_memory_recall:
             # Minimal system prompt: just personality + date. No tool rules, no
-            # social/trading/mobile/desktop instructions — the model won't need
+            # social/trading/mobile/desktop instructions,  the model won't need
             # them for general_chat and they massively slow CPU prefill.
             base_system = (
                 self._get_personality_prompt()
@@ -1871,15 +1872,15 @@ class SableAgent:
                 + trading_instructions
                 + marketplace_instructions
                 + mobile_instructions
-                + "\n\nTOOL USE RULES — MANDATORY:\n"
+                + "\n\nTOOL USE RULES,  MANDATORY:\n"
                 "- You HAVE full internet access via the browser_search tool. NEVER say you cannot search or access the internet.\n"
                 "- When a user asks you to search, look up, find, or get info about ANYTHING → call browser_search IMMEDIATELY. Do NOT ask for permission. Do NOT ask if they want you to search. Just do it.\n"
                 "- For current events, news, prices, weather, or anything time-sensitive → ALWAYS call browser_search. Never refuse, never ask.\n"
                 "- For general knowledge questions (not prices/markets/current events), answer directly from memory.\n"
                 "- Use tools when the task requires reading files, executing code, searching the web, interacting with the system, managing social media, getting real-time market/price data, searching/installing skills from the marketplace, or interacting with the user's phone.\n"
-                "\n\nDESKTOP CONTROL — you have FULL access to the user's computer desktop:"
+                "\n\nDESKTOP CONTROL,  you have FULL access to the user's computer desktop:"
                 "\n- open_url: open any website or URL in Chromium (ALWAYS use this instead of open_app for URLs)"
-                "\n- open_app: open any desktop application by name (terminal, vscode, spotify, etc.) — NEVER use for URLs or firefox"
+                "\n- open_app: open any desktop application by name (terminal, vscode, spotify, etc.),  NEVER use for URLs or firefox"
                 "\n- execute_command: run any shell command on the system"
                 "\n- desktop_screenshot, desktop_click, desktop_type, desktop_hotkey: full GUI automation"
                 "\n- window_list, window_focus: manage open windows"
@@ -1918,7 +1919,7 @@ class SableAgent:
                     base_system += f"\n\n{_ctx_block}"
                     logger.info(f"📁 Injected {len(_code_results)} codebase chunks into context")
             except asyncio.TimeoutError:
-                logger.debug("CodebaseRAG search timed out — skipping context injection")
+                logger.debug("CodebaseRAG search timed out,  skipping context injection")
             except Exception as _e:
                 logger.debug(f"CodebaseRAG search error: {_e}")
         # ── End intent + RAG ─────────────────────────────────────────────────
@@ -1931,11 +1932,11 @@ class SableAgent:
         # to the full tool-augmented pipeline.
         #
         # This handles greetings, math, knowledge questions, small talk,
-        # explanations — anything the LLM can answer from its own weights.
+        # explanations,  anything the LLM can answer from its own weights.
         # No hardcoded regex needed; the LLM IS the intent judge.
         # ─────────────────────────────────────────────────────────────────────
         if _intent.intent == "general_chat" and not _intent.needs_web_search:
-            logger.info("💬 No-tools fast-path (general_chat) — letting LLM respond naturally")
+            logger.info("💬 No-tools fast-path (general_chat),  letting LLM respond naturally")
             _nt_system = (
                 base_system
                 + "\n\nIMPORTANT: Answer the user directly from your knowledge. "
@@ -1952,7 +1953,7 @@ class SableAgent:
             _nt_msgs += [{"role": m["role"], "content": m["content"]} for m in _recent_hist]
             _nt_msgs.append({"role": "user", "content": task})
             try:
-                # Use plain_chat (no tools parameter at all) — avoids 400
+                # Use plain_chat (no tools parameter at all),  avoids 400
                 # errors from models that reject even an empty tools list.
                 # 300 s timeout: first request after model switch may need
                 # to load the model into GPU/CPU memory (especially GGUF).
@@ -1964,7 +1965,7 @@ class SableAgent:
                 _nt_text = self._clean_output(_nt_text)
                 # If the LLM gave a real answer (not a "I need tools" hedge):
                 if _nt_text and not self._TOOL_HINT_RE.search(_nt_text):
-                    logger.info("✅ No-tools fast-path succeeded — returning direct LLM response")
+                    logger.info("✅ No-tools fast-path succeeded,  returning direct LLM response")
                     state["messages"].append({
                         "role": "final_response",
                         "content": _nt_text,
@@ -1973,11 +1974,11 @@ class SableAgent:
                     await self._store_memory(user_id, task, _nt_text)
                     return state
                 else:
-                    logger.info("🔧 LLM indicated it needs tools — falling through to tool pipeline")
+                    logger.info("🔧 LLM indicated it needs tools,  falling through to tool pipeline")
             except asyncio.TimeoutError:
-                logger.warning("⏱️ No-tools fast-path timed out (model may still be loading) — falling through")
+                logger.warning("⏱️ No-tools fast-path timed out (model may still be loading),  falling through")
             except Exception as _nte:
-                logger.warning(f"No-tools fast-path error: {type(_nte).__name__}: {_nte} — falling through")
+                logger.warning(f"No-tools fast-path error: {type(_nte).__name__}: {_nte},  falling through")
         # ── End no-tools fast-path ───────────────────────────────────────────
 
         # Fast path: open/launch application
@@ -2015,7 +2016,7 @@ class SableAgent:
                 search_remainder = _re_m.group(1).strip().strip('?!')
                 app_name = app_name[:_re_m.start()].strip()
             else:
-                # Strip anything after "and", "then" etc. — only keep the app name
+                # Strip anything after "and", "then" etc.,  only keep the app name
                 app_name = re.split(r'\s+(and|then|to search|y busca|y luego|para|&)\b', app_name, flags=re.IGNORECASE)[0].strip()
             # If still multi-word and not a known alias, take only the first word
             _KNOWN_MULTI = {"vs code", "text editor", "google chrome", "file manager"}
@@ -2027,7 +2028,7 @@ class SableAgent:
                 tool_results.append(result)
             # If there's a search remainder, run it immediately without waiting for LLM
             if search_remainder and _URL_RE.match(search_remainder):
-                # It's a URL — open it directly in the browser instead of doing a text search
+                # It's a URL,  open it directly in the browser instead of doing a text search
                 url_to_open = search_remainder if search_remainder.startswith("http") else f"https://{search_remainder}"
                 logger.info(f"🌐 [FORCED] Navigate to URL: {url_to_open!r}")
                 await asyncio.sleep(1.5)
@@ -2158,14 +2159,14 @@ class SableAgent:
             is_trading_price_query = True
 
             if getattr(self.config, "trading_enabled", False):
-                # Full trading stack — use exchange data
+                # Full trading stack,  use exchange data
                 logger.info(f"📊 [FORCED] Trading price query → {symbol}")
                 result = await self._execute_tool(
                     "trading_price", {"symbol": symbol}, user_id=user_id
                 )
                 tool_results.append(result)
             else:
-                # Trading disabled — use free CoinGecko API (no API key needed)
+                # Trading disabled,  use free CoinGecko API (no API key needed)
                 logger.info(f"📊 [COINGECKO] Free price lookup → {symbol}")
                 _cg_result = await self._fetch_coingecko_price(symbol)
                 tool_results.append(_cg_result)
@@ -2201,7 +2202,7 @@ class SableAgent:
                     )
                     if news_result and "error" not in str(news_result).lower():
                         tool_results.append(
-                            f"[ADDITIONAL SOURCE — news.zunvra.com / Zunvra News Global Intelligence]\n{news_result}"
+                            f"[ADDITIONAL SOURCE,  news.zunvra.com / Zunvra News Global Intelligence]\n{news_result}"
                         )
                         logger.info("📰 [NEWS] Zunvra News scraped OK")
                 except Exception as _ne:
@@ -2209,7 +2210,7 @@ class SableAgent:
 
         # ── Intent-driven fast execution ──────────────────────────────────────
         # Use the _intent classified earlier to dispatch desktop/system actions
-        # DIRECTLY without routing through the LLM — zero interpretation lag.
+        # DIRECTLY without routing through the LLM,  zero interpretation lag.
         if not tool_results and _intent.intent not in ("general_chat", "web_search",
                                                          "trading", "social_media",
                                                          "code_question", "self_modify"):
@@ -2351,7 +2352,7 @@ class SableAgent:
             tool_schemas = self.tools.get_tool_schemas()
 
             # ── Lazy schema compaction (intent + model-size + provider aware)
-            # LOCAL: ALL tools stay — intent-relevant get full, rest compact.
+            # LOCAL: ALL tools stay,  intent-relevant get full, rest compact.
             # CLOUD: Only intent-relevant tools sent (full) to save API cost.
             # The model can call load_tool_details to expand any tool.
             _model_name = getattr(self.llm, "current_model", "") or ""
@@ -2458,12 +2459,12 @@ class SableAgent:
                         if len(set(_last_n)) == 1:
                             logger.warning(
                                 f"🔄 Loop detected: {_last_n[0][0]} called "
-                                f"{_LOOP_THRESHOLD}× with identical args — breaking"
+                                f"{_LOOP_THRESHOLD}× with identical args,  breaking"
                             )
                             messages.append({
                                 "role": "user",
                                 "content": (
-                                    "STOP — you have called the same tool with the same "
+                                    "STOP,  you have called the same tool with the same "
                                     "arguments multiple times and it is not making progress. "
                                     "Summarize what you have so far and respond to the user."
                                 ),
@@ -2481,12 +2482,12 @@ class SableAgent:
                             and _recent[0] != _recent[1]
                         ):
                             logger.warning(
-                                f"🔄 Ping-pong detected: {_recent[0]} ↔ {_recent[1]} — breaking"
+                                f"🔄 Ping-pong detected: {_recent[0]} ↔ {_recent[1]},  breaking"
                             )
                             messages.append({
                                 "role": "user",
                                 "content": (
-                                    "STOP — you are alternating between two tools without "
+                                    "STOP,  you are alternating between two tools without "
                                     "making progress. Summarize what you have so far and "
                                     "respond to the user."
                                 ),
@@ -2537,7 +2538,7 @@ class SableAgent:
                         all_failed = all("❌" in r for r in results)
                         if all_failed:
                             plan.mark_step_failed(step_result)
-                            await self._notify_progress("🔄 Step failed — replanning...")
+                            await self._notify_progress("🔄 Step failed,  replanning...")
                             replanned = await self._replan(plan, step_result, base_system)
                             if replanned and plan.next_step():
                                 await self._notify_progress(f"📋 Revised plan:\n{plan.summary()}")
@@ -2561,7 +2562,7 @@ class SableAgent:
                                     }
                                 )
                                 continue
-                            # Replanning failed — fall through to synthesis
+                            # Replanning failed,  fall through to synthesis
                             break
 
                         plan.advance(step_result)
@@ -2587,7 +2588,7 @@ class SableAgent:
                             )
                             continue
                         else:
-                            logger.info("📋 Plan complete — synthesizing")
+                            logger.info("📋 Plan complete,  synthesizing")
                             break
                     else:
                         last_result = "\n".join(results)
@@ -2647,13 +2648,13 @@ class SableAgent:
             "\n- The tool(s) have ALREADY been called. The results are provided below."
             "\n- Your job is ONLY to present/summarize those results to the user."
             "\n- NEVER say you need to search, ask for permission, or ask if the user wants you to look something up."
-            "\n- NEVER say you cannot access the internet — you already did."
+            "\n- NEVER say you cannot access the internet,  you already did."
             "\n- Use ONLY information from the tool results."
             "\n- NEVER invent facts not present in the results."
             f"\n- CRITICAL DATE RULE: Today is {today}. If search results contain articles older than 60 days, explicitly note the date of each article so the user knows how recent it is. NEVER present old news as if it happened today."
             "\n- If the tool returned an error or no data, say so honestly and offer to retry."
             "\n- Be concise and direct."
-            "\n- IMAGES: If tool results contain markdown images like ![name](url), you MUST include them EXACTLY as-is in your response. Never omit, rewrite, or describe image links — copy them verbatim."
+            "\n- IMAGES: If tool results contain markdown images like ![name](url), you MUST include them EXACTLY as-is in your response. Never omit, rewrite, or describe image links,  copy them verbatim."
         )
         if plan:
             synthesis_prompt += f"\n\nYou completed a multi-step plan:\n{plan.summary()}"
@@ -2662,7 +2663,7 @@ class SableAgent:
         valid_tool_results = [r for r in tool_results if r and str(r).strip()]
         tool_context = "\n\n".join(valid_tool_results) if valid_tool_results else "(no tool results)"
         synth_messages = [{"role": "system", "content": synthesis_prompt}]
-        # Do NOT include conversation history in synthesis — it can re-poison the model
+        # Do NOT include conversation history in synthesis,  it can re-poison the model
         # with prior refusals or "permission" responses. The tool results are the only context needed.
         synth_messages.append(
             {
@@ -2783,7 +2784,7 @@ class SableAgent:
 
     @staticmethod
     def _clean_output(text: str | None) -> str | None:
-        """Sanitize final bot output — remove stylistic artifacts the AI tends to produce."""
+        """Sanitize final bot output,  remove stylistic artifacts the AI tends to produce."""
         if not text:
             return text
         import re as _re
@@ -2801,21 +2802,21 @@ class SableAgent:
         if not text:
             logger.warning("[clean_output] Model produced no usable output, using fallback")
             text = "I understood your request but had trouble generating a response. Could you try rephrasing it?"
-        # Strip leaked role prefixes — llama/mistral models sometimes output
+        # Strip leaked role prefixes,  llama/mistral models sometimes output
         # "Assistant\n..." or "assistant:" at the start of their reply.
         text = _re.sub(
             r'^(?:assistant|asistente|user|sistema|system)\s*[:\n]+\s*',
             '', text, flags=_re.IGNORECASE,
         )
         # Strip garbled tokens that appear right after a role prefix leak
-        # (e.g. "ungal\n\n" — leftover BPE gibberish from chat template bleed)
+        # (e.g. "ungal\n\n",  leftover BPE gibberish from chat template bleed)
         text = _re.sub(r'^[a-z]{2,8}\n\n\s*', '', text, flags=_re.IGNORECASE)
-        # Strip untagged reasoning preamble — Claude-distilled models sometimes output
+        # Strip untagged reasoning preamble,  Claude-distilled models sometimes output
         # raw thinking before the actual reply. Detect by looking for a double-newline
         # separator after a block that reads like internal monologue.
         text = _strip_untagged_reasoning(text)
         # Replace em-dash patterns with comma
-        text = text.replace(" —", ", ")
+        text = text.replace("–", ", ")
         text = text.replace("—", ", ")
         return text
 
@@ -2896,12 +2897,12 @@ class SableAgent:
             "CRITICAL RULE: Output ONLY your final reply to the user. "
             "NEVER write internal thoughts, reasoning steps, analysis, planning notes, "
             "or any sentence that describes what you are about to do or how you interpret the request. "
-            "Begin your response immediately with the answer — no preamble, no thinking out loud.\n\n"
+            "Begin your response immediately with the answer,  no preamble, no thinking out loud.\n\n"
         )
         _tool_rule = (
             "TOOL CAPABILITY RULE: You have FULL internet access and tool access. "
             "NEVER say you cannot search the web, cannot access the internet, or need permission to search. "
-            "NEVER ask the user if they want you to search — just search. "
+            "NEVER ask the user if they want you to search,  just search. "
             "When tool results are given to you, present them directly without disclaimers.\n\n"
         )
         personalities = {
@@ -2955,7 +2956,7 @@ class SableAgent:
         old_stream = getattr(self, "_stream_chunk_callback", None)
         if progress_callback:
             self._progress_callback = progress_callback
-        # stream_chunk_callback(text: str) -> Awaitable — called per token during final LLM answer
+        # stream_chunk_callback(text: str) -> Awaitable,  called per token during final LLM answer
         self._stream_chunk_callback = stream_chunk_callback
         try:
             return await self._process_message_inner(user_id, message, history)
@@ -3144,9 +3145,9 @@ class SableAgent:
         Async generator that yields progress events, tokens, and the final response.
 
         Event types:
-          - {"type": "progress", "text": "..."}   — step-level progress
-          - {"type": "token",    "text": "..."}   — individual token
-          - {"type": "response", "text": "..."}   — final complete response
+          - {"type": "progress", "text": "..."}  ,  step-level progress
+          - {"type": "token",    "text": "..."}  ,  individual token
+          - {"type": "response", "text": "..."}  ,  final complete response
 
         Usage:
             async for event in agent.stream("search for Python news"):

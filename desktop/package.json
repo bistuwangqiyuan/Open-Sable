@@ -1,7 +1,7 @@
 {
   "name": "sable-desktop",
   "version": "1.1.0",
-  "description": "Sable Desktop — Native chat interface for SableCore",
+  "description": "Sable Desktop,  Native chat interface for SableCore",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV=true electron .\"",

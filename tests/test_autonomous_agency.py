@@ -303,7 +303,7 @@ class TestProactiveReasoning:
         # First parse
         proposals1 = engine._parse_proposals(text, tick=5)
         assert len(proposals1) == 1
-        # Second parse — same action should be deduped
+        # Second parse,  same action should be deduped
         proposals2 = engine._parse_proposals(text, tick=10)
         assert len(proposals2) == 0
 
@@ -726,7 +726,7 @@ class TestImports:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AutonomousMode — Outcome learning, discovery, self-improvement tests
+# AutonomousMode,  Outcome learning, discovery, self-improvement tests
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -1573,7 +1573,7 @@ class TestTaskDeduplication:
             '[{"type":"goal","description":"Import json module at top of file","priority":"medium"}]',
             source="self_improve",
         )
-        assert len(am.task_queue) == 0  # Not added — already done
+        assert len(am.task_queue) == 0  # Not added,  already done
 
     def test_fuzzy_dedup(self):
         am = self._make_am()

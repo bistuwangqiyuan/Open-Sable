@@ -1,5 +1,5 @@
 """
-Cognitive Architecture Optimizer — self-tuning tick pipeline.
+Cognitive Architecture Optimizer,  self-tuning tick pipeline.
 
 Measures the actual impact of each cognitive phase (0-11) on agent
 performance and dynamically adjusts:

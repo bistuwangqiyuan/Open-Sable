@@ -1,5 +1,5 @@
 """
-Quantified Self-Benchmarking — Internal performance benchmarks the agent runs on itself.
+Quantified Self-Benchmarking,  Internal performance benchmarks the agent runs on itself.
 
 Unlike external benchmarks, this module:
   • Defines 8 internal benchmark suites the agent runs periodically
@@ -9,7 +9,7 @@ Unlike external benchmarks, this module:
   • Computes an aggregate "autonomy score" from all sub-scores
   • Detects regressions (score drops below rolling average)
   • Persists all benchmark results for trend analysis
-  • Runs every N ticks (default 25) — lightweight self-assessment
+  • Runs every N ticks (default 25),  lightweight self-assessment
 """
 
 import json
@@ -119,8 +119,8 @@ class SelfBenchmark:
         Run all benchmark suites and return a snapshot.
 
         agent_state should contain:
-          - completed_tasks: List[Dict] — recent completed tasks
-          - task_queue: List[Dict] — current queue
+          - completed_tasks: List[Dict],  recent completed tasks
+          - task_queue: List[Dict],  current queue
           - inner_life: inner life processor instance or None
           - cognitive_memory_count: int
           - deep_planner: DeepPlanner instance or None
@@ -312,11 +312,11 @@ class SelfBenchmark:
         recent = completed[-50:]
         retried = [t for t in recent if t.get("retries", 0) > 0]
         if not retried:
-            # No retries needed either — could be good or no errors
+            # No retries needed either,  could be good or no errors
             errors = sum(1 for t in recent if t.get("status") == "error")
             if errors == 0:
-                return 85.0  # Perfect run — high score
-            return 40.0  # Errors but no retries — bad
+                return 85.0  # Perfect run,  high score
+            return 40.0  # Errors but no retries,  bad
 
         recovered = sum(1 for t in retried if t.get("status") == "done")
         recovery_rate = recovered / max(1, len(retried))
@@ -552,7 +552,7 @@ class SelfBenchmark:
                 ))
 
             logger.info(
-                f"📊 SelfBenchmark: Loaded — autonomy={self._current_autonomy_score}/100, "
+                f"📊 SelfBenchmark: Loaded,  autonomy={self._current_autonomy_score}/100, "
                 f"{self._total_runs} runs"
             )
         except Exception as e:

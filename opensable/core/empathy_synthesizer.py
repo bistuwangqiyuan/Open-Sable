@@ -1,10 +1,10 @@
 """
-Empathy Synthesizer — simulates being the user to predict reactions.
+Empathy Synthesizer,  simulates being the user to predict reactions.
 
 WORLD FIRST: Goes beyond Theory of Mind. The agent actually constructs
 a virtual model of the user and "becomes" them temporarily to predict
 emotional reactions, preferences, and frustrations BEFORE acting.
-Like method acting for AI — it doesn't just understand the user,
+Like method acting for AI,  it doesn't just understand the user,
 it BECOMES the user to feel what they'd feel.
 
 Persistence: ``empathy_synthesizer_state.json`` in *data_dir*.
@@ -172,7 +172,7 @@ class EmpathySynthesizer:
         # Check patience
         if "long" in action_lower or "wait" in action_lower:
             if self.user_model.personality_traits["patience"] < 0.4:
-                warnings.append("User has low patience — keep it quick")
+                warnings.append("User has low patience,  keep it quick")
                 satisfaction -= 0.1
 
         # Check detail level

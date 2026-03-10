@@ -72,7 +72,7 @@ export default function SettingsDialog() {
     const newConfig = { wsUrl: wsUrl.trim(), token: token.trim() }
     setConfig(newConfig)
     connect(newConfig)
-    showToast('Settings saved — reconnecting…')
+    showToast('Settings saved,  reconnecting…')
     closeSettings()
   }
 
@@ -237,7 +237,7 @@ export default function SettingsDialog() {
                   className="gguf-import-input"
                   value={ggufName}
                   onChange={e => setGgufName(e.target.value)}
-                  placeholder="Model name (optional — auto-derived from filename)"
+                  placeholder="Model name (optional,  auto-derived from filename)"
                 />
                 <button
                   className="gguf-import-btn"
@@ -254,7 +254,7 @@ export default function SettingsDialog() {
               <div className="gguf-import-hint">
                 Imports a .gguf file into Ollama so you can use it like any other model.
                 Supports models downloaded from HuggingFace, TheBloke, etc.
-                The file stays on disk — Ollama creates a reference to it.
+                The file stays on disk,  Ollama creates a reference to it.
               </div>
             </div>
           </div>

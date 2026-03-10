@@ -1,5 +1,5 @@
 """
-Social media tools — X (Twitter), Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
+Social media tools,  X (Twitter), Grok, Instagram, Facebook, LinkedIn, TikTok, YouTube
 
 ⚠️  These integrations are provided for TESTING AND EDUCATIONAL PURPOSES ONLY.
 Users are responsible for complying with each platform's Terms of Service.
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class SocialToolsMixin:
-    """Mixin providing social media tools — x (twitter), grok, instagram, facebook, linkedin, tiktok, youtube tool implementations."""
+    """Mixin providing social media tools,  x (twitter), grok, instagram, facebook, linkedin, tiktok, youtube tool implementations."""
 
     # ========== X (TWITTER) TOOLS ==========
 
@@ -241,7 +241,7 @@ class SocialToolsMixin:
                 return "🔍 No Instagram users found."
             lines = [f"🔍 Found {len(users)} Instagram user(s):"]
             for u in users[:10]:
-                lines.append(f"  • @{u.get('username', '?')} — {u.get('full_name', '')} (followers: {u.get('follower_count', '?')})")
+                lines.append(f"  • @{u.get('username', '?')},  {u.get('full_name', '')} (followers: {u.get('follower_count', '?')})")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -259,7 +259,7 @@ class SocialToolsMixin:
                 return "🔍 No hashtags found."
             lines = [f"#️⃣ Found {len(tags)} hashtag(s):"]
             for t in tags[:10]:
-                lines.append(f"  • #{t.get('name', '?')} — {t.get('media_count', '?')} posts")
+                lines.append(f"  • #{t.get('name', '?')},  {t.get('media_count', '?')} posts")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -473,7 +473,7 @@ class SocialToolsMixin:
                 return "🔍 No people found."
             lines = [f"🔍 LinkedIn People ({len(people)} results):"]
             for p in people[:10]:
-                lines.append(f"  • {p.get('name', '?')} — {p.get('headline', 'N/A')}")
+                lines.append(f"  • {p.get('name', '?')},  {p.get('headline', 'N/A')}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -491,7 +491,7 @@ class SocialToolsMixin:
                 return "🔍 No companies found."
             lines = [f"🏢 LinkedIn Companies ({len(companies)} results):"]
             for c in companies[:10]:
-                lines.append(f"  • {c.get('name', '?')} — {c.get('industry', 'N/A')}")
+                lines.append(f"  • {c.get('name', '?')},  {c.get('industry', 'N/A')}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -510,7 +510,7 @@ class SocialToolsMixin:
                 return "🔍 No jobs found."
             lines = [f"💼 LinkedIn Jobs ({len(jobs)} results):"]
             for j in jobs[:10]:
-                lines.append(f"  • {j.get('title', '?')} at {j.get('company', '?')} — {j.get('location', 'N/A')}")
+                lines.append(f"  • {j.get('title', '?')} at {j.get('company', '?')},  {j.get('location', 'N/A')}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -608,7 +608,7 @@ class SocialToolsMixin:
                 return "🔍 No users found."
             lines = [f"🔍 TikTok Users ({len(users)} results):"]
             for u in users[:10]:
-                lines.append(f"  • @{u.get('username', '?')} — {u.get('nickname', '')} (followers: {u.get('follower_count', '?')})")
+                lines.append(f"  • @{u.get('username', '?')},  {u.get('nickname', '')} (followers: {u.get('follower_count', '?')})")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -680,7 +680,7 @@ class SocialToolsMixin:
                 return "🔍 No YouTube videos found."
             lines = [f"🔍 YouTube Videos ({len(videos)} results):"]
             for v in videos[:10]:
-                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}) — {v.get('channel_title', '?')}")
+                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}),  {v.get('channel_title', '?')}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -698,7 +698,7 @@ class SocialToolsMixin:
                 return "🔍 No channels found."
             lines = [f"🔍 YouTube Channels ({len(channels)} results):"]
             for c in channels[:10]:
-                lines.append(f"  • {c.get('title', '?')} — {(c.get('description', '') or '')[:60]}")
+                lines.append(f"  • {c.get('title', '?')},  {(c.get('description', '') or '')[:60]}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -733,7 +733,7 @@ class SocialToolsMixin:
                 return "📺 No videos found for this channel."
             lines = [f"📺 Channel Videos ({len(videos)}):"]
             for v in videos[:10]:
-                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}) — {v.get('published_at', '')[:10]}")
+                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}),  {v.get('published_at', '')[:10]}")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 
@@ -836,7 +836,7 @@ class SocialToolsMixin:
                 return "🔥 No trending videos found."
             lines = [f"🔥 YouTube Trending ({len(videos)} videos):"]
             for v in videos[:10]:
-                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}) — {v.get('channel_title', '?')} (👀 {v.get('view_count', '?')})")
+                lines.append(f"  • [{v.get('title', '?')}]({v.get('url', '')}),  {v.get('channel_title', '?')} (👀 {v.get('view_count', '?')})")
             return "\n".join(lines)
         return f"❌ {result.get('error')}"
 

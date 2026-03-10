@@ -1,13 +1,13 @@
 """
-Skill Evolution — Modern Evolutionary Synthesis for autonomous skill management.
+Skill Evolution,  Modern Evolutionary Synthesis for autonomous skill management.
 
 Implements evolutionary forces that guide skill creation, mutation, and deletion:
 
-  NaturalSelection   — condemns low-fitness skills for evolution or deletion
-  MutationPressure   — identifies stagnant and error-prone skills needing change
-  NicheConstruction  — tracks how skills modify the agent's capabilities
-  AdaptiveLandscape  — epistatic interactions between co-used skills
-  Recombination      — crossover of two parent skills into a child
+  NaturalSelection  ,  condemns low-fitness skills for evolution or deletion
+  MutationPressure  ,  identifies stagnant and error-prone skills needing change
+  NicheConstruction ,  tracks how skills modify the agent's capabilities
+  AdaptiveLandscape ,  epistatic interactions between co-used skills
+  Recombination     ,  crossover of two parent skills into a child
 
 Academic grounding:
   [1] Fisher (1930): Fundamental theorem of natural selection
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EvolutionEvent:
-    """A single evolution event — skill created, evolved, forked, deleted, used, error."""
+    """A single evolution event,  skill created, evolved, forked, deleted, used, error."""
 
     tick: int
     timestamp: float
@@ -52,7 +52,7 @@ class EvolutionEvent:
 
 @dataclass
 class FitnessRecord:
-    """Fitness record computed from events — not stored separately.
+    """Fitness record computed from events,  not stored separately.
 
     fitness = survival × reproductive × quality
     """
@@ -166,7 +166,7 @@ def compute_fitness(
 
 
 class NaturalSelection:
-    """Darwinian selection — condemns low-fitness skills.
+    """Darwinian selection,  condemns low-fitness skills.
 
     Identifies skills below fitness threshold and marks them as condemned.
     The agent can then evolve, fork, or delete them.
@@ -366,7 +366,7 @@ class AdaptiveLandscape:
 
 
 class SkillRecombination:
-    """Sexual recombination — crossover of two parent skills.
+    """Sexual recombination,  crossover of two parent skills.
 
     Provides a method to combine two parent skills into a child.
     Both parents survive. Child inherits max(gen_a, gen_b) + 1.
@@ -458,10 +458,10 @@ class SkillEvolutionManager:
     Combines all evolutionary mechanisms into a single pipeline that
     runs during each tick:
       1. Compute fitness from event history
-      2. Natural selection — condemn low-fitness
-      3. Mutation pressure — identify stagnant/error-prone
-      4. Niche construction — track capability ecosystem
-      5. Adaptive landscape — detect interactions
+      2. Natural selection,  condemn low-fitness
+      3. Mutation pressure,  identify stagnant/error-prone
+      4. Niche construction,  track capability ecosystem
+      5. Adaptive landscape,  detect interactions
       6. Generate evolution summary for LLM
 
     Events are persisted to JSONL for cross-session continuity.

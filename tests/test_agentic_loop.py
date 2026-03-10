@@ -2,7 +2,7 @@
 Integration tests for the SableAgent._agentic_loop using MockLLM.
 
 These tests verify the core agent behavior without requiring
-Ollama or any cloud API — all LLM calls are mocked.
+Ollama or any cloud API,  all LLM calls are mocked.
 """
 
 import pytest

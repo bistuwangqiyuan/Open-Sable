@@ -532,7 +532,7 @@ export default function SettingsPanel({ modelGroups = [], switchModel, importGGU
             <div>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
                 Import a .gguf model file (from HuggingFace, TheBloke, etc.) into Ollama.
-                The file stays on disk — Ollama creates a reference to it.
+                The file stays on disk,  Ollama creates a reference to it.
               </p>
               <div style={s.formGroup}>
                 <label style={s.label}>GGUF File Path</label>
