@@ -817,73 +817,88 @@ class AdaptiveLLM:
 
 def get_llm(config):
     """Get LLM instance based on configuration"""
-    try:
-        # Auto-select model if enabled
-        model_to_use = config.default_model
 
-        if config.auto_select_model:
-            from opensable.core.system_detector import auto_configure_system
+    # ── First, check if Ollama is actually reachable ──────────────────────
+    ollama_available = False
+    ollama_url = getattr(config, "ollama_base_url", "") or ""
+    if ollama_url:
+        try:
+            client = ollama.Client(host=ollama_url)
+            models = client.list()
+            ollama_available = True
+            logger.info(f"Ollama is reachable at {ollama_url}")
+        except Exception as e:
+            logger.info(f"Ollama not reachable at {ollama_url}: {e}")
+    else:
+        logger.info("OLLAMA_BASE_URL is empty — skipping local Ollama")
 
-            auto_config = auto_configure_system()
-            recommended = auto_config["recommended_model"]
+    if ollama_available:
+        try:
+            # Auto-select model if enabled
+            model_to_use = config.default_model
 
-            # Verify the recommended model is actually available before using it
-            try:
-                client = ollama.Client(host=config.ollama_base_url)
-                models = client.list()
-                available = [
-                    getattr(m, "model", None) or m.get("name") or m.get("model", "")
-                    for m in models.get("models", [])
-                ]
-                if any(recommended in a or a in recommended for a in available):
-                    model_to_use = recommended
-                    logger.info(
-                        f"Auto-selected model: {model_to_use} (tier: {auto_config['device_tier']})"
-                    )
-                else:
-                    logger.warning(
-                        f"Auto-selected model '{recommended}' not available locally. Using default: {model_to_use}"
-                    )
-            except Exception:
-                logger.warning(f"Cannot verify model availability. Using default: {model_to_use}")
+            if config.auto_select_model:
+                from opensable.core.system_detector import auto_configure_system
 
-        # Return adaptive LLM that can switch models
-        adaptive_llm = AdaptiveLLM(config, model_to_use)
-        logger.info(f"Using adaptive LLM starting with: {model_to_use}")
-        return adaptive_llm
+                auto_config = auto_configure_system()
+                recommended = auto_config["recommended_model"]
 
-    except Exception as e:
-        logger.warning(f"Ollama not available: {e}")
+                # Verify the recommended model is actually available before using it
+                try:
+                    available = [
+                        getattr(m, "model", None) or m.get("name") or m.get("model", "")
+                        for m in models.get("models", [])
+                    ]
+                    if any(recommended in a or a in recommended for a in available):
+                        model_to_use = recommended
+                        logger.info(
+                            f"Auto-selected model: {model_to_use} (tier: {auto_config['device_tier']})"
+                        )
+                    else:
+                        logger.warning(
+                            f"Auto-selected model '{recommended}' not available locally. Using default: {model_to_use}"
+                        )
+                except Exception:
+                    logger.warning(f"Cannot verify model availability. Using default: {model_to_use}")
 
-        # Fallback to cloud APIs — try each configured provider in priority order
-        _CLOUD_FALLBACK_ORDER = [
-            ("openai", "openai_api_key"),
-            ("anthropic", "anthropic_api_key"),
-            ("gemini", "gemini_api_key"),
-            ("deepseek", "deepseek_api_key"),
-            ("groq", "groq_api_key"),
-            ("mistral", "mistral_api_key"),
-            ("together", "together_api_key"),
-            ("xai", "xai_api_key"),
-            ("cohere", "cohere_api_key"),
-            ("kimi", "kimi_api_key"),
-            ("qwen", "qwen_api_key"),
-            ("openrouter", "openrouter_api_key"),
-            ("openwebui", "openwebui_api_key"),
-        ]
-        for provider, key_attr in _CLOUD_FALLBACK_ORDER:
-            if getattr(config, key_attr, None):
-                logger.info(f"Falling back to {provider} with tool calling")
-                return CloudLLM(provider=provider, config=config)
+            # Return adaptive LLM that can switch models
+            adaptive_llm = AdaptiveLLM(config, model_to_use)
+            logger.info(f"Using adaptive LLM (Ollama) starting with: {model_to_use}")
+            return adaptive_llm
 
-        raise Exception(
-            "No LLM available. Install Ollama or set an API key env var: "
-            "OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, "
-            "DEEPSEEK_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, "
-            "TOGETHER_API_KEY, XAI_API_KEY, COHERE_API_KEY, "
-            "KIMI_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY, "
-            "OPENWEBUI_API_KEY + OPENWEBUI_API_URL"
-        )
+        except Exception as e:
+            logger.warning(f"Failed to initialize Ollama LLM: {e}")
+
+    # ── Ollama not available — fall back to cloud providers ───────────────
+    logger.info("Looking for cloud/remote LLM providers...")
+    _CLOUD_FALLBACK_ORDER = [
+        ("openwebui", "openwebui_api_key"),
+        ("openai", "openai_api_key"),
+        ("anthropic", "anthropic_api_key"),
+        ("gemini", "gemini_api_key"),
+        ("deepseek", "deepseek_api_key"),
+        ("groq", "groq_api_key"),
+        ("mistral", "mistral_api_key"),
+        ("together", "together_api_key"),
+        ("xai", "xai_api_key"),
+        ("cohere", "cohere_api_key"),
+        ("kimi", "kimi_api_key"),
+        ("qwen", "qwen_api_key"),
+        ("openrouter", "openrouter_api_key"),
+    ]
+    for provider, key_attr in _CLOUD_FALLBACK_ORDER:
+        if getattr(config, key_attr, None):
+            logger.info(f"Using {provider} as LLM provider")
+            return CloudLLM(provider=provider, config=config)
+
+    raise Exception(
+        "No LLM available. Install Ollama or set an API key env var: "
+        "OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, "
+        "DEEPSEEK_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, "
+        "TOGETHER_API_KEY, XAI_API_KEY, COHERE_API_KEY, "
+        "KIMI_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY, "
+        "OPENWEBUI_API_KEY + OPENWEBUI_API_URL"
+    )
 
 
 class CloudLLM:
@@ -967,9 +982,11 @@ class CloudLLM:
                     "Set it in .env (e.g. https://your-server.com/api)"
                 )
             # Ensure URL ends with OpenAI-compatible path
+            # Open WebUI's OpenAI-compat endpoint lives at /api/chat/completions,
+            # so the base_url the openai SDK needs is {host}/api.
             self._openwebui_base_url = custom_url.rstrip("/")
             if not self._openwebui_base_url.endswith(("/v1", "/api")):
-                self._openwebui_base_url += ""  # keep as-is, user knows their URL
+                self._openwebui_base_url += "/api"
             custom_model = getattr(config, "openwebui_model", None)
             if custom_model:
                 self.current_model = custom_model
@@ -988,16 +1005,13 @@ class CloudLLM:
     # ── OpenAI-compatible providers ──────────────────────────────────────
 
     async def _openai_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
-        """Works for openai, deepseek, groq, together, xai, mistral, openwebui."""
+        """Works for openai, deepseek, groq, together, xai, mistral, etc."""
         try:
             from openai import AsyncOpenAI
         except ImportError:
             raise ImportError("pip install openai  — required for OpenAI-compatible providers")
 
         base_url, _, _ = self._PROVIDERS[self.provider]
-        # Open WebUI: URL comes from config, not hardcoded in _PROVIDERS
-        if self.provider == "openwebui":
-            base_url = getattr(self, "_openwebui_base_url", base_url)
         client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
 
         kwargs: dict = {"model": self.current_model, "messages": messages}
@@ -1272,6 +1286,73 @@ class CloudLLM:
             text = resp.message.content[0].text if resp.message.content else ""
         return {"tool_call": None, "tool_calls": [], "text": text}
 
+    # ── Open WebUI (aiohttp — Cloudflare blocks openai SDK's httpx) ─────
+
+    async def _openwebui_invoke(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
+        """Call Open WebUI via aiohttp (bypasses Cloudflare httpx block).
+
+        Tools are intentionally NOT forwarded because most Open WebUI backends
+        (Ollama, llama.cpp) reject the OpenAI ``tools`` parameter with 400.
+        The agent loop already falls back to extracting tool calls from text.
+        """
+        import aiohttp
+
+        url = getattr(self, "_openwebui_base_url", "") + "/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self._get_api_key()}",
+            "Content-Type": "application/json",
+        }
+        body: dict = {"model": self.current_model, "messages": messages}
+        # NOTE: tools deliberately omitted — Ollama/OWUI backends return 400
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=body,
+                                    timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                if resp.status != 200:
+                    err = await resp.text()
+                    raise RuntimeError(f"OpenWebUI returned {resp.status}: {err[:300]}")
+                data = await resp.json()
+
+        choice = data.get("choices", [{}])[0]
+        msg = choice.get("message", {})
+
+        # Token tracking
+        usage = data.get("usage", {})
+        if usage:
+            pt = usage.get("prompt_tokens", 0)
+            ct = usage.get("completion_tokens", 0)
+            self.token_tracker.record(TokenUsage(
+                prompt_tokens=pt,
+                completion_tokens=ct,
+                total_tokens=pt + ct,
+                model=self.current_model,
+                provider=self.provider,
+                estimated_cost_usd=TokenTracker.estimate_cost(self.current_model, pt, ct),
+            ))
+
+        # Tool calls
+        tool_calls_raw = msg.get("tool_calls")
+        if tool_calls_raw:
+            parsed = []
+            for tc in tool_calls_raw:
+                fn = tc.get("function", {})
+                args = fn.get("arguments", {})
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {}
+                parsed.append({"name": fn.get("name", ""), "arguments": args})
+            return {"tool_call": parsed[0], "tool_calls": parsed, "text": None}
+
+        # Text response
+        raw_text = msg.get("content", "") or ""
+        raw_text, reasoning = parse_thinking(raw_text)
+        result: dict = {"tool_call": None, "tool_calls": [], "text": raw_text}
+        if reasoning:
+            result["reasoning"] = reasoning
+        return result
+
     # ── Public interface (same as AdaptiveLLM) ───────────────────────────
 
     # Map providers to their invoke method
@@ -1285,13 +1366,16 @@ class CloudLLM:
         "kimi",
         "qwen",
         "openrouter",
-        "openwebui",
+        # NOTE: "openwebui" intentionally excluded — Cloudflare blocks the
+        # openai SDK's httpx transport; we use aiohttp for OpenWebUI instead.
     }
 
     async def invoke_with_tools(self, messages: List[Dict], tools: List[Dict]) -> Dict[str, Any]:
         """Call cloud LLM with native tool calling."""
         try:
-            if self.provider in self._OPENAI_COMPAT:
+            if self.provider == "openwebui":
+                return await self._openwebui_invoke(messages, tools)
+            elif self.provider in self._OPENAI_COMPAT:
                 return await self._openai_invoke(messages, tools)
             elif self.provider == "anthropic":
                 return await self._anthropic_invoke(messages, tools)
@@ -1340,15 +1424,86 @@ class CloudLLM:
         DeepSeek API: reasoning_content is captured from stream deltas;
         <think> tags in content are also handled as fallback.
 
-        Supports OpenAI-compatible providers and Anthropic.
+        Supports OpenAI-compatible providers, Anthropic, and Open WebUI (via aiohttp).
         """
         try:
-            if self.provider in self._OPENAI_COMPAT:
+            if self.provider == "openwebui":
+                # Open WebUI: use aiohttp SSE (Cloudflare blocks openai SDK's httpx)
+                import aiohttp
+                url = getattr(self, "_openwebui_base_url", "") + "/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self._get_api_key()}",
+                    "Content-Type": "application/json",
+                }
+                body = {"model": self.current_model, "messages": messages, "stream": True}
+                _buf = ""
+                _inside_think = False
+                _reasoning_parts: list[str] = []
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, headers=headers, json=body,
+                                            timeout=aiohttp.ClientTimeout(total=300)) as resp:
+                        if resp.status != 200:
+                            err = await resp.text()
+                            yield f"Error: OpenWebUI returned {resp.status}"
+                            return
+                        # Parse SSE stream
+                        async for line in resp.content:
+                            line = line.decode("utf-8", errors="replace").strip()
+                            if not line.startswith("data: "):
+                                continue
+                            payload = line[6:]
+                            if payload == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(payload)
+                            except json.JSONDecodeError:
+                                continue
+                            choices = chunk.get("choices", [])
+                            if not choices:
+                                continue
+                            delta = choices[0].get("delta", {})
+                            content = delta.get("content")
+                            if not content:
+                                continue
+
+                            # Strip <think> tags from models that produce them
+                            _buf += content
+                            while _buf:
+                                if _inside_think:
+                                    end_idx = _buf.find("</think>")
+                                    if end_idx != -1:
+                                        _reasoning_parts.append(_buf[:end_idx])
+                                        _buf = _buf[end_idx + 8:]
+                                        _inside_think = False
+                                    else:
+                                        _reasoning_parts.append(_buf)
+                                        _buf = ""
+                                else:
+                                    start_idx = _buf.find("<think>")
+                                    if start_idx != -1:
+                                        if start_idx > 0:
+                                            yield _buf[:start_idx]
+                                        _buf = _buf[start_idx + 7:]
+                                        _inside_think = True
+                                    else:
+                                        safe = True
+                                        for i in range(1, min(len("<think>"), len(_buf) + 1)):
+                                            if _buf.endswith("<think>"[:i]):
+                                                yield _buf[:-i]
+                                                _buf = _buf[-i:]
+                                                safe = False
+                                                break
+                                        if safe:
+                                            yield _buf
+                                            _buf = ""
+                # Flush remaining buffer
+                if _buf:
+                    yield _buf
+
+            elif self.provider in self._OPENAI_COMPAT:
                 from openai import AsyncOpenAI
                 base_url, _, _ = self._PROVIDERS[self.provider]
-                # Open WebUI: URL comes from config
-                if self.provider == "openwebui":
-                    base_url = getattr(self, "_openwebui_base_url", base_url)
                 client = AsyncOpenAI(api_key=self._get_api_key(), base_url=base_url)
                 stream = await client.chat.completions.create(
                     model=self.current_model,

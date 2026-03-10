@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Eye, EyeOff, Check, X, ChevronDown, ChevronUp, RefreshCw, Loader2, Server, Zap } from 'lucide-react';
 import { PROVIDERS, PROVIDER_LOGOS } from '../../lib/utils';
 
 const s = {
@@ -80,7 +80,7 @@ function saveConfig(cfg) {
   localStorage.setItem('opensable_agent_config', JSON.stringify(cfg));
 }
 
-export default function SettingsPanel({ modelGroups = [], requestModels, switchModel, importGGUF }) {
+export default function SettingsPanel({ modelGroups = [], switchModel, importGGUF, ws, connected }) {
   const [config, setConfig] = useState(loadConfig);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showKey, setShowKey] = useState(false);
@@ -88,11 +88,11 @@ export default function SettingsPanel({ modelGroups = [], requestModels, switchM
   const [expandedSection, setExpandedSection] = useState('providers');
   const [ggufPath, setGgufPath] = useState('');
   const [ggufName, setGgufName] = useState('');
-
-  // Refresh local models when settings panel opens or Ollama is selected
-  useEffect(() => {
-    if (requestModels) requestModels();
-  }, [selectedProvider]);
+  const [llmStatus, setLlmStatus] = useState(null);
+  const [allModels, setAllModels] = useState({});
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [switchResult, setSwitchResult] = useState(null);
 
   const providerConfigs = config.providers || {};
 
@@ -152,6 +152,11 @@ export default function SettingsPanel({ modelGroups = [], requestModels, switchM
       requestModels();
     }
   }, [connected]);
+
+  // Refresh local models when settings panel opens or provider selection changes
+  useEffect(() => {
+    requestModels();
+  }, [selectedProvider]);
 
   const updateProviderConfig = (id, key, value) => {
     const next = {

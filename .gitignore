@@ -179,3 +179,4 @@ epistemic_wary.png
 
 # Agent autonomous write sandbox — all LLM-generated files land here
 data/agent_output/
+/agents/nano/
