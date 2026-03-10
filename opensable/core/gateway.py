@@ -1998,6 +1998,8 @@ class Gateway:
 
     async def _on_agents_chat(self, client: _Client, msg: dict):
         """Proxy a chat message to a remote agent via Unix socket and stream the response back."""
+        from opensable.core.session_manager import SessionManager
+
         profile = msg.get("profile", "")
         text = msg.get("text", "").strip()
         session_id = msg.get("session_id", "webchat_default")
@@ -2016,6 +2018,19 @@ class Gateway:
         if not Path(socket_path).exists():
             await client.send({"type": "error", "text": f"Agent '{profile}' is not running"})
             return
+
+        # Save user message to local session so it appears in sidebar
+        sm = SessionManager()
+        local_session = sm.get_session(session_id)
+        if not local_session:
+            local_session = sm.create_session(
+                channel="webchat", user_id=user_id, session_id=session_id
+            )
+            local_session.metadata["agent_profile"] = profile
+        local_session.add_message("user", text)
+        sm._save_session(local_session)
+
+        reply_chunks = []  # Collect reply text for local session
 
         try:
             conn = aiohttp.UnixConnector(path=socket_path)
@@ -2042,11 +2057,18 @@ class Gateway:
                             ftype = data.get("type", "")
                             # Tag with source profile
                             data["_profile"] = profile
+                            # Collect streaming chunks for local session
+                            if ftype == "message.chunk":
+                                reply_chunks.append(data.get("text", ""))
                             # Forward relevant message types
                             if ftype in ("message.start", "message.chunk", "message.done",
                                          "progress", "error"):
                                 await client.send(data)
                             if ftype == "message.done":
+                                # Grab full reply text from done frame if available
+                                done_text = data.get("text", "")
+                                if done_text:
+                                    reply_chunks = [done_text]
                                 done = True
                                 break
                         elif frame.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.ERROR):
@@ -2067,6 +2089,17 @@ class Gateway:
                 "_profile": profile,
                 "text": f"Failed to chat with agent '{profile}': {exc}",
             })
+
+        # Save assistant reply to local session and refresh sidebar
+        reply_text = "".join(reply_chunks).strip()
+        if reply_text:
+            local_session.add_message("assistant", reply_text)
+            sm._save_session(local_session)
+        # Refresh session list for the client
+        try:
+            await self._on_sessions_list(client)
+        except Exception:
+            pass
 
     async def _on_message(self, client: _Client, msg: dict):
         """Process user message through the full agent pipeline."""
@@ -2189,6 +2222,7 @@ class Gateway:
                 "session_id": s.id,
                 "channel": s.channel,
                 "user_id": s.user_id,
+                "agent_profile": s.metadata.get("agent_profile", ""),
                 "title": s.metadata.get("title")
                 or next(
                     (m.content[:60] for m in s.messages if m.role == "user"), None

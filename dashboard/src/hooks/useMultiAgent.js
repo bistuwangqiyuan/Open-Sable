@@ -318,13 +318,23 @@ export function useMultiAgent(wsRef, connected) {
   }, [connected, refreshAgents]);
 
   // ── Send chat message to a specific agent ─────────────────────────────
+  // Stable session IDs per agent profile
+  const agentSessionIds = useRef({});
+  const getAgentSessionId = useCallback((profile) => {
+    if (!agentSessionIds.current[profile]) {
+      agentSessionIds.current[profile] = 'agent_' + profile + '_' + Date.now().toString(36);
+    }
+    return agentSessionIds.current[profile];
+  }, []);
+
   const sendToAgent = useCallback((profile, text) => {
     if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    const sid = getAgentSessionId(profile);
     wsRef.current.send(JSON.stringify({
       type: 'agents.chat',
       profile,
       text,
-      session_id: 'webchat_default',
+      session_id: sid,
       user_id: 'dashboard_user',
     }));
     // Optimistically add user message to remote state
@@ -341,6 +351,17 @@ export function useMultiAgent(wsRef, connected) {
     });
   }, [wsRef]);
 
+  // Set messages for a specific agent (used when loading session history)
+  const setAgentMessages = useCallback((profile, messages) => {
+    setAgentStates(prev => {
+      const state = prev[profile] || { messages: [], activity: [], terminal: [], streaming: false };
+      return {
+        ...prev,
+        [profile]: { ...state, messages, streaming: false },
+      };
+    });
+  }, []);
+
   return {
     agents,
     currentAgent,
@@ -352,5 +373,6 @@ export function useMultiAgent(wsRef, connected) {
     subscribeAgent,
     unsubscribeAgent,
     sendToAgent,
+    setAgentMessages,
   };
 }

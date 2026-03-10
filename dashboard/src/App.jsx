@@ -76,16 +76,21 @@ export default function App() {
 
   // Build panel props,  for current agent use live ws data, for remote use proxied state
   // (no useMemo: ws is a new object every render so the memo never saves work)
+
+  // Filter sessions by agent profile
+  const localSessions = (ws.sessions || []).filter(s => !s.agent_profile);
+  const agentSessions = (ws.sessions || []).filter(s => s.agent_profile === ma.currentAgent);
+
   let panelProps;
   if (isLocal) {
     panelProps = {
-      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages, sessions: ws.sessions, activeSessionId: ws.activeSessionId, onLoadSession: ws.loadSession, onNewChat: () => ws.loadSession(null), onDeleteSession: ws.deleteSession },
+      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages, sessions: localSessions, activeSessionId: ws.activeSessionId, onLoadSession: ws.loadSession, onNewChat: () => ws.loadSession(null), onDeleteSession: ws.deleteSession },
       activity: { activity: ws.activity, onClear: ws.clearActivity },
       terminal: { terminal: ws.terminal, onClear: ws.clearTerminal },
-      status:   { stats: ws.stats, sessions: ws.sessions, model: ws.model, activity: ws.activity },
+      status:   { stats: ws.stats, sessions: localSessions, model: ws.model, activity: ws.activity },
       trading:  { stats: ws.stats, messages: ws.messages, streaming: ws.streaming, sendMessage: ws.sendMessage },
       tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
-      history:  { messages: ws.messages, sessions: ws.sessions, onLoadSession: handleLoadSession },
+      history:  { messages: ws.messages, sessions: localSessions, onLoadSession: handleLoadSession },
       thoughts: { ws: ws.wsRef, thoughts: ws.thoughts, connected: ws.connected },
       brain:    { ws: ws.wsRef, brainData: ws.brainData, connected: ws.connected, profile: null, isLocal: true },
       qr:       {},
@@ -99,14 +104,21 @@ export default function App() {
     const sendToRemote = (text) => ma.sendToAgent(ma.currentAgent, text);
     const clearRemoteMsgs = () => {};
     const remoteModelGroups = rs.modelGroups || [];
+    // Remote agents use the same local ws session functions since sessions are saved locally
+    const remoteActiveSessionId = agentSessions.length > 0 ? (agentSessions[0].session_id || agentSessions[0].id) : '';
+    const handleRemoteLoadSession = (sid) => {
+      ws.loadSession(sid, (msgs) => {
+        ma.setAgentMessages(ma.currentAgent, msgs);
+      });
+    };
     panelProps = {
-      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs, sessions: rs.sessions || [], activeSessionId: '', onLoadSession: () => {}, onNewChat: () => {}, onDeleteSession: () => {} },
+      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs, sessions: agentSessions, activeSessionId: remoteActiveSessionId, onLoadSession: handleRemoteLoadSession, onNewChat: () => { ma.setAgentMessages(ma.currentAgent, []); }, onDeleteSession: ws.deleteSession },
       activity: { activity: rs.activity || [], onClear: () => {} },
       terminal: { terminal: rs.terminal || [], onClear: () => {} },
       status:   { stats: rs.stats || {}, sessions: rs.sessions || [], model: rs.model || '', activity: rs.activity || [] },
       trading:  { stats: rs.stats || {}, messages: rs.messages || [], streaming: rs.streaming || false, sendMessage: sendToRemote },
       tasks:    { streaming: rs.streaming || false, messages: rs.messages || [], activity: rs.activity || [], sendMessage: sendToRemote },
-      history:  { messages: rs.messages || [], sessions: rs.sessions || [], onLoadSession: handleLoadSession },
+      history:  { messages: rs.messages || [], sessions: agentSessions, onLoadSession: handleLoadSession },
       thoughts: { ws: { current: null }, thoughts: rs.thoughts, connected: rs.connected || false },
       brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: ws.connected, profile: ma.currentAgent, isLocal: false },
       qr:       {},

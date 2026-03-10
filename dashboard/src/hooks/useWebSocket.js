@@ -18,6 +18,7 @@ export function useWebSocket(onExternalMessage) {
   const [stats, setStats] = useState({});
   const [sessions, setSessions] = useState([]);
   const [model, setModel] = useState('');
+  const sessionLoadCallbackRef = useRef(null);
   const [thoughts, setThoughts] = useState(null);
   const [brainData, setBrainData] = useState(null);
   const [modelGroups, setModelGroups] = useState([]);
@@ -158,7 +159,13 @@ export function useWebSocket(onExternalMessage) {
           content: m.content || m.text || '',
           ts: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
         }));
-        setMessages(loaded);
+        // If a callback was registered (e.g. remote agent load), use it instead
+        if (sessionLoadCallbackRef.current) {
+          sessionLoadCallbackRef.current(loaded, msg.session_id);
+          sessionLoadCallbackRef.current = null;
+        } else {
+          setMessages(loaded);
+        }
         addActivity('info', '📂', 'Session loaded', `${loaded.length} messages`);
         break;
       }
@@ -274,16 +281,21 @@ export function useWebSocket(onExternalMessage) {
     }
   }, [activeSessionId]);
 
-  const loadSession = useCallback((sessionId) => {
+  const loadSession = useCallback((sessionId, onLoaded) => {
     if (!sessionId) {
       // New chat — generate a fresh session ID
       const fresh = 'dash_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
       setActiveSessionId(fresh);
-      setMessages([]);
+      if (onLoaded) onLoaded([], null);
+      else setMessages([]);
       return;
     }
-    setActiveSessionId(sessionId);
-    setMessages([]);
+    if (onLoaded) {
+      sessionLoadCallbackRef.current = onLoaded;
+    } else {
+      setActiveSessionId(sessionId);
+      setMessages([]);
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: sessionId }));
     }
