@@ -687,7 +687,25 @@ def _detect_hardware() -> dict:
 
 
 def _pull_optimal_model():
-    """Auto-select and pull optimal Ollama model based on hardware."""
+    """Auto-select and pull optimal Ollama model based on hardware.
+    
+    Skips entirely if the user already has a custom model configured in .env
+    and that model exists in Ollama.
+    """
+    # Check if user already has a model set
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        content = env_file.read_text()
+        m = re.search(r'^DEFAULT_MODEL=(.+)$', content, re.MULTILINE)
+        if m:
+            existing = m.group(1).strip()
+            if existing and existing != "llama3.2:3b":  # not the placeholder default
+                # Verify it actually exists in Ollama
+                r = run(["ollama", "list"], capture=True)
+                if r.returncode == 0 and existing.split(":")[0] in (r.stdout or ""):
+                    ok(f"Model already configured: {existing} (keeping)")
+                    return
+
     hw = _detect_hardware()
 
     substep(f"Hardware: {hw['ram_gb']:.0f}GB RAM, {hw['cpu_cores']} cores"
