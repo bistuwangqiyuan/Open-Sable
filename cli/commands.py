@@ -437,7 +437,7 @@ def brain(host, port, watch, as_json):
         click.echo(f"  🧠 {click.style('CONNECTOME NEURAL COLONY', bold=True)}"
                    f"  {click.style(f'[{ts}]', fg='bright_black')}"
                    f"  {click.style(url, fg='bright_black')}")
-        click.echo(f"  {click.style('FlyWire FAFB v783 — Drosophila melanogaster connectome', fg='bright_black')}")
+        click.echo(f"  {click.style('FlyWire FAFB v783,  Drosophila melanogaster connectome', fg='bright_black')}")
         click.echo()
         _render(data)
         if watch:

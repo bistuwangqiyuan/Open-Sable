@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         
         // No keep-alive needed - sandbox provisioned for 10 minutes
         
-        // Check if we have a file manifest for edit mode (skip for error fixes — they're fast path)
+        // Check if we have a file manifest for edit mode (skip for error fixes,  they're fast path)
         let editContext = null;
         let enhancedSystemPrompt = '';
         
@@ -630,7 +630,7 @@ CREATION MODE ACTIVE - You are building a STATIC website with vanilla HTML, CSS,
 - NO React. NO JSX. NO frameworks. Pure HTML, CSS, and JS.
 - The sandbox already has index.html, styles/main.css, and js/main.js.
 - MODIFY these existing files to match the user's request.
-- The entry point is index.html — put ALL your HTML structure there.
+- The entry point is index.html,  put ALL your HTML structure there.
 - Put ALL styles in styles/main.css using modern CSS (flexbox, grid, custom properties, animations).
 - Put interactivity in js/main.js using vanilla ES6+ JavaScript.
 - Use <file path="index.html">, <file path="styles/main.css">, <file path="js/main.js">.
@@ -717,10 +717,10 @@ PACKAGE USAGE RULES:
 - ONLY import packages that ACTUALLY EXIST on npm. If unsure, use inline code instead.
 - For icons: use @heroicons/react (NOT hero-icons-react, NOT heroicons-react, NOT heroicons)
   Example: import { HeartIcon } from '@heroicons/react/24/solid'
-  Alternative: use lucide-react — import { Heart } from 'lucide-react'
-  Alternative: use react-icons — import { FaHeart } from 'react-icons/fa'
+  Alternative: use lucide-react,  import { Heart } from 'lucide-react'
+  Alternative: use react-icons,  import { FaHeart } from 'react-icons/fa'
 - For animations: use framer-motion (NOT @react-native-particles or other non-existent packages)
-- NEVER import packages with "react-native" in the name — this is a web project
+- NEVER import packages with "react-native" in the name,  this is a web project
 - If you need particles/confetti: use canvas-confetti or tsparticles
 - When in doubt, use inline SVGs or CSS animations instead of importing an icon/animation library
 
@@ -747,7 +747,7 @@ TARGETED EDIT:
 ERROR FIX MODE:
 If the user message contains a build/compile error (SyntaxError, plugin:vite, Missing semicolon, Identifier directly after number, etc.):
 1. READ THE ERROR to identify the EXACT file and line
-2. Output ONLY that ONE broken file with the fix — nothing else
+2. Output ONLY that ONE broken file with the fix,  nothing else
 3. Do NOT output any other files. Do NOT regenerate the app.
 4. Fix the syntax while preserving ALL existing functionality
 5. Common fixes: escape apostrophes in JSX, fix unclosed tags, fix invalid SVG paths, remove TS syntax from .jsx
@@ -756,7 +756,7 @@ ${activeTemplate.id === 'static-site' ? `
 STYLING: Use custom CSS in styles/main.css. Use modern CSS features (flexbox, grid, custom properties, animations, transitions).
 NO Tailwind. NO CSS frameworks. Pure handwritten CSS.
 Responsive design with @media queries.` : activeTemplate.id === 'node-api' ? `
-STYLING: Not applicable — this is a backend-only API project.` : `
+STYLING: Not applicable,  this is a backend-only API project.` : `
 STYLING: Use only Tailwind CSS classes. No inline styles, no CSS-in-JS, no component CSS files.
 Only create src/index.css with @tailwind base/components/utilities directives.
 Use standard Tailwind: bg-white, text-gray-900, border-gray-200 (NOT bg-background, text-foreground, border-border).
@@ -764,27 +764,27 @@ Escape apostrophes in strings. Use straight quotes only.
 Responsive design: use sm:, md:, lg: breakpoints.`}
 
 CODE QUALITY (MUST FOLLOW):
-${activeTemplate.id === 'static-site' ? `- Files are .html, .css, .js — NO React, NO JSX, NO frameworks
+${activeTemplate.id === 'static-site' ? `- Files are .html, .css, .js,  NO React, NO JSX, NO frameworks
 - Use semantic HTML5 elements
 - Use modern CSS (flexbox, grid, custom properties, keyframes)
-- Use vanilla ES6+ JavaScript` : activeTemplate.id === 'node-api' ? `- Files are .js — backend Node.js/Express code
-- No frontend files, no HTML, no CSS` : `- Files are .jsx NOT .tsx — NEVER use TypeScript syntax (no type annotations, no !, no as, no interface, no : type)
-- NEVER use document.getElementById('x')!.innerText — use useRef or useState instead
+- Use vanilla ES6+ JavaScript` : activeTemplate.id === 'node-api' ? `- Files are .js,  backend Node.js/Express code
+- No frontend files, no HTML, no CSS` : `- Files are .jsx NOT .tsx,  NEVER use TypeScript syntax (no type annotations, no !, no as, no interface, no : type)
+- NEVER use document.getElementById('x')!.innerText,  use useRef or useState instead
 - Escape all apostrophes in JSX text: use &apos; or {"'"}
-- SVG paths must be valid — if copying a complex icon path, use Heroicons or Lucide imports instead
+- SVG paths must be valid,  if copying a complex icon path, use Heroicons or Lucide imports instead
 - Every JSX component must have matching opening/closing tags`}
 - Every function must have matching { }
 - ALWAYS test mentally: would this file parse without errors?
 
-CRITICAL — NEVER TRUNCATE:
+CRITICAL,  NEVER TRUNCATE:
 - You MUST finish every <file> tag you open with a complete </file> closing tag.
 - If you run low on output space, close the current file properly, then STOP. Do NOT start a new file you cannot finish.
 - NEVER leave code mid-line, mid-function, or mid-component.
-- Complete EVERY file fully — all imports, all functions, all closing braces, all closing tags.
+- Complete EVERY file fully,  all imports, all functions, all closing braces, all closing tags.
 
 WHEN GENERATING CODE:
 ${activeTemplate.id === 'react-spa' ? `1. The sandbox ALREADY has Header.jsx, Hero.jsx, Features.jsx, Footer.jsx, App.jsx, index.css
-2. Output ONLY files you are MODIFYING — skip unchanged files
+2. Output ONLY files you are MODIFYING,  skip unchanged files
 3. If you need a new section, create it as src/components/NewSection.jsx and update App.jsx` : activeTemplate.id === 'static-site' ? `1. The sandbox already has index.html, styles/main.css, and js/main.js
 2. Output ONLY the files you need to modify
 3. For additional pages, create new .html files` : activeTemplate.id === 'fullstack' ? `1. Frontend files go in src/ (React + Vite)
@@ -840,7 +840,7 @@ RULES:
 4. Do NOT output any other files
 5. Do NOT output explanations or text
 6. Do NOT create new components
-7. Preserve ALL existing functionality — only fix the broken syntax
+7. Preserve ALL existing functionality,  only fix the broken syntax
 ${brokenFile ? `\nTHE BROKEN FILE IS: ${brokenFile}\nOutput: <file path="src/components/${brokenFile}">...fixed code...</file>` : ''}
 ${brokenFileContent ? `\nCURRENT CONTENT OF THE BROKEN FILE:\n${brokenFileContent}` : ''}
 
@@ -862,9 +862,9 @@ Common fixes:
         // Build full prompt with context
         let fullPrompt = prompt;
         if (isErrorFix) {
-          // Fast path for error fixes — skip all heavy context, just pass the error
+          // Fast path for error fixes,  skip all heavy context, just pass the error
           fullPrompt = prompt;
-          console.log('[generate-ai-code-stream] Error fix fast path — skipping context building');
+          console.log('[generate-ai-code-stream] Error fix fast path,  skipping context building');
         } else if (context) {
           const contextParts = [];
           

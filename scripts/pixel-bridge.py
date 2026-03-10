@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pixel-Bridge — connect OpenSable agents to the Pixel Agents VS Code extension.
+Pixel-Bridge,  connect OpenSable agents to the Pixel Agents VS Code extension.
 
 This script wraps a SableAgent in an interactive terminal loop and emits
 Claude-compatible JSONL transcripts that pixel-agents can watch. Each tool
@@ -266,7 +266,7 @@ async def run_gateway_bridge(session_id: str, gateway_url: str) -> None:
             turn_start: float | None = None
 
             async def _reader() -> None:
-                """Background task — read WS messages and write JSONL."""
+                """Background task,  read WS messages and write JSONL."""
                 nonlocal turn_start
                 async for msg in ws:
                     if msg.type != aiohttp.WSMsgType.TEXT:
@@ -325,7 +325,7 @@ async def run_gateway_bridge(session_id: str, gateway_url: str) -> None:
 
             reader_task = asyncio.create_task(_reader())
 
-            # Interactive REPL — user input → gateway message
+            # Interactive REPL,  user input → gateway message
             while True:
                 try:
                     user_text: str = await loop.run_in_executor(

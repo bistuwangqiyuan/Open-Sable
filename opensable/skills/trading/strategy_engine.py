@@ -1,5 +1,5 @@
 """
-Strategy Engine — Framework for running trading strategies.
+Strategy Engine,  Framework for running trading strategies.
 
 Strategies produce Signals, which are evaluated by the engine and
 (if approved) turned into orders. The engine manages strategy lifecycle,

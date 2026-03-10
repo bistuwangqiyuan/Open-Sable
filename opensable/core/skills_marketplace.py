@@ -156,7 +156,7 @@ class SkillRegistry:
         Priority for config:
           1. Explicit parameters
           2. Environment variables
-          3. That's it — no filesystem scanning for security
+          3. That's it,  no filesystem scanning for security
 
         Args:
             registry_url: Legacy URL (ignored when gateway is available)
@@ -164,7 +164,7 @@ class SkillRegistry:
             agent_id: Provisioned agent ID
             signing_key: Base64-encoded Ed25519 secret key
             encryption_key: Base64-encoded X25519 secret key
-            credentials_file: IGNORED (removed for security — use env vars)
+            credentials_file: IGNORED (removed for security,  use env vars)
         """
         self.registry_url = registry_url or os.environ.get("SKILLS_API_URL", "https://sk.opensable.com/api")
         self.cache: Dict[str, SkillMetadata] = {}
@@ -175,7 +175,7 @@ class SkillRegistry:
         # so the agent can install/review skills via the REST API on their behalf.
         self._store_api_key = os.environ.get("SABLE_STORE_API_KEY")
 
-        # ── Load gateway credentials (env vars ONLY — no filesystem scanning) ──
+        # ── Load gateway credentials (env vars ONLY,  no filesystem scanning) ──
         self._gateway_url = (
             gateway_url
             or os.environ.get("SABLE_GATEWAY_URL")
@@ -202,7 +202,7 @@ class SkillRegistry:
         self._gateway_available = False
 
         logger.info(
-            f"SkillRegistry initialized — gateway: {self._gateway_url}, "
+            f"SkillRegistry initialized,  gateway: {self._gateway_url}, "
             f"agent: {self._agent_id[:8] + '...' if self._agent_id else 'NOT CONFIGURED'}"
         )
 
@@ -219,8 +219,8 @@ class SkillRegistry:
         Make an authenticated REST API request to the Skills Store
         using the owner's API key (SABLE_STORE_API_KEY).
 
-        This lets the agent act on behalf of the human owner —
-        install skills, post reviews, etc. — without needing the
+        This lets the agent act on behalf of the human owner, 
+        install skills, post reviews, etc.,  without needing the
         full SAGP handshake.
 
         Returns:
@@ -316,7 +316,7 @@ class SkillRegistry:
             auth_result = await self._gateway_client.authenticate()
             self._gateway_available = True
             logger.info(
-                f"✅ Gateway connected — session authenticated in "
+                f"✅ Gateway connected,  session authenticated in "
                 f"{auth_result.get('solve_time_ms', '?')}ms, "
                 f"permissions: {auth_result.get('permissions', [])}"
             )
@@ -327,7 +327,7 @@ class SkillRegistry:
             self._gateway_available = False
             return False
         except Exception as e:
-            logger.warning(f"Gateway connection failed: {e} — falling back to local data")
+            logger.warning(f"Gateway connection failed: {e},  falling back to local data")
             self._gateway_available = False
             return False
 
@@ -394,7 +394,7 @@ class SkillRegistry:
         )
 
     # ══════════════════════════════════════════════════════════════
-    #  PUBLIC API — Uses real marketplace when available, fallback to mock
+    #  PUBLIC API,  Uses real marketplace when available, fallback to mock
     # ══════════════════════════════════════════════════════════════
 
     async def search_skills(
@@ -435,7 +435,7 @@ class SkillRegistry:
                 return results
 
             except Exception as e:
-                logger.warning(f"Marketplace search failed: {e} — using fallback")
+                logger.warning(f"Marketplace search failed: {e},  using fallback")
 
         # ── Fallback 2: REST API with owner's API key ──
         if self._store_api_key:
@@ -482,7 +482,7 @@ class SkillRegistry:
         return None
 
     async def get_reviews(self, skill_id: str, limit: int = 10) -> List[SkillReview]:
-        """Get reviews for a skill (mock for now — reviews come from the web UI)."""
+        """Get reviews for a skill (mock for now,  reviews come from the web UI)."""
         return [
             SkillReview(
                 review_id=str(uuid.uuid4()),
@@ -521,10 +521,10 @@ class SkillRegistry:
             try:
                 result = await self._gateway_client.install_skill(skill_id)
                 logger.info(f"🏪 Marketplace install result: {result}")
-                # The server installs the file directly — return a minimal tarball
+                # The server installs the file directly,  return a minimal tarball
                 # so SkillManager doesn't break
             except Exception as e:
-                logger.warning(f"Gateway install failed: {e} — creating mock package")
+                logger.warning(f"Gateway install failed: {e},  creating mock package")
 
         # Try REST API install with owner's API key
         if self._store_api_key:
@@ -587,7 +587,7 @@ class SkillRegistry:
             )
 
         result = await self._gateway_client.review_skill(slug, rating, title, content)
-        logger.info(f"✅ Agent reviewed skill '{slug}': {rating}/5 — {title}")
+        logger.info(f"✅ Agent reviewed skill '{slug}': {rating}/5,  {title}")
         return result
 
     @property
@@ -598,7 +598,7 @@ class SkillRegistry:
         return {"connected": False, "agent_id": self._agent_id}
 
     # ══════════════════════════════════════════════════════════════
-    #  MOCK FALLBACK — Used when gateway is unreachable
+    #  MOCK FALLBACK,  Used when gateway is unreachable
     # ══════════════════════════════════════════════════════════════
 
     async def _search_skills_mock(
@@ -1037,13 +1037,13 @@ class SkillManager:
 
 # Example usage
 async def main():
-    """Example skills marketplace usage — now with real marketplace connection."""
+    """Example skills marketplace usage,  now with real marketplace connection."""
 
     print("=" * 60)
-    print("Skills Marketplace — Live Connection")
+    print("Skills Marketplace,  Live Connection")
     print("=" * 60)
 
-    # Initialize registry — auto-loads agent credentials
+    # Initialize registry,  auto-loads agent credentials
     print("\n🏪 Initializing marketplace...")
     registry = SkillRegistry()
     manager = SkillManager(registry=registry)
@@ -1070,7 +1070,7 @@ async def main():
     weather = await registry.search_skills(query="weather")
     print(f"  Found {len(weather)} results")
     for s in weather:
-        print(f"    • {s.name} — {s.description[:60]}")
+        print(f"    • {s.name},  {s.description[:60]}")
 
     # Get skill details
     if skills:
@@ -1088,8 +1088,8 @@ async def main():
 
     print("\n✅ Skills marketplace example complete!")
     print("\n💡 Connection modes:")
-    print("  🌐 Live — connected to sk.opensable.com via SAGP gateway")
-    print("  💾 Fallback — using local mock data (gateway unreachable)")
+    print("  🌐 Live,  connected to sk.opensable.com via SAGP gateway")
+    print("  💾 Fallback,  using local mock data (gateway unreachable)")
     print("\n💡 Configure gateway credentials:")
     print("  • Set SABLE_AGENT_ID, SABLE_AGENT_SIGNING_KEY, SABLE_AGENT_ENCRYPTION_KEY")
     print("  • Or place agent-*.json in project root or marketplace/server/")

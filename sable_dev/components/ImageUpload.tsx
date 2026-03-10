@@ -91,7 +91,7 @@ export default function ImageUpload({ onImageSelect, disabled }: ImageUploadProp
   );
 }
 
-// Paste handler hook — use in chat input
+// Paste handler hook,  use in chat input
 export function useImagePaste(onImageSelect: (images: ImageData[]) => void) {
   const handlePaste = useCallback((e: ClipboardEvent) => {
     const items = Array.from(e.clipboardData?.items || []);

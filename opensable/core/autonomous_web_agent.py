@@ -1,5 +1,5 @@
 """
-Autonomous Web Agent — WORLD FIRST
+Autonomous Web Agent,  WORLD FIRST
 Real-time web browsing, API discovery, and autonomous information gathering.
 The agent can navigate the web freely, discover new APIs, scrape data,
 and build its own knowledge from the live internet without being asked.

@@ -1,5 +1,5 @@
 """
-Continuous Learner — WORLD FIRST
+Continuous Learner,  WORLD FIRST
 Continuous learning from every interaction, permanently adapting
 behavior, knowledge, and strategies. The agent evolves after
 every single conversation and action.

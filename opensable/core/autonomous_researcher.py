@@ -1,5 +1,5 @@
 """
-Autonomous Researcher — full scientific method automation.
+Autonomous Researcher,  full scientific method automation.
 
 WORLD FIRST: The agent can formulate research hypotheses, design experiments,
 execute them, analyze results, draw conclusions, and build upon findings.
@@ -57,7 +57,7 @@ class Finding:
 
 
 class AutonomousResearcher:
-    """Scientific method automation — hypothesis to finding."""
+    """Scientific method automation,  hypothesis to finding."""
 
     def __init__(self, data_dir: Path, max_hypotheses: int = 100,
                  max_findings: int = 200):

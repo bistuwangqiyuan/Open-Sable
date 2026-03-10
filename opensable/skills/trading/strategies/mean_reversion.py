@@ -1,5 +1,5 @@
 """
-Mean Reversion Strategy — Buy oversold, sell overbought.
+Mean Reversion Strategy,  Buy oversold, sell overbought.
 
 Uses Bollinger Bands and z-score to identify assets that have
 deviated significantly from their mean and are likely to revert.

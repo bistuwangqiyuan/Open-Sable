@@ -1,11 +1,11 @@
 """
-Ego Membrane — WORLD FIRST
+Ego Membrane,  WORLD FIRST
 ============================
 A semi-permeable boundary between the agent's SELF and ENVIRONMENT.
 Filters what gets internalized vs deflected. Maintains ego integrity
 while allowing beneficial influences through.
 
-Like a cell membrane for consciousness — selective permeability.
+Like a cell membrane for consciousness,  selective permeability.
 No AI agent has an ego boundary. This one does.
 """
 
@@ -127,7 +127,7 @@ class EgoMembrane:
         return event
 
     def reinforce_integrity(self):
-        """Actively reinforce ego integrity — self-affirmation."""
+        """Actively reinforce ego integrity,  self-affirmation."""
         self.integrity = min(1.0, self.integrity + 0.05)
         self._save_state()
 

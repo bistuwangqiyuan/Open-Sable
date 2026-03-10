@@ -1,5 +1,5 @@
 """
-Tool registry for Open-Sable — manages all available actions.
+Tool registry for Open-Sable,  manages all available actions.
 
 This is the central orchestrator that:
   - Initializes all skills (voice, image, database, social, trading, etc.)
@@ -192,7 +192,7 @@ class ToolRegistry(
         except Exception as e:
             logger.debug(f"GitHub skill not available: {e}")
 
-        # Google Workspace skill (conditional — needs gws CLI)
+        # Google Workspace skill (conditional,  needs gws CLI)
         self.gws_skill = None
         try:
             from ...skills.automation.google_workspace_skill import GoogleWorkspaceSkill
@@ -691,7 +691,7 @@ class ToolRegistry(
 
         if registered:
             logger.info(
-                f"🔧 Dynamic skill '{name}' wired — "
+                f"🔧 Dynamic skill '{name}' wired,  "
                 f"tools: {', '.join(registered)}"
             )
         return registered
@@ -717,7 +717,7 @@ class ToolRegistry(
 
     # Social-media tool name prefixes that require a testing-purposes disclaimer
     _SOCIAL_PREFIXES = ("x_", "grok_", "ig_", "fb_", "linkedin_", "tiktok_", "yt_")
-    _SOCIAL_DISCLAIMER = " [⚠️ For testing/educational purposes only — respect each platform's ToS]"
+    _SOCIAL_DISCLAIMER = " [⚠️ For testing/educational purposes only,  respect each platform's ToS]"
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
         """Return Ollama-compatible tool schemas (OpenAI function calling format).
@@ -746,7 +746,7 @@ class ToolRegistry(
         if schema_name not in self._SCHEMA_TO_TOOL and schema_name not in self.tools:
             return f"⚠️ Unknown tool: {schema_name}"
 
-        # RBAC check — if a permission manager is loaded and the tool is mapped
+        # RBAC check,  if a permission manager is loaded and the tool is mapped
         # Benchmark users get unrestricted access to all tools
         is_benchmark = user_id.startswith("benchmark_")
         if self._permission_manager and schema_name in self._TOOL_PERMISSIONS and not is_benchmark:

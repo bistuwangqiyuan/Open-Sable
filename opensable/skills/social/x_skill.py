@@ -1,5 +1,5 @@
 """
-X (Twitter) Skill — Post, search, interact on X using twikit.
+X (Twitter) Skill,  Post, search, interact on X using twikit.
 
 Uses the twikit library for full X/Twitter automation without paid API keys.
 Authenticates with your X account credentials (username + email + password).
@@ -48,7 +48,7 @@ except ImportError:
 
 class XSkill:
     """
-    Full X/Twitter automation — post, search, engage, all for free via twikit.
+    Full X/Twitter automation,  post, search, engage, all for free via twikit.
 
     Shares X authentication cookies with GrokSkill.
     """
@@ -67,7 +67,7 @@ class XSkill:
     async def initialize(self) -> bool:
         """Initialize and authenticate with X."""
         if not TWIKIT_AVAILABLE:
-            logger.warning("twikit not available — X skill disabled")
+            logger.warning("twikit not available,  X skill disabled")
             return False
 
         try:
@@ -85,7 +85,7 @@ class XSkill:
             proxy = getattr(self.config, "x_proxy", None) or os.getenv("X_PROXY")
             tls_ok = patch_twikit_client(self._client, proxy=proxy)
             if not tls_ok:
-                logger.warning("TLS patch not applied — falling back to httpx (detectable)")
+                logger.warning("TLS patch not applied,  falling back to httpx (detectable)")
                 # Fallback: at least set UA on httpx headers
                 if hasattr(self._client, 'http') and hasattr(self._client.http, 'headers'):
                     self._client.http.headers["user-agent"] = ua
@@ -368,7 +368,7 @@ class XSkill:
         tab: str = "latest",
     ) -> Dict[str, Any]:
         """
-        Read the home timeline — like a real user opening the app and scrolling.
+        Read the home timeline,  like a real user opening the app and scrolling.
 
         Args:
             count: Max tweets to return
@@ -418,7 +418,7 @@ class XSkill:
         count: int = 10,
     ) -> Dict[str, Any]:
         """
-        Get notifications (mentions, likes, etc.) — the real notifications tab.
+        Get notifications (mentions, likes, etc.),  the real notifications tab.
 
         Args:
             notification_type: 'All', 'Verified', or 'Mentions'

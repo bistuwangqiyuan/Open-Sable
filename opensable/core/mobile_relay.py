@@ -1,5 +1,5 @@
 """
-Sable Mobile Relay — Secure bridge between the mobile app and the gateway
+Sable Mobile Relay,  Secure bridge between the mobile app and the gateway
 
 Architecture overview
 ─────────────────────
@@ -12,7 +12,7 @@ Architecture overview
   │  │  (this module)       │   /tmp/sable.sock │   (WS server) │  │
   │  └──────────────────────┘                   └───────────────┘  │
   │           │                                                     │
-  │    127.0.0.1:7891  (loopback — never 0.0.0.0)                 │
+  │    127.0.0.1:7891  (loopback,  never 0.0.0.0)                 │
   │           │                                                     │
   │    ┌──────┴────────┐                                           │
   │    │ Tor hidden    │  OR  Tailscale mesh VPN                   │
@@ -34,18 +34,18 @@ Architecture overview
 Connection options (choose ONE, ordered by privacy)
 ────────────────────────────────────────────────────
 
-  OPTION A — Tailscale (RECOMMENDED for most users)
+  OPTION A,  Tailscale (RECOMMENDED for most users)
   ─────────────────────────────────────────────────
   • Install Tailscale on both PC and phone (free for personal use)
-  • They get private IPs like 100.x.x.x — zero ports open to internet
+  • They get private IPs like 100.x.x.x,  zero ports open to internet
   • Relay listens on 127.0.0.1 but Tailscale routes the phone's traffic
   • Setup: `tailscale up` → Sable prints its Tailscale IP on startup
   • App connects to: ws://100.x.x.x:7891/mobile?token=<secret>
 
-  OPTION B — Tor Hidden Service (max privacy, no account needed)
+  OPTION B,  Tor Hidden Service (max privacy, no account needed)
   ──────────────────────────────────────────────────────────────
   • Relay listens on 127.0.0.1:7891
-  • Tor maps it to a .onion address — only you know the address
+  • Tor maps it to a .onion address,  only you know the address
   • /etc/tor/torrc:
       HiddenServiceDir /var/lib/tor/sable/
       HiddenServicePort 7891 127.0.0.1:7891
@@ -53,14 +53,14 @@ Connection options (choose ONE, ordered by privacy)
   • App (using Orbot) connects to: ws://<onion>.onion:7891/mobile?token=<secret>
   • Enable with: MOBILE_RELAY_TOR=true in .env
 
-  OPTION C — WireGuard (nerds / self-hosters)
+  OPTION C,  WireGuard (nerds / self-hosters)
   ────────────────────────────────────────────
   • Run your own WireGuard server on the VPS
   • Phone gets a VPN IP, connects exactly like Tailscale
 
 Security model
 ──────────────
-  1. HMAC-SHA256 token  — shared secret in .env, rotatable
+  1. HMAC-SHA256 token ,  shared secret in .env, rotatable
   2. TLS not needed over Tor/.onion (end-to-end encrypted by Tor)
      For Tailscale, WireGuard layer encrypts all traffic
   3. QR code contains:  server address + HMAC secret (base64 encoded)
@@ -123,7 +123,7 @@ def _load_or_create_secret() -> str:
 def make_token(secret: str) -> str:
     """
     Create a 5-minute rolling HMAC token.
-    Time window = floor(unix_ts / TOKEN_TTL) — so both sides agree.
+    Time window = floor(unix_ts / TOKEN_TTL),  so both sides agree.
     """
     window = str(int(time.time()) // TOKEN_TTL)
     return hmac.new(secret.encode(), window.encode(), hashlib.sha256).hexdigest()
@@ -295,7 +295,7 @@ class _GatewayBridge:
         """
         if not await self.connect_gateway():
             await self.mobile_ws.send(
-                json.dumps({"type": "error", "text": "Gateway not reachable — is Sable running?"})
+                json.dumps({"type": "error", "text": "Gateway not reachable,  is Sable running?"})
             )
             return
 
@@ -396,7 +396,7 @@ class MobileRelay:
 
         if getattr(self.config, "mobile_relay_tor_enabled", False):
             logger.info(
-                "[Relay] Tor mode enabled — add to /etc/tor/torrc:\n"
+                "[Relay] Tor mode enabled,  add to /etc/tor/torrc:\n"
                 f"  HiddenServiceDir /var/lib/tor/sable/\n"
                 f"  HiddenServicePort {self.port} 127.0.0.1:{self.port}\n"
                 "then: systemctl restart tor && "
@@ -453,7 +453,7 @@ class MobileRelay:
             ws.close()
             return
 
-        # ── Step 2: authenticated — proxy to gateway ───────────────────────────
+        # ── Step 2: authenticated,  proxy to gateway ───────────────────────────
         logger.info(f"[Relay] Mobile client authenticated: {peer}")
         await ws.send(
             json.dumps(

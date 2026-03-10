@@ -1,14 +1,14 @@
 """
-Pattern Learner — LLM-driven pattern detection + institutional learning.
+Pattern Learner,  LLM-driven pattern detection + institutional learning.
 
 Detects evolution patterns from event history and converts high-confidence
 patterns into permanent verification rules (institutional learning).
 
 Components:
-  PatternDetector     — aggregates event data for LLM analysis
-  InstitutionalLearner — converts patterns → permanent verification rules
-  HistoryWindow       — bounds event history to prevent O(n) growth
-  FitnessSnapshotter  — periodic fitness snapshots for trend analysis
+  PatternDetector    ,  aggregates event data for LLM analysis
+  InstitutionalLearner,  converts patterns → permanent verification rules
+  HistoryWindow      ,  bounds event history to prevent O(n) growth
+  FitnessSnapshotter ,  periodic fitness snapshots for trend analysis
 
 All pattern DETECTION is done by the LLM.  This module only aggregates
 data, provides tools/prompts, and converts results into persistent rules.

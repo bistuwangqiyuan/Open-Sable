@@ -1,5 +1,5 @@
 """
-Google Workspace tools — Gmail, Drive, Calendar, Sheets, Docs, Chat.
+Google Workspace tools,  Gmail, Drive, Calendar, Sheets, Docs, Chat.
 
 Provides tool handlers that delegate to GoogleWorkspaceSkill,
 following the same mixin pattern as _github.py, _social.py, etc.
@@ -145,7 +145,7 @@ class GoogleWorkspaceToolsMixin:
                     return f"🔍 No files matching '{params.get('query', '')}'"
                 lines = [f"🔍 {len(files)} results for '{params.get('query', '')}':"]
                 for f in files:
-                    lines.append(f"  📄 {f.get('name', '?')} — {f.get('mimeType', '?')}")
+                    lines.append(f"  📄 {f.get('name', '?')},  {f.get('mimeType', '?')}")
                 return "\n".join(lines)
             return result.to_str()
         return f"❌ {result.error}"
@@ -197,7 +197,7 @@ class GoogleWorkspaceToolsMixin:
                 lines = [f"📅 {len(events)} events:"]
                 for ev in events:
                     start = ev.get("start", {}).get("dateTime", ev.get("start", {}).get("date", "?"))
-                    lines.append(f"  🗓️ {ev.get('summary', 'No title')} — {start}")
+                    lines.append(f"  🗓️ {ev.get('summary', 'No title')},  {start}")
                     if ev.get("location"):
                         lines.append(f"     📍 {ev['location']}")
                 return "\n".join(lines)

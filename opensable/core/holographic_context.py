@@ -1,5 +1,5 @@
 """
-Holographic Context — fragment-to-whole context reconstruction.
+Holographic Context,  fragment-to-whole context reconstruction.
 
 WORLD FIRST: Like a hologram where any fragment can reconstruct the whole
 image, this module allows the agent to reconstruct full context from
@@ -101,7 +101,7 @@ class HolographicContext:
                 "method": "direct_match",
             }
 
-        # Fuzzy match — find holograms with overlapping content
+        # Fuzzy match,  find holograms with overlapping content
         frag_words = set(fragment.lower().split())
         candidates = []
         for h in self.holograms.values():

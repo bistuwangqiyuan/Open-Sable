@@ -1,24 +1,24 @@
 """
 Chat Commands Handler
 
-Slash-command surface for Sable — works across all platforms
+Slash-command surface for Sable,  works across all platforms
 (Telegram, Discord, WhatsApp, Slack, WebChat …).
 
 Available commands:
-  /status     — compact session status (model, tokens, uptime)
-  /new        — reset conversation (alias: /reset)
-  /reset      — reset conversation
-  /compact    — compress old messages into a summary
-  /think      — set thinking level: off|minimal|low|medium|high|xhigh
-  /verbose    — toggle verbose mode: on|off
-  /usage      — show token/cost usage: off|tokens|full
-  /voice      — toggle voice mode: on|off
-  /model      — switch AI model
-  /help       — show this list
-  /restart    — restart the gateway (owner-only)
-  /activation — group activation: mention|always  (groups only)
+  /status    ,  compact session status (model, tokens, uptime)
+  /new       ,  reset conversation (alias: /reset)
+  /reset     ,  reset conversation
+  /compact   ,  compress old messages into a summary
+  /think     ,  set thinking level: off|minimal|low|medium|high|xhigh
+  /verbose   ,  toggle verbose mode: on|off
+  /usage     ,  show token/cost usage: off|tokens|full
+  /voice     ,  toggle voice mode: on|off
+  /model     ,  switch AI model
+  /help      ,  show this list
+  /restart   ,  restart the gateway (owner-only)
+  /activation,  group activation: mention|always  (groups only)
 
-All commands are platform-agnostic — only the interface layer knows
+All commands are platform-agnostic,  only the interface layer knows
 how to send the reply.
 """
 
@@ -53,11 +53,11 @@ class CommandHandler:
         "verbose": "Toggle verbose output: on|off",
         "usage": "Usage footer: off|tokens|full",
         "voice": "Toggle voice mode: on|off",
-        "model": "Switch AI model — /model llama3.1:8b",
+        "model": "Switch AI model,  /model llama3.1:8b",
         "help": "Show this command list",
         "restart": "Restart the gateway (owner only)",
         "activation": "Group activation mode: mention|always  (groups only)",
-        "plugin": "Run a plugin command — /plugin <command> [args]",
+        "plugin": "Run a plugin command,  /plugin <command> [args]",
         "plugins": "List loaded plugins and their commands",
     }
 
@@ -113,7 +113,7 @@ class CommandHandler:
         if not session:
             return CommandResult(
                 success=False,
-                message="Session not found — send a message first.",
+                message="Session not found,  send a message first.",
             )
 
         handler = getattr(self, f"_cmd_{cmd}", None)
@@ -170,7 +170,7 @@ class CommandHandler:
         self.session_manager._save_session(session)
         return CommandResult(
             success=True,
-            message=f"✅ Conversation reset — {count} messages cleared.",
+            message=f"✅ Conversation reset,  {count} messages cleared.",
         )
 
     async def _cmd_new(self, session, args, user_id, is_admin, is_group) -> CommandResult:
@@ -278,14 +278,14 @@ class CommandHandler:
     async def _cmd_help(self, session, args, user_id, is_admin, is_group) -> CommandResult:
         lines = ["🤖 **Sable Commands**", ""]
         for cmd, desc in self.COMMANDS.items():
-            lines.append(f"**/{cmd}** — {desc}")
+            lines.append(f"**/{cmd}**,  {desc}")
         lines += [
             "",
             "💡 **Examples:**",
-            "`/think high` — enable deep thinking",
-            "`/verbose on` — show detailed output",
-            "`/model llama3.1:8b` — switch model",
-            "`/compact 15` — keep last 15 messages",
+            "`/think high`,  enable deep thinking",
+            "`/verbose on`,  show detailed output",
+            "`/model llama3.1:8b`,  switch model",
+            "`/compact 15`,  keep last 15 messages",
         ]
         return CommandResult(success=True, message="\n".join(lines))
 
@@ -294,7 +294,7 @@ class CommandHandler:
             return CommandResult(success=False, message="❌ Owner permission required.")
         return CommandResult(
             success=True,
-            message="⚠️ Restart requested — the gateway will restart shortly.",
+            message="⚠️ Restart requested,  the gateway will restart shortly.",
         )
 
     async def _cmd_activation(self, session, args, user_id, is_admin, is_group) -> CommandResult:
@@ -309,8 +309,8 @@ class CommandHandler:
                 message=(
                     f"Current activation: **{current}**\n"
                     "Usage: `/activation mention|always`\n\n"
-                    "• **mention** — respond only when @mentioned\n"
-                    "• **always** — respond to every message"
+                    "• **mention**,  respond only when @mentioned\n"
+                    "• **always**,  respond to every message"
                 ),
             )
         mode = args[0].lower()
@@ -363,7 +363,7 @@ class CommandHandler:
             logger.error("Plugin command '%s' failed: %s", cmd_name, e)
             return CommandResult(success=False, message=f"❌ Plugin error: {e}")
 
-    # ── /context — context window diagnostics ────────────────────────────
+    # ── /context,  context window diagnostics ────────────────────────────
 
     async def _cmd_context(self, session, args, user_id, is_admin, is_group) -> CommandResult:
         """Show a breakdown of what fills the LLM context window.
@@ -400,7 +400,7 @@ class CommandHandler:
                 key=lambda x: -x[1],
             )
             for domain, total_sz, count in domain_totals:
-                lines.append(f"  `{domain}` — {count} tools · {total_sz:,} chars (~{total_sz // 4:,} tok)")
+                lines.append(f"  `{domain}`,  {count} tools · {total_sz:,} chars (~{total_sz // 4:,} tok)")
 
             # Top 5 heaviest individual tools
             lines.append("")
@@ -408,10 +408,10 @@ class CommandHandler:
             all_tool_sizes = [(name, sz) for tools in domain_sizes.values() for name, sz in tools]
             all_tool_sizes.sort(key=lambda x: -x[1])
             for name, sz in all_tool_sizes[:5]:
-                lines.append(f"  `{name}` — {sz:,} chars (~{sz // 4:,} tok)")
+                lines.append(f"  `{name}`,  {sz:,} chars (~{sz // 4:,} tok)")
 
         except Exception as e:
-            lines.append(f"Tool schemas: error — {e}")
+            lines.append(f"Tool schemas: error,  {e}")
 
         lines.append("")
 
@@ -441,7 +441,7 @@ class CommandHandler:
         # Lazy loading savings hint
         lines.append("")
         lines.append(
-            "💡 *Lazy Tool Loading is active — intent-irrelevant tools are sent "
+            "💡 *Lazy Tool Loading is active,  intent-irrelevant tools are sent "
             "with compact schemas (name + description only), saving ~30-39% context.*"
         )
 

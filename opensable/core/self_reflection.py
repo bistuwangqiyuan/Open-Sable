@@ -1,17 +1,17 @@
 """
-Self-Reflection — cognitive pattern analysis and stagnation detection.
+Self-Reflection,  cognitive pattern analysis and stagnation detection.
 
 Analyzes recent tick outcomes and goals to prepare structured reflection
 context for the LLM.  All intelligence comes from the LLM; this module
 only aggregates data and formats prompts.
 
 Core capabilities:
-  ReflectionEngine   — detects stagnation, failure loops, success patterns
-  ReflectionPrompt   — builds a structured prompt for LLM self-analysis
+  ReflectionEngine  ,  detects stagnation, failure loops, success patterns
+  ReflectionPrompt  ,  builds a structured prompt for LLM self-analysis
 
 Academic grounding:
-  [1] Schacter & Addis (2007): Constructive memory — reflection drives planning
-  [2] Park et al., arXiv:2304.03442: Generative Agents — reflective architecture
+  [1] Schacter & Addis (2007): Constructive memory,  reflection drives planning
+  [2] Park et al., arXiv:2304.03442: Generative Agents,  reflective architecture
 """
 
 from __future__ import annotations

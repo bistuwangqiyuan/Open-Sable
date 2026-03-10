@@ -1,5 +1,5 @@
 """
-Agent Handoffs — transfer control between specialist agents.
+Agent Handoffs,  transfer control between specialist agents.
 
 Implements a triage / delegation pattern where a *coordinator* agent can
 hand off a sub-task to a *specialist* agent, wait for the result, and
@@ -58,7 +58,7 @@ class HandoffResult:
 @dataclass
 class Handoff:
     """
-    A registered handoff — describes *when* and *to whom* to delegate.
+    A registered handoff,  describes *when* and *to whom* to delegate.
 
     Attributes:
         name: Unique handoff identifier (e.g. "code_review").
@@ -192,14 +192,14 @@ class HandoffRouter:
             return HandoffResult(
                 handoff_id=request.handoff_id,
                 status=HandoffStatus.FAILED,
-                error="No agent_runner configured — cannot spawn specialist",
+                error="No agent_runner configured,  cannot spawn specialist",
             )
 
         # Build the specialist prompt
         system_prompt = handoff.system_prompt_override or (
             f"You are a specialist {handoff.target_role} agent. "
             f"Your task: {handoff.description}. "
-            f"Reply with ONLY the result — no preamble."
+            f"Reply with ONLY the result,  no preamble."
         )
         user_message = _build_user_message(handoff, input_data)
 

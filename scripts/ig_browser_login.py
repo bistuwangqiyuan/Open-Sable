@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Instagram Browser Login — Extract session cookies for instagrapi.
+Instagram Browser Login,  Extract session cookies for instagrapi.
 
 Opens a Chromium browser to Instagram login page.
 You log in manually (handle any challenge/2FA in the browser).
@@ -84,7 +84,7 @@ def main():
         print("=" * 60)
         print()
 
-        # Wait for user to log in — poll for sessionid cookie
+        # Wait for user to log in,  poll for sessionid cookie
         logged_in = False
         while not logged_in:
             input("Press Enter when you're logged in (or Ctrl+C to cancel)... ")

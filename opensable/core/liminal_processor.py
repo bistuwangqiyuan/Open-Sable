@@ -1,5 +1,5 @@
 """
-Liminal Processor — WORLD FIRST
+Liminal Processor,  WORLD FIRST
 =================================
 Processes information that lives in the THRESHOLD between categories.
 Handles ambiguity, paradox, and things that don't fit neatly into boxes.
@@ -129,7 +129,7 @@ class LiminalProcessor:
         """Find a synthesis that transcends both sides of a paradox."""
         if llm:
             prompt = (
-                f"LIMINAL SYNTHESIS — find the third option that transcends both:\n\n"
+                f"LIMINAL SYNTHESIS,  find the third option that transcends both:\n\n"
                 f"Thesis: {statement_a[:200]}\n"
                 f"Antithesis: {statement_b[:200]}\n\n"
                 f"Don't choose A or B. Find a SYNTHESIS that includes truth from "
@@ -171,7 +171,7 @@ class LiminalProcessor:
             paradox_id=str(uuid.uuid4())[:8],
             statement_a=statement_a[:200],
             statement_b=statement_b[:200],
-            synthesis="Both contain partial truth — context determines which applies",
+            synthesis="Both contain partial truth,  context determines which applies",
             timestamp=time.time(),
         )
         self.paradoxes.append(paradox)

@@ -32,7 +32,7 @@ export const templateList: Template[] = [
     id: 'vanilla',
     name: 'Vanilla JS',
     icon: '🟨',
-    description: 'Plain HTML, CSS and JavaScript — no framework.',
+    description: 'Plain HTML, CSS and JavaScript,  no framework.',
   },
   {
     id: 'node',
@@ -52,7 +52,7 @@ export type TemplateId = (typeof templateList)[number]['id'];
 
 export const DEFAULT_TEMPLATE: TemplateId = 'react';
 
-/** Look up a template by id — returns undefined if not found. */
+/** Look up a template by id,  returns undefined if not found. */
 export function getTemplate(id: string): Template | undefined {
   return templateList.find((t) => t.id === id);
 }

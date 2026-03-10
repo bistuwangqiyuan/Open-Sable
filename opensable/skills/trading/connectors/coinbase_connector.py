@@ -1,5 +1,5 @@
 """
-Coinbase Connector — Spot trading via ccxt.
+Coinbase Connector,  Spot trading via ccxt.
 
 Requires: COINBASE_API_KEY and COINBASE_API_SECRET env vars.
 """
@@ -178,5 +178,5 @@ class CoinbaseConnector(ExchangeConnector):
         ]
 
     async def get_positions(self) -> List[Position]:
-        # Coinbase spot — derive from balances
+        # Coinbase spot,  derive from balances
         return []

@@ -1,5 +1,5 @@
 """
-JSONL Trace Exporter — Append-only event stream for cross-session observability.
+JSONL Trace Exporter,  Append-only event stream for cross-session observability.
 
 Every agent step is appended as a single JSON line to ``trace.jsonl``.
 The file is **never overwritten**, making it safe for concurrent readers
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TraceEvent:
-    """A single trace event — one line in the JSONL file.
+    """A single trace event,  one line in the JSONL file.
 
     Fields are a superset of Open-Sable's StepRecord and standard agent
     trace formats, making the file interoperable with external tools.
@@ -97,7 +97,7 @@ class TraceExporter:
         self.agent_id = agent_id
         self._max_data = max_data_chars
 
-        # One file per calendar day — easy rotation
+        # One file per calendar day,  easy rotation
         self._path: Optional[Path] = None
         self._fh = None
         self._current_date: Optional[str] = None
@@ -146,7 +146,7 @@ class TraceExporter:
     ) -> TraceEvent:
         """Record a StepRecord-compatible event.
 
-        This is the primary API — called from CheckpointStore.save() and
+        This is the primary API,  called from CheckpointStore.save() and
         the agentic loop.
         """
         # Truncate large data blobs
@@ -367,7 +367,7 @@ def checkpoint_to_trace_events(
 ) -> List[TraceEvent]:
     """Convert an Open-Sable Checkpoint dict into a list of TraceEvents.
 
-    This is the adapter that botbotfromuk's SableCollector asked about —
+    This is the adapter that botbotfromuk's SableCollector asked about, 
     native support, no external adapter needed.
     """
     events: List[TraceEvent] = []

@@ -1,8 +1,8 @@
 """
-GitHub Skill — Full GitHub API integration for autonomous agent operations.
+GitHub Skill,  Full GitHub API integration for autonomous agent operations.
 
 Create issues, pull requests, manage repositories, post comments, create branches,
-read files, search code — everything an autonomous agent needs to operate on GitHub.
+read files, search code,  everything an autonomous agent needs to operate on GitHub.
 
 Uses PyGithub for the REST API and falls back to the `gh` CLI when available.
 
@@ -56,7 +56,7 @@ class GitHubResult:
 
 class GitHubSkill:
     """
-    Full GitHub API integration — issues, PRs, repos, branches, comments, code search.
+    Full GitHub API integration,  issues, PRs, repos, branches, comments, code search.
 
     Works with PyGithub (REST API) or falls back to `gh` CLI.
     """
@@ -96,7 +96,7 @@ class GitHubSkill:
             logger.info("✅ GitHub: using gh CLI fallback")
             return True
 
-        logger.warning("GitHub skill not available — set GITHUB_TOKEN or install gh CLI")
+        logger.warning("GitHub skill not available,  set GITHUB_TOKEN or install gh CLI")
         return False
 
     def is_available(self) -> bool:
@@ -128,7 +128,7 @@ class GitHubSkill:
         return stdout.decode().strip()
 
     def _resolve_repo(self, repo: Optional[str] = None) -> str:
-        """Resolve repo name — explicit > default > error."""
+        """Resolve repo name,  explicit > default > error."""
         r = repo or self._default_repo
         if not r:
             raise ValueError(

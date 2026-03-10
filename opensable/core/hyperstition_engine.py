@@ -1,7 +1,7 @@
 """
-Hyperstition Engine — WORLD FIRST
+Hyperstition Engine,  WORLD FIRST
 ====================================
-Ideas that make themselves real through belief — self-fulfilling predictions.
+Ideas that make themselves real through belief,  self-fulfilling predictions.
 The agent can create controlled self-fulfilling prophecies where stating
 something as if it's true increases the probability of it becoming true.
 
@@ -51,7 +51,7 @@ class HyperstitionEngine:
 
     def create(self, statement: str, target: str,
                initial_probability: float = 0.1) -> Hyperstition:
-        """Create a new hyperstition — a belief that will try to make itself real."""
+        """Create a new hyperstition,  a belief that will try to make itself real."""
         hyp = Hyperstition(
             hyp_id=str(uuid.uuid4())[:8],
             statement=statement[:200],
@@ -75,7 +75,7 @@ class HyperstitionEngine:
 
     def reinforce(self, hyp_id: str, action: str = "",
                   boost: float = 0.05) -> dict:
-        """Reinforce a hyperstition — acting as if it's true increases probability."""
+        """Reinforce a hyperstition,  acting as if it's true increases probability."""
         if hyp_id not in self.active:
             return {"error": "hyperstition_not_found"}
 
@@ -106,7 +106,7 @@ class HyperstitionEngine:
         }
 
     def _realize(self, hyp_id: str) -> dict:
-        """Mark a hyperstition as realized — it became real."""
+        """Mark a hyperstition as realized,  it became real."""
         hyp = self.active[hyp_id]
         hyp.realized = True
         hyp.confidence_at_realization = hyp.current_probability

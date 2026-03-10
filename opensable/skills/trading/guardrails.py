@@ -141,7 +141,7 @@ class DailyLossGuardrail(OutputGuardrail):
         if tool_name != "trading_place_trade":
             return None, None
 
-        # The risk manager handles the hard block — this is a soft warning
+        # The risk manager handles the hard block,  this is a soft warning
         if context and context.get("daily_pnl_pct", 0) < -(self.max_daily_loss_pct * 0.8):
             return (
                 GuardrailAction.WARN,

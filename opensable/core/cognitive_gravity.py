@@ -1,8 +1,8 @@
 """
-Cognitive Gravity — WORLD FIRST
+Cognitive Gravity,  WORLD FIRST
 ================================
 Ideas have MASS. The more an idea is connected and reinforced,
-the more gravitational pull it has — attracting related concepts.
+the more gravitational pull it has,  attracting related concepts.
 Creates thought black holes (obsessions) and thought nebulae (exploration zones).
 
 No AI system models the gravitational dynamics of thought.
@@ -54,7 +54,7 @@ class CognitiveGravity:
         """Add a new thought body to the gravitational field."""
         key = concept.lower().strip()
         if key in self.bodies:
-            # Reinforce existing thought — increases mass
+            # Reinforce existing thought,  increases mass
             body = self.bodies[key]
             body.mass += initial_mass * 0.5
             body.reinforcements += 1
@@ -85,7 +85,7 @@ class CognitiveGravity:
         return body
 
     def _apply_gravity(self, new_body: ThoughtBody):
-        """Apply gravitational attraction — heavy thoughts pull light ones."""
+        """Apply gravitational attraction,  heavy thoughts pull light ones."""
         words_new = set(new_body.concept.lower().split())
         for key, body in self.bodies.items():
             if body.body_id == new_body.body_id:
@@ -147,7 +147,7 @@ class CognitiveGravity:
         return {"merged": True, **collision}
 
     def decay(self):
-        """Apply mass decay — forgotten thoughts lose mass over time."""
+        """Apply mass decay,  forgotten thoughts lose mass over time."""
         now = time.time()
         to_remove = []
         for key, body in self.bodies.items():

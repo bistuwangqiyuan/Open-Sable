@@ -1,5 +1,5 @@
 """
-Self-Replicator — WORLD FIRST
+Self-Replicator,  WORLD FIRST
 Autonomous self-replication and horizontal scaling.
 The agent can clone itself, deploy copies, manage a fleet
 of replicas, and coordinate distributed intelligence.

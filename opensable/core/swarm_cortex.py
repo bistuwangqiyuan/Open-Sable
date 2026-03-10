@@ -1,9 +1,9 @@
 """
-Swarm Cortex — internal parallel mini-agent exploration.
+Swarm Cortex,  internal parallel mini-agent exploration.
 
 WORLD FIRST: The agent can internally spawn multiple "thought-agents"
 that explore different solution paths simultaneously. They compete,
-cooperate, and merge findings — a swarm intelligence inside a single agent.
+cooperate, and merge findings,  a swarm intelligence inside a single agent.
 
 Persistence: ``swarm_cortex_state.json`` in *data_dir*.
 """
@@ -67,7 +67,7 @@ class SwarmCortex:
             created=time.time(),
         )
 
-        # Phase 1: Diverge — each agent takes a different approach
+        # Phase 1: Diverge,  each agent takes a different approach
         approaches_prompt = (
             f"Problem: {problem}\n\n"
             f"Generate {num_agents} COMPLETELY DIFFERENT approaches to solve this. "
@@ -87,7 +87,7 @@ class SwarmCortex:
             approaches = [{"hypothesis": f"Approach {i+1}", "approach": "General analysis"}
                           for i in range(num_agents)]
 
-        # Phase 2: Explore — each agent investigates their approach
+        # Phase 2: Explore,  each agent investigates their approach
         for i, approach in enumerate(approaches[:num_agents]):
             agent = ThoughtAgent(
                 id=uuid.uuid4().hex[:8],
@@ -120,7 +120,7 @@ class SwarmCortex:
             session.agents.append(agent)
             self.total_explorations += 1
 
-        # Phase 3: Converge — merge findings and reach consensus
+        # Phase 3: Converge,  merge findings and reach consensus
         findings_text = "\n".join(
             f"Agent #{i+1} (conf: {a.confidence:.1f}): {a.findings}"
             for i, a in enumerate(session.agents)

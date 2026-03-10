@@ -1,5 +1,5 @@
 """
-TradingSkill — Main trading orchestrator for Open-Sable.
+TradingSkill,  Main trading orchestrator for Open-Sable.
 
 This is the top-level skill that the ToolRegistry instantiates.
 It owns the portfolio, risk manager, market data, strategy engine,
@@ -83,7 +83,7 @@ class TradingSkill:
         if not paper_mode:
             await self._connect_live_exchanges()
 
-        # 3. Portfolio manager — aggregates all connectors
+        # 3. Portfolio manager,  aggregates all connectors
         active_connectors = list(self.connectors.values())
         self.portfolio = PortfolioManager()
         for conn in active_connectors:
@@ -119,7 +119,7 @@ class TradingSkill:
         self._initialized = True
         mode = "PAPER" if paper_mode else "LIVE"
         logger.info(
-            f"🤖 TradingSkill initialized — mode={mode}, "
+            f"🤖 TradingSkill initialized,  mode={mode}, "
             f"connectors={list(self.connectors.keys())}, "
             f"strategies={list(self.strategy_engine.strategies.keys())}"
         )
@@ -321,7 +321,7 @@ class TradingSkill:
                 emoji = "🟢" if sig.direction == SignalDirection.LONG else "🔴"
                 lines.append(
                     f"  {emoji} [{sig.strategy or 'unknown'}] "
-                    f"{sig.direction.value} — conf: {sig.confidence:.0%} — {sig.reason}"
+                    f"{sig.direction.value},  conf: {sig.confidence:.0%},  {sig.reason}"
                 )
 
             if aggregated:
@@ -503,8 +503,8 @@ class TradingSkill:
         for s in sorted(all_signals, key=lambda x: x.confidence, reverse=True):
             emoji = "🟢" if s.direction == SignalDirection.LONG else "🔴"
             lines.append(
-                f"  {emoji} {s.symbol} — {s.direction.value} "
-                f"({s.confidence:.0%}) — {s.reason[:80]}"
+                f"  {emoji} {s.symbol},  {s.direction.value} "
+                f"({s.confidence:.0%}),  {s.reason[:80]}"
             )
 
         return "\n".join(lines)

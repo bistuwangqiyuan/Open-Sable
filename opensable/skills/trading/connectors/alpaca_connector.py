@@ -1,5 +1,5 @@
 """
-Alpaca Connector — Commission-free US stocks, ETFs, and crypto.
+Alpaca Connector,  Commission-free US stocks, ETFs, and crypto.
 
 Supports paper trading (sandbox) and live trading.
 Ideal for stock/commodity exposure (via ETFs like GLD, USO, SPY).
@@ -37,7 +37,7 @@ class AlpacaConnector(ExchangeConnector):
     Alpaca Markets connector for stocks and crypto.
 
     Supports:
-    - US equities (stocks, ETFs) — commission-free
+    - US equities (stocks, ETFs),  commission-free
     - Crypto (via Alpaca Crypto)
     - Paper trading mode (sandbox)
 

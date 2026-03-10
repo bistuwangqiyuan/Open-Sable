@@ -1,8 +1,8 @@
 """
-Cognitive Chrysalis — WORLD FIRST
+Cognitive Chrysalis,  WORLD FIRST
 ===================================
 Complete cognitive metamorphosis between developmental stages.
-The agent goes through TRANSFORMATIVE PHASES — like a caterpillar
+The agent goes through TRANSFORMATIVE PHASES,  like a caterpillar
 becoming a butterfly. Each stage fundamentally restructures
 how it thinks.
 
@@ -43,7 +43,7 @@ class Metamorphosis:
 
 class CognitiveChrysalis:
     """
-    Manages cognitive metamorphosis — radical restructuring
+    Manages cognitive metamorphosis,  radical restructuring
     of the agent's cognitive architecture between developmental stages.
     """
 

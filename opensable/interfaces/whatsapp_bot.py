@@ -52,7 +52,7 @@ class WhatsAppBot:
 
         self.callback_port = getattr(config, "whatsapp_callback_port", 3334)
         self._webhook_runner = None
-        self._own_wid = None  # Our WhatsApp ID — set on 'ready' event
+        self._own_wid = None  # Our WhatsApp ID,  set on 'ready' event
         
         # Startup filter: ignore old messages for first 30s
         self._startup_time = None

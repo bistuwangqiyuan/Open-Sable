@@ -1,5 +1,5 @@
 """
-Durable Execution / Checkpointing — persist agent state so runs survive crashes.
+Durable Execution / Checkpointing,  persist agent state so runs survive crashes.
 
 Saves a JSON checkpoint after every meaningful step (plan created, tool executed,
 synthesis complete) so the agent can resume from the exact same point.

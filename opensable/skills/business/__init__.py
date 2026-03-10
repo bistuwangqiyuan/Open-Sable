@@ -1,5 +1,5 @@
 """
-Business automation skills — CRM, pipeline, templates, follow-ups.
+Business automation skills,  CRM, pipeline, templates, follow-ups.
 """
 
 from .crm_skill import CRMSkill

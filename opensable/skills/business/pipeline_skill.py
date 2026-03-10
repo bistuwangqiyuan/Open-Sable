@@ -1,9 +1,9 @@
 """
-Pipeline Skill — Deal / opportunity tracking for B2B workflows.
+Pipeline Skill,  Deal / opportunity tracking for B2B workflows.
 
 Tables:
-  deals        — links a buyer contact to manufacturer contact(s) with product/qty/stage
-  deal_events  — audit trail of every stage change, message, etc.
+  deals       ,  links a buyer contact to manufacturer contact(s) with product/qty/stage
+  deal_events ,  audit trail of every stage change, message, etc.
 
 Pipeline stages:
   prospect → qualified → proposal → negotiation → won | lost
@@ -26,7 +26,7 @@ try:
 except ImportError:
     AIOSQLITE = False
 
-DB_NAME = "crm.db"  # Same DB as CRM — co-located for JOIN efficiency
+DB_NAME = "crm.db"  # Same DB as CRM,  co-located for JOIN efficiency
 
 STAGES = ["prospect", "qualified", "proposal", "negotiation", "won", "lost"]
 
@@ -92,7 +92,7 @@ class PipelineSkill:
 
     async def initialize(self):
         if not AIOSQLITE:
-            logger.warning("aiosqlite not installed — Pipeline skill disabled.")
+            logger.warning("aiosqlite not installed,  Pipeline skill disabled.")
             return
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(str(self.db_path)) as db:
@@ -148,7 +148,7 @@ class PipelineSkill:
         return {"id": did, "title": title, "stage": "prospect"}
 
     async def update_deal(self, deal_id: str, **fields) -> Dict[str, Any]:
-        """Update deal fields (not stage — use advance_deal for that)."""
+        """Update deal fields (not stage,  use advance_deal for that)."""
         allowed = {
             "title", "buyer_id", "manufacturer_id", "product", "quantity",
             "unit", "quality_requirements", "delivery_date", "price_range",

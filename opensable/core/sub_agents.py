@@ -1,5 +1,5 @@
 """
-Sub-Agent Delegation — Actor-model fire-and-forget sub-agents.
+Sub-Agent Delegation,  Actor-model fire-and-forget sub-agents.
 
 Actor-model fire-and-forget sub-agent delegation.  The main agent can
 delegate tasks to specialised sub-agents that run in background as
@@ -82,7 +82,7 @@ class SubAgentManager:
     def register(self, spec: SubAgentSpec) -> None:
         """Register a sub-agent spec."""
         self._specs[spec.name] = spec
-        logger.info(f"Registered sub-agent: {spec.name} — {spec.description}")
+        logger.info(f"Registered sub-agent: {spec.name},  {spec.description}")
 
     def unregister(self, name: str) -> bool:
         """Unregister a sub-agent spec."""
@@ -165,7 +165,7 @@ class SubAgentManager:
                 self._pending.pop(task_id, None)
 
         self._pending[task_id] = asyncio.create_task(_run())
-        logger.info(f"Delegated to {agent_name}: {task_id} — '{task[:80]}'")
+        logger.info(f"Delegated to {agent_name}: {task_id},  '{task[:80]}'")
         return task_id
 
     async def _run_sub_agent(
@@ -225,7 +225,7 @@ class SubAgentManager:
                 all_tool_calls = [single_tc]
 
             if not all_tool_calls:
-                # No tool calls — the sub-agent is done
+                # No tool calls,  the sub-agent is done
                 return {
                     "response": response.get("text", ""),
                     "tools_used": tools_used,
@@ -257,7 +257,7 @@ class SubAgentManager:
                         "content": f"Error: {e}",
                     })
 
-        # Max rounds reached — synthesise from what we have
+        # Max rounds reached,  synthesise from what we have
         return {
             "response": response.get("text", "Max rounds reached"),
             "tools_used": tools_used,

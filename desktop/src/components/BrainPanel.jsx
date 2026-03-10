@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useSableStore } from '../hooks/useSable.js'
 
 /**
- * Desktop Brain Panel — streamlined view of agent cognitive data.
+ * Desktop Brain Panel,  streamlined view of agent cognitive data.
  * Fetches brain.data via the gateway WebSocket (same as dashboard BrainPanel).
  */
 export default function BrainPanel({ onClose }) {
@@ -58,7 +58,7 @@ export default function BrainPanel({ onClose }) {
         </div>
         <div className="brain-empty">
           <div className="brain-empty-icon">🔌</div>
-          <div className="brain-empty-text">Disconnected — waiting for agent…</div>
+          <div className="brain-empty-text">Disconnected,  waiting for agent…</div>
         </div>
       </div>
     )

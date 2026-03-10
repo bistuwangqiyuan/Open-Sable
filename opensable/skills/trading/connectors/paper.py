@@ -1,8 +1,8 @@
 """
-Paper Trading Connector — Simulated exchange for risk-free testing.
+Paper Trading Connector,  Simulated exchange for risk-free testing.
 
 Mimics real exchange behavior (fills, slippage, fees) without using
-real money.  This is the DEFAULT connector — Sable starts here.
+real money.  This is the DEFAULT connector,  Sable starts here.
 """
 
 from __future__ import annotations

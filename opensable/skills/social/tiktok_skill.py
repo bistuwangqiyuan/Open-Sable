@@ -1,8 +1,8 @@
 """
-TikTok Skill — Browse trending, search users/videos, get data from TikTok.
+TikTok Skill,  Browse trending, search users/videos, get data from TikTok.
 
 Uses the TikTokApi library (unofficial TikTok API wrapper).
-This library is READ-ONLY — it cannot post or upload content.
+This library is READ-ONLY,  it cannot post or upload content.
 Uses Playwright for browser-based session creation.
 
 Features:
@@ -71,7 +71,7 @@ class TikTokSkill:
     async def initialize(self) -> bool:
         """Initialize TikTok API with optional ms_token for better reliability."""
         if not TIKTOKAPI_AVAILABLE:
-            logger.warning("TikTokApi not available — TikTok skill disabled")
+            logger.warning("TikTokApi not available,  TikTok skill disabled")
             return False
 
         self._ms_token = (

@@ -5,7 +5,7 @@ Persistent per-channel conversation history that survives restarts.
 Each (channel, user_id) pair gets its own isolated session on disk.
 
 Design:
-- No open ports, no external servers — pure local file I/O
+- No open ports, no external servers,  pure local file I/O
 - Sessions auto-saved after every message
 - Sessions auto-loaded on startup
 - Each channel is truly isolated (telegram:123 ≠ discord:123)
@@ -50,7 +50,7 @@ class Message:
 
 @dataclass
 class SessionConfig:
-    """Session-specific configuration — per-session overrides"""
+    """Session-specific configuration,  per-session overrides"""
 
     model: Optional[str] = None
     thinking_level: str = "medium"  # off | minimal | low | medium | high | xhigh
@@ -64,7 +64,7 @@ class SessionConfig:
 
 
 class Session:
-    """User conversation session — isolated per (channel, user_id)"""
+    """User conversation session,  isolated per (channel, user_id)"""
 
     def __init__(
         self, session_id: str, user_id: str, channel: str, config: Optional[SessionConfig] = None
@@ -138,7 +138,7 @@ class Session:
         self.clear_messages()
 
     async def compact(self) -> str:
-        """Public compact method — summarises old messages."""
+        """Public compact method,  summarises old messages."""
         if len(self.messages) < 10:
             return "Session too short to compact."
         original = len(self.messages)
@@ -198,7 +198,7 @@ class SessionManager:
     Each (channel, user_id) always maps to the same session_id so history
     survives bot restarts.
 
-    No ports, no servers — pure file I/O.
+    No ports, no servers,  pure file I/O.
     """
 
     def __init__(self, config=None):
@@ -245,7 +245,7 @@ class SessionManager:
             if config and config.model and not session.config.model:
                 session.config.model = config.model
             logger.info(
-                f"Loaded session {sid} ({channel}:{user_id}) — {len(session.messages)} msgs"
+                f"Loaded session {sid} ({channel}:{user_id}),  {len(session.messages)} msgs"
             )
 
         self.active[sid] = session

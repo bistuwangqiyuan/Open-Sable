@@ -1,5 +1,5 @@
 """
-Resource Governor — autonomous token, memory and compute management.
+Resource Governor,  autonomous token, memory and compute management.
 
 Tracks LLM token consumption, memory pressure, and compute time,
 then enforces budgets and triggers efficiency optimizations when

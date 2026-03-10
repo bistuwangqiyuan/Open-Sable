@@ -1,9 +1,9 @@
 """
-LinkedIn Skill — Search people, post updates, send messages via linkedin-api.
+LinkedIn Skill,  Search people, post updates, send messages via linkedin-api.
 
 Uses the linkedin-api library (unofficial LinkedIn API wrapper).
 Authenticates directly via LinkedIn credentials (no official API key needed).
-Direct HTTP requests to LinkedIn's Voyager API — no Selenium required.
+Direct HTTP requests to LinkedIn's Voyager API,  no Selenium required.
 
 Features:
 - Search people, companies, jobs
@@ -42,7 +42,7 @@ except ImportError:
 class LinkedInSkill:
     """
     LinkedIn automation via linkedin-api (Voyager API, unofficial).
-    Direct HTTP — no browser needed. Login with email + password.
+    Direct HTTP,  no browser needed. Login with email + password.
     All calls are synchronous, wrapped in run_in_executor for async.
     """
 
@@ -55,7 +55,7 @@ class LinkedInSkill:
     async def initialize(self) -> bool:
         """Initialize LinkedIn client with credentials."""
         if not LINKEDIN_API_AVAILABLE:
-            logger.warning("linkedin-api not available — LinkedIn skill disabled")
+            logger.warning("linkedin-api not available,  LinkedIn skill disabled")
             return False
 
         username = (

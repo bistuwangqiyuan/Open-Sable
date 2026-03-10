@@ -1,5 +1,5 @@
 """
-Facebook Skill — Interact with Facebook via the facebook-sdk (Graph API).
+Facebook Skill,  Interact with Facebook via the facebook-sdk (Graph API).
 
 Uses the official Facebook Graph API through the facebook-sdk library.
 Requires a Facebook App access token (User Token or Page Token).
@@ -61,7 +61,7 @@ class FacebookSkill:
     async def initialize(self) -> bool:
         """Initialize Facebook Graph API client."""
         if not FACEBOOK_SDK_AVAILABLE:
-            logger.warning("facebook-sdk not available — Facebook skill disabled")
+            logger.warning("facebook-sdk not available,  Facebook skill disabled")
             return False
 
         access_token = (
@@ -191,7 +191,7 @@ class FacebookSkill:
             )
 
             post_id = result.get("id", "")
-            logger.info(f"✅ Facebook: Posted — {post_id}")
+            logger.info(f"✅ Facebook: Posted,  {post_id}")
             await asyncio.sleep(self._action_delay)
 
             return {
@@ -229,7 +229,7 @@ class FacebookSkill:
                 )
 
             post_id = result.get("id", "") or result.get("post_id", "")
-            logger.info(f"✅ Facebook: Photo uploaded — {post_id}")
+            logger.info(f"✅ Facebook: Photo uploaded,  {post_id}")
             await asyncio.sleep(self._action_delay)
 
             return {

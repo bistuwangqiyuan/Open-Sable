@@ -1,5 +1,5 @@
 """
-Emotional Contagion — cascading emotional influence across subsystems.
+Emotional Contagion,  cascading emotional influence across subsystems.
 
 WORLD FIRST: The agent's emotional state cascades through all its
 subsystems like a mood spreading through a brain. A series of failures
@@ -95,7 +95,7 @@ class EmotionalContagion:
         self.inject("creativity", -magnitude * 0.3, source)
 
     def tick(self):
-        """Called every cognitive tick — propagate and decay emotions."""
+        """Called every cognitive tick,  propagate and decay emotions."""
         # Propagate contagion
         for emotion, level in list(self.emotions.items()):
             if level > 0.5:  # Only strong emotions propagate

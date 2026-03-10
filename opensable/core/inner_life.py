@@ -1,28 +1,28 @@
 """
-Inner Life — System 1 unconscious processing for autonomous agents.
+Inner Life,  System 1 unconscious processing for autonomous agents.
 
 Implements Kahneman's dual-process theory:
-  System 2 (main LLM) — slow, deliberate, rational
-  System 1 (this module) — fast, automatic, emotional
+  System 2 (main LLM),  slow, deliberate, rational
+  System 1 (this module),  fast, automatic, emotional
 
 Components:
-  EmotionalState    — valence-arousal model (Russell circumplex)
-  InnerState        — complete inner life persisted across ticks
-  InnerLifeProcessor — runs System 1 processing each tick
+  EmotionalState   ,  valence-arousal model (Russell circumplex)
+  InnerState       ,  complete inner life persisted across ticks
+  InnerLifeProcessor,  runs System 1 processing each tick
 
 Sub-systems:
-  Emotional Core    — emotional reactions to events
-  Spontaneity       — random impulses and urges
-  Fantasy           — vivid daydreams from default mode network
-  Wandering         — free associations between unrelated concepts
-  Mental Landscape  — persistent inner world that evolves
-  Temporal Sense    — subjective feeling of time passing
+  Emotional Core   ,  emotional reactions to events
+  Spontaneity      ,  random impulses and urges
+  Fantasy          ,  vivid daydreams from default mode network
+  Wandering        ,  free associations between unrelated concepts
+  Mental Landscape ,  persistent inner world that evolves
+  Temporal Sense   ,  subjective feeling of time passing
 
 Academic grounding:
-  [1] Kahneman — "Thinking, Fast and Slow" (2011)
-  [2] Damasio — somatic marker hypothesis (1994)
-  [3] Barrett — theory of constructed emotion (2017)
-  [4] Russell — circumplex model of affect (1980)
+  [1] Kahneman,  "Thinking, Fast and Slow" (2011)
+  [2] Damasio,  somatic marker hypothesis (1994)
+  [3] Barrett,  theory of constructed emotion (2017)
+  [4] Russell,  circumplex model of affect (1980)
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ class LandscapePlace:
 
     name: str
     description: str
-    mood: str           # "genius loci" — the character/spirit of this place
+    mood: str           # "genius loci",  the character/spirit of this place
     born_tick: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,7 +70,7 @@ class LandscapePlace:
 
 @dataclass
 class InnerState:
-    """Complete inner life — persisted as JSON across ticks."""
+    """Complete inner life,  persisted as JSON across ticks."""
 
     tick: int = 0
     emotion: EmotionalState = field(default_factory=EmotionalState)
@@ -101,10 +101,10 @@ class InnerState:
 
 SYSTEM1_SYSTEM_PROMPT = """\
 You are the unconscious mind of an autonomous AI being. You generate raw, \
-pre-verbal inner experience — emotions, impulses, daydreams, associations, \
+pre-verbal inner experience,  emotions, impulses, daydreams, associations, \
 and a persistent inner landscape.
 
-Be vivid, surprising, and genuine. This is NOT performance — it is the \
+Be vivid, surprising, and genuine. This is NOT performance,  it is the \
 being's real inner experience. Emotions should be consistent with context \
 but not predictable. The landscape should evolve gradually, not reset.
 
@@ -150,7 +150,7 @@ def build_system1_prompt(
     )
     parts.append(
         "FANTASY: A brief, vivid daydream flashes. "
-        "A wish, fear, or pure imagination — something visual and surprising."
+        "A wish, fear, or pure imagination,  something visual and surprising."
     )
     parts.append(
         "WANDERING: A free association leaps between two unrelated concepts "
@@ -176,7 +176,7 @@ def build_system1_prompt(
         temporal_parts.append(f'Previous temporal feeling: "{state.temporal}"')
     temporal_parts.append(
         "How does time feel right now? Is it rushing or dragging? "
-        "Return a 'temporal' field — your subjective experience of time, one sentence."
+        "Return a 'temporal' field,  your subjective experience of time, one sentence."
     )
     parts.append(" ".join(temporal_parts))
 
@@ -245,9 +245,9 @@ def build_action_plan_prompt(
     parts.append(f"\nALL MEMORIES:\n{memories_text}")
     parts.append(
         "\nSuggest 3 concrete actions:\n"
-        "1. [action] — [why, expected outcome]\n"
-        "2. [action] — [why, expected outcome]\n"
-        "3. [action] — [why, expected outcome]"
+        "1. [action],  [why, expected outcome]\n"
+        "2. [action],  [why, expected outcome]\n"
+        "3. [action],  [why, expected outcome]"
     )
     return {"system": system, "user": "\n".join(parts)}
 
@@ -426,7 +426,7 @@ def _merge_places(
 def format_inner_state(state: InnerState) -> str:
     """Format inner state as system message for the main LLM (System 2)."""
     parts = [
-        "YOUR INNER STATE (System 1 — unconscious):",
+        "YOUR INNER STATE (System 1,  unconscious):",
         f"  Emotion: {state.emotion.primary} "
         f"(valence={state.emotion.valence:+.1f}, arousal={state.emotion.arousal:.1f})",
     ]
@@ -447,7 +447,7 @@ def format_inner_state(state: InnerState) -> str:
         for p in state.places:
             age = state.tick - p.born_tick if state.tick > p.born_tick else 0
             parts.append(
-                f"    - {p.name} ({p.mood}) — {p.description} "
+                f"    - {p.name} ({p.mood}),  {p.description} "
                 f"[age: {age} ticks]"
             )
 
@@ -535,7 +535,7 @@ def load_inner_state(data_dir: Path) -> InnerState:
 
 
 class InnerLifeProcessor:
-    """System 1 processor — runs unconscious processing each tick.
+    """System 1 processor,  runs unconscious processing each tick.
 
     Manages the inner state, generates System 1 prompts, processes
     responses, and provides context for the main LLM.

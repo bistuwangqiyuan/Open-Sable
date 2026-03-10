@@ -155,7 +155,7 @@ class ModelSelector:
                         logger.info(f"Selected model: {available}")
                         return available
 
-            # No recommended model is available — pick best available model
+            # No recommended model is available,  pick best available model
             # Prefer larger parameter counts among what's installed
             preferred_order = ["14b", "13b", "8b", "7b", "4b", "3b", "1b"]
             for size in preferred_order:

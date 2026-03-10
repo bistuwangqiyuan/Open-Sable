@@ -55,7 +55,7 @@ class TestCognitiveMemory:
         # effective_importance should be significantly less than 1.0
         assert result[0].effective_importance < 0.8
 
-        # Apply decay at tick 0 — should preserve full importance
+        # Apply decay at tick 0,  should preserve full importance
         mem2 = CognitiveMemoryItem(
             content="fresh", category="test",
             importance_base=1.0, effective_importance=1.0,
@@ -310,7 +310,7 @@ class TestSkillEvolution:
         result = mgr.evaluate_tick(tick=10)
         # useless_skill should be condemned (never used, old enough)
         condemned = result.get("condemned", [])
-        # It won't be condemned if fitness is above threshold —
+        # It won't be condemned if fitness is above threshold, 
         # just verify the mechanism runs without error
         assert isinstance(condemned, list)
 
@@ -667,7 +667,7 @@ class TestPatternLearner:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. SkillFitnessTracker — Windowed extensions
+# 7. SkillFitnessTracker,  Windowed extensions
 # ═══════════════════════════════════════════════════════════════════════════════
 
 

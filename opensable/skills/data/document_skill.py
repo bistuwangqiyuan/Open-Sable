@@ -44,28 +44,28 @@ class DocumentSkill:
             import docx  # noqa: F401
             self._available["docx"] = True
         except ImportError:
-            logger.warning("python-docx not installed — Word creation disabled")
+            logger.warning("python-docx not installed,  Word creation disabled")
 
         try:
             import openpyxl  # noqa: F401
             self._available["xlsx"] = True
         except ImportError:
-            logger.warning("openpyxl not installed — Excel creation disabled")
+            logger.warning("openpyxl not installed,  Excel creation disabled")
 
         try:
             from reportlab.lib.pagesizes import A4  # noqa: F401
             self._available["pdf"] = True
         except ImportError:
-            logger.warning("reportlab not installed — PDF creation disabled")
+            logger.warning("reportlab not installed,  PDF creation disabled")
 
         try:
             from pptx import Presentation  # noqa: F401
             self._available["pptx"] = True
         except ImportError:
-            logger.warning("python-pptx not installed — PowerPoint creation disabled")
+            logger.warning("python-pptx not installed,  PowerPoint creation disabled")
 
         avail = [k for k, v in self._available.items() if v]
-        logger.info(f"DocumentSkill initialized — available formats: {avail or 'none'}")
+        logger.info(f"DocumentSkill initialized,  available formats: {avail or 'none'}")
         return bool(avail)
 
     # ------------------------------------------------------------------

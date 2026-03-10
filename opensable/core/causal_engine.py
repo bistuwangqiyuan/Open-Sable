@@ -1,12 +1,12 @@
 """
-Causal Reasoning Engine — understanding *why*, not just *what*.
+Causal Reasoning Engine,  understanding *why*, not just *what*.
 
 Builds a causal graph from observed task outcomes, enabling:
   - Root cause analysis for failures
   - Counterfactual reasoning ("what if I had done X?")
   - Causal attribution (which actions causally led to success/failure?)
 
-The engine doesn't try full Bayesian inference — it uses LLM-assisted
+The engine doesn't try full Bayesian inference,  it uses LLM-assisted
 causal extraction and a simple weighted directed graph to track
 cause → effect relationships.
 
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 _CAUSAL_SYSTEM = """You are a causal reasoning engine for an autonomous AI agent.
 Given a set of recent task outcomes, extract cause-effect relationships.
 
-Output ONLY valid JSON — an array of objects:
+Output ONLY valid JSON,  an array of objects:
 [
   {
     "cause": "short description of the cause",

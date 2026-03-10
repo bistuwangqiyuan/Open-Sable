@@ -1,12 +1,12 @@
 """
-TLS Fingerprint Patch — Makes twikit use curl_cffi instead of httpx.
+TLS Fingerprint Patch,  Makes twikit use curl_cffi instead of httpx.
 
 Problem: twikit uses plain httpx, which has a Python TLS fingerprint (JA3/JA4).
 X detects the real platform via TLS fingerprint, TCP stack, etc.
 Even with a mobile User-Agent, X sees "Linux desktop" because httpx leaks it.
 
 Solution: Replace httpx.AsyncClient with curl_cffi.AsyncSession that impersonates
-Chrome 131 on Android — the TLS handshake will match a real Android Chrome browser.
+Chrome 131 on Android,  the TLS handshake will match a real Android Chrome browser.
 """
 
 import logging
@@ -19,7 +19,7 @@ try:
     from curl_cffi.requests import AsyncSession as _CurlAsyncSession
     CURL_CFFI_AVAILABLE = True
 except ImportError:
-    logger.warning("curl_cffi not installed — TLS fingerprint impersonation disabled")
+    logger.warning("curl_cffi not installed,  TLS fingerprint impersonation disabled")
 
 # The impersonation target: Chrome 131 on Android
 # This makes the TLS handshake (JA3/JA4) look like a real Android Chrome browser
@@ -35,7 +35,7 @@ class TwikitCurlSession:
       - self.http.request(method, url, headers=..., data=..., **kwargs)
       - self.http.cookies          (.jar, .clear(), .update(), .get(), dict())
       - self.http.cookies.jar      (iterable of cookie objects)
-      - self.http._mounts          (proxy getter/setter — we stub this)
+      - self.http._mounts          (proxy getter/setter,  we stub this)
       - self.http.headers           (dict-like)
     """
 
@@ -59,7 +59,7 @@ class TwikitCurlSession:
 
     @property
     def cookies(self):
-        """Expose curl_cffi cookies — compatible with twikit's usage."""
+        """Expose curl_cffi cookies,  compatible with twikit's usage."""
         return self._session.cookies
 
     @cookies.setter
@@ -138,7 +138,7 @@ def patch_twikit_client(client, proxy: Optional[str] = None):
         proxy: Optional proxy URL
     """
     if not CURL_CFFI_AVAILABLE:
-        logger.warning("curl_cffi not available — skipping TLS patch")
+        logger.warning("curl_cffi not available,  skipping TLS patch")
         return False
 
     try:
@@ -160,7 +160,7 @@ def patch_twikit_client(client, proxy: Optional[str] = None):
         if hasattr(client, 'client_transaction'):
             client.client_transaction.home_page_response = None
 
-        logger.info("✅ TLS patch applied — twikit now uses Chrome Android fingerprint")
+        logger.info("✅ TLS patch applied,  twikit now uses Chrome Android fingerprint")
         return True
 
     except Exception as e:

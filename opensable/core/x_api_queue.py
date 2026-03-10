@@ -1,11 +1,11 @@
 """
-X API Queue — Intelligent, Self-Adaptive Request Queue
+X API Queue,  Intelligent, Self-Adaptive Request Queue
 
 Every X API call goes through this single FIFO queue.
 Guarantees:
   1. Only ONE request in-flight at any time
   2. Adaptive cooldown between calls (learns from success/failure)
-  3. Requests never lost — they wait in line
+  3. Requests never lost,  they wait in line
   4. Different action types have different base cooldowns
   5. After errors (226, 429) cooldowns increase automatically
   6. After sustained success, cooldowns slowly decrease
@@ -26,29 +26,29 @@ from typing import Any, Callable, Coroutine, Dict, Optional
 logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════
-#  Action categories — grouped by risk level
+#  Action categories,  grouped by risk level
 # ═══════════════════════════════════════════════════════════════════
 
 # Higher risk = needs more cooldown (posting is riskier than browsing)
 ACTION_RISK = {
-    # Passive — read-only, lowest risk
+    # Passive,  read-only, lowest risk
     "search_tweets":    "passive",
     "get_trends":       "passive",
     "get_user":         "passive",
     "get_user_tweets":  "passive",
-    # Active — engagement, medium risk
+    # Active,  engagement, medium risk
     "like_tweet":       "active",
     "retweet":          "active",
     "follow_user":      "active",
     "bookmark_tweet":   "active",
-    # Aggressive — writing content, highest risk
+    # Aggressive,  writing content, highest risk
     "post_tweet":       "aggressive",
     "post_thread":      "aggressive",
     "reply":            "aggressive",
     "quote_tweet":      "aggressive",
     "send_dm":          "aggressive",
     "delete_tweet":     "aggressive",
-    # Grok — uses same X session/cookies, must share the queue
+    # Grok,  uses same X session/cookies, must share the queue
     "grok_chat":        "passive",
     "grok_analyze":     "passive",
     "grok_generate":    "passive",
@@ -56,9 +56,9 @@ ACTION_RISK = {
 
 # Base cooldowns per risk category (seconds)
 DEFAULT_COOLDOWNS = {
-    "passive":    3.0,   # Browsing — 3s between reads
-    "active":     5.0,   # Likes/RTs — 5s gap
-    "aggressive": 10.0,  # Posts/replies — 10s gap
+    "passive":    3.0,   # Browsing,  3s between reads
+    "active":     5.0,   # Likes/RTs,  5s gap
+    "aggressive": 10.0,  # Posts/replies,  10s gap
 }
 
 # Absolute limits
@@ -121,12 +121,12 @@ class AdaptiveCooldown:
         """Get current cooldown for a method, with human-like jitter."""
         category = ACTION_RISK.get(method_name, "active")
         base = self.cooldowns.get(category, 4.0)
-        # Add ±20% random jitter — humans are never exactly on time
+        # Add ±20% random jitter,  humans are never exactly on time
         jitter = base * random.uniform(-0.20, 0.20)
         return max(MIN_COOLDOWN, base + jitter)
 
     def report_success(self, method_name: str):
-        """Call after a successful API call — slowly reduce cooldown."""
+        """Call after a successful API call,  slowly reduce cooldown."""
         category = ACTION_RISK.get(method_name, "active")
         self._stats["total_calls"] += 1
         self._stats["total_successes"] += 1
@@ -155,7 +155,7 @@ class AdaptiveCooldown:
         self._save()
 
     def report_error(self, method_name: str, error_str: str):
-        """Call after a failed API call — increase cooldown based on severity."""
+        """Call after a failed API call,  increase cooldown based on severity."""
         category = ACTION_RISK.get(method_name, "active")
         self._stats["total_calls"] += 1
         self._stats["total_errors"] += 1
@@ -166,7 +166,7 @@ class AdaptiveCooldown:
         error_lower = error_str.lower()
 
         if "226" in error_lower or "automated" in error_lower or "spam" in error_lower:
-            # CRITICAL — bot detection. Harsh penalty: +80% to ALL categories
+            # CRITICAL,  bot detection. Harsh penalty: +80% to ALL categories
             self._stats["errors_226"] += 1
             for cat in self.cooldowns:
                 self.cooldowns[cat] = min(MAX_COOLDOWN, self.cooldowns[cat] * 1.80)
@@ -177,7 +177,7 @@ class AdaptiveCooldown:
                 f"aggressive={self.cooldowns['aggressive']:.1f}s"
             )
         elif "429" in error_lower or "rate" in error_lower:
-            # Rate limit — increase this category +60%
+            # Rate limit,  increase this category +60%
             self._stats["errors_429"] += 1
             self.cooldowns[category] = min(MAX_COOLDOWN, old * 1.60)
             logger.warning(
@@ -185,7 +185,7 @@ class AdaptiveCooldown:
                 f"Cooldown: {old:.1f}s → {self.cooldowns[category]:.1f}s"
             )
         else:
-            # Generic error — moderate increase +25%
+            # Generic error,  moderate increase +25%
             self.cooldowns[category] = min(MAX_COOLDOWN, old * 1.25)
             logger.info(
                 f"⚠️ X Queue [{category}] Error. "
@@ -260,7 +260,7 @@ class XApiQueue:
         result = await queue.enqueue("like_tweet", impl.like_tweet, tweet_id)
     
     The queue worker processes items one at a time, sleeping the adaptive
-    cooldown between each. If 5 items pile up, they'll all run — just
+    cooldown between each. If 5 items pile up, they'll all run,  just
     sequentially with smart gaps between them.
     """
 
@@ -291,7 +291,7 @@ class XApiQueue:
     def set_grok_impl(self, grok_impl):
         """Set the GrokSkillImpl for Grok calls."""
         self._grok_impl = grok_impl
-        logger.info("📋 X API Queue: Grok linked — Grok calls now go through the queue")
+        logger.info("📋 X API Queue: Grok linked,  Grok calls now go through the queue")
 
     def set_notify(self, notify_fn):
         """Set the async function to notify the user (e.g. Telegram send_message)."""
@@ -314,9 +314,9 @@ class XApiQueue:
         """
         is_grok = method_name.startswith("grok_")
         if is_grok and self._grok_impl is None:
-            raise RuntimeError("Grok not initialized — queue has no grok_impl")
+            raise RuntimeError("Grok not initialized,  queue has no grok_impl")
         if not is_grok and self._impl is None:
-            raise RuntimeError("X not initialized — queue has no impl")
+            raise RuntimeError("X not initialized,  queue has no impl")
 
         loop = asyncio.get_event_loop()
         future = loop.create_future()
@@ -340,7 +340,7 @@ class XApiQueue:
         # Ensure the worker is running
         self._ensure_worker()
 
-        # Wait for our turn — the worker will resolve the future
+        # Wait for our turn,  the worker will resolve the future
         return await future
 
     def _ensure_worker(self):
@@ -450,7 +450,7 @@ class XApiQueue:
 
         stats = self._cooldown.get_stats()
         msg = (
-            f"{emoji} *X Bot — {desc}*\n\n"
+            f"{emoji} *X Bot,  {desc}*\n\n"
             f"Accion: `{method_name}`\n"
             f"Error: `{error_str[:200]}`\n\n"
             f"Cooldowns actuales:\n"

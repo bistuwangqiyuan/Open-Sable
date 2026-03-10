@@ -1,16 +1,16 @@
 """
 Video Understanding Engine
 
-Real video content analysis — not just metadata.
+Real video content analysis,  not just metadata.
 Extracts keyframes, sends them to vision LLMs (GPT-4V, Grok Vision, Gemini),
 performs scene segmentation, action recognition, and temporal reasoning.
 
 Capabilities:
   1. Extract keyframes from video files (ffmpeg scene detection)
   2. Analyze frames with vision LLMs (describe scenes, identify objects/people)
-  3. Temporal reasoning — understand narrative flow across frames
-  4. Audio transcription — extract speech from video via Whisper
-  5. Scene segmentation — detect scene changes and summarize each
+  3. Temporal reasoning,  understand narrative flow across frames
+  4. Audio transcription,  extract speech from video via Whisper
+  5. Scene segmentation,  detect scene changes and summarize each
   6. Generate full video summaries combining visual + audio analysis
   7. Answer questions about video content ("What happened at minute 3?")
 """

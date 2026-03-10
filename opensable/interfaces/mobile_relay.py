@@ -1,5 +1,5 @@
 """
-OpenSable Mobile Relay — E2E encrypted WebSocket bridge for the Expo app.
+OpenSable Mobile Relay,  E2E encrypted WebSocket bridge for the Expo app.
 
 Implements SETP/1.0 (OpenSable Encrypted Tunnel Protocol):
   - QR-based pairing with X25519 ECDH key exchange
@@ -132,13 +132,13 @@ def _derive_shared_secret(my_private: bytes, their_public: bytes) -> bytes:
         # The shared key is the Box's internal shared key
         return box.shared_key()
     else:
-        # Simple fallback (NOT real X25519 — placeholder)
+        # Simple fallback (NOT real X25519,  placeholder)
         return hashlib.sha256(my_private + their_public).digest()
 
 
 def _hkdf_expand(shared_secret: bytes, info: bytes = b"SETP/1.0", length: int = 64) -> bytes:
     """Key expansion matching the mobile app: SHA-512(shared_secret || info).
-    Returns first `length` bytes — typically encKey (32B) + macKey (32B)."""
+    Returns first `length` bytes,  typically encKey (32B) + macKey (32B)."""
     combined = shared_secret + info
     return hashlib.sha512(combined).digest()[:length]
 
@@ -151,7 +151,7 @@ def _encrypt(key: bytes, plaintext: bytes, seq: int) -> tuple[bytes, bytes]:
         ct = box.encrypt(plaintext, nonce)
         return nonce, ct[nacl.secret.SecretBox.NONCE_SIZE:]  # strip nonce prefix
     else:
-        # Fallback: AES-like XOR (NOT secure — placeholder for demo)
+        # Fallback: AES-like XOR (NOT secure,  placeholder for demo)
         nonce = os.urandom(NONCE_SIZE)
         xor_key = hashlib.sha256(key + nonce + struct.pack(">Q", seq)).digest()
         ct = bytes(a ^ b for a, b in zip(plaintext, (xor_key * ((len(plaintext) // 32) + 1))[:len(plaintext)]))
@@ -191,7 +191,7 @@ async def send_expo_push(token: str, title: str, body: str, data: Optional[dict]
                 if resp.status_code == 200:
                     logger.debug(f"Push sent to {token[:20]}...")
                 else:
-                    logger.warning(f"Push failed: {resp.status_code} — {resp.text}")
+                    logger.warning(f"Push failed: {resp.status_code},  {resp.text}")
         elif AIOHTTP_AVAILABLE:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -206,7 +206,7 @@ async def send_expo_push(token: str, title: str, body: str, data: Optional[dict]
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  MobileRelay — WebSocket server
+#  MobileRelay,  WebSocket server
 # ═══════════════════════════════════════════════════════════════════════
 
 class MobileRelay:
@@ -522,7 +522,7 @@ class MobileRelay:
                 await self.send_to_device(device_id, "chat.typing", {})
                 try:
                     # Decode audio and transcribe (agent handles STT)
-                    text = f"[Voice message, {duration}s — audio attached]"
+                    text = f"[Voice message, {duration}s,  audio attached]"
                     if hasattr(self.agent, "transcribe_audio"):
                         text = await self.agent.transcribe_audio(audio_b64)
                     response = await self.agent.run(text)
@@ -744,7 +744,7 @@ class MobileRelay:
                 msg = json.loads(plaintext.decode())
 
                 if msg.get("type") == "system.heartbeat":
-                    # Auth succeeded — reset sequence for new session
+                    # Auth succeeded,  reset sequence for new session
                     device.rx_seq = seq
                     logger.info(f"📱 Device reconnected via encrypted auth: {did[:8]}")
                     # Register WS connection (closes old one if exists)
@@ -844,7 +844,7 @@ class MobileRelay:
             await ws.send_json({"type": "AUTH_ERROR", "error": "Unknown device"})
             return None
 
-        # Verify the device can decrypt — they send an encrypted heartbeat
+        # Verify the device can decrypt,  they send an encrypted heartbeat
         enc_data = data.get("encrypted")
         if enc_data:
             try:
@@ -855,7 +855,7 @@ class MobileRelay:
                 if hb.get("type") != "heartbeat":
                     raise ValueError("Bad heartbeat")
             except Exception:
-                await ws.send_json({"type": "AUTH_ERROR", "error": "Decryption failed — re-pair required"})
+                await ws.send_json({"type": "AUTH_ERROR", "error": "Decryption failed,  re-pair required"})
                 return None
 
         device.last_seen = time.time()

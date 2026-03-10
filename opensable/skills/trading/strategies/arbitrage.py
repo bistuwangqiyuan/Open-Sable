@@ -1,5 +1,5 @@
 """
-Arbitrage Strategy — Cross-exchange price difference detection.
+Arbitrage Strategy,  Cross-exchange price difference detection.
 
 Scans the same asset across multiple exchanges and generates signals
 when the spread exceeds a configurable threshold after accounting

@@ -1,5 +1,5 @@
 """
-Deja Vu Engine — WORLD FIRST
+Deja Vu Engine,  WORLD FIRST
 ==============================
 Detects when current situations FEEL similar to past ones even when
 they're superficially different. Gestalt-level pattern matching
@@ -41,7 +41,7 @@ class DejaVuEvent:
 class DejaVuEngine:
     """
     Recognizes deep structural similarity between situations.
-    Goes beyond keyword matching — detects the 'feeling' of similarity.
+    Goes beyond keyword matching,  detects the 'feeling' of similarity.
     """
 
     FEATURE_WORDS = {

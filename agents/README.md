@@ -1,6 +1,6 @@
 # Agent Profiles
 
-**All agents** live under `agents/`. There is no special "base agent" — every agent, including the primary one (`sable`), has its own folder with its own soul, config, tools, and data.
+**All agents** live under `agents/`. There is no special "base agent",  every agent, including the primary one (`sable`), has its own folder with its own soul, config, tools, and data.
 
 ## Directory Structure
 
@@ -18,7 +18,7 @@ agents/
 ## Quick Start
 
 ```bash
-# Start sable (default — no --profile needed)
+# Start sable (default,  no --profile needed)
 ./start.sh start
 
 # Start a specific agent
@@ -56,7 +56,7 @@ who the agent *is*. Each profile must have a unique soul.
 
 ### `profile.env`
 **Complete** environment configuration for this agent. Every variable the system
-supports is defined here — LLM, Telegram, X/Twitter, gateway port, behavior,
+supports is defined here,  LLM, Telegram, X/Twitter, gateway port, behavior,
 database, monitoring, etc. Each agent is self-contained.
 AGENT_PERSONALITY=professional
 WEBCHAT_PORT=8790
@@ -117,4 +117,4 @@ or different cookies) and a **different gateway port** (`WEBCHAT_PORT`).
 ```
 
 Each agent runs as a **completely independent process** with its own PID file,
-log file, gateway socket, and data directory. Every agent is equal — no special treatment.
+log file, gateway socket, and data directory. Every agent is equal,  no special treatment.

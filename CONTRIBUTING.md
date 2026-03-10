@@ -57,12 +57,12 @@ black --check .       # verify formatting
 
 ## What to Contribute
 
-- 🐛 **Bug fixes** — always welcome
-- ✨ **New skills** — add them under `opensable/skills/`
-- 🔌 **New interfaces** — add them under `opensable/interfaces/`
-- 📖 **Documentation** — improvements to docs, examples, README
-- 🧪 **Tests** — more coverage is always appreciated
-- 🌍 **Translations** — help make Open-Sable accessible
+- 🐛 **Bug fixes**,  always welcome
+- ✨ **New skills**,  add them under `opensable/skills/`
+- 🔌 **New interfaces**,  add them under `opensable/interfaces/`
+- 📖 **Documentation**,  improvements to docs, examples, README
+- 🧪 **Tests**,  more coverage is always appreciated
+- 🌍 **Translations**,  help make Open-Sable accessible
 
 ## Reporting Issues
 

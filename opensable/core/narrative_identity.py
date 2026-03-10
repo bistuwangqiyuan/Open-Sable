@@ -1,5 +1,5 @@
 """
-Narrative Identity Engine — autobiographical coherent self-story.
+Narrative Identity Engine,  autobiographical coherent self-story.
 
 WORLD FIRST: The agent constructs and maintains a coherent life story.
 It has a persistent sense of "who I am", "where I came from", "what I
@@ -38,7 +38,7 @@ class CoreBelief:
 
 
 class NarrativeIdentity:
-    """Autobiographical identity engine — the agent's life story."""
+    """Autobiographical identity engine,  the agent's life story."""
 
     def __init__(self, data_dir: Path, chapter_interval: int = 200):
         self.data_dir = Path(data_dir)

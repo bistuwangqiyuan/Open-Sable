@@ -211,13 +211,13 @@ export default function TradingPanel({ stats, messages, streaming, sendMessage }
     const totalVol = data.reduce((s, m) => s + m.volume, 0);
     const totalLiq = data.reduce((s, m) => s + m.liquidity, 0);
 
-    let ctx = `\n\n[POLYMARKET LIVE DATA — ${data.length} active markets | Total Volume: $${(totalVol / 1e6).toFixed(1)}M | Total Liquidity: $${(totalLiq / 1e6).toFixed(1)}M]\n`;
+    let ctx = `\n\n[POLYMARKET LIVE DATA,  ${data.length} active markets | Total Volume: $${(totalVol / 1e6).toFixed(1)}M | Total Liquidity: $${(totalLiq / 1e6).toFixed(1)}M]\n`;
     ctx += `Top markets by volume:\n`;
     top.forEach((m, i) => {
       const prob = m.isMultiMarket
         ? m.outcomes?.slice(0, 3).map(o => `${o.name}: ${(o.price * 100).toFixed(0)}%`).join(', ')
         : `Yes: ${(m.yesPrice * 100).toFixed(0)}% / No: ${(m.noPrice * 100).toFixed(0)}%`;
-      ctx += `${i + 1}. "${m.question}" — ${prob} | Vol: $${m.volume >= 1e6 ? (m.volume / 1e6).toFixed(1) + 'M' : m.volume >= 1e3 ? (m.volume / 1e3).toFixed(0) + 'K' : m.volume.toFixed(0)} | Ends: ${m.endDate ? new Date(m.endDate).toLocaleDateString() : 'Open'}\n`;
+      ctx += `${i + 1}. "${m.question}",  ${prob} | Vol: $${m.volume >= 1e6 ? (m.volume / 1e6).toFixed(1) + 'M' : m.volume >= 1e3 ? (m.volume / 1e3).toFixed(0) + 'K' : m.volume.toFixed(0)} | Ends: ${m.endDate ? new Date(m.endDate).toLocaleDateString() : 'Open'}\n`;
     });
     return ctx;
   }, []);

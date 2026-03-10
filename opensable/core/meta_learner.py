@@ -1,5 +1,5 @@
 """
-Meta-Learning Controller — learning to learn.
+Meta-Learning Controller,  learning to learn.
 
 Tracks which cognitive strategies produce the best outcomes and
 auto-tunes hyperparameters (learning rates, tick intervals, thresholds)
@@ -7,10 +7,10 @@ across the entire cognitive pipeline.
 
 Concepts
 --------
-- **Strategy Profile** — a named set of hyperparameters the agent is currently using
-- **Strategy Score** — rolling performance under a given profile
-- **Exploration / Exploitation** — epsilon-greedy: 80% exploit best, 20% explore random
-- **Adaptation Rate** — how fast the controller switches strategies after evidence
+- **Strategy Profile**,  a named set of hyperparameters the agent is currently using
+- **Strategy Score**,  rolling performance under a given profile
+- **Exploration / Exploitation**,  epsilon-greedy: 80% exploit best, 20% explore random
+- **Adaptation Rate**,  how fast the controller switches strategies after evidence
 
 Persistence: ``meta_learner_state.json`` in *data_dir*.
 """

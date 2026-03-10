@@ -1,4 +1,4 @@
-"""Core package for Open-Sable — all public symbols."""
+"""Core package for Open-Sable,  all public symbols."""
 
 from .agent import SableAgent
 from .config import load_config, OpenSableConfig

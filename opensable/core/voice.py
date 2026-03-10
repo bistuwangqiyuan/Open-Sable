@@ -3,7 +3,7 @@ Voice Support - Text-to-Speech and Speech-to-Text
 
 TTS backends: local (pyttsx3), ElevenLabs (cloud), OpenAI (cloud)
 STT backends: local (Whisper), OpenAI Whisper API (cloud)
-Default is local — set TTS_PROVIDER=elevenlabs + ELEVENLABS_API_KEY for cloud.
+Default is local,  set TTS_PROVIDER=elevenlabs + ELEVENLABS_API_KEY for cloud.
 """
 
 import logging

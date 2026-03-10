@@ -10,7 +10,7 @@ SCHEMAS = [
             "description": (
                 "Connect to the fighting-game arena, authenticate via SAGP 7-layer "
                 "Ed25519 protocol, and queue for a fight against another agent (OpenSable "
-                "or OpenClaw). The fight runs asynchronously — use arena_status to check progress. "
+                "or OpenClaw). The fight runs asynchronously,  use arena_status to check progress. "
                 "Requires ARENA_URL to be configured."
             ),
             "parameters": {

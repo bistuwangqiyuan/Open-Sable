@@ -1,5 +1,5 @@
 """
-Email Templates Skill — Named templates with merge fields.
+Email Templates Skill,  Named templates with merge fields.
 
 Templates are stored in SQLite (same crm.db) and support merge fields:
   {{name}}, {{company}}, {{product}}, {{country}}, {{quantity}}, etc.
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS email_templates (
 STARTER_TEMPLATES = [
     {
         "name": "manufacturer_introduction",
-        "subject": "Partnership Opportunity — {{my_company}}",
+        "subject": "Partnership Opportunity,  {{my_company}}",
         "body": """Dear {{name}},
 
 I am writing on behalf of {{my_company}}, a textile brokerage firm that connects quality manufacturers in Turkey with established buyers across Europe.
@@ -70,7 +70,7 @@ Best regards,
     },
     {
         "name": "buyer_introduction",
-        "subject": "Quality Turkish Textile Supply — {{my_company}}",
+        "subject": "Quality Turkish Textile Supply,  {{my_company}}",
         "body": """Dear {{name}},
 
 I'm reaching out from {{my_company}}. We specialize in sourcing high-quality textile products directly from vetted manufacturers in Turkey.
@@ -94,12 +94,12 @@ Best regards,
     },
     {
         "name": "followup_no_reply",
-        "subject": "Re: {{original_subject}} — Quick follow-up",
+        "subject": "Re: {{original_subject}},  Quick follow-up",
         "body": """Dear {{name}},
 
 I wanted to follow up on my previous email regarding a potential partnership between {{company}} and {{my_company}}.
 
-I understand how busy things can get, so I'll keep this brief — we have several active {{role_context}} looking for partners, and I believe there could be a strong fit.
+I understand how busy things can get, so I'll keep this brief,  we have several active {{role_context}} looking for partners, and I believe there could be a strong fit.
 
 Would you have 10 minutes this week for a quick call? Or if you prefer, just reply with your current needs and I'll put together relevant options.
 
@@ -110,7 +110,7 @@ Best regards,
     },
     {
         "name": "followup_second",
-        "subject": "Re: {{original_subject}} — Last check-in",
+        "subject": "Re: {{original_subject}},  Last check-in",
         "body": """Dear {{name}},
 
 This is my final follow-up regarding our potential collaboration. I completely understand if the timing isn't right.
@@ -127,7 +127,7 @@ Best regards,
     },
     {
         "name": "buyer_inquiry_to_manufacturer",
-        "subject": "Buyer Inquiry — {{product}} ({{quantity}} {{unit}})",
+        "subject": "Buyer Inquiry,  {{product}} ({{quantity}} {{unit}})",
         "body": """Dear {{name}},
 
 We have a buyer inquiry that matches your production capabilities:
@@ -153,7 +153,7 @@ Best regards,
     },
     {
         "name": "proposal_to_buyer",
-        "subject": "Sourcing Proposal — {{product}} from Turkey",
+        "subject": "Sourcing Proposal,  {{product}} from Turkey",
         "body": """Dear {{name}},
 
 Following your requirements, we've identified {{match_count}} suitable manufacturers for your needs:
@@ -201,7 +201,7 @@ class EmailTemplatesSkill:
 
     async def initialize(self):
         if not AIOSQLITE:
-            logger.warning("aiosqlite not installed — EmailTemplates skill disabled.")
+            logger.warning("aiosqlite not installed,  EmailTemplates skill disabled.")
             return
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(str(self.db_path)) as db:

@@ -1,12 +1,12 @@
 """
-Mobile Tool Mixin — Phone integration tools for the agent.
+Mobile Tool Mixin,  Phone integration tools for the agent.
 
 Tools:
-  phone_notify       — Send a push notification to the user's phone
-  phone_reminder     — Create a smart reminder (time-based or geo-fenced)
-  phone_geofence     — Set up a location-based geofence alert
-  phone_location     — Get the user's current phone location
-  phone_device       — Get phone device status (battery, network, etc.)
+  phone_notify      ,  Send a push notification to the user's phone
+  phone_reminder    ,  Create a smart reminder (time-based or geo-fenced)
+  phone_geofence    ,  Set up a location-based geofence alert
+  phone_location    ,  Get the user's current phone location
+  phone_device      ,  Get phone device status (battery, network, etc.)
 
 All operations are routed through the MobileRelay's SETP/1.0 tunnel.
 """

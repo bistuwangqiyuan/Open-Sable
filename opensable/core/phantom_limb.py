@@ -1,9 +1,9 @@
 """
-Phantom Limb — missing capability auto-detection.
+Phantom Limb,  missing capability auto-detection.
 
 WORLD FIRST: The agent detects capabilities it SHOULD have but doesn't.
 When tasks repeatedly fail for the same structural reason, the agent
-identifies the "phantom limb" — a tool, skill, or integration it lacks —
+identifies the "phantom limb",  a tool, skill, or integration it lacks, 
 and generates capability acquisition requests.
 
 Persistence: ``phantom_limb_state.json`` in *data_dir*.

@@ -212,7 +212,7 @@ export const useSableStore = create((set, get) => ({
     }
   },
 
-  // New chat — go to welcome screen; session is created lazily on first sendMessage
+  // New chat,  go to welcome screen; session is created lazily on first sendMessage
   newChat: () => {
     set({ activeSessionId: null })
   },
@@ -297,11 +297,11 @@ export const useSableStore = create((set, get) => ({
       if (ts.inThink) {
         const endIdx = buf.indexOf('</think>')
         if (endIdx === -1) {
-          // Still inside think block, nothing visible yet — wait for more chunks
+          // Still inside think block, nothing visible yet,  wait for more chunks
           ts.pending = buf
           buf = ''
         } else {
-          // Found end of think block — discard up to and including </think>
+          // Found end of think block,  discard up to and including </think>
           buf = buf.slice(endIdx + '</think>'.length)
           ts.inThink = false
           ts.pending = ''

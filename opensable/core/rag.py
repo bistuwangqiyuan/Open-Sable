@@ -1,5 +1,5 @@
 """
-RAG Engine — Retrieval-Augmented Generation pipeline for SableCore.
+RAG Engine,  Retrieval-Augmented Generation pipeline for SableCore.
 
 Core module that wraps the RAG skill with a clean interface for the agent.
 

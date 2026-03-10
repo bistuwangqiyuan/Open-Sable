@@ -1,21 +1,21 @@
 """
-Sable Node System — Internal IPC (Unix socket, zero TCP ports)
+Sable Node System,  Internal IPC (Unix socket, zero TCP ports)
 
 A Node is any script running on the same machine that registers its
 capabilities with the Sable Gateway.  Because everything goes through
 the Unix socket (/tmp/sable.sock), nodes cannot be reached from the
-network — OS file permissions enforce that.
+network,  OS file permissions enforce that.
 
 Built-in local node
 ───────────────────
 LocalNode exposes system-level capabilities on the same host:
 
-  system.run      — run a shell command, return stdout/stderr
-  system.notify   — send a desktop notification (notify-send / osascript)
-  system.info     — return OS/hardware info dict
-  fs.read         — read a file (size-limited)
-  fs.write        — write a file
-  fs.list         — list a directory
+  system.run     ,  run a shell command, return stdout/stderr
+  system.notify  ,  send a desktop notification (notify-send / osascript)
+  system.info    ,  return OS/hardware info dict
+  fs.read        ,  read a file (size-limited)
+  fs.write       ,  write a file
+  fs.list        ,  list a directory
 
 Node client SDK
 ───────────────
@@ -261,7 +261,7 @@ class LocalNode:
     """
 
     # Only these shell commands may be executed via system.run.
-    # Add more carefully — this is a security boundary.
+    # Add more carefully,  this is a security boundary.
     ALLOWED_COMMANDS = {
         "ls",
         "pwd",

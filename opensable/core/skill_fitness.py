@@ -1,5 +1,5 @@
 """
-Skill Fitness Scoring — Event-sourced fitness tracking for autonomous skills.
+Skill Fitness Scoring,  Event-sourced fitness tracking for autonomous skills.
 
 Event-sourced fitness tracking for autonomously created skills.  Tracks
 every skill creation, usage, error, evolution, and fork event.  Computes
@@ -54,7 +54,7 @@ EvolutionEventType = Literal[
 
 @dataclass
 class SkillEvolutionEvent:
-    """Single evolution event — one line in evolution.jsonl."""
+    """Single evolution event,  one line in evolution.jsonl."""
 
     ts: float
     event_type: EvolutionEventType
@@ -81,7 +81,7 @@ class SkillEvolutionEvent:
 
 @dataclass
 class SkillFitnessRecord:
-    """Fitness record computed purely from events — never stored directly."""
+    """Fitness record computed purely from events,  never stored directly."""
 
     name: str
     generation: int = 0
@@ -105,7 +105,7 @@ class SkillFitnessRecord:
             # Never used after 3+ ticks → quality decays toward 0
             quality = max(0.1, 0.5 - self.ticks_alive * 0.1)
         else:
-            quality = 0.5  # Grace period — just created
+            quality = 0.5  # Grace period,  just created
         return round(survival * reproductive * quality, 3)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -135,7 +135,7 @@ def compute_skill_fitness(
 ) -> List[SkillFitnessRecord]:
     """Derive fitness records from event history.
 
-    Pure computation — processes events chronologically:
+    Pure computation,  processes events chronologically:
       skill_created  → new record (gen=0)
       skill_evolved  → times_evolved++
       skill_forked   → new record (gen=parent.gen+1), parent.offspring++
@@ -186,7 +186,7 @@ def compute_skill_fitness(
     result: List[SkillFitnessRecord] = []
     for acc in records.values():
         age_seconds = current_ts - acc.created_ts if acc.created_ts else 0
-        # Convert age to "ticks" — 1 tick ≈ 1 hour of age
+        # Convert age to "ticks",  1 tick ≈ 1 hour of age
         ticks_alive = max(0, int(age_seconds / 3600))
 
         result.append(SkillFitnessRecord(
@@ -305,7 +305,7 @@ class SkillFitnessTracker:
         return None
 
     def get_low_fitness(self, threshold: float = 0.3) -> List[SkillFitnessRecord]:
-        """Get skills with fitness below threshold — candidates for pruning."""
+        """Get skills with fitness below threshold,  candidates for pruning."""
         return [r for r in self.compute_fitness() if r.fitness_score < threshold]
 
     def get_rankings_summary(self, top_n: int = 10) -> str:

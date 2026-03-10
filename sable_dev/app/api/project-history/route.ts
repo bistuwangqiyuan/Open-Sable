@@ -47,7 +47,7 @@ function saveHistory(data: ProjectHistoryData) {
 }
 
 /**
- * GET /api/project-history — list all saved projects
+ * GET /api/project-history,  list all saved projects
  */
 export async function GET() {
   try {
@@ -62,7 +62,7 @@ export async function GET() {
 }
 
 /**
- * POST /api/project-history — add or update a project entry
+ * POST /api/project-history,  add or update a project entry
  * body: { action: 'add' | 'update' | 'delete', project: ProjectHistoryEntry }
  */
 export async function POST(request: NextRequest) {

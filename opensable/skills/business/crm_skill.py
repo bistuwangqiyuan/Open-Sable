@@ -1,9 +1,9 @@
 """
-CRM Skill — SQLite-backed contact & lead management.
+CRM Skill,  SQLite-backed contact & lead management.
 
 Tables:
-  contacts   — companies and individuals (name, email, company, country, role, etc.)
-  activities — timestamped log of every interaction (email sent, reply received, note)
+  contacts  ,  companies and individuals (name, email, company, country, role, etc.)
+  activities,  timestamped log of every interaction (email sent, reply received, note)
 
 Designed for the textile brokerage use-case but generic enough for any B2B workflow.
 """
@@ -98,7 +98,7 @@ class CRMSkill:
 
     async def initialize(self):
         if not AIOSQLITE:
-            logger.warning("aiosqlite not installed — CRM skill disabled. pip install aiosqlite")
+            logger.warning("aiosqlite not installed,  CRM skill disabled. pip install aiosqlite")
             return
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(str(self.db_path)) as db:

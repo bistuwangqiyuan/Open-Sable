@@ -1,5 +1,5 @@
 """
-Image Generation Engine — Generate, edit, and analyze images.
+Image Generation Engine,  Generate, edit, and analyze images.
 
 Supports multiple backends:
 - OpenAI DALL-E (API)

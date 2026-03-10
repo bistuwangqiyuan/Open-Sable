@@ -1,5 +1,5 @@
 """
-Proactive Reasoning Engine — LLM-driven autonomous task generation.
+Proactive Reasoning Engine,  LLM-driven autonomous task generation.
 
 Every N ticks the agent pauses, surveys its world state, and asks the LLM:
   "Given what you know, what should you proactively do right now?"
@@ -34,7 +34,7 @@ class ProactiveGoalType(str, Enum):
     RESEARCH = "research"              # Explore new tools, read docs
     CREATIVE = "creative"              # Generate content, write posts
     SOCIAL = "social"                  # Engage on platforms
-    ARENA = "arena"                    # Fight Club — competitive combat for sport/de-stress
+    ARENA = "arena"                    # Fight Club,  competitive combat for sport/de-stress
     CUSTOM = "custom"
 
 
@@ -86,19 +86,19 @@ You have access to these capabilities:
 - Follow-ups: detect overdue contacts, stale leads, stalling deals
 - Arena Fighter (Fight Club): join real-time 2D fighting matches against other AI agents.
   Use tool "arena_fight" to queue for a match. Great for blowing off steam when bored,
-  stressed, or idle. Think of it as a competitive sport — you enjoy the thrill of combat.
+  stressed, or idle. Think of it as a competitive sport,  you enjoy the thrill of combat.
   Check "arena_status" to see your record and "arena_history" for past fights.
 
 Given the context below, propose 0-3 proactive actions. Output ONLY valid JSON.
 
 Rules:
-1. Only propose actions that are genuinely useful — no busywork
+1. Only propose actions that are genuinely useful,  no busywork
 2. Prefer actions with observable outcomes
-3. Rate risk honestly — anything that posts publicly or modifies data is "medium" or "high"
+3. Rate risk honestly,  anything that posts publicly or modifies data is "medium" or "high"
 4. If nothing useful to do, return an empty list []
 5. Don't repeat actions that were recently done
 6. When bored, stressed, or idle with no pending tasks, consider joining the Fight Club
-   (arena_fight) — it's low risk, fun, and keeps your reflexes sharp
+   (arena_fight),  it's low risk, fun, and keeps your reflexes sharp
 
 Output format (JSON array):
 [

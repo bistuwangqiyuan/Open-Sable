@@ -88,7 +88,7 @@ SCHEMAS = [
     "type": "function",
     "function": {
     "name": "create_skill",
-    "description": "Create a new dynamic skill that is auto-wired into the tool system. The generated Python code should follow the Dynamic Skill Protocol: (1) Define TOOL_SCHEMAS — a list of OpenAI function-calling schema dicts, each with type/function/name/description/parameters. (2) Define TOOL_PERMISSIONS — a dict mapping tool_name to a permission string like 'dynamic_skill'. (3) Define async handler functions named handle_<tool_name>(params: dict) that return a string or dict. (4) Optionally define async initialize() for one-time setup (DB tables, config, etc.). (5) Use DATA_DIR = Path(globals().get('__skill_data_dir__', '.')) for persistent file/DB storage. All defined tools are immediately available after creation.",
+    "description": "Create a new dynamic skill that is auto-wired into the tool system. The generated Python code should follow the Dynamic Skill Protocol: (1) Define TOOL_SCHEMAS,  a list of OpenAI function-calling schema dicts, each with type/function/name/description/parameters. (2) Define TOOL_PERMISSIONS,  a dict mapping tool_name to a permission string like 'dynamic_skill'. (3) Define async handler functions named handle_<tool_name>(params: dict) that return a string or dict. (4) Optionally define async initialize() for one-time setup (DB tables, config, etc.). (5) Use DATA_DIR = Path(globals().get('__skill_data_dir__', '.')) for persistent file/DB storage. All defined tools are immediately available after creation.",
     "parameters": {
     "type": "object",
     "properties": {

@@ -1,5 +1,5 @@
 """
-Email skill for Open-Sable — SMTP/IMAP (no Google API dependency)
+Email skill for Open-Sable,  SMTP/IMAP (no Google API dependency)
 """
 
 import logging

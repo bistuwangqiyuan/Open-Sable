@@ -430,7 +430,7 @@ class TestConnectMCPTools:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 4.  LangGraph removal — graph-free agent loop
+# 4.  LangGraph removal,  graph-free agent loop
 # ═══════════════════════════════════════════════════════════════════════
 
 

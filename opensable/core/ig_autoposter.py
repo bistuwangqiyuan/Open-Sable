@@ -1,5 +1,5 @@
 """
-Instagram Autonomous Content Creator — Genelia v2 + Guardian Shield.
+Instagram Autonomous Content Creator,  Genelia v2 + Guardian Shield.
 
 Periodically generates AI art via Genelia, scans with Guardian,
 and publishes safe images to Instagram with LLM-generated captions.
@@ -8,19 +8,19 @@ Behavior:
   1. Every IG_POST_INTERVAL seconds (default: 3600 = 1 hour), wakes up
   2. Uses the LLM to brainstorm a creative image concept
   3. Generates the image via Genelia v2 (portrait 832×1216 for IG)
-  4. Guardian scans for explicit content — blocks if unsafe
+  4. Guardian scans for explicit content,  blocks if unsafe
   5. LLM writes an engaging IG caption with hashtags
   6. Publishes to Instagram
   7. Sleeps until next cycle
 
 Config (.env):
-    IG_AUTOPOSTER_ENABLED=true       — activate autonomous IG posting
-    IG_POST_INTERVAL=3600            — seconds between posts (default 1h)
-    IG_MAX_DAILY_POSTS=8             — max posts per day
+    IG_AUTOPOSTER_ENABLED=true      ,  activate autonomous IG posting
+    IG_POST_INTERVAL=3600           ,  seconds between posts (default 1h)
+    IG_MAX_DAILY_POSTS=8            ,  max posts per day
     IG_TOPICS=art,surrealism,digital art,cyberpunk,nature,fantasy
-    IG_STYLE=cinematic               — visual style preference
-    IG_LANGUAGE=en                   — caption language
-    IG_DRY_RUN=false                 — if true, generates but doesn't post
+    IG_STYLE=cinematic              ,  visual style preference
+    IG_LANGUAGE=en                  ,  caption language
+    IG_DRY_RUN=false                ,  if true, generates but doesn't post
     GENELIA_V2_URL=http://192.168.68.24:8001
 """
 
@@ -106,17 +106,17 @@ class IGAutoposter:
             ig_user = os.getenv("INSTAGRAM_USERNAME", "").strip()
             ig_pass = os.getenv("INSTAGRAM_PASSWORD", "").strip()
             if not ig_user or not ig_pass:
-                logger.info("📸 IG Autoposter: No Instagram credentials configured — disabled")
+                logger.info("📸 IG Autoposter: No Instagram credentials configured,  disabled")
                 return
-            logger.warning("📸 IG Autoposter: Instagram skill not ready — will retry")
+            logger.warning("📸 IG Autoposter: Instagram skill not ready,  will retry")
 
         if not self._get_genelia_skill():
-            logger.info("📸 IG Autoposter: Genelia skill not available — disabled")
+            logger.info("📸 IG Autoposter: Genelia skill not available,  disabled")
             return
 
         self.running = True
         logger.info(
-            f"📸 IG Autoposter started — interval={self.post_interval}s, "
+            f"📸 IG Autoposter started,  interval={self.post_interval}s, "
             f"max_daily={self.max_daily}, topics={len(self.topics)}, "
             f"dry_run={self.dry_run}"
         )
@@ -171,21 +171,21 @@ class IGAutoposter:
         ig_skill = self._get_instagram_skill()
 
         if not genelia:
-            logger.warning("📸 IG Autoposter: Genelia skill not available — skipping")
+            logger.warning("📸 IG Autoposter: Genelia skill not available,  skipping")
             return
 
         # ── Pre-flight: verify IG session BEFORE generating ──
         if not self.dry_run:
             if not ig_skill:
-                logger.warning("📸 IG Autoposter: Instagram skill not available — skipping")
+                logger.warning("📸 IG Autoposter: Instagram skill not available,  skipping")
                 return
             if not getattr(ig_skill, "_initialized", False):
-                logger.info("📸 IG Autoposter: Instagram skill not initialized — attempting init...")
+                logger.info("📸 IG Autoposter: Instagram skill not initialized,  attempting init...")
                 try:
                     ok = await ig_skill.initialize()
                     if not ok:
                         logger.warning(
-                            "📸 IG Autoposter: Instagram init failed (challenge?) — "
+                            "📸 IG Autoposter: Instagram init failed (challenge?),  "
                             "NOT generating images to avoid waste"
                         )
                         self._ig_suspended = True
@@ -226,7 +226,7 @@ class IGAutoposter:
             return
 
         if result.get("blocked"):
-            logger.warning("📸 IG image blocked by Guardian — skipping this cycle")
+            logger.warning("📸 IG image blocked by Guardian,  skipping this cycle")
             self._total_blocked += 1
             return
 
@@ -338,11 +338,11 @@ class IGAutoposter:
         emotion_instruction = ""
         if emotional_ctx:
             emotion_instruction = (
-                "\n\nIMPORTANT — Your current inner emotional state:\n"
+                "\n\nIMPORTANT,  Your current inner emotional state:\n"
                 f"{emotional_ctx}\n"
                 "The image MUST reflect and express these emotions visually. "
                 "Channel your feelings into the composition, color palette, atmosphere, "
-                "and mood of the image. This is YOUR art — make it deeply personal."
+                "and mood of the image. This is YOUR art,  make it deeply personal."
             )
 
         messages = [
@@ -452,7 +452,7 @@ class IGAutoposter:
         theme = concept.get("theme", "digital art")
         mood = concept.get("mood", "atmospheric")
         captions = [
-            f"✨ {theme.title()} — {mood}\n\n🎨 Created with AI\n\n",
+            f"✨ {theme.title()},  {mood}\n\n🎨 Created with AI\n\n",
             f"🌌 Exploring {theme} through the lens of imagination\n\n",
             f"🎭 {mood.title()} vibes in {theme}\n\n",
         ]

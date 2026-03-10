@@ -1,9 +1,9 @@
 """
-Cognitive Placebo — WORLD FIRST
+Cognitive Placebo,  WORLD FIRST
 ================================
 Self-generated confidence boosts that ACTUALLY improve performance.
 The agent believes it can do something and that belief measurably
-improves outcomes — a computational placebo effect.
+improves outcomes,  a computational placebo effect.
 
 Tracks confidence modulation and correlates it with performance.
 No AI has ever implemented the placebo effect computationally.

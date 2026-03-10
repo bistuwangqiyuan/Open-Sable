@@ -1,5 +1,5 @@
 """
-Signal Aggregator — Combines signals from multiple strategies.
+Signal Aggregator,  Combines signals from multiple strategies.
 
 When multiple strategies fire on the same symbol, the aggregator
 combines them into a consensus signal with weighted confidence.

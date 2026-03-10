@@ -145,7 +145,7 @@ function summarizeEntry(entry) {
       const actions = Array.isArray(data.actions) ? data.actions.join(', ') : (data.action || '?');
       const handle = data.username || data.user || '?';
       const text = data.tweet_text || data.text || '';
-      return `${actions} @${handle} — ${text.slice(0, 120)}`;
+      return `${actions} @${handle},  ${text.slice(0, 120)}`;
     }
     case 'reflection':
       return data.analysis || data.summary || JSON.stringify(data).slice(0, 200);
@@ -419,7 +419,7 @@ export default function ThoughtsPanel({ ws, thoughts: data, connected }) {
           ) : [...reflections].reverse().map((r, i) => (
             <div key={i} style={s.reflectionCard}>
               <div style={s.reflectionTitle}>
-                🪞 Reflection — {fmtDate(r.ts)}
+                🪞 Reflection,  {fmtDate(r.ts)}
               </div>
               <div style={s.reflectionBody}>
                 {r.analysis || r.summary || JSON.stringify(r, null, 2)}

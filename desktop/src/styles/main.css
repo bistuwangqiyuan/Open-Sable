@@ -1,4 +1,4 @@
-/* ─── Sable Desktop — Dark Theme ──────────────────────────────────────────── */
+/* ─── Sable Desktop,  Dark Theme ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -1647,7 +1647,7 @@ html.light-theme .welcome-title { color: var(--text); }
 html.light-theme .suggestion-btn { color: var(--text-muted); }
 html.light-theme .suggestion-btn:hover:not(:disabled) { color: var(--text); }
 
-/* ─── Settings modal — wide + tabs ─────────────────────────────────────── */
+/* ─── Settings modal,  wide + tabs ─────────────────────────────────────── */
 .modal-wide {
   width: 540px;
   max-width: calc(100vw - 40px);
@@ -2182,7 +2182,7 @@ html.light-theme .suggestion-btn:hover:not(:disabled) { color: var(--text); }
 .permission-btn.allow:hover { opacity: 0.9; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Loading Overlay — full-screen splash while connecting to SableCore
+   Loading Overlay,  full-screen splash while connecting to SableCore
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .loading-overlay {

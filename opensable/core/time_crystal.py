@@ -1,8 +1,8 @@
 """
-Time Crystal Memory — self-reinforcing temporal patterns.
+Time Crystal Memory,  self-reinforcing temporal patterns.
 
 WORLD FIRST: Discovers recurring cycles in agent and user behavior,
-creating "temporal crystals" — periodic patterns that self-reinforce
+creating "temporal crystals",  periodic patterns that self-reinforce
 and predict future states. Like discovering that every Monday the user
 asks for reports, so the agent pre-prepares them.
 
