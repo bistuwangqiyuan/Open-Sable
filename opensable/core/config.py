@@ -265,8 +265,11 @@ class OpenSableConfig(BaseModel):
         "webchat_port", "mobile_relay_port", "smtp_port", "imap_port", mode="before"
     )
     @classmethod
-    def _validate_port(cls, v: int) -> int:
+    def _validate_port(cls, v: int, info) -> int:
         v = int(v)
+        # webchat_port=0 means "auto-assign a free port" (used by child agents)
+        if v == 0 and info.field_name == "webchat_port":
+            return v
         if not (1 <= v <= 65535):
             raise ValueError(f"Port must be 1-65535, got {v}")
         return v

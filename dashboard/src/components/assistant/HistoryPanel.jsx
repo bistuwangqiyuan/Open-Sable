@@ -82,7 +82,7 @@ function relativeTime(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-export default function HistoryPanel({ messages, sessions }) {
+export default function HistoryPanel({ messages, sessions, onLoadSession }) {
   const [filter, setFilter] = useState('all'); // all | complete | error
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
@@ -100,7 +100,7 @@ export default function HistoryPanel({ messages, sessions }) {
           title: sess.title || sess.session_id || 'Session',
           prompt: sess.last_message || '',
           status: 'complete',
-          result: sess.messages ? sess.messages[sess.messages.length - 1]?.content : '',
+          result: sess.last_response || '',
           tools: sess.tool_count || 0,
           rounds: sess.rounds || 0,
           duration: sess.duration_ms || 0,
@@ -217,6 +217,18 @@ export default function HistoryPanel({ messages, sessions }) {
                 <span>⏱️ {typeof selected.duration === 'number' && selected.duration > 1000 ? `${(selected.duration / 1000).toFixed(1)}s` : `${selected.duration}ms`}</span>
                 <span>🕐 {relativeTime(selected.ts)}</span>
               </div>
+              {onLoadSession && (
+                <button
+                  style={{
+                    marginTop: 12, padding: '8px 16px', borderRadius: 'var(--radius)',
+                    border: 'none', background: 'var(--accent)', color: 'white',
+                    fontWeight: 600, fontSize: 12, cursor: 'pointer', width: '100%',
+                  }}
+                  onClick={() => onLoadSession(selected.id)}
+                >
+                  💬 Continue this chat
+                </button>
+              )}
             </div>
           </div>
         )}

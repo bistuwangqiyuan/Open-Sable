@@ -29,7 +29,7 @@ const styles = {
   right: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 },
 };
 
-export default function Topbar({ connected, model, stats, agents, currentAgent, onAgentSelect, modelGroups, activeProvider, onModelSwitch, onRefreshModels }) {
+export default function Topbar({ connected, model, stats, agents, currentAgent, onAgentSelect, modelGroups, activeProvider, onModelSwitch, onRefreshModels, agentProfile }) {
   return (
     <div style={styles.bar}>
       <div style={styles.brand}>
@@ -47,6 +47,7 @@ export default function Topbar({ connected, model, stats, agents, currentAgent, 
         modelGroups={modelGroups || []}
         onModelSwitch={onModelSwitch}
         onRefreshModels={onRefreshModels}
+        agentProfile={agentProfile}
       />
 
       <AgentTabs

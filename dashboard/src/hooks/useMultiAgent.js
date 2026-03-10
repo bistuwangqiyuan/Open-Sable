@@ -115,6 +115,38 @@ export function useMultiAgent(wsRef, connected) {
       case 'agents.unsubscribed':
         break;
 
+      // Remote agent model list / switch results (forwarded from useWebSocket)
+      case 'models.list.result': {
+        const profile = msg._profile;
+        if (profile) {
+          setAgentStates(prev => ({
+            ...prev,
+            [profile]: {
+              ...(prev[profile] || {}),
+              modelGroups: msg.groups || [],
+              model: msg.current || (prev[profile]?.model || ''),
+              activeProvider: msg.provider || (prev[profile]?.activeProvider || ''),
+            },
+          }));
+        }
+        break;
+      }
+
+      case 'models.set.result': {
+        const profile = msg._profile;
+        if (profile && msg.success) {
+          setAgentStates(prev => ({
+            ...prev,
+            [profile]: {
+              ...(prev[profile] || {}),
+              model: msg.model || (prev[profile]?.model || ''),
+              activeProvider: msg.provider || (prev[profile]?.activeProvider || ''),
+            },
+          }));
+        }
+        break;
+      }
+
       default:
         return false; // not handled here
     }
@@ -243,6 +275,19 @@ export function useMultiAgent(wsRef, connected) {
 
         case 'connected':
           newState.connected = true;
+          break;
+
+        case 'models.list.result':
+          newState.modelGroups = msg.groups || [];
+          if (msg.current) newState.model = msg.current;
+          if (msg.provider) newState.activeProvider = msg.provider;
+          break;
+
+        case 'models.set.result':
+          if (msg.success) {
+            if (msg.model) newState.model = msg.model;
+            if (msg.provider) newState.activeProvider = msg.provider;
+          }
           break;
 
         default:

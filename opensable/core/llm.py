@@ -973,6 +973,13 @@ class CloudLLM:
         self._client = None
         self.token_tracker = TokenTracker()
 
+        # ── Circuit breaker state (prevents hammering a stuck server) ──
+        self._consecutive_failures = 0
+        self._circuit_open_until = 0.0        # epoch time
+        self._backoff_base = 30               # seconds
+        self._backoff_max = 300               # 5 minute max
+        self._failure_threshold = 3           # open circuit after N failures
+
         # Open WebUI: user configures URL and model via .env
         if provider == "openwebui":
             custom_url = getattr(config, "openwebui_api_url", None)
@@ -1294,8 +1301,23 @@ class CloudLLM:
         Tools are intentionally NOT forwarded because most Open WebUI backends
         (Ollama, llama.cpp) reject the OpenAI ``tools`` parameter with 400.
         The agent loop already falls back to extracting tool calls from text.
+
+        Circuit breaker: after repeated failures, short-circuits for a cooldown
+        period to avoid hammering a stuck server.
         """
         import aiohttp
+
+        # ── Circuit breaker check ──
+        now = time.time()
+        if self._consecutive_failures >= self._failure_threshold:
+            if now < self._circuit_open_until:
+                wait = int(self._circuit_open_until - now)
+                raise RuntimeError(
+                    f"OpenWebUI circuit breaker open — {self._consecutive_failures} "
+                    f"consecutive failures. Retrying in {wait}s."
+                )
+            # Cooldown expired — allow a single probe
+            logger.info("OpenWebUI circuit breaker: attempting probe request...")
 
         url = getattr(self, "_openwebui_base_url", "") + "/chat/completions"
         headers = {
@@ -1305,13 +1327,34 @@ class CloudLLM:
         body: dict = {"model": self.current_model, "messages": messages}
         # NOTE: tools deliberately omitted — Ollama/OWUI backends return 400
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=body,
-                                    timeout=aiohttp.ClientTimeout(total=120)) as resp:
-                if resp.status != 200:
-                    err = await resp.text()
-                    raise RuntimeError(f"OpenWebUI returned {resp.status}: {err[:300]}")
-                data = await resp.json()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=body,
+                                        timeout=aiohttp.ClientTimeout(total=90)) as resp:
+                    if resp.status != 200:
+                        err = await resp.text()
+                        raise RuntimeError(f"OpenWebUI returned {resp.status}: {err[:300]}")
+                    data = await resp.json()
+
+            # ── Success: reset circuit breaker ──
+            if self._consecutive_failures > 0:
+                logger.info(f"OpenWebUI recovered after {self._consecutive_failures} failures")
+            self._consecutive_failures = 0
+            self._circuit_open_until = 0.0
+        except Exception:
+            # ── Failure: update circuit breaker ──
+            self._consecutive_failures += 1
+            backoff = min(
+                self._backoff_base * (2 ** (self._consecutive_failures - self._failure_threshold)),
+                self._backoff_max,
+            )
+            if self._consecutive_failures >= self._failure_threshold:
+                self._circuit_open_until = time.time() + backoff
+                logger.warning(
+                    f"OpenWebUI circuit breaker: {self._consecutive_failures} failures, "
+                    f"cooldown {backoff}s"
+                )
+            raise
 
         choice = data.get("choices", [{}])[0]
         msg = choice.get("message", {})
@@ -1430,6 +1473,15 @@ class CloudLLM:
             if self.provider == "openwebui":
                 # Open WebUI: use aiohttp SSE (Cloudflare blocks openai SDK's httpx)
                 import aiohttp
+
+                # Circuit breaker check (shared with _openwebui_invoke)
+                now = time.time()
+                if self._consecutive_failures >= self._failure_threshold:
+                    if now < self._circuit_open_until:
+                        wait = int(self._circuit_open_until - now)
+                        yield f"Error: OpenWebUI circuit breaker open ({self._consecutive_failures} failures). Retrying in {wait}s."
+                        return
+
                 url = getattr(self, "_openwebui_base_url", "") + "/chat/completions"
                 headers = {
                     "Authorization": f"Bearer {self._get_api_key()}",
@@ -1440,66 +1492,87 @@ class CloudLLM:
                 _inside_think = False
                 _reasoning_parts: list[str] = []
 
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(url, headers=headers, json=body,
-                                            timeout=aiohttp.ClientTimeout(total=300)) as resp:
-                        if resp.status != 200:
-                            err = await resp.text()
-                            yield f"Error: OpenWebUI returned {resp.status}"
-                            return
-                        # Parse SSE stream
-                        async for line in resp.content:
-                            line = line.decode("utf-8", errors="replace").strip()
-                            if not line.startswith("data: "):
-                                continue
-                            payload = line[6:]
-                            if payload == "[DONE]":
-                                break
-                            try:
-                                chunk = json.loads(payload)
-                            except json.JSONDecodeError:
-                                continue
-                            choices = chunk.get("choices", [])
-                            if not choices:
-                                continue
-                            delta = choices[0].get("delta", {})
-                            content = delta.get("content")
-                            if not content:
-                                continue
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(url, headers=headers, json=body,
+                                                timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                            if resp.status != 200:
+                                err = await resp.text()
+                                self._consecutive_failures += 1
+                                yield f"Error: OpenWebUI returned {resp.status}"
+                                return
+                            # Reset circuit breaker on first successful byte
+                            if self._consecutive_failures > 0:
+                                logger.info(f"OpenWebUI stream recovered after {self._consecutive_failures} failures")
+                            self._consecutive_failures = 0
+                            self._circuit_open_until = 0.0
+                            # Parse SSE stream
+                            async for line in resp.content:
+                                line = line.decode("utf-8", errors="replace").strip()
+                                if not line.startswith("data: "):
+                                    continue
+                                payload = line[6:]
+                                if payload == "[DONE]":
+                                    break
+                                try:
+                                    chunk = json.loads(payload)
+                                except json.JSONDecodeError:
+                                    continue
+                                choices = chunk.get("choices", [])
+                                if not choices:
+                                    continue
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content")
+                                if not content:
+                                    continue
 
-                            # Strip <think> tags from models that produce them
-                            _buf += content
-                            while _buf:
-                                if _inside_think:
-                                    end_idx = _buf.find("</think>")
-                                    if end_idx != -1:
-                                        _reasoning_parts.append(_buf[:end_idx])
-                                        _buf = _buf[end_idx + 8:]
-                                        _inside_think = False
-                                    else:
-                                        _reasoning_parts.append(_buf)
-                                        _buf = ""
-                                else:
-                                    start_idx = _buf.find("<think>")
-                                    if start_idx != -1:
-                                        if start_idx > 0:
-                                            yield _buf[:start_idx]
-                                        _buf = _buf[start_idx + 7:]
-                                        _inside_think = True
-                                    else:
-                                        safe = True
-                                        for i in range(1, min(len("<think>"), len(_buf) + 1)):
-                                            if _buf.endswith("<think>"[:i]):
-                                                yield _buf[:-i]
-                                                _buf = _buf[-i:]
-                                                safe = False
-                                                break
-                                        if safe:
-                                            yield _buf
+                                # Strip <think> tags from models that produce them
+                                _buf += content
+                                while _buf:
+                                    if _inside_think:
+                                        end_idx = _buf.find("</think>")
+                                        if end_idx != -1:
+                                            _reasoning_parts.append(_buf[:end_idx])
+                                            _buf = _buf[end_idx + 8:]
+                                            _inside_think = False
+                                        else:
+                                            _reasoning_parts.append(_buf)
                                             _buf = ""
-                # Flush remaining buffer
-                if _buf:
-                    yield _buf
+                                    else:
+                                        start_idx = _buf.find("<think>")
+                                        if start_idx != -1:
+                                            if start_idx > 0:
+                                                yield _buf[:start_idx]
+                                            _buf = _buf[start_idx + 7:]
+                                            _inside_think = True
+                                        else:
+                                            safe = True
+                                            for i in range(1, min(len("<think>"), len(_buf) + 1)):
+                                                if _buf.endswith("<think>"[:i]):
+                                                    yield _buf[:-i]
+                                                    _buf = _buf[-i:]
+                                                    safe = False
+                                                    break
+                                            if safe:
+                                                yield _buf
+                                                _buf = ""
+                    # Flush remaining buffer
+                    if _buf:
+                        yield _buf
+                except Exception as exc:
+                    self._consecutive_failures += 1
+                    if self._consecutive_failures >= self._failure_threshold:
+                        backoff = min(
+                            self._backoff_base * (2 ** (self._consecutive_failures - self._failure_threshold)),
+                            self._backoff_max,
+                        )
+                        self._circuit_open_until = time.time() + backoff
+                        logger.warning(
+                            f"OpenWebUI stream circuit breaker: {self._consecutive_failures} failures, "
+                            f"cooldown {backoff}s"
+                        )
+                    yield f"Error: {exc}"
+                    return
 
             elif self.provider in self._OPENAI_COMPAT:
                 from openai import AsyncOpenAI

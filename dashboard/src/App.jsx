@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useMultiAgent } from './hooks/useMultiAgent';
 import Sidebar from './components/layout/Sidebar';
@@ -55,50 +55,64 @@ export default function App() {
 
   const ws = useWebSocket(onExternalMessage);
   const ma = useMultiAgent(ws.wsRef, ws.connected);
+
+  // Load a session from history and switch to chat (must be after ws is created)
+  const handleLoadSession = useCallback((sessionId) => {
+    ws.loadSession(sessionId);
+    setTab('chat');
+  }, [ws.loadSession]);
   multiAgentRef.current = ma;
 
   // Determine if we're viewing a remote agent or the current (local) agent
   const isLocal = !ma.currentAgent || ma.agents.some(a => a.is_current && a.name === ma.currentAgent);
   const remoteState = !isLocal ? (ma.agentStates[ma.currentAgent] || {}) : null;
 
+  // When switching to a remote agent, fetch its model list
+  useEffect(() => {
+    if (!isLocal && ma.currentAgent && ws.connected) {
+      ws.requestModels(ma.currentAgent);
+    }
+  }, [isLocal, ma.currentAgent, ws.connected]);
+
   // Build panel props,  for current agent use live ws data, for remote use proxied state
   // (no useMemo: ws is a new object every render so the memo never saves work)
   let panelProps;
   if (isLocal) {
     panelProps = {
-      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages },
+      chat:     { messages: ws.messages, streaming: ws.streaming, onSend: ws.sendMessage, onClear: ws.clearMessages, sessions: ws.sessions, activeSessionId: ws.activeSessionId, onLoadSession: ws.loadSession, onNewChat: () => ws.loadSession(null), onDeleteSession: ws.deleteSession },
       activity: { activity: ws.activity, onClear: ws.clearActivity },
       terminal: { terminal: ws.terminal, onClear: ws.clearTerminal },
       status:   { stats: ws.stats, sessions: ws.sessions, model: ws.model, activity: ws.activity },
       trading:  { stats: ws.stats, messages: ws.messages, streaming: ws.streaming, sendMessage: ws.sendMessage },
       tasks:    { streaming: ws.streaming, messages: ws.messages, activity: ws.activity, sendMessage: ws.sendMessage },
-      history:  { messages: ws.messages, sessions: ws.sessions },
+      history:  { messages: ws.messages, sessions: ws.sessions, onLoadSession: handleLoadSession },
       thoughts: { ws: ws.wsRef, thoughts: ws.thoughts, connected: ws.connected },
       brain:    { ws: ws.wsRef, brainData: ws.brainData, connected: ws.connected, profile: null, isLocal: true },
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected },
+      settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected, agentProfile: null },
     };
   } else {
     // Remote agent,  interactive view via proxy
     const rs = remoteState || {};
     const sendToRemote = (text) => ma.sendToAgent(ma.currentAgent, text);
     const clearRemoteMsgs = () => {};
+    const remoteModelGroups = rs.modelGroups || [];
     panelProps = {
-      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs },
+      chat:     { messages: rs.messages || [], streaming: rs.streaming || false, onSend: sendToRemote, onClear: clearRemoteMsgs, sessions: rs.sessions || [], activeSessionId: '', onLoadSession: () => {}, onNewChat: () => {}, onDeleteSession: () => {} },
       activity: { activity: rs.activity || [], onClear: () => {} },
       terminal: { terminal: rs.terminal || [], onClear: () => {} },
       status:   { stats: rs.stats || {}, sessions: rs.sessions || [], model: rs.model || '', activity: rs.activity || [] },
       trading:  { stats: rs.stats || {}, messages: rs.messages || [], streaming: rs.streaming || false, sendMessage: sendToRemote },
       tasks:    { streaming: rs.streaming || false, messages: rs.messages || [], activity: rs.activity || [], sendMessage: sendToRemote },
-      history:  { messages: rs.messages || [], sessions: rs.sessions || [] },
+      history:  { messages: rs.messages || [], sessions: rs.sessions || [], onLoadSession: handleLoadSession },
       thoughts: { ws: { current: null }, thoughts: rs.thoughts, connected: rs.connected || false },
       brain:    { ws: ws.wsRef, brainData: rs.brainData || null, connected: ws.connected, profile: ma.currentAgent, isLocal: false },
       qr:       {},
       agent:    {},
       devices:  {},
-      settings: { modelGroups: ws.modelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected },
+      settings: { modelGroups: remoteModelGroups, switchModel: ws.switchModel, importGGUF: ws.importGGUF, ws: ws.wsRef, connected: ws.connected, agentProfile: ma.currentAgent },
     };
   }
 
@@ -113,10 +127,11 @@ export default function App() {
         agents={ma.agents}
         currentAgent={ma.currentAgent}
         onAgentSelect={ma.setCurrentAgent}
-        modelGroups={ws.modelGroups}
-        activeProvider={ws.activeProvider}
+        modelGroups={isLocal ? ws.modelGroups : (remoteState?.modelGroups || [])}
+        activeProvider={isLocal ? ws.activeProvider : (remoteState?.activeProvider || '')}
         onModelSwitch={ws.switchModel}
         onRefreshModels={ws.requestModels}
+        agentProfile={isLocal ? null : ma.currentAgent}
       />
 
       {(isLocal ? ws.streaming : remoteState?.streaming) && (

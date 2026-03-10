@@ -112,7 +112,7 @@ async def async_main():
                 gateway = Gateway(agent, config)
                 await gateway.start()
                 logger.info("Internal Gateway started on /tmp/sable.sock")
-                webchat_port = int(getattr(config, "webchat_port", 8789))
+                webchat_port = gateway._webchat_port  # may differ from config if auto-assigned
                 console.print("[bold green]🔌 Gateway running[/bold green]")
                 console.print(
                     f"[bold cyan]🌐 WebChat → http://127.0.0.1:{webchat_port}[/bold cyan]"
@@ -130,6 +130,21 @@ async def async_main():
                     logger.info("Local node started (system.run, fs.*, system.info)")
             except Exception as e:
                 logger.warning(f"Gateway failed to start: {e}")
+
+        # ── Auto-start child agents ({profile_name}-*) ───────────────────────
+        _child_procs: list = []
+        try:
+            from opensable.core.agent_manager import AgentManager
+            _agent_mgr = AgentManager(profile_name, gateway)
+            agent._agent_manager = _agent_mgr   # expose to tools
+            if gateway:
+                gateway._agent_manager = _agent_mgr
+            _child_procs = await _agent_mgr.auto_start_children()
+            if _child_procs:
+                names = [c["name"] for c in _child_procs]
+                console.print(f"[bold magenta]👥 Sub-agents started: {', '.join(names)}[/bold magenta]")
+        except Exception as e:
+            logger.warning(f"Child agent auto-start failed: {e}")
 
         # ── Pixel-Bridge (Pixel Agents VS Code extension) ─────────────────────
         _bridge_proc = None
@@ -287,6 +302,9 @@ async def async_main():
             try:
                 await asyncio.Event().wait()
             finally:
+                # Stop child agents first
+                if _child_procs and '_agent_mgr' in dir():
+                    await _agent_mgr.stop_all_children()
                 if _bridge_proc and _bridge_proc.returncode is None:
                     _bridge_proc.terminate()
                 if gateway:
@@ -304,6 +322,9 @@ async def async_main():
         try:
             await asyncio.gather(*[interface.start() for interface in interfaces])
         finally:
+            # Stop child agents first
+            if _child_procs and '_agent_mgr' in dir():
+                await _agent_mgr.stop_all_children()
             if _bridge_proc and _bridge_proc.returncode is None:
                 _bridge_proc.terminate()
             if autonomous:

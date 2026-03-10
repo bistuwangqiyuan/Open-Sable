@@ -145,6 +145,7 @@ agents/nexus_erebus/
 # All agent profile.env files contain credentials,  only EXAMPLE files go to repo
 agents/*/profile.env
 .sable-analyst.pid
+.sable-nano.pid
 .sable-nexus_erebus.pid
 .sable-sable.pid
 .dev-studio.pid
@@ -180,3 +181,4 @@ epistemic_wary.png
 # Agent autonomous write sandbox,  all LLM-generated files land here
 data/agent_output/
 /agents/nano/
+/agents/nano-sweaters/

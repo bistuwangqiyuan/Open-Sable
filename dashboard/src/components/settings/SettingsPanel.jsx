@@ -80,7 +80,7 @@ function saveConfig(cfg) {
   localStorage.setItem('opensable_agent_config', JSON.stringify(cfg));
 }
 
-export default function SettingsPanel({ modelGroups = [], switchModel, importGGUF, ws, connected }) {
+export default function SettingsPanel({ modelGroups = [], switchModel, importGGUF, ws, connected, agentProfile }) {
   const [config, setConfig] = useState(loadConfig);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showKey, setShowKey] = useState(false);
@@ -126,25 +126,25 @@ export default function SettingsPanel({ modelGroups = [], switchModel, importGGU
 
   const requestLlmStatus = useCallback(() => {
     const socket = ws?.current;
-    if (socket?.readyState === 1) socket.send(JSON.stringify({ type: 'llm.status' }));
-  }, [ws]);
+    if (socket?.readyState === 1) socket.send(JSON.stringify({ type: 'llm.status', ...(agentProfile ? { profile: agentProfile } : {}) }));
+  }, [ws, agentProfile]);
 
   const requestModels = useCallback(() => {
     const socket = ws?.current;
     if (socket?.readyState === 1) {
       setLoadingModels(true);
-      socket.send(JSON.stringify({ type: 'llm.models' }));
+      socket.send(JSON.stringify({ type: 'llm.models', ...(agentProfile ? { profile: agentProfile } : {}) }));
     }
-  }, [ws]);
+  }, [ws, agentProfile]);
 
   const switchLlm = useCallback((provider, model) => {
     const socket = ws?.current;
     if (socket?.readyState === 1) {
       setSwitching(true);
       setSwitchResult(null);
-      socket.send(JSON.stringify({ type: 'llm.switch', provider, model: model || undefined }));
+      socket.send(JSON.stringify({ type: 'llm.switch', provider, model: model || undefined, ...(agentProfile ? { profile: agentProfile } : {}) }));
     }
-  }, [ws]);
+  }, [ws, agentProfile]);
 
   useEffect(() => {
     if (connected) {

@@ -60,6 +60,7 @@ from ._github import GitHubToolsMixin
 from ._google_workspace import GoogleWorkspaceToolsMixin
 from ._business import BusinessToolsMixin
 from ._arena import ArenaToolsMixin
+from ._agent_manager import AgentManagerToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
 from ._dispatch import SCHEMA_TO_TOOL
@@ -79,6 +80,7 @@ class ToolRegistry(
     GoogleWorkspaceToolsMixin,
     BusinessToolsMixin,
     ArenaToolsMixin,
+    AgentManagerToolsMixin,
 ):
     """Registry of all available tools/actions.
 
@@ -93,6 +95,7 @@ class ToolRegistry(
     - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
     - GoogleWorkspaceToolsMixin: Gmail, Drive, Calendar, Sheets, Docs, Chat (via gws CLI)
     - ArenaToolsMixin: fighting-game arena (SAGP auth + WebSocket combat)
+    - AgentManagerToolsMixin: sub-agent lifecycle (create, stop, destroy, message)
     """
 
     # RBAC permissions (imported from _permissions.py)
@@ -391,6 +394,14 @@ class ToolRegistry(
         self.register("arena_status", self._arena_status_tool)
         self.register("arena_history", self._arena_history_tool)
         self.register("arena_disconnect", self._arena_disconnect_tool)
+
+        # ── Agent Manager (sub-agent lifecycle) ───────────────────────────────
+        self.register("agent_create", self._agent_create_tool)
+        self.register("agent_stop", self._agent_stop_tool)
+        self.register("agent_start", self._agent_start_tool)
+        self.register("agent_destroy", self._agent_destroy_tool)
+        self.register("agent_list", self._agent_list_tool)
+        self.register("agent_message", self._agent_message_tool)
 
         # Initialize arena skill
         if self.arena_skill:

@@ -68,7 +68,7 @@ const s = {
   },
 };
 
-export default function ModelSelector({ model, modelGroups = [], onModelSwitch, onRefreshModels }) {
+export default function ModelSelector({ model, modelGroups = [], onModelSwitch, onRefreshModels, agentProfile }) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoverTrigger, setHoverTrigger] = useState(false);
@@ -96,7 +96,7 @@ export default function ModelSelector({ model, modelGroups = [], onModelSwitch, 
     <div style={s.wrapper} ref={ref}>
       <div
         style={{ ...s.trigger, ...(hoverTrigger ? s.triggerHover : {}) }}
-        onClick={() => { setOpen(!open); if (!open && onRefreshModels) onRefreshModels(); }}
+        onClick={() => { setOpen(!open); if (!open && onRefreshModels) onRefreshModels(agentProfile); }}
         onMouseEnter={() => setHoverTrigger(true)}
         onMouseLeave={() => setHoverTrigger(false)}
       >
@@ -112,7 +112,7 @@ export default function ModelSelector({ model, modelGroups = [], onModelSwitch, 
             <span>Select Model</span>
             <span style={{ fontWeight: 400, opacity: 0.7 }}>({totalModels})</span>
             {onRefreshModels && (
-              <button style={s.refreshBtn} onClick={(e) => { e.stopPropagation(); onRefreshModels(); }} title="Refresh models">
+              <button style={s.refreshBtn} onClick={(e) => { e.stopPropagation(); onRefreshModels(agentProfile); }} title="Refresh models">
                 <RefreshCw size={11} />
               </button>
             )}
@@ -145,7 +145,7 @@ export default function ModelSelector({ model, modelGroups = [], onModelSwitch, 
                     onMouseLeave={() => setHoveredItem(null)}
                     onClick={() => {
                       if (!isActive && onModelSwitch) {
-                        onModelSwitch(m.name, group.provider);
+                        onModelSwitch(m.name, group.provider, agentProfile);
                       }
                       setOpen(false);
                     }}

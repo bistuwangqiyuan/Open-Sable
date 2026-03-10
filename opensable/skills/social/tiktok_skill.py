@@ -74,6 +74,9 @@ class TikTokSkill:
             logger.warning("TikTokApi not available,  TikTok skill disabled")
             return False
 
+        # ── Close any existing session first (prevents Playwright browser leak) ──
+        await self.close()
+
         self._ms_token = (
             getattr(self.config, "tiktok_ms_token", None)
             or os.getenv("TIKTOK_MS_TOKEN", "")
@@ -109,6 +112,10 @@ class TikTokSkill:
                 sleep_after=3,
                 browser=self._browser,
                 context_options=_mobile_context,
+                # Mute audio — prevents headless Chrome from playing TikTok video sound
+                override_browser_args=["--mute-audio", "--autoplay-policy=user-gesture-required"],
+                # Don't load media resources — saves bandwidth and prevents audio/video playback
+                suppress_resource_load_types=["media", "image", "font", "stylesheet"],
             )
 
             self._initialized = True
@@ -567,6 +574,20 @@ class TikTokSkill:
             try:
                 await self._api.close_sessions()
                 logger.info("TikTok: Sessions closed")
+            except Exception as exc:
+                logger.debug(f"TikTok close error: {exc}")
+            finally:
+                self._api = None
+                self._initialized = False
+
+    def __del__(self):
+        """Fallback cleanup, try to close Playwright if the event loop is running."""
+        if self._api:
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self.close())
             except Exception:
                 pass
 

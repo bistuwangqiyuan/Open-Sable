@@ -157,6 +157,51 @@ _data_dir = Path(os.environ.get("_SABLE_DATA_DIR", "data"))
 GATEWAY_VER = "2.1.0"
 HEARTBEAT_INT = 30  # seconds between heartbeat frames
 
+
+def _find_free_port() -> int:
+    """Find a free TCP port by letting the OS assign one."""
+    import socket as _sock
+    with _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+async def _proxy_ws_request(
+    socket_path: str,
+    payload: dict,
+    expected_type: str | None = None,
+    timeout: float = 10,
+) -> dict:
+    """Open a WebSocket to a remote agent, send *payload*, return the response.
+
+    The remote gateway sends a ``connected`` welcome message on open.
+    This helper drains that welcome frame before reading the real reply.
+    If *expected_type* is given, it keeps reading until a message with that
+    ``type`` arrives (up to *timeout* seconds total).
+    """
+    conn = aiohttp.UnixConnector(path=socket_path)
+    async with aiohttp.ClientSession(connector=conn) as session:
+        async with session.ws_connect("http://localhost/") as ws:
+            # Drain the welcome / connected message
+            try:
+                welcome = await asyncio.wait_for(ws.receive_json(), timeout=3)
+                logger.debug(f"[proxy] drained welcome: {welcome.get('type')}")
+            except Exception:
+                pass
+
+            await ws.send_json(payload)
+
+            deadline = asyncio.get_event_loop().time() + timeout
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError("proxy response timed out")
+                resp = await asyncio.wait_for(ws.receive_json(), timeout=remaining)
+                if expected_type is None or resp.get("type") == expected_type:
+                    return resp
+                # Not the message we want — keep draining
+                logger.debug(f"[proxy] skipped msg type={resp.get('type')}")
+
+
 # Static asset extensions that bypass token auth
 _ASSET_EXTS = frozenset({
     ".css", ".js", ".mjs", ".map", ".json",
@@ -216,7 +261,8 @@ class Gateway:
 
         # TCP WebChat settings
         self._webchat_host = getattr(config, "webchat_host", "127.0.0.1")
-        self._webchat_port = int(getattr(config, "webchat_port", 8789))
+        _raw_port = int(getattr(config, "webchat_port", 8789))
+        self._webchat_port = _find_free_port() if _raw_port == 0 else _raw_port
         self._webchat_token: Optional[str] = getattr(config, "webchat_token", None) or None
         self._webchat_ts = getattr(config, "webchat_tailscale", False)
 
@@ -1013,6 +1059,8 @@ class Gateway:
             await self._on_sessions_list(client)
         elif t == "sessions.history":
             await self._on_sessions_history(client, msg)
+        elif t == "sessions.delete":
+            await self._on_sessions_delete(client, msg)
         elif t == "node.register":
             await self._on_node_register(client, msg)
         elif t == "node.invoke":
@@ -1039,7 +1087,7 @@ class Gateway:
                 pass
             await client.send({"type": "status", **status})
         elif t == "models.list":
-            await self._on_models_list(client)
+            await self._on_models_list(client, msg)
         elif t == "models.set":
             await self._on_models_set(client, msg)
         elif t == "models.import":
@@ -1065,9 +1113,9 @@ class Gateway:
         elif t == "permission.response":
             await self._on_permission_response(client, msg)
         elif t == "llm.status":
-            await self._on_llm_status(client)
+            await self._on_llm_status(client, msg)
         elif t == "llm.models":
-            await self._on_llm_models(client)
+            await self._on_llm_models(client, msg)
         elif t == "llm.switch":
             await self._on_llm_switch(client, msg)
         elif t == "ping":
@@ -1152,8 +1200,11 @@ class Gateway:
                     logger.info(f"[Gateway] Permission {action_str} set to always_allow (remembered)")
                 except Exception:
                     pass
-    async def _on_llm_status(self, client: _Client):
+    async def _on_llm_status(self, client: _Client, msg: dict = None):
         """Return current LLM provider/model info."""
+        profile = (msg or {}).get("profile", "")
+        if profile and profile != _profile_name:
+            return await self._proxy_llm_command(client, profile, {"type": "llm.status"})
         try:
             from opensable.core.llm import AdaptiveLLM
             llm = self.agent.llm
@@ -1172,7 +1223,10 @@ class Gateway:
         except Exception as e:
             await client.send({"type": "llm.status", "error": str(e)})
 
-    async def _on_llm_models(self, client: _Client):
+    async def _on_llm_models(self, client: _Client, msg: dict = None):
+        profile = (msg or {}).get("profile", "")
+        if profile and profile != _profile_name:
+            return await self._proxy_llm_command(client, profile, {"type": "llm.models"})
         """List all available models across all configured providers."""
         try:
             from opensable.core.llm import list_all_models
@@ -1183,6 +1237,13 @@ class Gateway:
 
     async def _on_llm_switch(self, client: _Client, msg: dict):
         """Switch LLM provider and/or model at runtime."""
+        profile = msg.get("profile", "")
+        if profile and profile != _profile_name:
+            return await self._proxy_llm_command(client, profile, {
+                "type": "llm.switch",
+                "provider": msg.get("provider", "ollama"),
+                "model": msg.get("model"),
+            })
         try:
             from opensable.core.llm import switch_llm
             provider = msg.get("provider", "ollama")
@@ -1203,6 +1264,20 @@ class Gateway:
                         pass
         except Exception as e:
             await client.send({"type": "llm.switch", "success": False, "error": str(e)})
+
+    async def _proxy_llm_command(self, client: _Client, profile: str, payload: dict):
+        """Proxy an llm.* command to a remote agent via Unix socket."""
+        socket_path = f"/tmp/sable-{profile}.sock"
+        if not Path(socket_path).exists():
+            await client.send({"type": payload["type"], "success": False, "error": f"Agent '{profile}' is not running"})
+            return
+        try:
+            resp = await _proxy_ws_request(socket_path, payload, timeout=10)
+            resp["_profile"] = profile
+            await client.send(resp)
+        except Exception as exc:
+            logger.warning(f"[Gateway] proxy llm command to {profile} failed: {exc}")
+            await client.send({"type": payload["type"], "success": False, "error": str(exc), "_profile": profile})
 
     def _get_configured_providers(self) -> list:
         """Return list of providers that have API keys configured."""
@@ -1260,8 +1335,26 @@ class Gateway:
         ("together",  "together_api_key",  "Together",  ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"]),
     ]
 
-    async def _on_models_list(self, client: _Client):
+    async def _on_models_list(self, client: _Client, msg: dict = None):
         """Return all available models: local Ollama + OpenWebUI + configured cloud providers."""
+        profile = (msg or {}).get("profile", "")
+        if profile and profile != _profile_name:
+            # Proxy to remote agent
+            socket_path = f"/tmp/sable-{profile}.sock"
+            if not Path(socket_path).exists():
+                await client.send({"type": "models.list.result", "groups": [], "current": "", "provider": "", "_profile": profile})
+                return
+            try:
+                resp = await _proxy_ws_request(
+                    socket_path, {"type": "models.list"},
+                    expected_type="models.list.result", timeout=10,
+                )
+                resp["_profile"] = profile
+                await client.send(resp)
+            except Exception as exc:
+                logger.warning(f"[Gateway] models.list proxy to {profile} failed: {exc}")
+                await client.send({"type": "models.list.result", "groups": [], "current": "", "provider": "", "_profile": profile})
+            return
         groups: list[dict] = []  # [{provider, name, models: [{name, active}]}]
         current_model: str = ""
         provider_type: str = "ollama"  # default
@@ -1329,6 +1422,25 @@ class Gateway:
 
     async def _on_models_set(self, client: _Client, msg: dict):
         """Switch the active model.  Supports both local and cloud models."""
+        profile = msg.get("profile", "")
+        if profile and profile != _profile_name:
+            # Proxy to remote agent via models.set, return models.set.result
+            socket_path = f"/tmp/sable-{profile}.sock"
+            if not Path(socket_path).exists():
+                await client.send({"type": "models.set.result", "success": False, "error": f"Agent '{profile}' is not running", "_profile": profile})
+                return
+            try:
+                resp = await _proxy_ws_request(
+                    socket_path,
+                    {"type": "models.set", "model": msg.get("model", ""), "provider": msg.get("provider", "")},
+                    expected_type="models.set.result", timeout=10,
+                )
+                resp["_profile"] = profile
+                await client.send(resp)
+            except Exception as exc:
+                logger.warning(f"[Gateway] models.set proxy to {profile} failed: {exc}")
+                await client.send({"type": "models.set.result", "success": False, "error": str(exc), "_profile": profile})
+            return
         model_name: str = msg.get("model", "").strip()
         provider: str = msg.get("provider", "").strip()  # optional: force provider
         if not model_name:
@@ -1718,16 +1830,15 @@ class Gateway:
             return
 
         try:
-            conn = aiohttp.UnixConnector(path=socket_path)
-            async with aiohttp.ClientSession(connector=conn) as session:
-                async with session.ws_connect("http://localhost/") as ws:
-                    await ws.send_json({"type": "status"})
-                    resp = await asyncio.wait_for(ws.receive_json(), timeout=5)
-                    await client.send({
-                        "type": "agents.status.result",
-                        "profile": profile,
-                        **resp,
-                    })
+            resp = await _proxy_ws_request(
+                socket_path, {"type": "status"},
+                expected_type="status", timeout=5,
+            )
+            await client.send({
+                "type": "agents.status.result",
+                "profile": profile,
+                **resp,
+            })
         except Exception as exc:
             logger.debug(f"[Gateway] agents.status proxy to {profile} failed: {exc}")
             await client.send({
@@ -2101,6 +2212,20 @@ class Gateway:
         s = sm.get_session(sid)
         msgs = [m.to_dict() for m in s.get_messages()] if s else []
         await client.send({"type": "sessions.history.result", "session_id": sid, "messages": msgs})
+
+    async def _on_sessions_delete(self, client: _Client, msg: dict):
+        from opensable.core.session_manager import SessionManager
+
+        sm = SessionManager()
+        sid = msg.get("session_id", "")
+        if not sid:
+            await client.send({"type": "sessions.delete.result", "success": False, "error": "No session_id provided"})
+            return
+        ok = sm.delete_session(sid)
+        await client.send({"type": "sessions.delete.result", "success": ok, "session_id": sid})
+        # Refresh the session list for this client
+        if ok:
+            await self._on_sessions_list(client)
 
     # ── Monitor system ────────────────────────────────────────────────────────
 

@@ -19,12 +19,14 @@ class BrowserSkill:
 
     async def initialize(self):
         """Initialize Playwright"""
+        # Close any existing browser first (prevents Playwright leak on re-init)
+        await self.cleanup()
         try:
             from playwright.async_api import async_playwright
 
             self.playwright = await async_playwright().start()
             self.browser = await self.playwright.chromium.launch(
-                headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
+                headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--mute-audio"]
             )
             self.context = await self.browser.new_context()
 

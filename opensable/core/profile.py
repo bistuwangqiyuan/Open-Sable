@@ -109,6 +109,10 @@ TOOL_GROUPS: Dict[str, List[str]] = {
         "generate_image", "grok_generate_image", "grok_analyze_image",
         "ocr_extract",
     ],
+    "group:agents": [
+        "agent_create", "agent_stop", "agent_start",
+        "agent_destroy", "agent_list", "agent_message",
+    ],
 }
 
 
@@ -178,10 +182,20 @@ class AgentProfile:
 
         Call this *before* ``load_config()`` so the Pydantic config picks up
         the overridden values.
+
+        When a parent agent spawns this profile as a child
+        (``_SABLE_PARENT_PROFILE`` is set), env vars that are already present
+        in ``os.environ`` are kept (the parent set them intentionally,
+        e.g. ``WEBCHAT_PORT``).
         """
         if not self.env_overrides:
             return
+        is_child = bool(os.environ.get("_SABLE_PARENT_PROFILE"))
         for key, value in self.env_overrides.items():
+            if is_child and key in os.environ and os.environ[key]:
+                # Parent explicitly set this env var — keep it
+                logger.debug(f"[Profile:{self.name}] keeping parent-set: {key}={os.environ[key][:20]}")
+                continue
             os.environ[key] = value
             logger.debug(f"[Profile:{self.name}] env override: {key}={value[:20]}{'…' if len(value)>20 else ''}")
         logger.info(f"[Profile:{self.name}] applied {len(self.env_overrides)} env overrides")

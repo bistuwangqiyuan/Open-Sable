@@ -23,6 +23,7 @@ export function useWebSocket(onExternalMessage) {
   const [modelGroups, setModelGroups] = useState([]);
   const [activeProvider, setActiveProvider] = useState('ollama');
   const [pendingPermission, setPendingPermission] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState('webchat_default');
 
   const wsRef = useRef(null);
   const streamBuf = useRef('');
@@ -128,7 +129,39 @@ export function useWebSocket(onExternalMessage) {
         break;
       case 'sessions.list.result':
         setSessions(msg.sessions || []);
+        // Auto-load the most recent session if we haven't loaded one yet
+        if (msg.sessions?.length > 0) {
+          setActiveSessionId(prev => {
+            if (prev === 'webchat_default') {
+              const latest = msg.sessions[0];
+              const sid = latest.session_id || latest.id;
+              // Request its full history
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: sid }));
+              }
+              return sid;
+            }
+            return prev;
+          });
+        }
         break;
+      case 'sessions.delete.result':
+        if (msg.success && msg.session_id) {
+          // Remove the deleted session from state (server also sends sessions.list.result)
+          setSessions(prev => prev.filter(s => (s.session_id || s.id) !== msg.session_id));
+        }
+        break;
+      case 'sessions.history.result': {
+        if (!msg.session_id || !msg.messages) break;
+        const loaded = msg.messages.map(m => ({
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content || m.text || '',
+          ts: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+        }));
+        setMessages(loaded);
+        addActivity('info', '📂', 'Session loaded', `${loaded.length} messages`);
+        break;
+      }
       case 'monitor.subscribed':
         addActivity('info', '📡', 'Monitor', 'Subscribed to real-time events');
         break;
@@ -145,11 +178,21 @@ export function useWebSocket(onExternalMessage) {
         setBrainData(msg);
         break;
       case 'models.list.result':
+        // If response is for a remote agent, let external handler process it
+        if (msg._profile) {
+          if (onExternalMessage) onExternalMessage(msg);
+          break;
+        }
         setModelGroups(msg.groups || []);
         if (msg.current) setModel(msg.current);
         if (msg.provider) setActiveProvider(msg.provider);
         break;
       case 'models.set.result':
+        // If response is for a remote agent, let external handler process it
+        if (msg._profile) {
+          if (onExternalMessage) onExternalMessage(msg);
+          break;
+        }
         if (msg.success) {
           if (msg.model) setModel(msg.model);
           if (msg.provider) setActiveProvider(msg.provider);
@@ -223,26 +266,69 @@ export function useWebSocket(onExternalMessage) {
   const sendMessage = useCallback((text) => {
     if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     setMessages(prev => [...prev, { role: 'user', content: text, ts: Date.now() }]);
+    const sid = activeSessionId || 'webchat_default';
     if (text.startsWith('/')) {
-      wsRef.current.send(JSON.stringify({ type: 'command', text, session_id: 'webchat_default' }));
+      wsRef.current.send(JSON.stringify({ type: 'command', text, session_id: sid }));
     } else {
-      wsRef.current.send(JSON.stringify({ type: 'message', text, session_id: 'webchat_default', user_id: 'dashboard_user' }));
+      wsRef.current.send(JSON.stringify({ type: 'message', text, session_id: sid, user_id: 'dashboard_user' }));
     }
+  }, [activeSessionId]);
+
+  const loadSession = useCallback((sessionId) => {
+    if (!sessionId) {
+      // New chat — generate a fresh session ID
+      const fresh = 'dash_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      setActiveSessionId(fresh);
+      setMessages([]);
+      return;
+    }
+    setActiveSessionId(sessionId);
+    setMessages([]);
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: sessionId }));
+    }
+  }, []);
+
+  const deleteSession = useCallback((sessionId) => {
+    if (!sessionId || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ type: 'sessions.delete', session_id: sessionId }));
+    // Optimistically remove from the local sessions list and switch to next session
+    setSessions(prev => {
+      const remaining = prev.filter(s => (s.session_id || s.id) !== sessionId);
+      // If we deleted the active session, switch to the next one or start fresh
+      setActiveSessionId(currentId => {
+        if (currentId !== sessionId) return currentId;
+        if (remaining.length > 0) {
+          const next = remaining[0];
+          const nextId = next.session_id || next.id;
+          // Load the next session's history
+          setMessages([]);
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'sessions.history', session_id: nextId }));
+          }
+          return nextId;
+        }
+        // No sessions left — new chat
+        setMessages([]);
+        return 'dash_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      });
+      return remaining;
+    });
   }, []);
 
   const clearMessages = useCallback(() => setMessages([]), []);
   const clearActivity = useCallback(() => setActivity([]), []);
   const clearTerminal = useCallback(() => setTerminal([]), []);
 
-  const requestModels = useCallback(() => {
+  const requestModels = useCallback((profile) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'models.list' }));
+      wsRef.current.send(JSON.stringify({ type: 'models.list', ...(profile ? { profile } : {}) }));
     }
   }, []);
 
-  const switchModel = useCallback((modelName, provider) => {
+  const switchModel = useCallback((modelName, provider, profile) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'models.set', model: modelName, provider: provider || '' }));
+      wsRef.current.send(JSON.stringify({ type: 'models.set', model: modelName, provider: provider || '', ...(profile ? { profile } : {}) }));
     }
   }, []);
 
@@ -267,7 +353,7 @@ export function useWebSocket(onExternalMessage) {
 
   return {
     connected, streaming, messages, activity, terminal, stats, sessions, model, thoughts, brainData,
-    modelGroups, activeProvider, pendingPermission,
-    sendMessage, clearMessages, clearActivity, clearTerminal, requestModels, switchModel, importGGUF, respondPermission, wsRef,
+    modelGroups, activeProvider, pendingPermission, activeSessionId,
+    sendMessage, loadSession, deleteSession, clearMessages, clearActivity, clearTerminal, requestModels, switchModel, importGGUF, respondPermission, wsRef,
   };
 }

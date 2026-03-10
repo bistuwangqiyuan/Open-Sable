@@ -3197,6 +3197,20 @@ class SableAgent:
     async def shutdown(self):
         if self.heartbeat_task:
             self.heartbeat_task.cancel()
+        # Close Playwright-based skills to prevent browser process leaks
+        if self.tools:
+            for attr in ("tiktok_skill", "browser_skill"):
+                skill = getattr(self.tools, attr, None)
+                if skill and hasattr(skill, "close"):
+                    try:
+                        await skill.close()
+                    except Exception:
+                        pass
+                elif skill and hasattr(skill, "cleanup"):
+                    try:
+                        await skill.cleanup()
+                    except Exception:
+                        pass
         if self.memory:
             await self.memory.close()
         logger.info("Agent shutdown complete")
