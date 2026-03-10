@@ -1,6 +1,6 @@
 import datetime
+import time
 from typing import Optional, Union, Callable
-import pytz
 from zoneinfo import ZoneInfo
 
 class TimezoneAwareError(Exception):
@@ -10,7 +10,27 @@ class TimezoneAwareError(Exception):
 def get_local_timezone() -> ZoneInfo:
     """Detect the system's local timezone automatically."""
     try:
-        return ZoneInfo.from_system_time()
+        # Use the system's TZ name from time module
+        tz_name = time.tzname[0]
+        # Try /etc/timezone first (Linux)
+        try:
+            with open("/etc/timezone", "r") as f:
+                tz_name = f.read().strip()
+                return ZoneInfo(tz_name)
+        except (FileNotFoundError, KeyError):
+            pass
+        # Try /etc/localtime symlink
+        import os
+        try:
+            link = os.readlink("/etc/localtime")
+            # e.g. /usr/share/zoneinfo/America/New_York
+            tz_name = "/".join(link.split("/zoneinfo/")[1:])
+            if tz_name:
+                return ZoneInfo(tz_name)
+        except (OSError, IndexError, KeyError):
+            pass
+        # Fallback to UTC
+        return ZoneInfo("UTC")
     except Exception as e:
         raise TimezoneAwareError(f"Could not detect local timezone: {e}") from e
 
@@ -76,23 +96,22 @@ def parse_datetime(s: str) -> datetime.datetime:
     except ValueError:
         pass
     
-    try:
-        # Try common date string formats
-        formats = [
-            "%Y-%m-%d %H:%M:%S%z",
-            "%Y-%m-%d %H:%M:%S.%f%z",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y/%m/%d %H:%M:%S",
-            "%m/%d/%Y %H:%M:%S",
-        ]
-        
-        for fmt in formats:
-            try:
-                return datetime.datetime.strptime(s, fmt)
-            except ValueError:
-                continue
+    # Try common date string formats
+    formats = [
+        "%Y-%m-%d %H:%M:%S%z",
+        "%Y-%m-%d %H:%M:%S.%f%z",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ]
     
-        raise TimezoneAwareError(f"Could not parse datetime string: {s}")
+    for fmt in formats:
+        try:
+            return datetime.datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    
+    raise TimezoneAwareError(f"Could not parse datetime string: {s}")
 
 def ensure_timezone(dt: datetime.datetime) -> datetime.datetime:
     """

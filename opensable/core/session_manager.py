@@ -55,7 +55,9 @@ class Session:
         self.user_id = user_id
         self.config = config or SessionConfig()
         self.messages: List[Message] = []
-        self.created_at = datetime.now().isoformat()
+        from timezone_aware_datetime import now
+
+        self.created_at = now().isoformat()
         self.updated_at = self.created_at
         self.metadata: Dict[str, Any] = {}
         self.state = "active"  # active, paused, archived

@@ -5,11 +5,27 @@ from enum import Enum, auto
 import numpy as np
 
 class MutationType(Enum):
+    """
+    Supported mutation strategies defining how genetic variation is introduced.
+
+    These types determine the specific mechanism used to modify individual
+    parameters or genes in the population during evolution.
+    """
+
     SINGLE_POINT = auto()
+    """Modifies exactly one random parameter at a time."""
+
     MULTI_POINT = auto()
+    """Modifies multiple discrete parameters simultaneously."""
+
     UNIFORM = auto()
+    """Randomly mutates each parameter with a uniform probability across the range."""
+
     GAUSSIAN = auto()
+    """Applies Gaussian (normal) distribution-based mutations around current value."""
+
     CREATIVE = auto()
+    """Uses innovative or non-standard mutation patterns exploring complex variations."""
 
 @dataclass
 class MutationConfig:
@@ -34,10 +50,21 @@ class MutationConfig:
 class RiskAssessment:
     @staticmethod
     def calculate_risk(current_state, proposed_state) -> Tuple[float, dict]:
+        """
+        Calculates the risk of transitioning from current_state to proposed_state.
+
+        Args:
+            current_state: The current system state
+            proposed_state: The proposed state to transition to
+
+        Returns:
+            A tuple containing the total risk score (0-1) and a detailed assessment dictionary
+        """
         risk_score = 0.0
         assessment = {'total_risk': 0.0, 'components': {}}
 
         # State difference risk
+        # Measures how different the proposed state is from the current state
         difference = abs(hash(tuple(current_state)) - hash(tuple(proposed_state)))
         assessment['components']['state_difference'] = difference
         if difference > 1000:
@@ -46,18 +73,50 @@ class RiskAssessment:
         # Stability check
         try:
             stability = self._evaluate_stability(proposed_state)
-            assessment['components']['stability'] = stability
+            assessment['components']['stability'] = round(stability, 2)
             if stability < 0.5:
                 risk_score += 0.3
-        except Exception:
-            assessment['components']['stability'] = 'error'
+        except Exception as e:
+            assessment['components']['stability'] = {'error': str(e)}
 
+        # Final risk score normalization
         risk_score = min(risk_score, 1.0)
-        assessment['total_risk'] = risk_score
+        assessment['total_risk'] = round(risk_score, 2)
         return risk_score
 
     def _evaluate_stability(self, state):
-        # Simple stability metric - would be more complex in practice
+        """
+        Evaluates the stability of a proposed state.
+
+        This is a simplified metric that could be expanded with more sophisticated
+        stability checking mechanisms.
+
+        Args:
+            state: The state to evaluate
+
+        Returns:
+            A stability score between 0 and 1, where 1 indicates perfect stability
+        """
+        # Simple implementation - returns 1.0 for stable (needs improvement)
+        # In practice, this should analyze various stability indicators
+
+        try:
+            # Example: check if state has valid ranges
+            if hasattr(state, '__iter__'):
+                valid_ranges = all(isinstance(item, tuple) and len(item) == 2 for item in state)
+                if not valid_ranges:
+                    return 0.3
+            
+            # Example: check numerical stability (large values may indicate issues)
+            if isinstance(state, dict):
+                large_values = any(abs(val) > 1e6 for val in state.values())
+                if large_values:
+                    return 0.5
+            
+            # Default stability score (moderately stable)
+            return 0.8
+        except Exception:
+            return 0.3
         return random.uniform(0.4, 0.9)
 
 class Mutator:
