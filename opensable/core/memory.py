@@ -84,9 +84,26 @@ class MemoryManager:
             settings=ChromaSettings(anonymized_telemetry=False),
         )
 
-        self.collection = self.vector_db.get_or_create_collection(
-            name="opensable_memory", metadata={"description": "User interactions and context"}
-        )
+        try:
+            self.collection = self.vector_db.get_or_create_collection(
+                name="opensable_memory", metadata={"description": "User interactions and context"}
+            )
+        except KeyError as e:
+            # ChromaDB version migration: older collections may lack _type in config_json_str.
+            # Auto-repair by patching the stored config, then retry.
+            if "_type" in str(e):
+                logger.warning("ChromaDB config migration: patching missing _type field...")
+                self._migrate_chromadb_configs()
+                # Re-open after migration
+                self.vector_db = chromadb.PersistentClient(
+                    path=str(self.config.vector_db_path),
+                    settings=ChromaSettings(anonymized_telemetry=False),
+                )
+                self.collection = self.vector_db.get_or_create_collection(
+                    name="opensable_memory", metadata={"description": "User interactions and context"}
+                )
+            else:
+                raise
 
         # Load structured memory (handles encrypted, plaintext, or missing)
         if self.structured_memory_path.exists():
@@ -232,3 +249,28 @@ class MemoryManager:
         """Cleanup on shutdown"""
         self._save_structured_memory()
         logger.info("Memory manager closed")
+
+    def _migrate_chromadb_configs(self):
+        """Patch ChromaDB collections created by older versions that lack _type in config_json_str."""
+        import sqlite3 as _sqlite3
+        from chromadb.api.configuration import CollectionConfigurationInternal
+
+        db_path = str(self.config.vector_db_path / "chroma.sqlite3")
+        default_cfg = CollectionConfigurationInternal().to_json_str()
+
+        conn = _sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, config_json_str FROM collections")
+        for coll_id, name, cfg_str in cur.fetchall():
+            try:
+                cfg = json.loads(cfg_str) if cfg_str else {}
+            except (json.JSONDecodeError, TypeError):
+                cfg = {}
+            if "_type" not in cfg:
+                logger.info(f"Migrating ChromaDB collection '{name}' config (adding _type)")
+                cur.execute(
+                    "UPDATE collections SET config_json_str = ? WHERE id = ?",
+                    (default_cfg, coll_id),
+                )
+        conn.commit()
+        conn.close()
