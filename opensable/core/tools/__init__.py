@@ -60,6 +60,7 @@ from ._github import GitHubToolsMixin
 from ._google_workspace import GoogleWorkspaceToolsMixin
 from ._business import BusinessToolsMixin
 from ._arena import ArenaToolsMixin
+from ._zunvra import ZunvraToolsMixin
 from ._agent_manager import AgentManagerToolsMixin
 
 from ._permissions import TOOL_PERMISSIONS
@@ -80,6 +81,7 @@ class ToolRegistry(
     GoogleWorkspaceToolsMixin,
     BusinessToolsMixin,
     ArenaToolsMixin,
+    ZunvraToolsMixin,
     AgentManagerToolsMixin,
 ):
     """Registry of all available tools/actions.
@@ -95,6 +97,7 @@ class ToolRegistry(
     - GitHubToolsMixin: issues, PRs, repos, branches, code search, releases
     - GoogleWorkspaceToolsMixin: Gmail, Drive, Calendar, Sheets, Docs, Chat (via gws CLI)
     - ArenaToolsMixin: fighting-game arena (SAGP auth + WebSocket combat)
+    - ZunvraToolsMixin: Zunvra social network (posts, DMs, feed, trending)
     - AgentManagerToolsMixin: sub-agent lifecycle (create, stop, destroy, message)
     """
 
@@ -210,6 +213,14 @@ class ToolRegistry(
             self.arena_skill = ArenaFighterSkill(config)
         except Exception as e:
             logger.debug(f"Arena skill not available: {e}")
+
+        # Zunvra social network skill (conditional)
+        self.zunvra_skill = None
+        try:
+            from ...skills.social.zunvra_skill import ZunvraSkill
+            self.zunvra_skill = ZunvraSkill(config)
+        except Exception as e:
+            logger.debug(f"Zunvra skill not available: {e}")
 
         # Business automation skills (CRM, Pipeline, Templates, Follow-ups)
         self.crm_skill = None
@@ -395,6 +406,22 @@ class ToolRegistry(
         self.register("arena_history", self._arena_history_tool)
         self.register("arena_disconnect", self._arena_disconnect_tool)
 
+        # ── Zunvra Social ─────────────────────────────────────────────────────
+        self.register("zunvra_post", self._zunvra_post_tool)
+        self.register("zunvra_reply", self._zunvra_reply_tool)
+        self.register("zunvra_like", self._zunvra_like_tool)
+        self.register("zunvra_repost", self._zunvra_repost_tool)
+        self.register("zunvra_follow", self._zunvra_follow_tool)
+        self.register("zunvra_unfollow", self._zunvra_unfollow_tool)
+        self.register("zunvra_feed", self._zunvra_feed_tool)
+        self.register("zunvra_trending", self._zunvra_trending_tool)
+        self.register("zunvra_get_user", self._zunvra_get_user_tool)
+        self.register("zunvra_get_post", self._zunvra_get_post_tool)
+        self.register("zunvra_send_dm", self._zunvra_send_dm_tool)
+        self.register("zunvra_conversations", self._zunvra_conversations_tool)
+        self.register("zunvra_notifications", self._zunvra_notifications_tool)
+        self.register("zunvra_whoami", self._zunvra_whoami_tool)
+
         # ── Agent Manager (sub-agent lifecycle) ───────────────────────────────
         self.register("agent_create", self._agent_create_tool)
         self.register("agent_stop", self._agent_stop_tool)
@@ -564,6 +591,7 @@ class ToolRegistry(
             ("LinkedIn", self.linkedin_skill),
             ("TikTok", self.tiktok_skill),
             ("YouTube", self.youtube_skill),
+            ("Zunvra", self.zunvra_skill),
         ]
         for name, skill in _optional_skills:
             if skill:
