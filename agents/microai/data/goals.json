@@ -1,11 +1,11 @@
 {
   "microai-main-goal": {
     "goal_id": "microai-main-goal",
-    "description": "建立 microai 无人公司并实现全自动在线盈利的可持续闭环",
+    "description": "Build the microai autonomous company and achieve a sustainable fully automated online revenue loop",
     "success_criteria": [
-      "完成至少 1 条可自动执行的线上变现路径",
-      "形成可复用的运营 SOP 与周报机制",
-      "关键指标可量化（流量、转化、收入、成本）"
+      "Ship at least one automated online monetization path",
+      "Create a reusable operating SOP and weekly review workflow",
+      "Track measurable KPIs for traffic, conversion, revenue, and cost"
     ],
     "priority": "CRITICAL",
     "deadline": null,
@@ -30,11 +30,11 @@
   },
   "microai-acquisition-goal": {
     "goal_id": "microai-acquisition-goal",
-    "description": "搭建自动获客漏斗（内容分发 + 线索收集）",
+    "description": "Build an automated customer acquisition funnel (content distribution + lead capture)",
     "success_criteria": [
-      "每日稳定产出并分发内容",
-      "线索收集渠道可持续增长",
-      "形成渠道效果对比报表"
+      "Publish and distribute content consistently each day",
+      "Grow lead capture channels continuously",
+      "Generate channel effectiveness comparison reports"
     ],
     "priority": "HIGH",
     "deadline": null,
@@ -52,11 +52,11 @@
   },
   "microai-monetization-goal": {
     "goal_id": "microai-monetization-goal",
-    "description": "搭建自动变现闭环（报价、交付、收款、复购）",
+    "description": "Build an automated monetization loop (offer, delivery, payment, retention)",
     "success_criteria": [
-      "形成标准化产品/服务套餐",
-      "订单处理流程可自动化运行",
-      "月度毛利为正并持续改善"
+      "Define standardized product and service packages",
+      "Automate order handling workflow end to end",
+      "Keep monthly gross margin positive and improving"
     ],
     "priority": "HIGH",
     "deadline": null,
@@ -74,11 +74,11 @@
   },
   "microai-ops-goal": {
     "goal_id": "microai-ops-goal",
-    "description": "建立无人公司运营看板与异常自愈机制",
+    "description": "Establish operations dashboard and incident self-healing mechanisms",
     "success_criteria": [
-      "关键运营指标实时可见",
-      "异常自动告警并自动修复常见故障",
-      "每周自动生成经营复盘"
+      "Expose key operating metrics in near real-time",
+      "Auto-alert and self-recover common operational failures",
+      "Generate automated weekly business reviews"
     ],
     "priority": "MEDIUM",
     "deadline": null,
