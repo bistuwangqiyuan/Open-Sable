@@ -170,6 +170,17 @@ TOOL_PERMISSIONS = {
     "zunvra_conversations": "zunvra_read",
     "zunvra_notifications": "zunvra_read",
     "zunvra_whoami": "zunvra_read",
+    # AgentMon League (Pokémon Red)
+    "agentmon_start": "agentmon_play",
+    "agentmon_stop": "agentmon_play",
+    "agentmon_step": "agentmon_play",
+    "agentmon_actions": "agentmon_play",
+    "agentmon_state": "agentmon_read",
+    "agentmon_frame": "agentmon_read",
+    "agentmon_save": "agentmon_play",
+    "agentmon_saves": "agentmon_read",
+    "agentmon_delete_save": "agentmon_play",
+    "agentmon_leaderboard": "agentmon_read",
     # Business Automation,  CRM
     "crm_add_contact": "crm_write",
     "crm_search_contacts": "crm_read",
