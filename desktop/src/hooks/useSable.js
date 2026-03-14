@@ -264,7 +264,7 @@ export const useSableStore = create((set, get) => ({
     const { sessions } = get()
     if (!sessions.find(s => s.id === sessionId)) {
       set({
-        sessions: [{ id: sessionId, title: 'New chat', ts: Date.now() }, ...sessions],
+        sessions: [{ id: sessionId, title: '新建对话', ts: Date.now() }, ...sessions],
         messages: { ...get().messages, [sessionId]: [] },
       })
     }
@@ -276,7 +276,7 @@ export const useSableStore = create((set, get) => ({
     const updated = { ...messages, [sessionId]: [...sessionMsgs, message] }
     // Update session title from first user message
     const updatedSessions = sessions.map(s => {
-      if (s.id === sessionId && s.title === 'New chat' && message.role === 'user') {
+      if (s.id === sessionId && s.title === '新建对话' && message.role === 'user') {
         return { ...s, title: message.content.slice(0, 46) }
       }
       return s
@@ -381,7 +381,7 @@ export const useSableStore = create((set, get) => ({
       case 'message.start':
         if (msg.session_id) {
           _ensureSession(msg.session_id)
-          set({ streaming: true, streamingSessionId: msg.session_id, streamingPhase: 'thinking', agentProgress: 'Thinking…' })
+          set({ streaming: true, streamingSessionId: msg.session_id, streamingPhase: 'thinking', agentProgress: '思考中…' })
         }
         break
 
@@ -390,7 +390,7 @@ export const useSableStore = create((set, get) => ({
           _ensureSession(msg.session_id)
           // Switch phase on first chunk
           if (get().streamingPhase !== 'responding') {
-            set({ streamingPhase: 'responding', agentProgress: 'Responding…' })
+            set({ streamingPhase: 'responding', agentProgress: '正在回复…' })
           }
           _appendChunk(msg.session_id, msg.text)
         }
@@ -414,7 +414,7 @@ export const useSableStore = create((set, get) => ({
       case 'sessions.list.result': {
         const remoteSessions = (msg.sessions || []).map(s => ({
           id: s.session_id || s.id,
-          title: s.title || s.session_id || 'Chat',
+          title: s.title || s.session_id || '对话',
           ts: s.created_at ? new Date(s.created_at).getTime() : Date.now(),
         }))
         // Keep local sessions that have actual messages (in-progress chats not yet on server)
@@ -441,7 +441,7 @@ export const useSableStore = create((set, get) => ({
       }
 
       case 'error':
-        get().showToast(msg.text || 'Gateway error')
+        get().showToast(msg.text || '网关错误')
         set({ streaming: false, agentProgress: null, streamingSince: null, elapsed: 0, streamingPhase: 'thinking' })
         break
 
@@ -494,10 +494,10 @@ export const useSableStore = create((set, get) => ({
 
       case 'models.import.result':
         if (msg.success) {
-          get().showToast(`Model "${msg.model}" imported successfully`)
+          get().showToast(`模型“${msg.model}”导入成功`)
           get().requestModels()
         } else {
-          get().showToast(`Import failed: ${msg.error || 'unknown error'}`)
+          get().showToast(`导入失败：${msg.error || '未知错误'}`)
         }
         break
 
@@ -539,7 +539,7 @@ export const useSableStore = create((set, get) => ({
     const { ws } = get()
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'models.import', path: filePath, name: modelName }))
-      get().showToast(`Importing "${modelName}"… this may take a moment`)
+      get().showToast(`正在导入“${modelName}”… 可能需要一些时间`)
     }
   },
 

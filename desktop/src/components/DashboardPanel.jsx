@@ -57,19 +57,19 @@ export default function DashboardPanel({ config, onClose }) {
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
             <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
           </svg>
-          <span>Agent Dashboard</span>
+          <span>代理仪表盘</span>
           <span className="dashboard-url-pill">{dashUrl}</span>
         </div>
         <div className="dashboard-topbar-right">
-          <button className="dash-btn" onClick={openExternal} title="Open in browser">
+          <button className="dash-btn" onClick={openExternal} title="在浏览器打开">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
               <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
-            Open in browser
+            在浏览器打开
           </button>
-          <button className="dash-btn dash-btn-close" onClick={onClose} title="Close">
-            ✕ Close
+          <button className="dash-btn dash-btn-close" onClick={onClose} title="关闭">
+            ✕ 关闭
           </button>
         </div>
       </div>
@@ -77,11 +77,11 @@ export default function DashboardPanel({ config, onClose }) {
       {error ? (
         <div className="dashboard-error">
           <div className="dashboard-error-icon">⚠</div>
-          <div className="dashboard-error-title">Dashboard not reachable</div>
-          <div className="dashboard-error-sub">Make sure SableCore is running at <code>{httpBase}</code></div>
+          <div className="dashboard-error-title">无法访问仪表盘</div>
+          <div className="dashboard-error-sub">请确认 SableCore 正在 <code>{httpBase}</code> 运行</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-            <button className="btn btn-secondary" onClick={reload}>Retry</button>
-            <button className="btn btn-primary" onClick={openExternal}>Open in browser</button>
+            <button className="btn btn-secondary" onClick={reload}>重试</button>
+            <button className="btn btn-primary" onClick={openExternal}>在浏览器打开</button>
           </div>
         </div>
       ) : (
@@ -91,7 +91,7 @@ export default function DashboardPanel({ config, onClose }) {
               <div className="typing-indicator" style={{ margin: 'auto' }}>
                 <div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/>
               </div>
-              <span>Loading dashboard…</span>
+              <span>正在加载仪表盘…</span>
             </div>
           )}
           <webview

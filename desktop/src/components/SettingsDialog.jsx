@@ -72,7 +72,7 @@ export default function SettingsDialog() {
     const newConfig = { wsUrl: wsUrl.trim(), token: token.trim() }
     setConfig(newConfig)
     connect(newConfig)
-    showToast('Settings saved,  reconnecting…')
+    showToast('设置已保存，正在重连…')
     closeSettings()
   }
 
@@ -96,18 +96,18 @@ export default function SettingsDialog() {
     <div className="overlay" onClick={handleOverlayClick}>
       <div className="modal modal-wide">
         <div className="modal-header">
-          <span className="modal-title">⚙ Settings</span>
+          <span className="modal-title">⚙ 设置</span>
           <button className="modal-close" onClick={closeSettings}>×</button>
         </div>
 
         {/* ── Tabs ───────────────────────────────────────────── */}
         <div className="settings-tabs">
           {[
-            { id: 'connection', label: 'Connection' },
-            { id: 'models',     label: 'Models'     },
-            { id: 'dashboard',  label: 'Dashboard'  },
-            { id: 'preferences',label: 'Preferences'},
-            { id: 'about',      label: 'About'      },
+            { id: 'connection', label: '连接' },
+            { id: 'models',     label: '模型'     },
+            { id: 'dashboard',  label: '仪表盘'  },
+            { id: 'preferences',label: '偏好'},
+            { id: 'about',      label: '关于'      },
           ].map(t => (
             <button
               key={t.id}
@@ -124,35 +124,35 @@ export default function SettingsDialog() {
         {tab === 'connection' && (
           <div className="settings-tab-content">
             <div className="form-group">
-              <label className="form-label">SableCore Gateway URL</label>
+              <label className="form-label">SableCore 网关地址</label>
               <input
                 className="form-input"
                 value={wsUrl}
                 onChange={e => setWsUrl(e.target.value)}
                 placeholder="ws://localhost:8789"
               />
-              <div className="form-hint">WebSocket address of your SableCore instance</div>
+              <div className="form-hint">你的 SableCore 实例 WebSocket 地址</div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Auth Token</label>
+              <label className="form-label">鉴权令牌</label>
               <div className="input-with-action">
                 <input
                   className="form-input"
                   type={showToken ? 'text' : 'password'}
                   value={token}
                   onChange={e => setToken(e.target.value)}
-                  placeholder="WEBCHAT_TOKEN from .env"
+                  placeholder=".env 中的 WEBCHAT_TOKEN"
                 />
                 <button
                   className="input-peek-btn"
                   onClick={() => setShowToken(v => !v)}
-                  title={showToken ? 'Hide token' : 'Show token'}
+                  title={showToken ? '隐藏令牌' : '显示令牌'}
                 >
                   {showToken ? '🙈' : '👁'}
                 </button>
               </div>
-              <div className="form-hint">Matches WEBCHAT_TOKEN in your SableCore .env</div>
+              <div className="form-hint">需与你 SableCore .env 的 WEBCHAT_TOKEN 一致</div>
             </div>
 
             <div className="settings-info-row">
@@ -161,8 +161,8 @@ export default function SettingsDialog() {
             </div>
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={closeSettings}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave}>Save &amp; Reconnect</button>
+              <button className="btn btn-secondary" onClick={closeSettings}>取消</button>
+              <button className="btn btn-primary" onClick={handleSave}>保存并重连</button>
             </div>
           </div>
         )}
@@ -170,10 +170,10 @@ export default function SettingsDialog() {
         {/* ── Tab: Dashboard ─────────────────────────────────── */}        {tab === 'models' && (
           <div className="settings-tab-content">
             <div className="form-group">
-              <label className="form-label">Active Model</label>
+              <label className="form-label">当前模型</label>
               <div className="form-hint" style={{ marginBottom: 12 }}>
-                {agentModel || 'No model selected'}
-                {agentModel && <span style={{ color: '#22c55e', marginLeft: 8 }}>● active</span>}
+                {agentModel || '未选择模型'}
+                {agentModel && <span style={{ color: '#22c55e', marginLeft: 8 }}>● 已激活</span>}
               </div>
             </div>
 
@@ -202,7 +202,7 @@ export default function SettingsDialog() {
                         border: m.name === agentModel ? 'none' : '1px solid var(--border)',
                       }} />
                       <span style={{ flex: 1 }}>{m.name}</span>
-                      {m.name === agentModel && <span style={{ fontSize: 10, color: '#22c55e' }}>active</span>}
+                      {m.name === agentModel && <span style={{ fontSize: 10, color: '#22c55e' }}>当前</span>}
                     </div>
                   ))}
                 </div>
@@ -211,25 +211,25 @@ export default function SettingsDialog() {
 
             {(!modelGroups || modelGroups.length === 0) && (
               <div className="form-hint" style={{ textAlign: 'center', padding: '20px 0' }}>
-                No models available. Start Ollama or configure API keys in .env
+                暂无可用模型。请启动 Ollama 或在 .env 中配置 API Key
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button className="btn btn-secondary" onClick={requestModels}>↻ Refresh Models</button>
+              <button className="btn btn-secondary" onClick={requestModels}>↻ 刷新模型</button>
             </div>
 
             {/* GGUF Import */}
             <div className="gguf-import-section">
               <div className="gguf-import-title">
-                📥 Import GGUF Model
+                📥 导入 GGUF 模型
               </div>
               <div className="gguf-import-row">
                 <input
                   className="gguf-import-input"
                   value={ggufPath}
                   onChange={e => setGgufPath(e.target.value)}
-                  placeholder="/path/to/model.gguf (e.g. ~/Downloads/Qwen3.5-9B-Q4_K_M.gguf)"
+                  placeholder="/path/to/model.gguf（例如 ~/Downloads/Qwen3.5-9B-Q4_K_M.gguf）"
                 />
               </div>
               <div className="gguf-import-row">
@@ -237,7 +237,7 @@ export default function SettingsDialog() {
                   className="gguf-import-input"
                   value={ggufName}
                   onChange={e => setGgufName(e.target.value)}
-                  placeholder="Model name (optional,  auto-derived from filename)"
+                  placeholder="模型名（可选，默认从文件名推断）"
                 />
                 <button
                   className="gguf-import-btn"
@@ -248,13 +248,13 @@ export default function SettingsDialog() {
                     setGgufName('')
                   }}
                 >
-                  Import
+                  导入
                 </button>
               </div>
               <div className="gguf-import-hint">
-                Imports a .gguf file into Ollama so you can use it like any other model.
-                Supports models downloaded from HuggingFace, TheBloke, etc.
-                The file stays on disk,  Ollama creates a reference to it.
+                将 .gguf 文件导入 Ollama，像普通模型一样使用。
+                支持 HuggingFace、TheBloke 等来源模型。
+                文件保留在本地磁盘，Ollama 仅创建引用。
               </div>
             </div>
           </div>
@@ -266,8 +266,8 @@ export default function SettingsDialog() {
               <button className="dash-link-card" onClick={openDashboard}>
                 <div className="dash-link-icon">🧠</div>
                 <div className="dash-link-body">
-                  <div className="dash-link-title">Agent Dashboard</div>
-                  <div className="dash-link-sub">Full agent control panel, memory, tools, trading</div>
+                  <div className="dash-link-title">代理仪表盘</div>
+                  <div className="dash-link-sub">完整代理控制台：记忆、工具、交易等</div>
                 </div>
                 <div className="dash-link-arrow">→</div>
               </button>
@@ -275,8 +275,8 @@ export default function SettingsDialog() {
               <button className="dash-link-card" onClick={openMonitor}>
                 <div className="dash-link-icon">📊</div>
                 <div className="dash-link-body">
-                  <div className="dash-link-title">Monitor</div>
-                  <div className="dash-link-sub">Live agent thoughts, emotion, X autoposter status</div>
+                  <div className="dash-link-title">监控面板</div>
+                  <div className="dash-link-sub">实时查看思考、情绪、X 自动发帖状态</div>
                 </div>
                 <div className="dash-link-arrow">→</div>
               </button>
@@ -288,26 +288,26 @@ export default function SettingsDialog() {
               }}>
                 <div className="dash-link-icon">📋</div>
                 <div className="dash-link-body">
-                  <div className="dash-link-title">Open Dashboard &amp; Close Settings</div>
-                  <div className="dash-link-sub">Opens in system browser with token pre-loaded</div>
+                  <div className="dash-link-title">打开仪表盘并关闭设置</div>
+                  <div className="dash-link-sub">在系统浏览器打开（自动带令牌）</div>
                 </div>
                 <div className="dash-link-arrow">↗</div>
               </button>
             </div>
 
             <div className="form-group" style={{ marginTop: 16 }}>
-              <label className="form-label">Dashboard URL</label>
+              <label className="form-label">仪表盘地址</label>
               <div className="copy-row">
                 <input className="form-input" readOnly value={authUrl('/dashboard')} />
                 <button
                   className="copy-btn"
                   onClick={() => {
                     navigator.clipboard.writeText(authUrl('/dashboard'))
-                    showToast('URL copied!')
+                    showToast('链接已复制！')
                   }}
-                >Copy</button>
+                >复制</button>
               </div>
-              <div className="form-hint">Use Ctrl+D in the main window to toggle the embedded dashboard</div>
+              <div className="form-hint">在主窗口按 Ctrl+D 可切换内嵌仪表盘</div>
             </div>
           </div>
         )}
@@ -315,12 +315,12 @@ export default function SettingsDialog() {
         {/* ── Tab: Preferences ────────────────────────────────── */}
         {tab === 'preferences' && (
           <div className="settings-tab-content">
-            <div className="pref-section-label">Interface</div>
+            <div className="pref-section-label">界面</div>
 
             <div className="pref-row">
               <div className="pref-row-info">
-                <div className="pref-row-title">Compact sidebar by default</div>
-                <div className="pref-row-sub">Start with the conversation list hidden. Toggle anytime with Ctrl+B.</div>
+                <div className="pref-row-title">默认折叠侧边栏</div>
+                <div className="pref-row-sub">启动时隐藏会话列表，可随时按 Ctrl+B 切换。</div>
               </div>
               <label className="pref-toggle">
                 <input
@@ -328,22 +328,22 @@ export default function SettingsDialog() {
                   checked={localStorage.getItem('sable-sidebar') === 'collapsed'}
                   onChange={e => {
                     localStorage.setItem('sable-sidebar', e.target.checked ? 'collapsed' : 'open')
-                    showToast('Applies on next launch')
+                    showToast('将在下次启动时生效')
                   }}
                 />
                 <span className="pref-toggle-track" />
               </label>
             </div>
 
-            <div className="pref-section-label" style={{ marginTop: 16 }}>Keyboard shortcuts</div>
+            <div className="pref-section-label" style={{ marginTop: 16 }}>快捷键</div>
 
             <div className="shortcuts-grid">
               {[
-                ['Ctrl+N', 'New chat'],
-                ['Ctrl+B', 'Toggle sidebar'],
-                ['Ctrl+D', 'Toggle dashboard'],
-                ['Enter', 'Send message'],
-                ['Shift+Enter', 'New line in message'],
+                ['Ctrl+N', '新建对话'],
+                ['Ctrl+B', '切换侧边栏'],
+                ['Ctrl+D', '切换仪表盘'],
+                ['Enter', '发送消息'],
+                ['Shift+Enter', '消息内换行'],
               ].map(([key, desc]) => (
                 <div key={key} className="shortcut-row">
                   <kbd className="kbd">{key}</kbd>
@@ -362,18 +362,18 @@ export default function SettingsDialog() {
               <div className="about-name">Sable Desktop</div>
               <div className="about-version">
                 {agentVersion ? `v${agentVersion}` : ''}{agentModel ? `, ${agentModel}` : ''}
-                {!agentVersion && !agentModel ? 'Connecting to SableCore…' : ''}
+                {!agentVersion && !agentModel ? '正在连接 SableCore…' : ''}
               </div>
             </div>
             <div className="about-features">
               {[
-                ['🧠', 'Autonomous agent with persistent memory and self-reflection'],
-                ['🔒', 'Fully local, your data never leaves this machine'],
-                ['🔧', `${tools?.length ?? 0} tools available via SableCore gateway`],
-                ['🎯', 'Intent-driven desktop control: screenshot, click, type, hotkeys'],
-                ['📈', 'Trading tools, market feeds, X autoposter, and web search'],
-                ['🔍', 'Codebase RAG, self-aware code assistance over your project'],
-                ['🎤', 'Voice input, file attachments, image understanding'],
+                ['🧠', '具备持久记忆和自我反思的自治代理'],
+                ['🔒', '完全本地运行，数据不离开你的机器'],
+                ['🔧', `通过 SableCore 网关可用工具：${tools?.length ?? 0} 个`],
+                ['🎯', '意图驱动桌面控制：截图、点击、输入、快捷键'],
+                ['📈', '交易工具、行情流、X 自动发帖与网页搜索'],
+                ['🔍', '代码库 RAG，结合项目上下文进行代码协作'],
+                ['🎤', '语音输入、文件附件、图片理解'],
               ].map(([icon, text]) => (
                 <div key={text} className="about-feature-row">
                   <span className="about-feature-icon">{icon}</span>
@@ -382,8 +382,8 @@ export default function SettingsDialog() {
               ))}
             </div>
             <div className="about-footer">
-              Gateway: <code>{httpBase || 'not configured'}</code>
-              {config?.token ? ' · auth token active' : ' · no auth token'}
+              网关：<code>{httpBase || '未配置'}</code>
+              {config?.token ? ' · 令牌已启用' : ' · 未配置令牌'}
             </div>
           </div>
         )}

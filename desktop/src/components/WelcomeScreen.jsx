@@ -38,12 +38,12 @@ const CodeIcon = () => (
 )
 
 const SUGGESTIONS = [
-  { icon: <ChatIcon />,   text: "What's on your mind right now?" },
-  { icon: <ChartIcon />,  text: 'Analyze latest market trends' },
-  { icon: <XIcon />,      text: 'What should I post on X today?' },
-  { icon: <SearchIcon />, text: 'Search for recent news' },
-  { icon: <BulbIcon />,   text: 'Give me your honest take on something' },
-  { icon: <CodeIcon />,   text: 'Help me write or review code' },
+  { icon: <ChatIcon />,   text: '你现在最想解决什么问题？' },
+  { icon: <ChartIcon />,  text: '分析最新市场趋势' },
+  { icon: <XIcon />,      text: '今天我在 X 上该发什么？' },
+  { icon: <SearchIcon />, text: '搜索近期热点新闻' },
+  { icon: <BulbIcon />,   text: '给我一个直截了当的判断' },
+  { icon: <CodeIcon />,   text: '帮我写代码或做代码评审' },
 ]
 
 export default function WelcomeScreen({ wsStatus }) {
@@ -63,17 +63,17 @@ export default function WelcomeScreen({ wsStatus }) {
         {/* ── Logo + headline ─────────────────────────────────────── */}
         <div className="welcome-hero">
           <img src="./logo.png" alt="OpenSable" className="welcome-logo" />
-          <h1 className="welcome-title">What can I help with?</h1>
+          <h1 className="welcome-title">我可以帮你做什么？</h1>
           <div className="welcome-status">
             <span className={`status-badge ${wsStatus}`}>
               <span style={{ fontSize: 8 }}>●</span>
               {wsStatus === 'connected'
-                ? `${agentLabel} · ${tools.length} tools ready`
+                ? `${agentLabel} · ${tools.length} 个工具可用`
                 : booting
-                ? 'Starting up…'
+                ? '启动中…'
                 : wsStatus === 'connecting'
-                ? 'Connecting…'
-                : 'Disconnected,  check gateway'}
+                ? '连接中…'
+                : '连接断开，请检查网关'}
             </span>
           </div>
         </div>

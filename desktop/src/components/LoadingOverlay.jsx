@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useSableStore } from '../hooks/useSable.js'
 
 const BOOT_STAGES = [
-  'Connecting to SableCore',
-  'Initializing neural pathways',
-  'Loading tool registry',
-  'Warming up models',
-  'Syncing sessions',
+  '正在连接 SableCore',
+  '初始化神经通路',
+  '加载工具注册表',
+  '模型预热中',
+  '同步会话中',
 ]
 
 export default function LoadingOverlay() {
@@ -69,7 +69,7 @@ export default function LoadingOverlay() {
         {/* ── Status line ────────────────────────────────────────── */}
         <div className="loading-status">
           {fadeOut
-            ? <span className="loading-connected">Connected</span>
+            ? <span className="loading-connected">已连接</span>
             : <span className="loading-text">{BOOT_STAGES[stageIdx]}</span>
           }
         </div>
@@ -84,7 +84,7 @@ export default function LoadingOverlay() {
         {/* ── Attempt counter ────────────────────────────────────── */}
         {!fadeOut && attempt > 1 && (
           <div className="loading-sub">
-            Attempt {attempt} &middot; SableCore is still booting
+            第 {attempt} 次尝试 &middot; SableCore 仍在启动
           </div>
         )}
       </div>

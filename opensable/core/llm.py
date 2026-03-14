@@ -7,7 +7,6 @@ Supports: Ollama (local), OpenAI, Anthropic, DeepSeek, Groq, Together AI,
 """
 
 import asyncio
-import fcntl
 import logging
 import json
 import os
@@ -19,6 +18,11 @@ from typing import Dict, List, Any, AsyncIterator, Optional, Tuple
 import ollama
 
 logger = logging.getLogger(__name__)
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None
 
 
 # ── Inter-process Ollama queue ───────────────────────────────────────
@@ -40,6 +44,11 @@ async def _ollama_lock():
     On macOS a single agent runs alone, so the lock is almost never contended;
     if it is, we log a warning and proceed anyway after the timeout.
     """
+    if fcntl is None:
+        # Windows has no fcntl; we skip inter-process lock there.
+        yield
+        return
+
     loop = asyncio.get_running_loop()
     fd = os.open(_OLLAMA_LOCK_PATH, os.O_CREAT | os.O_RDWR, 0o666)
     acquired = False

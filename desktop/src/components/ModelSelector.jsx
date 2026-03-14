@@ -27,14 +27,14 @@ export default function ModelSelector() {
   }, [open])
 
   const totalModels = (modelGroups || []).reduce((sum, g) => sum + (g.models?.length || 0), 0)
-  const displayName = model ? (model.length > 22 ? model.slice(0, 20) + '…' : model) : 'No model'
+  const displayName = model ? (model.length > 22 ? model.slice(0, 20) + '…' : model) : '未选择模型'
 
   return (
     <div className="model-selector-wrapper" ref={ref}>
       <button
         className="model-selector-trigger"
         onClick={() => { setOpen(!open); if (!open) requestModels() }}
-        title="Switch model"
+        title="切换模型"
       >
         <span className="model-selector-icon">🧠</span>
         <span className="model-selector-name">{displayName}</span>
@@ -47,16 +47,16 @@ export default function ModelSelector() {
       {open && (
         <div className="model-selector-dropdown">
           <div className="model-selector-header">
-            <span>Select Model</span>
+            <span>选择模型</span>
             <span className="model-selector-count">({totalModels})</span>
-            <button className="model-selector-refresh" onClick={(e) => { e.stopPropagation(); requestModels() }} title="Refresh">
+            <button className="model-selector-refresh" onClick={(e) => { e.stopPropagation(); requestModels() }} title="刷新">
               ↻
             </button>
           </div>
 
           {totalModels === 0 && (
             <div className="model-selector-empty">
-              No models found.<br />Install Ollama or configure an API key.
+              未找到可用模型。<br />请安装 Ollama 或配置 API Key。
             </div>
           )}
 
@@ -80,7 +80,7 @@ export default function ModelSelector() {
                   >
                     <span className={`model-selector-dot${active ? ' on' : ''}`} />
                     <span className="model-selector-item-name">{m.name}</span>
-                    {active && <span className="model-selector-active-label">active</span>}
+                    {active && <span className="model-selector-active-label">当前</span>}
                   </div>
                 )
               })}
@@ -89,7 +89,7 @@ export default function ModelSelector() {
 
           {totalModels > 0 && (
             <div className="model-selector-footer">
-              Click a model to switch instantly.
+              点击模型即可立即切换。
             </div>
           )}
         </div>

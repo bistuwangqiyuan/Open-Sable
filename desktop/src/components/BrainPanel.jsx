@@ -53,12 +53,12 @@ export default function BrainPanel({ onClose }) {
       <div className="brain-panel">
         <div className="brain-topbar">
           <span>🧠</span>
-          <span className="brain-topbar-title">Cognitive Brain</span>
+          <span className="brain-topbar-title">认知大脑</span>
           {onClose && <button className="brain-topbar-btn" onClick={onClose}>✕</button>}
         </div>
         <div className="brain-empty">
           <div className="brain-empty-icon">🔌</div>
-          <div className="brain-empty-text">Disconnected,  waiting for agent…</div>
+          <div className="brain-empty-text">连接断开，等待代理上线…</div>
         </div>
       </div>
     )
@@ -69,12 +69,12 @@ export default function BrainPanel({ onClose }) {
       <div className="brain-panel">
         <div className="brain-topbar">
           <span>🧠</span>
-          <span className="brain-topbar-title">Cognitive Brain</span>
+          <span className="brain-topbar-title">认知大脑</span>
           {onClose && <button className="brain-topbar-btn" onClick={onClose}>✕</button>}
         </div>
         <div className="brain-empty">
           <div className="brain-empty-icon">{brainLoading ? '⏳' : '🧠'}</div>
-          <div className="brain-empty-text">{brainLoading ? 'Loading brain data…' : 'No brain data yet'}</div>
+          <div className="brain-empty-text">{brainLoading ? '正在加载脑数据…' : '暂无脑数据'}</div>
         </div>
       </div>
     )
@@ -84,46 +84,46 @@ export default function BrainPanel({ onClose }) {
     <div className="brain-panel">
       <div className="brain-topbar">
         <span>🧠</span>
-        <span className="brain-topbar-title">Cognitive Brain</span>
+        <span className="brain-topbar-title">认知大脑</span>
         {identity?.name && (
           <span style={{ fontSize: 11, color: '#2dd4bf', fontWeight: 600, marginLeft: 8 }}>
             {identity.name}
           </span>
         )}
         <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono, monospace)', marginLeft: 'auto' }}>
-          TICK {tick}
+          轮次 {tick}
         </span>
-        <button className="brain-topbar-btn" onClick={fetchBrain} title="Refresh">
-          {brainLoading ? '⏳' : '↻'} Refresh
+        <button className="brain-topbar-btn" onClick={fetchBrain} title="刷新">
+          {brainLoading ? '⏳' : '↻'} 刷新
         </button>
-        {onClose && <button className="brain-topbar-btn" onClick={onClose}>✕ Close</button>}
+        {onClose && <button className="brain-topbar-btn" onClick={onClose}>✕ 关闭</button>}
       </div>
 
       <div className="brain-body">
         {/* ── Stats Overview ─────────────────────────────── */}
         <div className="brain-stat-grid">
           <div className="brain-stat">
-            <div className="brain-stat-label">Emotion</div>
+            <div className="brain-stat-label">情绪</div>
             <div className="brain-stat-value" style={{ textTransform: 'capitalize', fontSize: 14 }}>{emotion}</div>
           </div>
           <div className="brain-stat">
-            <div className="brain-stat-label">Valence</div>
+            <div className="brain-stat-label">效价</div>
             <div className="brain-stat-value">{typeof valence === 'number' ? valence.toFixed(2) : valence}</div>
           </div>
           <div className="brain-stat">
-            <div className="brain-stat-label">Arousal</div>
+            <div className="brain-stat-label">唤醒度</div>
             <div className="brain-stat-value">{typeof arousal === 'number' ? arousal.toFixed(2) : arousal}</div>
           </div>
           <div className="brain-stat">
-            <div className="brain-stat-label">Memories</div>
+            <div className="brain-stat-label">记忆</div>
             <div className="brain-stat-value">{cogMem}</div>
           </div>
           <div className="brain-stat">
-            <div className="brain-stat-label">Queue</div>
+            <div className="brain-stat-label">队列</div>
             <div className="brain-stat-value">{queueSize}</div>
           </div>
           <div className="brain-stat">
-            <div className="brain-stat-label">Completed</div>
+            <div className="brain-stat-label">已完成</div>
             <div className="brain-stat-value">{completedCount}</div>
           </div>
         </div>
@@ -131,9 +131,9 @@ export default function BrainPanel({ onClose }) {
         {/* ── Identity ───────────────────────────────────── */}
         {identity && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">🪪</span> Identity</div>
+            <div className="brain-card-header"><span className="brain-card-icon">🪪</span> 身份</div>
             <div className="brain-card-body">
-              {identity.core_values && <div><strong>Core Values:</strong> {Array.isArray(identity.core_values) ? identity.core_values.join(', ') : identity.core_values}</div>}
+              {identity.core_values && <div><strong>核心价值观：</strong> {Array.isArray(identity.core_values) ? identity.core_values.join(', ') : identity.core_values}</div>}
               {identity.personality_summary && <div style={{ marginTop: 4 }}>{identity.personality_summary}</div>}
               {identity.personality_traits && typeof identity.personality_traits === 'object' && (
                 <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -151,10 +151,10 @@ export default function BrainPanel({ onClose }) {
         {/* ── Impulse & Fantasy ───────────────────────────── */}
         {(impulse || fantasy) && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">⚡</span> Inner Life</div>
+            <div className="brain-card-header"><span className="brain-card-icon">⚡</span> 内在活动</div>
             <div className="brain-card-body">
-              {impulse && <div><strong>Impulse:</strong> {impulse}</div>}
-              {fantasy && <div style={{ marginTop: 4 }}><strong>Fantasy:</strong> {fantasy}</div>}
+              {impulse && <div><strong>冲动：</strong> {impulse}</div>}
+              {fantasy && <div style={{ marginTop: 4 }}><strong>想象：</strong> {fantasy}</div>}
             </div>
           </div>
         )}
@@ -162,7 +162,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Goals ──────────────────────────────────────── */}
         {goalList.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">🎯</span> Goals ({goalList.length})</div>
+            <div className="brain-card-header"><span className="brain-card-icon">🎯</span> 目标（{goalList.length}）</div>
             <div className="brain-card-body">
               {goalList.map((g, i) => (
                 <div key={i} className="brain-memory-item">
@@ -176,7 +176,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Inner Monologue ────────────────────────────── */}
         {innerMonologue.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">💭</span> Inner Monologue</div>
+            <div className="brain-card-header"><span className="brain-card-icon">💭</span> 内心独白</div>
             <div className="brain-card-body">
               {innerMonologue.slice(-5).map((m, i) => (
                 <div key={i} className="brain-memory-item" style={{ fontStyle: 'italic' }}>
@@ -190,7 +190,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Reflections ────────────────────────────────── */}
         {refs.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">🔍</span> Reflections ({refs.length})</div>
+            <div className="brain-card-header"><span className="brain-card-icon">🔍</span> 反思（{refs.length}）</div>
             <div className="brain-card-body">
               {refs.slice(-5).map((r, i) => (
                 <div key={i} className="brain-memory-item">
@@ -204,7 +204,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Proactive Proposals ─────────────────────────── */}
         {proposals.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">💡</span> Proposals ({proposals.length})</div>
+            <div className="brain-card-header"><span className="brain-card-icon">💡</span> 提案（{proposals.length}）</div>
             <div className="brain-card-body">
               {proposals.slice(-5).map((p, i) => (
                 <div key={i} className="brain-memory-item">
@@ -218,7 +218,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Journal ────────────────────────────────────── */}
         {journal.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">📔</span> Journal ({journal.length})</div>
+            <div className="brain-card-header"><span className="brain-card-icon">📔</span> 日志（{journal.length}）</div>
             <div className="brain-card-body">
               {journal.slice(-3).map((j, i) => (
                 <div key={i} className="brain-memory-item">
@@ -232,7 +232,7 @@ export default function BrainPanel({ onClose }) {
         {/* ── Mood History ───────────────────────────────── */}
         {moodHistory.length > 0 && (
           <div className="brain-card">
-            <div className="brain-card-header"><span className="brain-card-icon">📈</span> Mood History</div>
+            <div className="brain-card-header"><span className="brain-card-icon">📈</span> 情绪历史</div>
             <div className="brain-card-body">
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {moodHistory.slice(-20).map((m, i) => {

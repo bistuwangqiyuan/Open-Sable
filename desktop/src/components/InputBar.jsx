@@ -99,7 +99,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
 
   const toggleMic = () => {
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.')
+      alert('当前浏览器不支持语音识别。')
       return
     }
 
@@ -111,7 +111,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
 
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
-    recognition.lang = 'es-ES' // Spanish default, falls back to browser locale
+    recognition.lang = 'zh-CN'
     recognition.continuous = false
     recognition.interimResults = true
 
@@ -146,7 +146,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
               <button
                 className="attachment-remove"
                 onClick={() => removeAttachment(i)}
-                title="Remove"
+                title="移除"
               >✕</button>
             </div>
           ))}
@@ -167,7 +167,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
           className="input-action-btn"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          title="Attach file"
+          title="添加附件"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
@@ -179,7 +179,7 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
           className={`input-action-btn${isRecording ? ' recording' : ''}`}
           onClick={toggleMic}
           disabled={disabled || !SpeechRecognition}
-          title={isRecording ? 'Stop recording' : 'Voice input'}
+          title={isRecording ? '停止录音' : '语音输入'}
         >
           <svg viewBox="0 0 24 24" fill={isRecording ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
@@ -193,8 +193,8 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
           ref={textareaRef}
           className="chat-input"
           placeholder={wsStatus === 'connected'
-            ? (attachments.length ? 'Add a message… (Enter to send)' : 'Ask Sable anything… (Enter to send)')
-            : 'Connecting to SableCore…'}
+            ? (attachments.length ? '补充消息…（Enter 发送）' : '输入你的问题…（Enter 发送）')
+            : '正在连接 SableCore…'}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -208,14 +208,14 @@ export default function InputBar({ input, setInput, textareaRef, wsStatus, isWai
           className="send-btn"
           onClick={handleSendWithAttachments}
           disabled={(!input.trim() && !attachments.length) || isWaiting || disabled}
-          title="Send (Enter)"
+          title="发送（Enter）"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
           </svg>
         </button>
       </div>
-      <div className="input-hint">Shift+Enter for new line &nbsp;·&nbsp; Ctrl+N new chat</div>
+      <div className="input-hint">Shift+Enter 换行 &nbsp;·&nbsp; Ctrl+N 新建对话</div>
     </div>
   )
 }

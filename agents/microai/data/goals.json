@@ -1,0 +1,97 @@
+{
+  "microai-main-goal": {
+    "goal_id": "microai-main-goal",
+    "description": "建立 microai 无人公司并实现全自动在线盈利的可持续闭环",
+    "success_criteria": [
+      "完成至少 1 条可自动执行的线上变现路径",
+      "形成可复用的运营 SOP 与周报机制",
+      "关键指标可量化（流量、转化、收入、成本）"
+    ],
+    "priority": "CRITICAL",
+    "deadline": null,
+    "parent_goal_id": null,
+    "sub_goals": [
+      "microai-acquisition-goal",
+      "microai-monetization-goal",
+      "microai-ops-goal"
+    ],
+    "dependencies": [],
+    "status": "active",
+    "progress": 0.05,
+    "metadata": {
+      "company": "microai",
+      "business_type": "autonomous_online_business"
+    },
+    "created_at": "2026-03-14T00:00:00+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "result": null,
+    "error": null
+  },
+  "microai-acquisition-goal": {
+    "goal_id": "microai-acquisition-goal",
+    "description": "搭建自动获客漏斗（内容分发 + 线索收集）",
+    "success_criteria": [
+      "每日稳定产出并分发内容",
+      "线索收集渠道可持续增长",
+      "形成渠道效果对比报表"
+    ],
+    "priority": "HIGH",
+    "deadline": null,
+    "parent_goal_id": "microai-main-goal",
+    "sub_goals": [],
+    "dependencies": [],
+    "status": "pending",
+    "progress": 0.0,
+    "metadata": {},
+    "created_at": "2026-03-14T00:00:00+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "result": null,
+    "error": null
+  },
+  "microai-monetization-goal": {
+    "goal_id": "microai-monetization-goal",
+    "description": "搭建自动变现闭环（报价、交付、收款、复购）",
+    "success_criteria": [
+      "形成标准化产品/服务套餐",
+      "订单处理流程可自动化运行",
+      "月度毛利为正并持续改善"
+    ],
+    "priority": "HIGH",
+    "deadline": null,
+    "parent_goal_id": "microai-main-goal",
+    "sub_goals": [],
+    "dependencies": [],
+    "status": "pending",
+    "progress": 0.0,
+    "metadata": {},
+    "created_at": "2026-03-14T00:00:00+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "result": null,
+    "error": null
+  },
+  "microai-ops-goal": {
+    "goal_id": "microai-ops-goal",
+    "description": "建立无人公司运营看板与异常自愈机制",
+    "success_criteria": [
+      "关键运营指标实时可见",
+      "异常自动告警并自动修复常见故障",
+      "每周自动生成经营复盘"
+    ],
+    "priority": "MEDIUM",
+    "deadline": null,
+    "parent_goal_id": "microai-main-goal",
+    "sub_goals": [],
+    "dependencies": [],
+    "status": "pending",
+    "progress": 0.0,
+    "metadata": {},
+    "created_at": "2026-03-14T00:00:00+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "result": null,
+    "error": null
+  }
+}

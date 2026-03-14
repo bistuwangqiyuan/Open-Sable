@@ -1,0 +1,5 @@
+{
+  "mode": "all",
+  "tools": [],
+  "_comment": "microai baseline: enable all tools first, tighten with allowlist after workflow stabilizes."
+}

@@ -152,13 +152,13 @@ export default function App() {
           {/* macOS traffic lights (close / minimize / maximize on the LEFT) */}
           {isMac && (
             <div className="mac-controls" style={{ WebkitAppRegion: 'no-drag' }}>
-              <button className="mac-btn mac-close" onClick={() => api?.close()} title="Close">
+              <button className="mac-btn mac-close" onClick={() => api?.close()} title="关闭">
                 <svg viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9"/><line x1="9" y1="3" x2="3" y2="9"/></svg>
               </button>
-              <button className="mac-btn mac-minimize" onClick={() => api?.minimize()} title="Minimize">
+              <button className="mac-btn mac-minimize" onClick={() => api?.minimize()} title="最小化">
                 <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
               </button>
-              <button className="mac-btn mac-maximize" onClick={() => api?.maximize()} title="Maximize">
+              <button className="mac-btn mac-maximize" onClick={() => api?.maximize()} title="最大化">
                 <svg viewBox="0 0 12 12"><polyline points="4 2 10 2 10 8"/><polyline points="8 10 2 10 2 4"/></svg>
               </button>
             </div>
@@ -168,7 +168,7 @@ export default function App() {
             <button
               className="sidebar-toggle-btn"
               onClick={toggleSidebar}
-              title="Show sidebar (Ctrl+B)"
+              title="显示侧边栏 (Ctrl+B)"
               style={{ WebkitAppRegion: 'no-drag' }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
@@ -194,7 +194,7 @@ export default function App() {
           <label
             htmlFor="theme-check"
             className="theme-toggle-label"
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? '切换浅色模式' : '切换深色模式'}
           >
             <div className="theme-box">
               <div className="theme-ball" />
@@ -209,7 +209,7 @@ export default function App() {
         <div className="titlebar-actions" style={{ WebkitAppRegion: 'no-drag' }}>
           <button
             className={`titlebar-btn ${devStudioOpen ? 'active' : ''}`}
-            title="Dev Studio (Ctrl+Shift+D)"
+            title="开发工作台 (Ctrl+Shift+D)"
             onClick={() => { setDevStudioOpen(v => !v); setDashboardOpen(false); setBrainOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="13" height="13">
@@ -219,7 +219,7 @@ export default function App() {
           </button>
           <button
             className={`titlebar-btn ${brainOpen ? 'active' : ''}`}
-            title="Brain Panel"
+            title="认知面板"
             onClick={() => { setBrainOpen(v => !v); setDashboardOpen(false); setDevStudioOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
@@ -229,7 +229,7 @@ export default function App() {
           </button>
           <button
             className={`titlebar-btn ${dashboardOpen ? 'active' : ''}`}
-            title="Agent Dashboard (Ctrl+D)"
+            title="代理仪表盘 (Ctrl+D)"
             onClick={() => { setDashboardOpen(v => !v); setDevStudioOpen(false); setBrainOpen(false) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="13" height="13">
@@ -240,9 +240,9 @@ export default function App() {
           {/* Windows / Linux window controls on the RIGHT */}
           {!isMac && (
             <>
-              <button className="titlebar-btn" title="Minimize" onClick={() => api?.minimize()}>—</button>
-              <button className="titlebar-btn" title="Maximize" onClick={() => api?.maximize()}>□</button>
-              <button className="titlebar-btn close" title="Close" onClick={() => api?.close()}>✕</button>
+              <button className="titlebar-btn" title="最小化" onClick={() => api?.minimize()}>—</button>
+              <button className="titlebar-btn" title="最大化" onClick={() => api?.maximize()}>□</button>
+              <button className="titlebar-btn close" title="关闭" onClick={() => api?.close()}>✕</button>
             </>
           )}
         </div>

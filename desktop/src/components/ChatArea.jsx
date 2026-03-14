@@ -46,11 +46,11 @@ export default function ChatArea() {
     <div className="chat-area">
       <div className="chat-topbar">
         <span style={{ fontSize: 14, opacity: 0.5 }}>💬</span>
-        <span className="chat-topbar-title">{session?.title || 'Chat'}</span>
+        <span className="chat-topbar-title">{session?.title || '对话'}</span>
         {isWaiting && (
           <span className={`agent-progress${streamingPhase === 'responding' ? ' responding' : ''}`}>
             <span className="agent-progress-dot" />
-            {agentProgress || (streamingPhase === 'responding' ? 'Responding…' : 'Thinking…')}
+            {agentProgress || (streamingPhase === 'responding' ? '正在回复…' : '思考中…')}
             {elapsed > 0 && (
               <span className="elapsed-counter">{elapsedLabel}</span>
             )}
@@ -62,7 +62,7 @@ export default function ChatArea() {
         {currentMessages.length === 0 && !isWaiting && (
           <div className="empty-state" style={{ flex: 1, minHeight: 200 }}>
             <div className="empty-state-glyph" style={{ fontSize: 32 }}>✦</div>
-            <p>Say something to Sable…</p>
+            <p>对 Sable 说点什么吧…</p>
           </div>
         )}
         {currentMessages.map(msg => (

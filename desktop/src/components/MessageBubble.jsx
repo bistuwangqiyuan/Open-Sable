@@ -40,7 +40,7 @@ function VideoEmbed({ url, title }) {
           <div className="video-thumb" onClick={() => setExpanded(true)}>
             <img
               src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-              alt={title || 'YouTube video'}
+              alt={title || 'YouTube 视频'}
               className="video-thumb-img"
             />
             <div className="video-play-btn">▶</div>
@@ -50,7 +50,7 @@ function VideoEmbed({ url, title }) {
           <div className="video-iframe-wrap">
             <iframe
               src={`https://www.youtube.com/embed/${ytId}?autoplay=1`}
-              title={title || 'YouTube video'}
+              title={title || 'YouTube 视频'}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="video-iframe"
@@ -143,12 +143,12 @@ function CodeBlock({ code, language }) {
               className={`code-run-btn${running ? ' running' : ''}`}
               onClick={handleRun}
               disabled={running}
-              title={`Run ${language}`}
+              title={`运行 ${language}`}
             >
-              {running ? '⏳' : '▶ Run'}
+              {running ? '⏳' : '▶ 运行'}
             </button>
           )}
-          <button className="code-copy-btn" onClick={handleCopyCode} title="Copy code">
+          <button className="code-copy-btn" onClick={handleCopyCode} title="复制代码">
             {copied ? '✓' : '⎘'}
           </button>
         </div>
@@ -158,7 +158,7 @@ function CodeBlock({ code, language }) {
       {result && !result.running && (
         <div className={`code-output${result.exit_code !== 0 ? ' error' : ''}`}>
           <span className="code-output-label">
-            {result.exit_code === 0 ? '▸ Output' : `▸ Error (exit ${result.exit_code})`}
+            {result.exit_code === 0 ? '▸ 输出' : `▸ 错误（退出码 ${result.exit_code}）`}
           </span>
           <pre className="code-output-pre">
             {(result.stdout || result.stderr || '(no output)').trimEnd()}
@@ -218,7 +218,7 @@ export default function MessageBubble({ message }) {
                   return (
                     <img
                       src={src}
-                      alt={alt || 'Generated image'}
+                      alt={alt || '生成图片'}
                       className="msg-generated-image"
                       style={{
                         maxWidth: '100%',
@@ -254,11 +254,11 @@ export default function MessageBubble({ message }) {
         {!isUser && !message.streaming && message.content && (
           <div className="msg-footer">
             {durationLabel && (
-              <span className="msg-response-time" title="Time to complete response">
+              <span className="msg-response-time" title="响应完成耗时">
                 ⏱ {durationLabel}
               </span>
             )}
-            <button className="msg-copy-btn" onClick={handleCopy} title="Copy">
+            <button className="msg-copy-btn" onClick={handleCopy} title="复制">
               {copied ? '✓' : '⎘'}
             </button>
           </div>

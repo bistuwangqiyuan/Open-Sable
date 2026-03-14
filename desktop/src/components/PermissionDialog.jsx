@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { useSableStore } from '../hooks/useSable'
 
 const ACTION_LABELS = {
-  browser_navigate: 'Web Browsing',
-  file_write: 'Write File',
-  file_delete: 'Delete File',
-  system_command: 'Run System Command',
-  email_send: 'Send Email',
-  email_read: 'Read Email',
-  calendar_write: 'Modify Calendar',
+  browser_navigate: '网页浏览',
+  file_write: '写入文件',
+  file_delete: '删除文件',
+  system_command: '执行系统命令',
+  email_send: '发送邮件',
+  email_read: '读取邮件',
+  calendar_write: '修改日历',
 }
 
 const ACTION_ICONS = {
@@ -57,13 +57,13 @@ export default function PermissionDialog() {
       <div className="permission-dialog">
         <div className="permission-header">
           <span className="permission-icon">{icon}</span>
-          <span className="permission-title">Permission Required</span>
+          <span className="permission-title">需要授权</span>
           <span className="permission-countdown">{countdown}s</span>
         </div>
 
         <div className="permission-body">
           <p className="permission-question">
-            Sable wants to use <strong>{label}</strong>
+            Sable 请求执行：<strong>{label}</strong>
           </p>
           <div className="permission-tool">
             <code>{pending.tool}</code>
@@ -86,7 +86,7 @@ export default function PermissionDialog() {
             checked={remember}
             onChange={e => setRemember(e.target.checked)}
           />
-          Always allow this action
+          始终允许此操作
         </label>
 
         <div className="permission-actions">
@@ -94,13 +94,13 @@ export default function PermissionDialog() {
             className="permission-btn deny"
             onClick={() => respond(pending.requestId, false)}
           >
-            Deny
+            拒绝
           </button>
           <button
             className="permission-btn allow"
             onClick={() => respond(pending.requestId, true, remember)}
           >
-            Allow
+            允许
           </button>
         </div>
       </div>
